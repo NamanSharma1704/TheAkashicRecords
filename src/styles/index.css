@@ -1,0 +1,114 @@
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400..900&family=Rajdhani:wght@300;400;500;600;700&display=swap');
+
+/* PostCSS / Tailwind Directives - Validated by Build System */
+@import "tailwindcss/base";
+@import "tailwindcss/components";
+@import "tailwindcss/utilities";
+
+/* Animations (Top Level for global access) */
+@keyframes gradient-x {
+
+    0%,
+    100% {
+        background-size: 200% 200%;
+        background-position: left center;
+    }
+
+    50% {
+        background-size: 200% 200%;
+        background-position: right center;
+    }
+}
+
+@keyframes scanning {
+    0% {
+        top: 0%;
+    }
+
+    100% {
+        top: 100%;
+    }
+}
+
+@keyframes spin-slow {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes text-shimmer {
+    0% {
+        background-position: 0% 50%;
+    }
+
+    100% {
+        background-position: 200% 50%;
+    }
+}
+
+@layer utilities {
+    .font-manifold {
+        font-family: 'Manifold CF', 'Orbitron', sans-serif;
+    }
+
+    .font-orbitron {
+        font-family: 'Orbitron', sans-serif;
+    }
+
+    .font-rajdhani {
+        font-family: 'Rajdhani', sans-serif;
+    }
+
+    /* Custom Scrollbar */
+    .custom-scrollbar {
+        scrollbar-width: thin;
+        scrollbar-color: var(--scrollbar-thumb, #4b5563) var(--scrollbar-track, transparent);
+    }
+
+    .custom-scrollbar::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar-track {
+        background: var(--scrollbar-track, transparent);
+    }
+
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+        background: var(--scrollbar-thumb, #4b5563);
+        border-radius: 9999px;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+        background: var(--scrollbar-thumb-hover, #6b7280);
+    }
+
+    /* Utilities using top-level animations */
+    .animate-gradient-x {
+        animation: gradient-x 3s ease infinite;
+    }
+
+    .animate-scanning {
+        animation: scanning 4s linear infinite;
+    }
+
+    .animate-spin-slow {
+        animation: spin-slow 8s linear infinite;
+    }
+
+    .animate-text-shimmer {
+        animation: text-shimmer 3s linear infinite;
+    }
+
+    .progress-bloom {
+        box-shadow: 0 0 12px 1px currentColor;
+    }
+
+    .text-bloom {
+        filter: drop-shadow(0 0 10px var(--bloom-color, currentColor));
+    }
+}

@@ -1,0 +1,26 @@
+{
+    "version": 2,
+    "rewrites": [
+        {
+            "source": "/api/(.*)",
+            "destination": "/backend/index.js"
+        },
+        {
+            "source": "/(.*)",
+            "destination": "/system/$1"
+        }
+    ],
+    "redirects": [
+        {
+            "source": "/",
+            "destination": "/system/index.html",
+            "permanent": false
+        }
+    ],
+    "functions": {
+        "backend/index.js": {
+            "memory": 1024,
+            "maxDuration": 10
+        }
+    }
+}

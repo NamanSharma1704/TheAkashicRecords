@@ -1,0 +1,713 @@
+import React, { useState, useEffect } from 'react';
+import { X, Star, Calendar, BookOpen, Users, Share2, Heart, Sword, Zap, Database } from 'lucide-react';
+
+import { Theme, Quest } from '../../core/types';
+
+
+interface ManhwaDetailProps {
+    isOpen: boolean;
+    onClose: () => void;
+    quest: Quest | null;
+    theme: Theme;
+    allQuests?: Quest[];
+    onSetActive?: (id: string) => void;
+}
+
+interface AniListCharacter {
+    id: number;
+    name: { full: string; native: string };
+    image: { medium: string; large: string };
+    role: string;
+}
+
+interface AniListRecommendation {
+    id: number;
+    mediaRecommendation: {
+        id: number;
+        title: { english: string; romaji: string };
+        coverImage: { large: string };
+        averageScore: number;
+    };
+}
+
+interface AniListMedia {
+    id: number;
+    title: { english: string; romaji: string; native: string };
+    description: string;
+    coverImage: { extraLarge: string; large: string };
+    bannerImage: string;
+    genres: string[];
+    averageScore: number;
+    meanScore: number;
+    status: string;
+    seasonYear: number;
+    episodes: number;
+    chapters: number;
+    characters: { nodes: AniListCharacter[] };
+    recommendations: { nodes: AniListRecommendation[] };
+    siteUrl: string;
+}
+
+// --- COMPONENT ---
+const API_BASE = 'http://localhost:5000/api/quests';
+
+const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, theme, allQuests, onSetActive }) => {
+    const [media, setMedia] = useState<AniListMedia | null>(null);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [isEditing, setIsEditing] = useState(false);
+    const [editDraft, setEditDraft] = useState<Partial<Quest>>({})
+    const [saving, setSaving] = useState(false);
+
+    const isCustomCover = !!(quest?.coverUrl && quest.coverUrl !== "");
+    const finalCover = isCustomCover ? quest.coverUrl : (media?.coverImage?.extraLarge || media?.coverImage?.large || quest?.coverUrl || "");
+
+
+    // Fetch Details on Open
+    useEffect(() => {
+        if (isOpen && quest) {
+            setMedia(null);
+            setError(null);
+            setIsEditing(false);
+            setEditDraft({
+                synopsis: quest.synopsis || '',
+                rating: quest.rating ?? 0,
+                status: quest.status || 'ACTIVE',
+                currentChapter: quest.currentChapter || 0,
+                totalChapters: quest.totalChapters,
+                link: quest.link || '',
+                classType: quest.classType || 'PLAYER',
+            });
+            fetchDetails(quest.title);
+        }
+    }, [isOpen, quest]);
+
+    const handleSave = async () => {
+        if (!quest?._id) return;
+        setSaving(true);
+        try {
+            await fetch(`${API_BASE}/${quest._id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ...editDraft, lastUpdated: new Date().toISOString() })
+            });
+            setIsEditing(false);
+            // Reload page data from API by triggering a re-fetch could be done,
+            // but for now the parent library will refresh on next fetch
+        } catch (e) {
+            console.error('Save failed', e);
+        } finally {
+            setSaving(false);
+        }
+    };
+
+
+    // Manual Data for OEL/Missing Titles
+    const MANUAL_METADATA: Record<string, AniListMedia> = {
+        "The Beginning After The End": {
+            id: 999999,
+            title: {
+                english: "The Beginning After The End",
+                romaji: "The Beginning After The End",
+                native: "The Beginning After The End"
+            },
+            description: "King Grey has unrivaled strength, wealth, and prestige in a world governed by martial ability. However, solitude lingers closely behind those with great power. Reincarnated into a new world filled with magic and monsters, the king has a second chance to relive his life. Correcting the mistakes of his past will not be his only challenge, however. Underneath the peace and prosperity of the new world is an undercurrent threatening to destroy everything he has worked for, questioning his role and reason for being born again.",
+            coverImage: {
+                extraLarge: quest?.coverUrl || "",
+                large: quest?.coverUrl || ""
+            },
+            bannerImage: "", // Use cover as fallback in UI
+            genres: ["Fantasy", "Action", "Adventure", "Isekai"],
+            averageScore: 95,
+            meanScore: 90,
+            status: "RELEASING",
+            seasonYear: 2018,
+            episodes: 0,
+            chapters: 175,
+            siteUrl: "https://tapas.io/series/tbate-comic/info",
+            characters: {
+                nodes: [
+                    {
+                        id: 1,
+                        name: { full: "Arthur Leywin", native: "Arthur Leywin" },
+                        image: { medium: "https://s4.anilist.co/file/anilistcdn/character/large/b123652-32X1i8I9N9n9.png", large: "https://s4.anilist.co/file/anilistcdn/character/large/b123652-32X1i8I9N9n9.png" }, // Placeholder or use generically if possible, but hardcoding for now
+                        role: "MAIN"
+                    },
+                    {
+                        id: 2,
+                        name: { full: "Sylvie", native: "Sylvie" },
+                        image: { medium: "https://s4.anilist.co/file/anilistcdn/character/large/b132895-j7W8F3x1y2z3.png", large: "https://s4.anilist.co/file/anilistcdn/character/large/b132895-j7W8F3x1y2z3.png" },
+                        role: "MAIN"
+                    }
+                ]
+            },
+            recommendations: { nodes: [] }
+        }
+    };
+
+    // --- HELPERS ---
+    const cleanDescription = (desc: string): string => {
+        if (!desc) return "No description available.";
+        return desc
+            .replace(/(?:---|\*\*\*)\s*(?:\*\*|\[b\])?(?:Original Webcomic|Official Translations|Links)(?:\*\*|\[\/b\])?[\s\S]*$/i, '')
+            .split(/\s*-{3,}\s*$/)[0] // Remove trailing horizontal rules
+            .trim();
+    };
+
+    // --- MANGADEX API FETCH ---
+    const fetchMangaDex = async (title: string): Promise<AniListMedia | null> => {
+        try {
+            // Search for the title (Fetch 20 results to find best match) - Added includes[]=manga for recommendations
+            const searchRes = await fetch(`https://api.mangadex.org/manga?title=${encodeURIComponent(title)}&limit=20&includes[]=cover_art&includes[]=author&includes[]=manga&contentRating[]=safe&contentRating[]=suggestive&contentRating[]=erotica`);
+            const searchData = await searchRes.json();
+
+            if (!searchData.data || searchData.data.length === 0) return null;
+
+            // Find best match among results
+            const cleanSearch = title.toLowerCase().replace(/[^a-z0-9\s]/g, '');
+            const manga = searchData.data.find((m: any) => {
+                const enTitle = m.attributes.title.en || Object.values(m.attributes.title)[0] as string;
+                const cleanResult = enTitle.toLowerCase().replace(/[^a-z0-9\s]/g, '');
+                return cleanResult.includes(cleanSearch) || cleanSearch.includes(cleanResult);
+            }) || searchData.data[0];
+
+            const attributes = manga.attributes;
+
+            // Get Cover URL
+            const coverRel = manga.relationships.find((r: any) => r.type === 'cover_art');
+            const fileName = coverRel ? coverRel.attributes.fileName : '';
+            const coverUrl = fileName ? `https://uploads.mangadex.org/covers/${manga.id}/${fileName}` : '';
+
+            // Get Recommendations (Same Category/Tags)
+            let recommendations: AniListRecommendation[] = [];
+
+            // Extract usable tags (Genre/Theme)
+            const tags = (attributes.tags || [])
+                .filter((t: any) => t.attributes.group === 'genre' || t.attributes.group === 'theme')
+                .slice(0, 3) // Limit to top 3 tags to broaden search
+                .map((t: any) => t.id);
+
+            if (tags.length > 0) {
+                const params = new URLSearchParams();
+                params.append('limit', '6');
+                params.append('includes[]', 'cover_art'); // Fetch covers for recs
+                tags.forEach((tagId: string) => params.append('includedTags[]', tagId));
+                params.append('contentRating[]', 'safe');
+                params.append('contentRating[]', 'suggestive');
+
+                // Exclude current manga is hard via API params in v5 easily without ids[] logic which is exclusive/inclusive, 
+                // but easier to just filter client side since we only fetch 6. 
+                // We'll fetch 7 just in case.
+                params.set('limit', '7');
+
+                const recRes = await fetch(`https://api.mangadex.org/manga?${params.toString()}`);
+                const recData = await recRes.json();
+
+                if (recData.data) {
+                    recommendations = recData.data
+                        .filter((m: any) => m.id !== manga.id)
+                        .slice(0, 6)
+                        .map((m: any) => {
+                            const recCover = m.relationships.find((r: any) => r.type === 'cover_art');
+                            const recFileName = recCover ? recCover.attributes.fileName : '';
+                            const recCoverUrl = recFileName ? `https://uploads.mangadex.org/covers/${m.id}/${recFileName}.256.jpg` : ''; // Use thumbnail
+
+                            return {
+                                id: parseInt(m.id.substring(0, 8), 16),
+                                mediaRecommendation: {
+                                    id: parseInt(m.id.substring(0, 8), 16),
+                                    title: {
+                                        english: m.attributes.title.en || Object.values(m.attributes.title)[0],
+                                        romaji: m.attributes.title.en || Object.values(m.attributes.title)[0]
+                                    },
+                                    coverImage: { large: recCoverUrl },
+                                    averageScore: 0 // score not readily available in search list
+                                }
+                            };
+                        });
+                }
+            }
+
+            // Map to AniListMedia format
+            return {
+                id: manga.id,
+                title: {
+                    english: attributes.title.en || Object.values(attributes.title)[0] as string,
+                    romaji: attributes.title.en || Object.values(attributes.title)[0] as string,
+                    native: attributes.altTitles.find((t: any) => t.ja || t.ko)?.ja || attributes.altTitles.find((t: any) => t.ko)?.ko || ""
+                },
+                description: cleanDescription(attributes.description.en),
+                coverImage: {
+                    extraLarge: coverUrl,
+                    large: coverUrl
+                },
+                bannerImage: "",
+                genres: attributes.tags.map((t: any) => t.attributes.name.en),
+                averageScore: 0,
+                meanScore: 0,
+                status: attributes.status.toUpperCase(),
+                seasonYear: parseInt(attributes.year) || 0,
+                episodes: 0,
+                chapters: 0,
+                siteUrl: `https://mangadex.org/title/${manga.id}`,
+                characters: { nodes: [] }, // MangaDex doesn't provide characters
+                recommendations: { nodes: recommendations }
+            } as unknown as AniListMedia;
+        } catch (e) {
+            console.error("MangaDex Fetch Failed", e);
+            return null;
+        }
+    };
+
+    const fetchDetails = async (title: string) => {
+        setLoading(true);
+        setError(null);
+
+        // 1. Check Manual Metadata First
+        if (MANUAL_METADATA[title]) {
+            setMedia(MANUAL_METADATA[title]);
+            setLoading(false);
+            return;
+        }
+
+        // Clean title for better matching
+        const cleanTitle = title
+            .replace(/\s*Season\s*\d+/gi, '')
+            .replace(/\s+\d+$/, '')
+            .trim();
+
+        try {
+
+            const query = `
+            query ($search: String) {
+              Media (search: $search, type: MANGA, sort: SEARCH_MATCH) {
+                id
+                title {
+                  english
+                  romaji
+                  native
+                }
+                description
+                coverImage {
+                  extraLarge
+                  large
+                }
+                bannerImage
+                genres
+                averageScore
+                meanScore
+                status
+                seasonYear
+                chapters
+                siteUrl
+                characters(sort: ROLE, perPage: 10) {
+                  edges {
+                    role
+                    node {
+                      id
+                      name {
+                        full
+                      }
+                      image {
+                        large
+                      }
+                    }
+                  }
+                }
+                recommendations(sort: RATING_DESC, perPage: 6) {
+                  nodes {
+                    mediaRecommendation {
+                      id
+                      title {
+                        english
+                        romaji
+                      }
+                      coverImage {
+                        large
+                      }
+                      averageScore
+                    }
+                  }
+                }
+              }
+            }
+            `;
+
+            const response = await fetch('https://graphql.anilist.co', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                body: JSON.stringify({ query, variables: { search: cleanTitle } })
+            });
+            const data = await response.json();
+
+            if (data.data?.Media) {
+                const mediaData = data.data.Media;
+                const resultTitle = mediaData.title.english || mediaData.title.romaji || "";
+
+                // STRICT MATCHING Check
+                const searchLower = cleanTitle.toLowerCase();
+                const resultLower = resultTitle.toLowerCase();
+
+                // Remove stop words
+                const stopWords = ['the', 'a', 'an', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by'];
+                const searchWords = searchLower.split(/\s+/).filter((w: string) => !stopWords.includes(w) && w.length > 2);
+                const resultWords = resultLower.split(/\s+/).filter((w: string) => !stopWords.includes(w) && w.length > 2);
+
+                const matchCount = searchWords.filter((w: string) => resultWords.some((rw: string) => rw.includes(w) || w.includes(rw))).length;
+
+                // Require at least 50% of keywords to match, or strict substring
+                const isMatch = (matchCount >= searchWords.length * 0.5) || resultLower.includes(searchLower);
+
+                if (isMatch || searchWords.length === 0) {
+                    if (mediaData.characters?.edges) {
+                        mediaData.characters.nodes = mediaData.characters.edges.map((edge: any) => ({
+                            ...edge.node,
+                            role: edge.role
+                        }));
+                    }
+                    // Apply description cleaning
+                    mediaData.description = cleanDescription(mediaData.description);
+
+                    setMedia(mediaData);
+                    setLoading(false);
+                    return; // EXIT
+                } else {
+                    console.warn(`AniList Mismatch: Searched "${cleanTitle}", Got "${resultTitle}". Falling back to MangaDex.`);
+                }
+            }
+        } catch (e) {
+            console.warn("AniList Fetch Failed/Mismatch, trying MangaDex...", e);
+        }
+
+        // Fallback to MangaDex
+        try {
+            const mdData = await fetchMangaDex(cleanTitle);
+            if (mdData) {
+                setMedia(mdData);
+            } else {
+                setError("NO RECORDS FOUND IN ARCHIVES");
+            }
+        } catch (e) {
+            console.error("MangaDex Failed", e);
+            setError("ARCHIVE CONNECTION SEVERED");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    if (!isOpen || !quest) return null;
+
+    // Determine Status Color
+    const getStatusColor = (status: string) => {
+        if (status === 'RELEASING') return 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20';
+        if (status === 'FINISHED') return 'bg-sky-500/10 text-sky-500 border-sky-500/20';
+        return `bg-${theme.accent}-500/10 text-${theme.accent}-500 border-${theme.accent}-500/20`;
+    };
+
+    return (
+        <div className={`fixed inset-0 z-[70] ${theme.appBg} flex items-center justify-center animate-in fade-in zoom-in-95 duration-300`}>
+            {/* BACKDROP BLUR & DARKEN */}
+            <div className={`absolute inset-0 ${theme.isDark ? 'bg-black/95' : 'bg-white/95'} backdrop-blur-xl transition-colors duration-700`} onClick={onClose} />
+
+            {/* BACKGROUND FX */}
+            <div className="absolute inset-0 pointer-events-none opacity-20 overflow-hidden">
+                <div className={`absolute -top-[20%] -right-[20%] w-[50%] h-[50%] bg-${theme.primary}-500/20 rounded-full blur-[120px]`} />
+                <div className={`absolute -bottom-[20%] -left-[20%] w-[50%] h-[50%] bg-${theme.accent}-500/20 rounded-full blur-[120px]`} />
+            </div>
+
+            {/* MAIN CONTENT CARD */}
+            <div className={`relative w-[95vw] max-w-[1800px] h-full md:h-[95vh] mx-auto md:rounded-2xl border ${theme.borderSubtle} ${theme.isDark ? 'bg-black/50' : 'bg-white/50'} shadow-2xl overflow-hidden flex flex-col md:flex-row`}>
+
+                {/* CLOSE BUTTON */}
+                <button
+                    onClick={onClose}
+                    className={`absolute top-4 right-4 z-50 p-2 rounded-full ${theme.isDark ? 'bg-black/50 hover:bg-white/10' : 'bg-white/50 hover:bg-black/10'} ${theme.baseText} backdrop-blur-md transition-all border ${theme.borderSubtle}`}
+                >
+                    <X size={20} />
+                </button>
+
+                {/* LEFT COLUMN: VISUALS (COVER + BANNER) */}
+                <div className="w-full md:w-[400px] lg:w-[450px] shrink-0 relative flex flex-col border-b md:border-b-0 md:border-r border-white/5 group">
+                    {/* Background Banner (Blurred) */}
+                    <div className="absolute inset-0 z-0 overflow-hidden">
+                        {media?.bannerImage || finalCover ? (
+                            <img src={media?.bannerImage || finalCover} className="w-full h-full object-cover blur-xl opacity-50 scale-110" referrerPolicy="no-referrer" />
+                        ) : null}
+                        <div className={`absolute inset-0 bg-gradient-to-b ${theme.isDark ? 'from-transparent via-[#020202]/50 to-[#020202]' : 'from-transparent via-white/50 to-white'}`} />
+                    </div>
+
+                    {/* Main Cover Image */}
+                    <div className="relative z-10 flex-1 flex items-center justify-center p-8 md:p-12 pb-0 md:pb-8">
+                        <div className={`relative w-[240px] md:w-full max-w-[320px] aspect-[2/3] shadow-2xl rounded-xl overflow-hidden border border-white/10 group-hover:scale-[1.02] transition-transform duration-700 ease-out`}>
+                            <img
+                                src={finalCover}
+                                alt={quest.title}
+                                className="w-full h-full object-cover"
+                                referrerPolicy="no-referrer"
+                            />
+                            {/* Overlay Gradient for Text Visibility */}
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent opacity-80" />
+
+                            {/* Stats Overlay on Cover (Reference Style) */}
+                            <div className="absolute bottom-0 left-0 w-full p-4 flex justify-between items-end">
+                                <div className="flex items-center gap-1.5 text-amber-400 font-bold text-sm drop-shadow-md">
+                                    <Star size={16} fill="currentColor" />
+                                    <span>{media?.averageScore || 0}%</span>
+                                </div>
+                                <div className="flex items-center gap-1.5 text-white/90 font-mono text-xs drop-shadow-md">
+                                    <Heart size={14} fill="currentColor" />
+                                    <span>{(media?.averageScore || 0) * 123 / 10}K</span>
+                                </div>
+                            </div>
+
+                            {/* Shine Effect */}
+                            <div className="absolute inset-0 bg-gradient-to-tr from-white/0 via-white/10 to-white/0 translate-x-[-100%] group-hover:animate-[shimmer_2s_infinite]" />
+                        </div>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="relative z-10 p-6 md:p-12 pt-6 flex flex-col gap-3">
+                        {quest?.link && (
+                            <a
+                                href={quest.link}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className={`w-full py-3.5 rounded-lg ${theme.isDark ? 'bg-emerald-500/10 hover:bg-emerald-500/20' : 'bg-emerald-500/10 hover:bg-emerald-500/20'} text-emerald-500 font-bold border border-emerald-500/30 transition-all flex items-center justify-center gap-2 text-sm uppercase tracking-widest hover:shadow-[0_0_15px_rgba(16,185,129,0.2)]`}
+                            >
+                                <Zap size={16} className="fill-emerald-500/20" /> INITIALIZE DIVE
+                            </a>
+                        )}
+                        <button
+                            onClick={() => {
+                                if (quest && onSetActive) {
+                                    onSetActive(quest._id!);
+                                    onClose();
+                                }
+                            }}
+                            className={`w-full py-3.5 rounded-lg ${theme.isDark ? 'bg-white/5 hover:bg-white/10' : 'bg-black/5 hover:bg-black/10'} ${theme.highlightText} font-bold border ${theme.borderSubtle} transition-all flex items-center justify-center gap-2 text-sm uppercase tracking-widest`}
+                        >
+                            <Sword size={16} /> SET AS ACTIVE QUEST
+                        </button>
+                        {/* EDIT DETAILS BUTTON */}
+                        {!isEditing ? (
+                            <button
+                                onClick={() => setIsEditing(true)}
+                                className={`w-full py-3 rounded-lg border ${theme.borderSubtle} ${theme.isDark ? 'bg-white/5 hover:bg-amber-500/10 hover:border-amber-500/40' : 'bg-black/5 hover:bg-amber-500/10 hover:border-amber-500/40'} text-amber-400 font-bold transition-all flex items-center justify-center gap-2 text-sm uppercase tracking-widest`}
+                            >
+                                <Database size={16} /> EDIT DETAILS
+                            </button>
+                        ) : (
+                            <div className="flex gap-2">
+                                <button onClick={handleSave} disabled={saving} className="flex-1 py-3 rounded-lg bg-amber-500/20 border border-amber-500/50 text-amber-400 font-bold text-sm uppercase tracking-widest transition-all flex items-center justify-center gap-2 hover:bg-amber-500/30 disabled:opacity-50">
+                                    {saving ? 'SAVING...' : '✓ SAVE'}
+                                </button>
+                                <button onClick={() => setIsEditing(false)} className={`flex-1 py-3 rounded-lg border ${theme.borderSubtle} ${theme.baseText} font-bold text-sm uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${theme.isDark ? 'hover:bg-white/5' : 'hover:bg-black/5'}`}>
+                                    CANCEL
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* RIGHT COLUMN: DETAILS */}
+                <div
+                    className="flex-1 overflow-y-auto custom-scrollbar relative"
+                    style={{
+                        '--scrollbar-thumb': theme.id === 'LIGHT' ? '#0ea5e9' : '#f59e0b', // Sky-500 : Amber-500
+                        '--scrollbar-track': 'transparent',
+                        '--scrollbar-thumb-hover': theme.id === 'LIGHT' ? '#0284c7' : '#d97706' // Sky-600 : Amber-600
+                    } as React.CSSProperties}
+                >
+                    <div className="p-6 md:p-12 pb-32">
+                        {loading && (
+                            <div className="flex flex-col items-center justify-center h-full py-20 animate-pulse">
+                                <div className={`text-xl font-mono ${theme.highlightText} tracking-widest`}>ACCESSING ARCHIVES...</div>
+                            </div>
+                        )}
+
+                        {!loading && media && (
+                            <div className="flex flex-col gap-10 animate-in slide-in-from-bottom-4 duration-700">
+
+                                {/* HEADER SECTION */}
+                                <div>
+                                    <h1 className={`text-3xl md:text-5xl font-black text-white mb-2 leading-tight tracking-tight drop-shadow-lg uppercase`}>
+                                        {media.title.english || media.title.romaji || quest.title}
+                                    </h1>
+                                    {media.title.native && (
+                                        <h2 className={`text-lg md:text-xl text-gray-400 font-medium mb-6`}>
+                                            {media.title.native}
+                                        </h2>
+                                    )}
+
+                                    {/* PILLS ROW */}
+                                    <div className="flex flex-wrap gap-3 items-center">
+                                        <div className={`px-3 py-1.5 bg-white/5 border border-white/10 rounded text-xs font-mono text-gray-300 flex items-center gap-2`}>
+                                            <BookOpen size={12} /> {media.status ? media.status.charAt(0) + media.status.slice(1).toLowerCase().replace('_', ' ') : 'Unknown'}
+                                        </div>
+                                        <div className={`px-3 py-1.5 bg-white/5 border border-white/10 rounded text-xs font-mono text-gray-300 flex items-center gap-2`}>
+                                            <Calendar size={12} /> {media.seasonYear || 'Unknown'}
+                                        </div>
+                                        {media.chapters > 0 && (
+                                            <div className={`px-3 py-1.5 bg-white/5 border border-white/10 rounded text-xs font-mono text-gray-300 flex items-center gap-2`}>
+                                                <Database size={12} /> TOTAL CH: {media.chapters}
+                                            </div>
+                                        )}
+                                        {media.status && (
+                                            <div className={`px-3 py-1.5 border border-white/20 rounded text-xs font-bold tracking-wider uppercase ${getStatusColor(media.status)} bg-transparent`}>
+                                                {media.status.replace('_', ' ')}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* GENRES */}
+                                    <div className="flex flex-wrap gap-2 mt-4">
+                                        {media.genres.map(genre => (
+                                            <span key={genre} className={`px-3 py-1 text-xs font-medium border border-white/10 rounded-full bg-white/5 text-gray-400 hover:text-white hover:border-white/30 transition-colors cursor-default`}>
+                                                {genre}
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* SYNOPSIS */}
+                                <div>
+                                    <div className={`text-xs font-bold text-gray-500 uppercase tracking-widest mb-3 flex items-center justify-between`}>
+                                        <span>SYNOPSIS</span>
+                                        {!isEditing && <span className="text-[9px] opacity-50 normal-case">From API · Edit in detail panel</span>}
+                                    </div>
+                                    {isEditing ? (
+                                        <textarea
+                                            value={editDraft.synopsis || media?.description?.replace(/<[^>]*>/g, '') || ''}
+                                            onChange={e => setEditDraft(p => ({ ...p, synopsis: e.target.value }))}
+                                            rows={6}
+                                            className={`w-full bg-white/5 border border-white/10 p-3 text-gray-300 text-sm rounded-lg outline-none resize-none focus:border-amber-500/50 transition-colors`}
+                                            placeholder="Override API synopsis..."
+                                        />
+                                    ) : (
+                                        <div
+                                            className={`text-sm md:text-base leading-relaxed text-gray-300 font-sans`}
+                                            dangerouslySetInnerHTML={{ __html: media.description || quest.synopsis || "No synopsis available." }}
+                                        />
+                                    )}
+                                </div>
+
+                                {/* EDIT PANEL - visible when editing */}
+                                {isEditing && (
+                                    <div className="grid grid-cols-2 gap-4 p-4 bg-white/3 border border-white/10 rounded-xl">
+                                        <div className="col-span-2">
+                                            <label className="block text-[9px] text-gray-500 uppercase tracking-widest mb-1">Status</label>
+                                            <select value={editDraft.status} onChange={e => setEditDraft(p => ({ ...p, status: e.target.value }))} className="w-full bg-black/50 border border-white/10 p-2 text-gray-300 text-sm rounded outline-none focus:border-amber-500/50">
+                                                <option value="ACTIVE">ACTIVE</option>
+                                                <option value="CONQUERED">CONQUERED</option>
+                                                <option value="SEVERED">SEVERED</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="block text-[9px] text-gray-500 uppercase tracking-widest mb-1">Current Chapter</label>
+                                            <input type="number" value={editDraft.currentChapter ?? ''} onChange={e => setEditDraft(p => ({ ...p, currentChapter: Number(e.target.value) }))} className="w-full bg-black/50 border border-white/10 p-2 text-gray-300 text-sm rounded outline-none focus:border-amber-500/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-[9px] text-gray-500 uppercase tracking-widest mb-1">Max Chapters</label>
+                                            <input type="number" value={editDraft.totalChapters ?? ''} onChange={e => setEditDraft(p => ({ ...p, totalChapters: e.target.value ? Number(e.target.value) : null }))} placeholder="?" className="w-full bg-black/50 border border-white/10 p-2 text-gray-300 text-sm rounded outline-none focus:border-amber-500/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-[9px] text-gray-500 uppercase tracking-widest mb-1">Rating (0–10)</label>
+                                            <input type="number" min="0" max="10" step="0.1" value={editDraft.rating ?? ''} onChange={e => setEditDraft(p => ({ ...p, rating: Number(e.target.value) }))} className="w-full bg-black/50 border border-white/10 p-2 text-gray-300 text-sm rounded outline-none focus:border-amber-500/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-[9px] text-gray-500 uppercase tracking-widest mb-1">Class</label>
+                                            <select value={editDraft.classType} onChange={e => setEditDraft(p => ({ ...p, classType: e.target.value }))} className="w-full bg-black/50 border border-white/10 p-2 text-gray-300 text-sm rounded outline-none focus:border-amber-500/50">
+                                                <option>PLAYER</option><option>IRREGULAR</option><option>MAGE</option><option>CONSTELLATION</option><option>NECROMANCER</option><option>WARRIOR</option><option>DEMON KING</option><option>HEALER</option>
+                                            </select>
+                                        </div>
+                                        <div className="col-span-2">
+                                            <label className="block text-[9px] text-gray-500 uppercase tracking-widest mb-1">Read Link (URL)</label>
+                                            <input type="url" value={editDraft.link || ''} onChange={e => setEditDraft(p => ({ ...p, link: e.target.value }))} placeholder="https://..." className="w-full bg-black/50 border border-white/10 p-2 text-gray-300 text-sm rounded outline-none focus:border-amber-500/50" />
+                                        </div>
+                                    </div>
+                                )}
+
+
+                                {/* CHARACTERS */}
+                                {media.characters?.nodes?.length > 0 && (
+                                    <div>
+                                        <div className={`text-xs font-bold text-gray-500 uppercase tracking-widest mb-4 flex items-center gap-2`}>
+                                            <Users size={14} /> CHARACTERS
+                                        </div>
+                                        <div className="flex overflow-x-auto gap-6 pb-4 custom-scrollbar snap-x">
+                                            {media.characters.nodes.map(char => (
+                                                <div key={char.id} className="w-[80px] shrink-0 snap-start flex flex-col items-center gap-2 group cursor-pointer">
+                                                    <div className="w-[80px] h-[80px] rounded-full overflow-hidden border-2 border-white/10 group-hover:border-white/50 transition-colors relative">
+                                                        <img src={char.image.large} alt={char.name.full} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" referrerPolicy="no-referrer" />
+                                                    </div>
+                                                    <div className="text-center w-full">
+                                                        <div className={`text-[10px] font-bold text-gray-200 truncate w-full`}>{char.name.full}</div>
+                                                        <div className={`text-[8px] text-gray-500 uppercase truncate w-full`}>{char.role}</div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* SIMILAR RECORDS */}
+                                {media.recommendations?.nodes?.length > 0 && (
+                                    <div>
+                                        <div className={`text-xs font-bold text-gray-500 uppercase tracking-widest mb-4 flex items-center gap-2`}>
+                                            <Share2 size={14} /> SIMILAR RECORDS
+                                        </div>
+                                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                                            {media.recommendations?.nodes
+                                                ?.filter((node: any) => {
+                                                    if (!allQuests) return true; // Show all if no tracker context
+                                                    const recTitle = node.mediaRecommendation.title.english || node.mediaRecommendation.title.romaji || "";
+                                                    const cleanRec = recTitle.toLowerCase().replace(/[^a-z0-9]/g, '');
+                                                    return allQuests.some(q => {
+                                                        const cleanQuest = q.title.toLowerCase().replace(/[^a-z0-9]/g, '');
+                                                        return cleanQuest.includes(cleanRec) || cleanRec.includes(cleanQuest);
+                                                    });
+                                                })
+                                                .map((node: any) => {
+                                                    const rec = node.mediaRecommendation;
+                                                    return (
+                                                        <div key={rec.id} className="group relative aspect-[2/3] rounded-lg overflow-hidden cursor-pointer shadow-md hover:shadow-xl transition-all duration-500">
+                                                            <img src={rec.coverImage?.large} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" referrerPolicy="no-referrer" />
+                                                            <div className={`absolute inset-0 bg-gradient-to-t ${theme.isDark ? 'from-black/90 via-transparent' : 'from-white/90 via-transparent'} opacity-60 group-hover:opacity-100 transition-opacity`} />
+                                                            <div className="absolute bottom-0 w-full p-2">
+                                                                <div className={`text-[10px] font-bold truncate ${theme.headingText} group-hover:${theme.highlightText} transition-colors uppercase`}>
+                                                                    {rec.title.english || rec.title.romaji}
+                                                                </div>
+                                                                <div className="flex items-center gap-1 mt-1">
+                                                                    <Star size={8} className="text-yellow-500 fill-yellow-500" />
+                                                                    <span className={`text-[9px] font-mono ${theme.mutedText}`}>
+                                                                        {rec.averageScore ? `${rec.averageScore}%` : 'N/A'}
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {!loading && !media && !error && (
+                            <div className="text-center py-20 font-mono text-xs opacity-50">INITIALIZING SCAN...</div>
+                        )}
+
+                        {error && (
+                            <div className="flex flex-col items-center justify-center h-full py-20 text-center">
+                                <div className="text-red-500 font-mono mb-2 uppercase tracking-widest">{error}</div>
+                                <div className={`text-xs ${theme.mutedText}`}>Data could not be retrieved from the Akashic Records.</div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+export default ManhwaDetail;

@@ -198,8 +198,9 @@ const App: React.FC = () => {
     };
 
     const handleSave = async (data: Partial<Quest>) => {
-        const isEditing = !!editingItem;
-        const url = isEditing ? `${API_URL}/${editingItem.id}` : API_URL;
+        const targetId = data.id || (editingItem ? editingItem.id : null);
+        const isEditing = !!targetId;
+        const url = isEditing ? `${API_URL}/${targetId}` : API_URL;
         const method = isEditing ? 'PUT' : 'POST';
 
         try {

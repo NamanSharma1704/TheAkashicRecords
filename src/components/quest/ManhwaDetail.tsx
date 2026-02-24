@@ -371,25 +371,31 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                                 )}
 
                                                 {/* BAR ITSELF */}
-                                                <div className={`h-2.5 w-full ${theme.isDark ? 'bg-white/10' : 'bg-black/5'} rounded-full overflow-hidden relative shadow-inner`}>
+                                                <div className={`h-3 w-full ${theme.isDark ? 'bg-white/10' : 'bg-black/10'} rounded-full overflow-hidden relative shadow-inner border ${theme.borderSubtle}`}>
                                                     <div
                                                         className={`h-full bg-gradient-to-r ${theme.gradient} progress-bloom transition-all duration-700 ease-out`}
                                                         style={{
                                                             width: `${Math.min(100, (quest.totalChapters || 0) > 0 ? (quest.currentChapter / quest.totalChapters) * 100 : 0)}%`,
                                                             color: theme.id === 'LIGHT' ? '#0ea5e9' : '#fbbf24',
-                                                            boxShadow: '0 0 10px currentColor'
+                                                            boxShadow: '0 0 15px currentColor'
                                                         }}
                                                     />
                                                 </div>
 
                                                 {/* SUB-LABELS */}
                                                 {!isEditing && (
-                                                    <div className="flex justify-between items-center mt-2 text-[8px] md:text-[10px] font-mono font-bold uppercase tracking-wider">
-                                                        <div className={`${theme.mutedText} opacity-70`}>CH {quest.currentChapter}</div>
-                                                        <div className={`${theme.isDark ? 'text-amber-500' : 'text-cyan-600'} opacity-90`}>
-                                                            {(quest.totalChapters || 0) > 0 ? Math.round((quest.currentChapter / quest.totalChapters) * 100) : 0}%
+                                                    <div className="flex justify-between items-center mt-3 text-[10px] md:text-xs font-mono font-bold uppercase tracking-wider">
+                                                        <div className={`${theme.mutedText} opacity-80 flex items-center gap-1`}>
+                                                            <BookOpen size={10} /> {quest.currentChapter} <span className="text-[8px] opacity-40">CH</span>
                                                         </div>
-                                                        <div className={`${theme.mutedText} opacity-70`}>/ {(quest.totalChapters || 0) > 0 ? quest.totalChapters : 'ONGOING'}</div>
+                                                        <div className={`px-2 py-0.5 rounded ${quest.currentChapter > (quest.totalChapters || 0) && (quest.totalChapters || 0) > 0 ? 'bg-red-500/20 text-red-400 animate-pulse' : `${theme.isDark ? 'text-amber-400' : 'text-cyan-600'}`}`}>
+                                                            {quest.currentChapter > (quest.totalChapters || 0) && (quest.totalChapters || 0) > 0
+                                                                ? 'OVERFLOW'
+                                                                : `${(quest.totalChapters || 0) > 0 ? Math.round((quest.currentChapter / quest.totalChapters) * 100) : 0}%`}
+                                                        </div>
+                                                        <div className={`${theme.mutedText} opacity-80`}>
+                                                            / {(quest.totalChapters || 0) > 0 ? quest.totalChapters : '??'} <span className="text-[8px] opacity-40">TTL</span>
+                                                        </div>
                                                     </div>
                                                 )}
                                             </div>

@@ -72,22 +72,38 @@ const fetchAniList = async (title) => {
 
 const fetchMangaDex = async (title) => {
     try {
-        const searchRes = await fetch(`https://api.mangadex.org/manga?title=${encodeURIComponent(title)}&limit=20&includes[]=cover_art&includes[]=author&includes[]=manga&contentRating[]=safe&contentRating[]=suggestive&contentRating[]=erotica`);
+        // Boost search with relevance and popularity sorting
+        const searchUrl = `https://api.mangadex.org/manga?title=${encodeURIComponent(title)}&limit=100&includes[]=cover_art&includes[]=author&includes[]=manga&contentRating[]=safe&contentRating[]=suggestive&contentRating[]=erotica&contentRating[]=pornographic&order[relevance]=desc&order[followedCount]=desc`;
+
+        const searchRes = await fetch(searchUrl);
         const searchData = await searchRes.json();
 
         if (!searchData.data || searchData.data.length === 0) return null;
 
-        // Better Matching: Check all titles and alt titles
+        const searchLower = title.toLowerCase().trim();
+
+        // High Precision Matcher
         const manga = searchData.data.find(m => {
+            const attr = m.attributes;
             const titles = [
-                m.attributes.title.en,
-                ...Object.values(m.attributes.title),
-                ...m.attributes.altTitles.map(at => Object.values(at)[0])
+                attr.title.en,
+                ...Object.values(attr.title),
+                ...attr.altTitles.map(at => Object.values(at)[0])
             ].filter(Boolean).map(t => t.toLowerCase().trim());
 
-            const searchLower = title.toLowerCase().trim();
-            // Check for exact match or contains
-            return titles.some(t => t === searchLower || t.includes(searchLower) || searchLower.includes(t));
+            // 1. Check for Exact Match (Highest Priority)
+            if (titles.some(t => t === searchLower)) return true;
+
+            // 2. Check if the search term perfectly encapsulates the title or vice versa
+            // This helps with titles like "The Beginning After The End" vs "The Beginning After The End (Official)"
+            return titles.some(t => {
+                const words = t.split(/\s+/);
+                const searchWords = searchLower.split(/\s+/);
+                if (searchWords.length > 3) { // Only do partial match for longer titles to stay precise
+                    return t.includes(searchLower) || searchLower.includes(t);
+                }
+                return false;
+            });
         }) || searchData.data[0];
 
         const attributes = manga.attributes;

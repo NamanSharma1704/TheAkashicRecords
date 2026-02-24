@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Star, Calendar, BookOpen, Users, Share2, Heart, Sword, Zap, Database } from 'lucide-react';
+import { X, Star, Calendar, BookOpen, Users, Share2, Heart, Sword, Zap, Edit2, Save } from 'lucide-react';
 
 import { Theme, Quest } from '../../core/types';
 
@@ -11,6 +11,7 @@ interface ManhwaDetailProps {
     theme: Theme;
     allQuests?: Quest[];
     onSetActive?: (id: string) => void;
+    onUpdate?: (id: string, updates: Partial<Quest>) => Promise<void>;
 }
 
 interface AniListCharacter {
@@ -49,58 +50,52 @@ interface AniListMedia {
 }
 
 // --- COMPONENT ---
-const API_BASE = 'http://localhost:5000/api/quests';
-
-const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, theme, allQuests, onSetActive }) => {
+const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, theme, allQuests, onSetActive, onUpdate }) => {
     const [media, setMedia] = useState<AniListMedia | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+
+    // Edit State
     const [isEditing, setIsEditing] = useState(false);
-    const [editDraft, setEditDraft] = useState<Partial<Quest>>({})
-    const [saving, setSaving] = useState(false);
+    const [editTitle, setEditTitle] = useState("");
+    const [editSynopsis, setEditSynopsis] = useState("");
+    const [editTotalCh, setEditTotalCh] = useState(0);
+    const [editCurrentCh, setEditCurrentCh] = useState(0);
 
     const isCustomCover = !!(quest?.coverUrl && quest.coverUrl !== "");
     const finalCover = isCustomCover ? quest.coverUrl : (media?.coverImage?.extraLarge || media?.coverImage?.large || quest?.coverUrl || "");
 
+    useEffect(() => {
+        if (quest) {
+            setEditTitle(quest.title);
+            setEditSynopsis(quest.synopsis || media?.description || "");
+            setEditTotalCh(quest.totalChapters);
+            setEditCurrentCh(quest.currentChapter);
+        }
+    }, [quest, isEditing]);
+
+    const handleSaveEdits = async () => {
+        if (quest && onUpdate) {
+            await onUpdate(quest.id, {
+                title: editTitle,
+                synopsis: editSynopsis,
+                totalChapters: editTotalCh,
+                currentChapter: editCurrentCh
+            });
+            setIsEditing(false);
+        }
+    };
+
+    console.log("ManhwaDetail Quest:", quest);
 
     // Fetch Details on Open
     useEffect(() => {
         if (isOpen && quest) {
             setMedia(null);
             setError(null);
-            setIsEditing(false);
-            setEditDraft({
-                synopsis: quest.synopsis || '',
-                rating: quest.rating ?? 0,
-                status: quest.status || 'ACTIVE',
-                currentChapter: quest.currentChapter || 0,
-                totalChapters: quest.totalChapters,
-                link: quest.link || '',
-                classType: quest.classType || 'PLAYER',
-            });
             fetchDetails(quest.title);
         }
     }, [isOpen, quest]);
-
-    const handleSave = async () => {
-        if (!quest?._id) return;
-        setSaving(true);
-        try {
-            await fetch(`${API_BASE}/${quest._id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ...editDraft, lastUpdated: new Date().toISOString() })
-            });
-            setIsEditing(false);
-            // Reload page data from API by triggering a re-fetch could be done,
-            // but for now the parent library will refresh on next fetch
-        } catch (e) {
-            console.error('Save failed', e);
-        } finally {
-            setSaving(false);
-        }
-    };
-
 
     // Manual Data for OEL/Missing Titles
     const MANUAL_METADATA: Record<string, AniListMedia> = {
@@ -430,8 +425,8 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                 <div className="w-full md:w-[400px] lg:w-[450px] shrink-0 relative flex flex-col border-b md:border-b-0 md:border-r border-white/5 group">
                     {/* Background Banner (Blurred) */}
                     <div className="absolute inset-0 z-0 overflow-hidden">
-                        {media?.bannerImage || finalCover ? (
-                            <img src={media?.bannerImage || finalCover} className="w-full h-full object-cover blur-xl opacity-50 scale-110" referrerPolicy="no-referrer" />
+                        {(quest?.coverUrl || media?.bannerImage || finalCover) ? (
+                            <img src={quest?.coverUrl || media?.bannerImage || finalCover} className={`w-full h-full object-cover blur-xl ${theme.isDark ? 'opacity-50' : 'opacity-80'} scale-110`} referrerPolicy="no-referrer" />
                         ) : null}
                         <div className={`absolute inset-0 bg-gradient-to-b ${theme.isDark ? 'from-transparent via-[#020202]/50 to-[#020202]' : 'from-transparent via-white/50 to-white'}`} />
                     </div>
@@ -446,7 +441,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                 referrerPolicy="no-referrer"
                             />
                             {/* Overlay Gradient for Text Visibility */}
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent opacity-80" />
+                            <div className={`absolute inset-0 bg-gradient-to-t ${theme.isDark ? 'from-black/90' : 'from-black/40'} via-transparent to-transparent opacity-80`} />
 
                             {/* Stats Overlay on Cover (Reference Style) */}
                             <div className="absolute bottom-0 left-0 w-full p-4 flex justify-between items-end">
@@ -480,7 +475,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                         <button
                             onClick={() => {
                                 if (quest && onSetActive) {
-                                    onSetActive(quest._id!);
+                                    onSetActive(quest.id);
                                     onClose();
                                 }
                             }}
@@ -488,24 +483,6 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                         >
                             <Sword size={16} /> SET AS ACTIVE QUEST
                         </button>
-                        {/* EDIT DETAILS BUTTON */}
-                        {!isEditing ? (
-                            <button
-                                onClick={() => setIsEditing(true)}
-                                className={`w-full py-3 rounded-lg border ${theme.borderSubtle} ${theme.isDark ? 'bg-white/5 hover:bg-amber-500/10 hover:border-amber-500/40' : 'bg-black/5 hover:bg-amber-500/10 hover:border-amber-500/40'} text-amber-400 font-bold transition-all flex items-center justify-center gap-2 text-sm uppercase tracking-widest`}
-                            >
-                                <Database size={16} /> EDIT DETAILS
-                            </button>
-                        ) : (
-                            <div className="flex gap-2">
-                                <button onClick={handleSave} disabled={saving} className="flex-1 py-3 rounded-lg bg-amber-500/20 border border-amber-500/50 text-amber-400 font-bold text-sm uppercase tracking-widest transition-all flex items-center justify-center gap-2 hover:bg-amber-500/30 disabled:opacity-50">
-                                    {saving ? 'SAVING...' : '✓ SAVE'}
-                                </button>
-                                <button onClick={() => setIsEditing(false)} className={`flex-1 py-3 rounded-lg border ${theme.borderSubtle} ${theme.baseText} font-bold text-sm uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${theme.isDark ? 'hover:bg-white/5' : 'hover:bg-black/5'}`}>
-                                    CANCEL
-                                </button>
-                            </div>
-                        )}
                     </div>
                 </div>
 
@@ -529,14 +506,81 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                             <div className="flex flex-col gap-10 animate-in slide-in-from-bottom-4 duration-700">
 
                                 {/* HEADER SECTION */}
-                                <div>
-                                    <h1 className={`text-3xl md:text-5xl font-black text-white mb-2 leading-tight tracking-tight drop-shadow-lg uppercase`}>
-                                        {media.title.english || media.title.romaji || quest.title}
-                                    </h1>
-                                    {media.title.native && (
-                                        <h2 className={`text-lg md:text-xl text-gray-400 font-medium mb-6`}>
-                                            {media.title.native}
-                                        </h2>
+                                <div className="flex flex-col gap-4">
+                                    <div className="flex justify-between items-start gap-4">
+                                        <div className="flex-1 min-w-0">
+                                            {isEditing ? (
+                                                <input
+                                                    className={`w-full bg-transparent border-b ${theme.borderSubtle} focus:border-${theme.highlightText} outline-none text-3xl md:text-5xl font-black ${theme.headingText} mb-2 leading-tight tracking-tight uppercase`}
+                                                    value={editTitle}
+                                                    onChange={e => setEditTitle(e.target.value)}
+                                                />
+                                            ) : (
+                                                <h1 className={`text-3xl md:text-5xl font-black ${theme.headingText} mb-2 leading-tight tracking-tight drop-shadow-lg uppercase break-words`}>
+                                                    {quest.title || media.title.english || media.title.romaji}
+                                                </h1>
+                                            )}
+                                            {(media.title.native) && !isEditing && (
+                                                <h2 className={`text-lg md:text-xl ${theme.mutedText} font-medium mb-2`}>
+                                                    {media.title.native}
+                                                </h2>
+                                            )}
+                                        </div>
+                                        {/* EDIT TOGGLE BUTTON */}
+                                        <button
+                                            onClick={() => isEditing ? handleSaveEdits() : setIsEditing(true)}
+                                            className={`shrink-0 p-2 md:p-3 rounded-full ${theme.isDark ? 'bg-white/5 hover:bg-white/10' : 'bg-black/5 hover:bg-black/10'} ${theme.baseText} hover:${theme.highlightText} transition-all border ${theme.borderSubtle} shadow-md`}
+                                        >
+                                            {isEditing ? <Save size={18} /> : <Edit2 size={18} />}
+                                        </button>
+                                    </div>
+
+                                    {/* PROGRESS BAR */}
+                                    {quest.status === 'ACTIVE' && (
+                                        <div className="w-full mt-6 group relative">
+                                            <div className="border border-white/10 rounded-xl p-4 md:p-6 bg-black/40 backdrop-blur-sm shadow-xl">
+                                                <div className="flex justify-between items-center mb-4">
+                                                    <div className={`text-[10px] font-bold font-mono tracking-widest ${theme.mutedText} uppercase opacity-60`}>CHAPTER PROGRESS</div>
+                                                </div>
+
+                                                {isEditing ? (
+                                                    <div className="flex justify-between items-end mb-2">
+                                                        <input type="number" value={editCurrentCh} onChange={e => setEditCurrentCh(Number(e.target.value))} className={`w-20 bg-transparent border-b border-gray-500/50 outline-none text-2xl font-black ${theme.highlightText} tabular-nums text-left`} />
+                                                        <input type="number" value={editTotalCh} onChange={e => setEditTotalCh(Number(e.target.value))} className={`w-20 bg-transparent border-b border-gray-500/50 outline-none text-xl font-bold ${theme.highlightText} tabular-nums text-right`} />
+                                                    </div>
+                                                ) : (
+                                                    <div className="flex justify-between items-end mb-1">
+                                                        <div className={`text-2xl md:text-3xl font-black ${theme.isDark ? 'text-amber-400' : 'text-cyan-500'} tabular-nums leading-none`}>
+                                                            {quest.currentChapter}
+                                                        </div>
+                                                        <div className={`text-sm md:text-base font-bold ${theme.isDark ? 'text-amber-400' : 'text-cyan-500'} tabular-nums opacity-80 leading-none`}>
+                                                            <div className={`text-[8px] uppercase tracking-widest ${theme.mutedText} pb-1 flex justify-end`}>TOTAL</div>
+                                                            {quest.totalChapters > 0 ? quest.totalChapters : '??'}
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {/* BAR ITSELF */}
+                                                <div className={`h-2.5 w-full ${theme.isDark ? 'bg-white/5' : 'bg-black/5'} rounded-full overflow-hidden relative shadow-inner`}>
+                                                    <div
+                                                        className={`h-full bg-gradient-to-r ${theme.gradient} progress-bloom transition-all duration-700 ease-out`}
+                                                        style={{ width: `${Math.min(100, quest.totalChapters > 0 ? (quest.currentChapter / quest.totalChapters) * 100 : 0)}%`, color: theme.id === 'LIGHT' ? '#0ea5e9' : '#fbbf24' }}
+                                                    />
+                                                </div>
+
+                                                {/* SUB-LABELS */}
+                                                {!isEditing && (
+                                                    <div className="flex justify-between items-center mt-2 text-[8px] md:text-[10px] font-mono font-bold uppercase tracking-wider">
+                                                        <div className={`${theme.mutedText} opacity-70`}>CH {quest.currentChapter}</div>
+                                                        <div className={`${theme.isDark ? 'text-amber-500' : 'text-cyan-600'} opacity-90`}>
+                                                            {quest.totalChapters > 0 ? Math.round((quest.currentChapter / quest.totalChapters) * 100) : 0}%
+                                                        </div>
+                                                        <div className={`${theme.mutedText} opacity-70`}>/ {quest.totalChapters > 0 ? quest.totalChapters : '??'}</div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div className={`absolute -inset-2 bg-gradient-to-r ${theme.gradient} opacity-0 group-hover:opacity-5 blur-2xl transition-opacity duration-700 pointer-events-none`} />
+                                        </div>
                                     )}
 
                                     {/* PILLS ROW */}
@@ -547,11 +591,6 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                         <div className={`px-3 py-1.5 bg-white/5 border border-white/10 rounded text-xs font-mono text-gray-300 flex items-center gap-2`}>
                                             <Calendar size={12} /> {media.seasonYear || 'Unknown'}
                                         </div>
-                                        {media.chapters > 0 && (
-                                            <div className={`px-3 py-1.5 bg-white/5 border border-white/10 rounded text-xs font-mono text-gray-300 flex items-center gap-2`}>
-                                                <Database size={12} /> TOTAL CH: {media.chapters}
-                                            </div>
-                                        )}
                                         {media.status && (
                                             <div className={`px-3 py-1.5 border border-white/20 rounded text-xs font-bold tracking-wider uppercase ${getStatusColor(media.status)} bg-transparent`}>
                                                 {media.status.replace('_', ' ')}
@@ -571,78 +610,39 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
 
                                 {/* SYNOPSIS */}
                                 <div>
-                                    <div className={`text-xs font-bold text-gray-500 uppercase tracking-widest mb-3 flex items-center justify-between`}>
+                                    <div className={`text-xs font-bold ${theme.mutedText} uppercase tracking-widest mb-3 flex items-center justify-between`}>
                                         <span>SYNOPSIS</span>
-                                        {!isEditing && <span className="text-[9px] opacity-50 normal-case">From API · Edit in detail panel</span>}
                                     </div>
                                     {isEditing ? (
                                         <textarea
-                                            value={editDraft.synopsis || media?.description?.replace(/<[^>]*>/g, '') || ''}
-                                            onChange={e => setEditDraft(p => ({ ...p, synopsis: e.target.value }))}
-                                            rows={6}
-                                            className={`w-full bg-white/5 border border-white/10 p-3 text-gray-300 text-sm rounded-lg outline-none resize-none focus:border-amber-500/50 transition-colors`}
-                                            placeholder="Override API synopsis..."
+                                            className={`w-full min-h-[200px] p-4 bg-black/20 backdrop-blur-sm border ${theme.borderSubtle} focus:border-${theme.highlightText} outline-none text-sm md:text-base leading-relaxed ${theme.baseText} font-sans rounded-xl resize-y custom-scrollbar`}
+                                            value={editSynopsis}
+                                            onChange={e => setEditSynopsis(e.target.value)}
+                                            placeholder="Enter synopsis..."
                                         />
                                     ) : (
                                         <div
-                                            className={`text-sm md:text-base leading-relaxed text-gray-300 font-sans`}
-                                            dangerouslySetInnerHTML={{ __html: media.description || quest.synopsis || "No synopsis available." }}
+                                            className={`text-sm md:text-base leading-relaxed ${theme.baseText} font-sans`}
+                                            dangerouslySetInnerHTML={{ __html: quest.synopsis || media.description || "No synopsis available." }}
                                         />
                                     )}
                                 </div>
 
-                                {/* EDIT PANEL - visible when editing */}
-                                {isEditing && (
-                                    <div className="grid grid-cols-2 gap-4 p-4 bg-white/3 border border-white/10 rounded-xl">
-                                        <div className="col-span-2">
-                                            <label className="block text-[9px] text-gray-500 uppercase tracking-widest mb-1">Status</label>
-                                            <select value={editDraft.status} onChange={e => setEditDraft(p => ({ ...p, status: e.target.value }))} className="w-full bg-black/50 border border-white/10 p-2 text-gray-300 text-sm rounded outline-none focus:border-amber-500/50">
-                                                <option value="ACTIVE">ACTIVE</option>
-                                                <option value="CONQUERED">CONQUERED</option>
-                                                <option value="SEVERED">SEVERED</option>
-                                            </select>
-                                        </div>
-                                        <div>
-                                            <label className="block text-[9px] text-gray-500 uppercase tracking-widest mb-1">Current Chapter</label>
-                                            <input type="number" value={editDraft.currentChapter ?? ''} onChange={e => setEditDraft(p => ({ ...p, currentChapter: Number(e.target.value) }))} className="w-full bg-black/50 border border-white/10 p-2 text-gray-300 text-sm rounded outline-none focus:border-amber-500/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
-                                        </div>
-                                        <div>
-                                            <label className="block text-[9px] text-gray-500 uppercase tracking-widest mb-1">Max Chapters</label>
-                                            <input type="number" value={editDraft.totalChapters ?? ''} onChange={e => setEditDraft(p => ({ ...p, totalChapters: e.target.value ? Number(e.target.value) : null }))} placeholder="?" className="w-full bg-black/50 border border-white/10 p-2 text-gray-300 text-sm rounded outline-none focus:border-amber-500/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
-                                        </div>
-                                        <div>
-                                            <label className="block text-[9px] text-gray-500 uppercase tracking-widest mb-1">Rating (0–10)</label>
-                                            <input type="number" min="0" max="10" step="0.1" value={editDraft.rating ?? ''} onChange={e => setEditDraft(p => ({ ...p, rating: Number(e.target.value) }))} className="w-full bg-black/50 border border-white/10 p-2 text-gray-300 text-sm rounded outline-none focus:border-amber-500/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
-                                        </div>
-                                        <div>
-                                            <label className="block text-[9px] text-gray-500 uppercase tracking-widest mb-1">Class</label>
-                                            <select value={editDraft.classType} onChange={e => setEditDraft(p => ({ ...p, classType: e.target.value }))} className="w-full bg-black/50 border border-white/10 p-2 text-gray-300 text-sm rounded outline-none focus:border-amber-500/50">
-                                                <option>PLAYER</option><option>IRREGULAR</option><option>MAGE</option><option>CONSTELLATION</option><option>NECROMANCER</option><option>WARRIOR</option><option>DEMON KING</option><option>HEALER</option>
-                                            </select>
-                                        </div>
-                                        <div className="col-span-2">
-                                            <label className="block text-[9px] text-gray-500 uppercase tracking-widest mb-1">Read Link (URL)</label>
-                                            <input type="url" value={editDraft.link || ''} onChange={e => setEditDraft(p => ({ ...p, link: e.target.value }))} placeholder="https://..." className="w-full bg-black/50 border border-white/10 p-2 text-gray-300 text-sm rounded outline-none focus:border-amber-500/50" />
-                                        </div>
-                                    </div>
-                                )}
-
-
                                 {/* CHARACTERS */}
                                 {media.characters?.nodes?.length > 0 && (
                                     <div>
-                                        <div className={`text-xs font-bold text-gray-500 uppercase tracking-widest mb-4 flex items-center gap-2`}>
+                                        <div className={`text-xs font-bold ${theme.mutedText} uppercase tracking-widest mb-4 flex items-center gap-2`}>
                                             <Users size={14} /> CHARACTERS
                                         </div>
                                         <div className="flex overflow-x-auto gap-6 pb-4 custom-scrollbar snap-x">
                                             {media.characters.nodes.map(char => (
                                                 <div key={char.id} className="w-[80px] shrink-0 snap-start flex flex-col items-center gap-2 group cursor-pointer">
-                                                    <div className="w-[80px] h-[80px] rounded-full overflow-hidden border-2 border-white/10 group-hover:border-white/50 transition-colors relative">
+                                                    <div className={`w-[80px] h-[80px] rounded-full overflow-hidden border-2 ${theme.borderSubtle} group-hover:border-${theme.highlightText} transition-colors relative`}>
                                                         <img src={char.image.large} alt={char.name.full} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" referrerPolicy="no-referrer" />
                                                     </div>
                                                     <div className="text-center w-full">
-                                                        <div className={`text-[10px] font-bold text-gray-200 truncate w-full`}>{char.name.full}</div>
-                                                        <div className={`text-[8px] text-gray-500 uppercase truncate w-full`}>{char.role}</div>
+                                                        <div className={`text-[10px] font-bold ${theme.headingText} truncate w-full`}>{char.name.full}</div>
+                                                        <div className={`text-[8px] ${theme.mutedText} uppercase truncate w-full`}>{char.role}</div>
                                                     </div>
                                                 </div>
                                             ))}
@@ -653,7 +653,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                 {/* SIMILAR RECORDS */}
                                 {media.recommendations?.nodes?.length > 0 && (
                                     <div>
-                                        <div className={`text-xs font-bold text-gray-500 uppercase tracking-widest mb-4 flex items-center gap-2`}>
+                                        <div className={`text-xs font-bold ${theme.mutedText} uppercase tracking-widest mb-4 flex items-center gap-2`}>
                                             <Share2 size={14} /> SIMILAR RECORDS
                                         </div>
                                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">

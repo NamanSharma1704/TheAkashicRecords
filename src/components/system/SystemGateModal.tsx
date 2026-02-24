@@ -19,13 +19,11 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
     const [formData, setFormData] = useState<Partial<Quest>>({
         title: '',
         currentChapter: 0,
-        totalChapters: null,
+        totalChapters: 0, // Default to 0 to indicate unknown
         status: 'ACTIVE',
         classType: 'PLAYER',
         coverUrl: '',
-        link: '',
-        synopsis: '',
-        rating: 0
+        link: ''
     });
     const [isScanning, setIsScanning] = useState(false);
     const [scanStatus, setScanStatus] = useState("IDLE"); // IDLE, SCANNING, SUCCESS, ERROR, ENCRYPTED
@@ -34,11 +32,7 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
 
     useEffect(() => {
         if (initialData) {
-            setFormData({
-                ...initialData,
-                synopsis: initialData.synopsis ?? '',
-                rating: initialData.rating ?? 0
-            });
+            setFormData(initialData);
         }
     }, [initialData]);
 
@@ -79,16 +73,12 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
 
         if (result) {
             const newTitle = result.title.english || result.title.romaji || formData.title;
-            const rawSynopsis = result.description || '';
-            // Strip HTML tags from description
-            const cleanSynopsis = rawSynopsis.replace(/<[^>]*>/g, '').trim();
             setFormData(prev => ({
                 ...prev,
-                title: newTitle,
-                coverUrl: result.coverImage.extraLarge || prev.coverUrl,
-                totalChapters: result.chapters || prev.totalChapters,
-                synopsis: cleanSynopsis || prev.synopsis,
-                classType: inferClassFromTitle(newTitle)
+                title: prev.title ? prev.title : newTitle, // Do not override if user entered something manually (though they did for the search)
+                coverUrl: prev.coverUrl ? prev.coverUrl : (result.coverImage?.extraLarge || prev.coverUrl), // Prevents overriding existing cover
+                totalChapters: prev.totalChapters === 0 && result.chapters ? result.chapters : prev.totalChapters,
+                classType: prev.classType === 'UNKNOWN' ? inferClassFromTitle(newTitle) : prev.classType
             }));
             setScanStatus("SUCCESS");
         } else {
@@ -131,18 +121,12 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
             }
 
             if (slug) {
-                // Decode URL encoding (handles double-encoded %25 -> %3A -> ':')
-                let decodedSlug = slug;
-                try { decodedSlug = decodeURIComponent(decodeURIComponent(slug)); } catch {
-                    try { decodedSlug = decodeURIComponent(slug); } catch { decodedSlug = slug; }
-                }
-
                 // CLEANUP: Remove hash IDs from slug
-                const parts = decodedSlug.replace(/-+/g, ' ').replace(/_+/g, ' ').split(/\s+/);
+                const parts = slug.split('-');
                 const lastPart = parts[parts.length - 1];
 
                 // Strict check for "Is this just an ID?"
-                const strictNumeric = /^\d+$/.test(decodedSlug.replace(/[\s-_]/g, ''));
+                const strictNumeric = /^\d+$/.test(slug);
                 if (strictNumeric) {
                     isEncrypted = true;
                 } else {
@@ -153,7 +137,7 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
                     if (isHash) {
                         parts.pop();
                     }
-                    inferredTitle = parts.join(' ');
+                    inferredTitle = parts.join(' ').toUpperCase();
                 }
             }
 
@@ -177,39 +161,20 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
             setScanStatus("ERROR");
         }
 
-        if (inferredTitle === "UNKNOWN ARTIFACT" && !fetchedData) {
-            setScanStatus("ERROR");
-        }
-
         if (!isEncrypted) {
-            // Only use API title if it has reasonable word overlap with the slug title
-            const slugWords = new Set(inferredTitle.toLowerCase().split(/\s+/).filter((w: string) => w.length > 2));
-            const apiTitle = (fetchedData?.title?.english || fetchedData?.title?.romaji || '');
-            const apiWords = new Set(apiTitle.toLowerCase().split(/\s+/).filter((w: string) => w.length > 2));
-            let overlapCount = 0;
-            slugWords.forEach((w: string) => { if (apiWords.has(w)) overlapCount++; });
-            const similarity = slugWords.size > 0 ? overlapCount / slugWords.size : 0;
-
-            // Use API title only if it matches reasonably well, else keep slug title
-            const finalTitle = (apiTitle && similarity >= 0.3)
-                ? apiTitle
-                : (inferredTitle !== 'UNKNOWN ARTIFACT' ? inferredTitle : (apiTitle || 'UNKNOWN ARTIFACT'));
-
-            const rawSynopsis = fetchedData?.description || '';
-            const cleanSynopsis = rawSynopsis.replace(/<[^>]*>/g, '').trim();
+            // Use fetched data if available, otherwise rely on inferred title
+            const finalTitle = fetchedData?.title?.english || fetchedData?.title?.romaji || inferredTitle;
 
             setFormData(prev => ({
                 ...prev,
-                title: finalTitle !== "UNKNOWN ARTIFACT" ? finalTitle : prev.title,
-                classType: inferClassFromTitle(finalTitle),
-                coverUrl: fetchedData?.coverImage?.extraLarge || prev.coverUrl,
-                totalChapters: fetchedData?.chapters || prev.totalChapters,
-                synopsis: cleanSynopsis || prev.synopsis,
+                title: prev.title && prev.title.trim() !== "" ? prev.title : (finalTitle !== "UNKNOWN ARTIFACT" ? finalTitle : prev.title),
+                classType: prev.classType && prev.classType !== 'UNKNOWN' ? prev.classType : inferClassFromTitle(finalTitle),
+                coverUrl: prev.coverUrl && prev.coverUrl.trim() !== "" ? prev.coverUrl : (fetchedData?.coverImage?.extraLarge || prev.coverUrl),
+                totalChapters: prev.totalChapters === 0 && fetchedData?.chapters ? fetchedData.chapters : prev.totalChapters,
                 currentChapter: prev.currentChapter === 0 ? 1 : prev.currentChapter
             }));
             setScanStatus("SUCCESS");
         }
-
 
         setIsScanning(false);
     };
@@ -222,10 +187,6 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
         // VALIDATION: REQUIRED FIELDS
         if (!formData.title?.trim()) {
             setError("TITLE IS REQUIRED");
-            return;
-        }
-        if (formData.title.trim() === '---') {
-            setError("INVALID TITLE. PLEASE INPUT A VALID NAME.");
             return;
         }
         if (!formData.link?.trim()) {
@@ -307,8 +268,11 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div><label className={`block ${theme.mutedText} mb-1 uppercase text-[9px] tracking-widest transition-colors duration-700`}>Current Ch</label><input name="currentChapter" type="number" value={formData.currentChapter} onFocus={(e) => e.target.select()} onChange={handleChange} className={`w-full ${theme.inputBg} border ${theme.borderSubtle} p-2 ${theme.baseText} focus:${theme.border} outline-none transition-colors duration-700 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`} /></div>
-                            <div><label className={`block ${theme.mutedText} mb-1 uppercase text-[9px] tracking-widest transition-colors duration-700`}>Max Ch {formData.totalChapters === null && <span className="text-red-400 opacity-80 ml-1">(UNKNOWN)</span>}</label>
-                                <input name="totalChapters" type="number" value={formData.totalChapters ?? ''} onFocus={(e) => e.target.select()} onChange={handleChange} placeholder="?" className={`w-full ${theme.inputBg} border ${theme.borderSubtle} p-2 ${theme.baseText} focus:${theme.border} outline-none transition-colors duration-700 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`} />
+                            <div>
+                                <label className={`block ${theme.mutedText} mb-1 uppercase text-[9px] tracking-widest transition-colors duration-700`}>
+                                    Max Ch {formData.totalChapters === 0 && <span className="text-red-400 opacity-80 ml-1">(REQUIRED)</span>}
+                                </label>
+                                <input name="totalChapters" type="number" value={formData.totalChapters} onFocus={(e) => e.target.select()} onChange={handleChange} className={`w-full ${theme.inputBg} border ${theme.borderSubtle} p-2 ${theme.baseText} focus:${theme.border} outline-none transition-colors duration-700 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`} />
                             </div>
                         </div>
                         <div>
@@ -335,24 +299,8 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
                                     <option value="MAGE">MAGE</option>
                                     <option value="CONSTELLATION">CONSTELLATION</option>
                                     <option value="NECROMANCER">NECROMANCER</option>
-                                    <option value="WARRIOR">WARRIOR</option>
-                                    <option value="DEMON KING">DEMON KING</option>
-                                    <option value="HEALER">HEALER</option>
                                 </select>
                             </div>
-                        </div>
-
-                        {/* RATING */}
-                        <div>
-                            <label className={`block ${theme.mutedText} mb-1 uppercase text-[9px] tracking-widest transition-colors duration-700`}>Rating (0–10)</label>
-                            <input
-                                name="rating"
-                                type="number"
-                                min="0" max="10" step="0.1"
-                                value={formData.rating ?? 0}
-                                onChange={handleChange}
-                                className={`w-full ${theme.inputBg} border ${theme.borderSubtle} p-2 ${theme.baseText} focus:${theme.border} outline-none transition-colors duration-700 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`}
-                            />
                         </div>
                         <div className="flex gap-4 pt-4">
                             {initialData && <button type="button" onClick={onDelete} className="px-4 py-2 border border-red-500/50 text-red-500 hover:bg-red-500/10 transition-colors duration-700"><Trash2 size={14} /></button>}

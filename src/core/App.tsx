@@ -6,16 +6,14 @@ import SystemLogo from '../components/system/SystemLogo';
 import ScrambleText from '../components/system/ScrambleText';
 import { Cpu, Sword, Activity, Target, Hash, ExternalLink, Terminal, Sun, Moon, Plus, Flame, LayoutTemplate, Zap, Crown } from 'lucide-react';
 import { getPlayerRank, getThemedRankStyle, calculateQuestRank } from '../utils/ranks';
-import { THEMES, ITEMS_PER_FLOOR } from './constants';
+import { BASE_QUESTS, THEMES, ITEMS_PER_FLOOR } from './constants';
 
 import SystemConsole from '../components/system/SystemConsole';
 import BootScreen from '../components/system/BootScreen';
 import BackgroundController from '../components/fx/BackgroundController';
 import EntityAvatar from '../components/system/EntityAvatar';
 
-const API_URL = import.meta.env.DEV
-    ? 'http://localhost:5000/api/quests'
-    : '/api/quests';
+const API_URL = 'http://localhost:5000/api/quests';
 
 // ----------------------------------------------------------------------
 // LAZY LOADED HEAVY COMPONENTS 
@@ -59,6 +57,7 @@ const App: React.FC = () => {
 
     const [library, setLibrary] = useState<Quest[]>([]);
     const [activeId, setActiveId] = useState<string | null>(null);
+    const [userState, setUserState] = useState({ streak: 0, dailyAbsorbed: 0 });
 
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isSpireOpen, setIsSpireOpen] = useState(false);
@@ -73,65 +72,37 @@ const App: React.FC = () => {
         try {
             const res = await fetch(API_URL);
             const data = await res.json();
-            setLibrary(data);
+            // Map MongoDB _id to frontend id for compatibility
+            const mappedData = data.map((q: any) => ({ ...q, id: q._id }));
+            setLibrary(mappedData);
 
-            if (!activeId && data.length > 0) {
-                const top = data.filter((i: any) => i.status === 'ACTIVE').sort((a: any, b: any) =>
-                    new Date(b.lastUpdated || 0).getTime() - new Date(a.lastUpdated || 0).getTime()
-                )[0];
-                const targetId = top ? top._id : (data[0]?._id || null);
-                setActiveId(targetId);
+            if (!activeId && mappedData.length > 0) {
+                const top = mappedData.filter((i: any) => i.status === 'ACTIVE').sort((a: any, b: any) => new Date(b.lastUpdated || 0).getTime() - new Date(a.lastUpdated || 0).getTime())[0];
+                setActiveId(top ? top.id : (mappedData[0]?.id || null));
             }
         } catch (e) {
             console.error("Database connection failure:", e);
-            // Library remains empty if DB is unreachable
-            setLibrary([]);
+            // Fallback to BASE_QUESTS if DB is unreachable
+            setLibrary(BASE_QUESTS);
+        }
+    };
+
+    const fetchUserState = async () => {
+        try {
+            const res = await fetch('http://localhost:5000/api/user/state');
+            if (res.ok) {
+                const data = await res.json();
+                setUserState(data);
+            }
+        } catch (e) {
+            console.error("User state fetch failed:", e);
         }
     };
 
     useEffect(() => {
         fetchQuests();
+        fetchUserState();
     }, []);
-
-    // --- DAILY ABSORB QUEST TRACKING (Atlas-backed) ---
-    const [dailyAbsorbCount, setDailyAbsorbCount] = useState<number>(0);
-    const [knownIds, setKnownIds] = useState<string[]>([]);
-
-    // On mount: fetch today's absorbed count from backend
-    useEffect(() => {
-        fetch(`${API_URL.replace('/quests', '/daily')}`)
-            .then(r => r.json())
-            .then(data => {
-                setDailyAbsorbCount(Math.min(5, data.count ?? 0));
-                setKnownIds(data.ids ?? []);
-            })
-            .catch(() => { /* silent fail */ });
-    }, []);
-
-    // When library updates: push any new quest IDs to /api/daily/absorb
-    useEffect(() => {
-        if (library.length === 0 || knownIds === null) return;
-        const newIds = library.map((q: any) => q._id).filter(
-            (id: string) => id && !knownIds.includes(id)
-        );
-        if (newIds.length === 0) return;
-
-        Promise.all(
-            newIds.map((id: string) =>
-                fetch(`${API_URL.replace('/quests', '/daily/absorb')}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ questId: id }),
-                }).then(r => r.json())
-            )
-        ).then(results => {
-            const latest = results[results.length - 1];
-            if (latest?.count !== undefined) {
-                setDailyAbsorbCount(Math.min(5, latest.count));
-                setKnownIds(latest.ids ?? []);
-            }
-        }).catch(() => { /* silent fail */ });
-    }, [library]);
 
     // Migration / Integrity Check removed since we use MongoDB now
 
@@ -139,39 +110,36 @@ const App: React.FC = () => {
         id: '0',
         title: 'No Active Quest',
         coverUrl: "",
-        totalChapters: null,
+        totalChapters: 0,
         currentChapter: 0,
         status: 'LOCKED',
         classType: 'UNKNOWN',
         link: ''
     };
 
-    const activeQuest = useMemo(() => library.find(q => q._id === activeId) || library[0] || DEFAULT_QUEST, [library, activeId]);
-    const progressPercent = useMemo(() => Math.round((activeQuest.currentChapter / (activeQuest.totalChapters || 1)) * 100), [activeQuest]);
+    const activeQuest = useMemo(() => library.find(q => q.id === activeId) || library[0] || DEFAULT_QUEST, [library, activeId]);
+    const progressPercent = useMemo(() => Math.min(100, Math.round((activeQuest.currentChapter / (activeQuest.totalChapters || 1)) * 100)), [activeQuest]);
     const totalChaptersRead = useMemo(() => library.reduce((acc, item) => acc + (item.currentChapter || 0), 0), [library]);
 
-    // Separate Rank Logic for User — based on number of titles tracked
+    // Separate Rank Logic for User
     const playerRank = useMemo(() => {
         const rawPlayerRank = getPlayerRank(library.length);
-        const rankStyle = getThemedRankStyle(currentTheme, ['SOVEREIGN', 'NATIONAL', 'MONARCH'].includes(rawPlayerRank.label));
-        return { ...rawPlayerRank, style: rankStyle };
+        const rankStyle = getThemedRankStyle(currentTheme, rawPlayerRank.label === 'Sovereign' || rawPlayerRank.label === 'Eclipse' || rawPlayerRank.label === 'Monarch');
+        return { ...rawPlayerRank, name: rawPlayerRank.label, style: rankStyle };
     }, [library.length, currentTheme]);
 
-    const activeQuests = useMemo(() => {
-        return library.filter(item => item.status === 'ACTIVE')
-            .sort((a, b) => new Date(b.lastUpdated || 0).getTime() - new Date(a.lastUpdated || 0).getTime())
-            .slice(0, 5);
-    }, [library]);
-    const spireItems = library; // DivineSpire handles its own filtering now
+    const activeQuests = useMemo(() => { return library.filter(item => item.status === 'ACTIVE').sort((a, b) => new Date(b.lastUpdated || 0).getTime() - new Date(a.lastUpdated || 0).getTime()).slice(0, 5); }, [library]);
+    const spireItems = useMemo(() => [...library].sort((a, b) => (a.id || '').localeCompare(b.id || '')), [library]);
 
     const handleActivate = (id: string) => {
         // Find item and set as selected for detail view
-        const item = library.find(i => i._id === id);
+        const item = library.find(i => i.id === id);
         if (item) {
             setSelectedQuest(item);
             setIsDetailOpen(true);
-            // Do NOT close the Spire here — ManhwaDetail (z-[70]) overlays on top of DivineSpire (z-[60])
         }
+        // MODIFIED: Do not update Active Quest on dashboard when clicking in Tower/Floor
+        setIsSpireOpen(false);
     }
 
     const handleLogClick = async (id: string) => {
@@ -183,7 +151,7 @@ const App: React.FC = () => {
                 body: JSON.stringify({ lastUpdated: new Date().toISOString() })
             });
             const updated = await res.json();
-            setLibrary(prev => prev.map(item => item._id === id ? updated : item));
+            setLibrary(prev => prev.map(item => item.id === id ? { ...updated, id: updated._id } : item));
         } catch (e) {
             console.error("Update failed", e);
         }
@@ -195,10 +163,10 @@ const App: React.FC = () => {
             const res = await fetch(`${API_URL}/${id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ status: 'ACTIVE', lastUpdated: new Date().toISOString() })
+                body: JSON.stringify({ status: 'ACTIVE', lastRead: Date.now() })
             });
             const updated = await res.json();
-            setLibrary(prev => prev.map(item => item._id === id ? updated : item));
+            setLibrary(prev => prev.map(item => item.id === id ? { ...updated, id: updated._id } : item));
         } catch (e) {
             console.error("Set active failed", e);
         }
@@ -206,7 +174,7 @@ const App: React.FC = () => {
 
     const handleSave = async (data: Partial<Quest>) => {
         const isEditing = !!editingItem;
-        const url = isEditing ? `${API_URL}/${editingItem._id}` : API_URL;
+        const url = isEditing ? `${API_URL}/${editingItem.id}` : API_URL;
         const method = isEditing ? 'PUT' : 'POST';
 
         try {
@@ -216,12 +184,13 @@ const App: React.FC = () => {
                 body: JSON.stringify(data)
             });
             const saved = await res.json();
+            const mappedSaved = { ...saved, id: saved._id };
 
             if (isEditing) {
-                setLibrary(prev => prev.map(q => q._id === saved._id ? saved : q));
+                setLibrary(prev => prev.map(q => q.id === mappedSaved.id ? mappedSaved : q));
             } else {
-                setLibrary(prev => [saved, ...prev]);
-                handleActivate(saved._id);
+                setLibrary(prev => [mappedSaved, ...prev]);
+                handleActivate(mappedSaved.id);
             }
             setIsModalOpen(false);
         } catch (e) {
@@ -230,8 +199,11 @@ const App: React.FC = () => {
     };
 
     const updateProgress = async (amt: number) => {
-        if (!activeQuest._id) return;
-        const next = Math.min(Math.max(0, activeQuest.currentChapter + amt), activeQuest.totalChapters ?? Infinity);
+        if (!activeQuest.id) return;
+        const next = activeQuest.totalChapters > 0
+            ? Math.min(Math.max(0, activeQuest.currentChapter + amt), activeQuest.totalChapters)
+            : Math.max(0, activeQuest.currentChapter + amt);
+
         try {
             const res = await fetch(`${API_URL}/${activeId}`, {
                 method: 'PUT',
@@ -239,7 +211,8 @@ const App: React.FC = () => {
                 body: JSON.stringify({ currentChapter: next, lastUpdated: new Date().toISOString() })
             });
             const updated = await res.json();
-            setLibrary(prev => prev.map(q => q._id === activeId ? updated : q));
+            setLibrary(prev => prev.map(q => q.id === activeId ? { ...updated, id: updated._id } : q));
+            fetchUserState(); // Refresh Divine Mandate UI immediately
         } catch (e) {
             console.error("Progress update failed", e);
         }
@@ -248,8 +221,8 @@ const App: React.FC = () => {
     const deleteQuest = async () => {
         if (editingItem) {
             try {
-                await fetch(`${API_URL}/${editingItem._id}`, { method: 'DELETE' });
-                setLibrary(prev => prev.filter(i => i._id !== editingItem._id));
+                await fetch(`${API_URL}/${editingItem.id}`, { method: 'DELETE' });
+                setLibrary(prev => prev.filter(i => i.id !== editingItem.id));
                 setIsModalOpen(false);
             } catch (e) {
                 console.error("Deletion failure", e);
@@ -296,7 +269,7 @@ const App: React.FC = () => {
                             <div className="w-full h-full">
                                 <SystemFrame variant="full" theme={theme} className={`shadow-2xl ${theme.shadow} transition-shadow duration-700`}>
                                     <div className="absolute inset-0 z-0 group">
-                                        <img src={activeQuest.coverUrl} alt="Background" className={`w-full h-full object-cover object-[50%_5%] ${theme.isDark ? 'opacity-70 mix-blend-screen grayscale-[40%]' : 'opacity-30 mix-blend-normal grayscale-0'} transition-all duration-700`} referrerPolicy="no-referrer" />
+                                        <img src={activeQuest.coverUrl} alt="Background" className={`w-full h-full object-cover object-[50%_5%] ${theme.isDark ? 'opacity-90 mix-blend-normal grayscale-0' : 'opacity-70 mix-blend-normal grayscale-0'} transition-all duration-700`} referrerPolicy="no-referrer" />
                                         <div className={`absolute inset-0 bg-gradient-to-t ${theme.isDark ? 'from-[#020202] via-[#020202]/80' : 'from-[#f8f5f2]/90 via-[#f8f5f2]/60'} to-transparent transition-colors duration-700`} />
                                         <div className={`absolute inset-0 bg-gradient-to-r ${theme.isDark ? 'from-[#020202]' : 'from-[#f8f5f2]/60'} via-transparent ${theme.isDark ? 'to-[#020202]/50' : 'to-transparent'} transition-colors duration-700`} />
                                         <div className={`absolute top-0 left-0 w-full h-[2px] bg-${theme.primary}-400/80 shadow-[0_0_15px_currentColor] z-20 animate-[scanning_4s_linear_infinite] opacity-50 pointer-events-none transition-colors duration-700`} />
@@ -321,7 +294,7 @@ const App: React.FC = () => {
                                             </div>
                                             <div className="space-y-2">
                                                 <div className={`flex justify-between text-[10px] font-mono ${theme.mutedText} tracking-wider transition-colors duration-700`}><span className={`flex items-center gap-2 ${theme.headingText} transition-colors duration-700`}><Zap size={12} /> COMPLETION_RATE</span><span className={`font-bold ${theme.headingText} transition-colors duration-700`}>{progressPercent}%</span></div>
-                                                <div className={`h-1.5 ${theme.isDark ? 'bg-gray-800' : 'bg-gray-200'} w-full relative transition-colors duration-700`}><div className={`h-full bg-gradient-to-r ${theme.gradient} progress-bloom transition-all duration-700 ease-out`} style={{ width: `${Math.min(100, progressPercent)}%`, color: theme.id === 'LIGHT' ? '#06b6d4' : '#f59e0b' }} /></div>
+                                                <div className={`h-1.5 ${theme.isDark ? 'bg-gray-800' : 'bg-gray-200'} w-full relative transition-colors duration-700`}><div className={`h-full bg-gradient-to-r ${theme.gradient} progress-bloom transition-all duration-700 ease-out`} style={{ width: `${progressPercent}%`, color: theme.id === 'LIGHT' ? '#06b6d4' : '#f59e0b' }} /></div>
                                                 <div className={`flex justify-between text-[9px] font-mono ${theme.mutedText} uppercase tracking-widest transition-colors duration-700`}><span>Current: {activeQuest.currentChapter}</span><span>Terminal: {activeQuest.totalChapters}</span></div>
                                             </div>
                                             <div className="flex gap-4">
@@ -337,7 +310,7 @@ const App: React.FC = () => {
                         </div>
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 md:gap-4 h-auto sm:h-32 shrink-0">
                             <StatBox value={activeQuest.currentChapter} label="WISDOM" icon={Cpu} color="text-blue-500" theme={theme} />
-                            <StatBox value={Math.floor((activeQuest.totalChapters ?? 0) / 10)} label="MIGHT" icon={Sword} color="text-red-500" theme={theme} />
+                            <StatBox value={Math.floor(activeQuest.totalChapters / 10)} label="MIGHT" icon={Sword} color="text-red-500" theme={theme} />
                             <StatBox value={`${progressPercent}%`} label="SYNC" icon={Activity} color={theme.highlightText} theme={theme} />
                             <StatBox value={activeQuest.status === 'CONQUERED' ? 'CLOSED' : 'OPEN'} label="GATE" icon={Target} color={activeQuest.status === 'CONQUERED' ? 'text-gray-400' : theme.highlightText} theme={theme} />
                         </div>
@@ -372,44 +345,27 @@ const App: React.FC = () => {
                                             <div className={`absolute -left-1 top-1/2 -translate-y-1/2 w-[1px] h-8 ${theme.id === 'LIGHT' ? 'bg-cyan-500' : 'bg-[#f59e0b]'} opacity-20`} />
                                         </div>
 
-                                        <div className="flex flex-col items-start text-left flex-1 min-w-0">
-                                            <div className={`text-[9px] ${theme.highlightText} font-black font-mono uppercase tracking-[0.2em] mb-0.5 opacity-70 transition-colors duration-700`}>ENTITY CLASSIFICATION</div>
-                                            <div className={`font-black font-manifold italic tracking-tight drop-shadow-sm text-transparent bg-clip-text bg-gradient-to-r ${theme.gradient} transition-colors duration-700 leading-none w-full`}
-                                                style={{ fontSize: 'clamp(0.85rem, 3vw, 1.9rem)', wordBreak: 'keep-all', overflowWrap: 'normal', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                                {playerRank.label}
+                                        <div className="flex flex-col items-start text-left flex-1 min-w-0 -mt-6">
+                                            <div className={`text-[10px] ${theme.highlightText} font-black font-mono uppercase tracking-[0.2em] mb-1 mt-0.5 opacity-90 transition-colors duration-700 whitespace-nowrap`}>ENTITY CLASSIFICATION</div>
+                                            <div className="text-4xl font-black font-manifold italic tracking-tight drop-shadow-sm flex items-baseline leading-normal overflow-visible pr-12 -ml-6">
+                                                <span className={`inline-block px-6 text-transparent bg-clip-text bg-gradient-to-r ${theme.gradient} transition-colors duration-700 -ml-2`}>{playerRank.name}</span>
                                             </div>
                                         </div>
                                     </div>
-                                    <div className="mt-3"><div className={`flex justify-between text-[8px] font-mono ${theme.highlightText} mb-0.5 transition-colors duration-700`}><span>EXP ACQUIRED</span><span>{totalChaptersRead} PTS</span></div><div className={`h-1 w-full ${theme.isDark ? 'bg-gray-800' : 'bg-gray-200'} transition-colors duration-700`}><div className={`h-full bg-gradient-to-r ${theme.gradient} progress-bloom transition-all duration-700`} style={{ width: `${Math.min(100, (totalChaptersRead % 1000) / 10)}%`, color: theme.id === 'LIGHT' ? '#06b6d4' : '#f59e0b' }} /></div></div>
+                                    <div className="mt-3"><div className={`flex justify-between text-[8px] font-mono ${theme.highlightText} mb-0.5 transition-colors duration-700`}><span>EXP ACQUIRED</span><span>{totalChaptersRead} PTS</span></div><div className={`h-1 w-full ${theme.isDark ? 'bg-gray-800' : 'bg-gray-200'} transition-colors duration-700`}><div className={`h-full w-[60%] bg-gradient-to-r ${theme.gradient} progress-bloom transition-all duration-700`} style={{ color: theme.id === 'LIGHT' ? '#06b6d4' : '#f59e0b' }} /></div></div>
                                 </div>
                             </SystemFrame>
                         </div>
 
-                        {/* DIVINE MANDATE — DAILY ABSORB QUEST */}
+                        {/* DIVINE MANDATE */}
                         <div className="w-full h-auto">
                             <SystemFrame variant="brackets" theme={theme}>
                                 <div className="p-4 relative overflow-hidden">
                                     <div className={`absolute inset-0 bg-[linear-gradient(rgba(${theme.starColor},0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(${theme.starColor},0.03)_1px,transparent_1px)] bg-[size:20px_20px] transition-colors duration-700`} />
                                     <div className="relative z-10">
-                                        <div className="flex justify-between items-center mb-6">
-                                            <div className={`flex items-center gap-2 ${theme.highlightText} font-mono text-[10px] tracking-widest font-bold transition-colors duration-700`}><Flame size={12} /> DIVINE_MANDATE</div>
-                                            <span className={`text-[9px] font-mono tracking-widest opacity-70 ${theme.mutedText} transition-colors duration-700`}>
-                                                {dailyAbsorbCount >= 5 ? 'CONQUERED' : 'PENDING'}
-                                            </span>
-                                        </div>
-                                        <div className="space-y-1 mb-2">
-                                            <div className={`text-[9px] ${theme.mutedText} font-mono tracking-widest transition-colors duration-700`}>DAILY OBJECTIVE</div>
-                                            <div className="flex justify-between items-end">
-                                                <div className={`text-xl font-black italic ${theme.headingText} tracking-wide transition-colors duration-700`}>ABSORB 5 STORIES</div>
-                                                <div className={`${theme.highlightText} font-mono text-lg font-bold transition-colors duration-700`}>
-                                                    {Math.min(5, dailyAbsorbCount)}<span className={`${theme.mutedText} text-sm transition-colors duration-700`}>/5</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div className={`h-1 w-full ${theme.isDark ? 'bg-gray-900 border-gray-800' : 'bg-gray-200 border-gray-300'} border mt-2 transition-colors duration-700`}>
-                                            <div className={`h-full bg-gradient-to-r ${theme.gradient} progress-bloom transition-all duration-700`} style={{ width: `${Math.min(100, (dailyAbsorbCount / 5) * 100)}%`, color: theme.id === 'LIGHT' ? '#06b6d4' : '#f59e0b' }} />
-                                        </div>
-                                        <div className={`text-[8px] font-mono ${theme.mutedText} mt-1.5 opacity-60`}>Resets at midnight · 7-day history</div>
+                                        <div className="flex justify-between items-center mb-6"><div className={`flex items-center gap-2 ${theme.highlightText} font-mono text-[10px] tracking-widest font-bold transition-colors duration-700`}><Flame size={12} /> DIVINE_MANDATE</div><span className={`text-[9px] font-mono tracking-widest opacity-70 ${theme.mutedText} transition-colors duration-700`}>{userState.dailyAbsorbed >= 5 ? 'CONQUERED' : 'PENDING'}</span></div>
+                                        <div className="space-y-1 mb-2"><div className={`text-[9px] ${theme.mutedText} font-mono tracking-widest transition-colors duration-700`}>OBJECTIVE</div><div className="flex justify-between items-end"><div className={`text-xl font-black italic ${theme.headingText} tracking-wide transition-colors duration-700`}>ABSORB 5 STORIES</div><div className={`${theme.highlightText} font-mono text-lg font-bold transition-colors duration-700`}>{userState.dailyAbsorbed}<span className={`${theme.mutedText} text-sm transition-colors duration-700`}>/5</span></div></div></div>
+                                        <div className={`h-1 w-full ${theme.isDark ? 'bg-gray-900 border-gray-800' : 'bg-gray-200 border-gray-300'} border mt-2 transition-colors duration-700`}><div className={`h-full bg-gradient-to-r ${theme.gradient} progress-bloom transition-all duration-700`} style={{ width: `${Math.min(100, (userState.dailyAbsorbed / 5) * 100)}%`, color: theme.id === 'LIGHT' ? '#06b6d4' : '#f59e0b' }} /></div>
                                     </div>
                                 </div>
                             </SystemFrame>
@@ -421,9 +377,9 @@ const App: React.FC = () => {
                             <div className="flex-1 min-h-0 overflow-hidden relative">
                                 <div className="flex flex-col gap-1 h-full">
                                     {activeQuests.map((item, index) => {
-                                        const isHighlighted = activeId === item._id || index === 0;
+                                        const isHighlighted = activeId === item.id || index === 0;
                                         return (
-                                            <div key={item._id} onClick={() => handleLogClick(item._id!)} className={`relative group cursor-pointer border py-1.5 px-3 transition-all duration-200 ${isHighlighted ? `${theme.border} ${theme.isDark ? 'bg-white/5' : 'bg-sky-500/5'}` : `border-transparent hover:${theme.borderSubtle} bg-transparent`}`}>
+                                            <div key={item.id} onClick={() => handleLogClick(item.id)} className={`relative group cursor-pointer border py-1.5 px-3 transition-all duration-200 ${isHighlighted ? `${theme.border} ${theme.isDark ? 'bg-white/5' : 'bg-sky-500/5'}` : `border-transparent hover:${theme.borderSubtle} bg-transparent`}`}>
                                                 <div className="flex justify-between items-center">
                                                     <div className="flex flex-col">
                                                         <span className={`font-bold font-mono text-xs ${isHighlighted ? theme.highlightText : `${theme.mutedText} group-hover:${theme.headingText}`} transition-colors duration-700 uppercase`}>{item.title}</span>
@@ -464,11 +420,12 @@ const App: React.FC = () => {
                 {isDetailOpen && (
                     <ManhwaDetail
                         isOpen={isDetailOpen}
-                        onClose={() => { setIsDetailOpen(false); setIsSpireOpen(false); }}
+                        onClose={() => setIsDetailOpen(false)}
                         quest={selectedQuest}
                         theme={theme}
                         allQuests={library}
                         onSetActive={handleSetActiveQuest}
+                        onUpdate={async (id, data) => handleSave({ id, ...data })}
                     />
                 )}
             </Suspense>
@@ -483,6 +440,7 @@ const App: React.FC = () => {
                         onActivate={handleActivate}
                         itemsPerFloor={ITEMS_PER_FLOOR}
                         playerRank={playerRank}
+                        streak={userState.streak}
                     />
                 )}
             </Suspense>

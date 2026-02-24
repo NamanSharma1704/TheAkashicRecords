@@ -1,21 +1,15 @@
 const mongoose = require('mongoose');
 
-const questSchema = new mongoose.Schema({
-    id: { type: String, required: true, unique: true },
+const QuestSchema = new mongoose.Schema({
     title: { type: String, required: true },
-    coverUrl: { type: String, default: "" },
-    currentChapter: { type: Number, default: 0 },
-    totalChapters: { type: Number, default: null },
-    status: { type: String, default: 'READING' },
-    classType: { type: String, default: 'PLAYER' },
-    link: { type: String, default: "" },
+    cover: { type: String, default: "" },
     synopsis: { type: String, default: "" },
-    rating: { type: Number, default: 0 },
-    lastUpdated: { type: String, default: () => new Date().toISOString() }
-}, {
-    timestamps: true,
-    collection: 'manhwas' // Shared with NeoScrolls project
-});
+    totalChapters: { type: Number, default: 0 },
+    currentChapter: { type: Number, default: 0 },
+    status: { type: String, default: 'PLANNED' },
+    classType: { type: String, default: 'UNKNOWN' },
+    readLink: { type: String, default: "" },
+    lastRead: { type: Number, default: Date.now }
+}, { timestamps: true });
 
-module.exports = mongoose.model('Quest', questSchema);
-
+module.exports = mongoose.model('Quest', QuestSchema);

@@ -16,7 +16,7 @@ const QuestCard = React.memo<DivineMonolithProps>(({ item, onClick, index, id, t
     const animationDuration = `${5 + (index % 3)}s`;
 
     return (
-        <div id={id} onClick={() => onClick(item._id!)} className="group relative cursor-pointer perspective-1000 w-full" style={{ animationName: 'float-item', animationDuration: animationDuration, animationTimingFunction: 'ease-in-out', animationIterationCount: 'infinite', animationDelay: `${index * 150}ms` }}>
+        <div id={id} onClick={() => onClick(item.id)} className="group relative cursor-pointer perspective-1000 w-full" style={{ animationName: 'float-item', animationDuration: animationDuration, animationTimingFunction: 'ease-in-out', animationIterationCount: 'infinite', animationDelay: `${index * 150}ms` }}>
             <div className={`relative aspect-[9/14] ${theme.panelBg} border ${theme.borderSubtle} group-hover:border-opacity-0 transition-all duration-700 ease-out overflow-hidden transform group-hover:scale-[1.02]`}>
                 <div className={`absolute inset-0 z-20 ${theme.overlay} group-hover:opacity-0 transition-opacity duration-700 flex flex-col items-center justify-center`}>
                     <div className={`w-[1px] h-16 ${rankStyle.bg} opacity-50 mb-4 shadow-[0_0_15px_currentColor]`} />
@@ -57,7 +57,7 @@ const QuestCard = React.memo<DivineMonolithProps>(({ item, onClick, index, id, t
 
                         <div className={`h-[1px] w-full ${theme.isDark ? 'bg-white/10' : 'bg-black/10'} overflow-hidden relative transition-colors duration-700`}><div className={`absolute inset-0 w-full h-full ${rankStyle.bg} -translate-x-full group-hover:translate-x-0 transition-transform duration-1000 delay-100`} /></div>
                         <div className={`flex justify-between items-center text-[10px] font-mono ${theme.mutedText} group-hover:${theme.baseText} transition-colors delay-300 duration-700`}>
-                            <span className="flex items-center gap-1"><BookOpen size={10} /> CH: {item.currentChapter} / {item.totalChapters || '?'}</span>
+                            <span className="flex items-center gap-1"><BookOpen size={10} /> CH: {item.currentChapter}</span>
                             <span className={`px-2 py-0.5 border ${theme.borderSubtle} ${item.status === 'ACTIVE' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/30' : theme.isDark ? 'bg-white/5' : 'bg-black/5'} transition-colors duration-700`}>{item.status}</span>
                         </div>
                     </div>

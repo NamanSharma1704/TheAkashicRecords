@@ -11,6 +11,7 @@ export const fetchAnilistCover = async (title: string) => {
         const query = `
         query ($search: String) {
           Media (search: $search, type: MANGA, sort: SEARCH_MATCH) {
+            chapters
             title {
                 english
                 romaji
@@ -18,8 +19,6 @@ export const fetchAnilistCover = async (title: string) => {
             coverImage {
               extraLarge
             }
-            description
-            chapters
           }
         }
         `;
@@ -46,9 +45,8 @@ export const fetchJikanCover = async (title: string) => {
             const manga = data.data[0];
             return {
                 title: { english: manga.title_english || manga.title },
-                coverImage: { extraLarge: manga.images.jpg.large_image_url || manga.images.jpg.image_url },
-                chapters: manga.chapters,
-                description: manga.synopsis || ''
+                chapters: manga.chapters || 0,
+                coverImage: { extraLarge: manga.images.jpg.large_image_url || manga.images.jpg.image_url }
             };
         }
         return null;
@@ -85,11 +83,11 @@ export const fetchMangadex = async (title: string) => {
                 native: attributes.altTitles.find((t: any) => t.ja || t.ko)?.ja || attributes.altTitles.find((t: any) => t.ko)?.ko || ""
             },
             description: cleanDescription(attributes.description.en || ""),
+            chapters: attributes.lastChapter ? parseInt(attributes.lastChapter) || 0 : 0,
             coverImage: {
                 extraLarge: coverUrl,
                 large: coverUrl
             },
-            chapters: parseInt(attributes.lastChapter) || 0,
             status: attributes.status.toUpperCase(),
             siteUrl: `https://mangadex.org/title/${manga.id}`
         };
@@ -105,45 +103,29 @@ export const fetchAuto = async (title: string) => {
     // 1. Try AniList first
     let result = await fetchAnilistCover(title);
 
-    // Evaluate result quality
-    const checkMatch = (res: any) => {
-        if (!res) return false;
-        const tEn = res.title?.english?.toLowerCase().replace(/[^a-z0-9]/g, '') || "";
-        const tRo = res.title?.romaji?.toLowerCase().replace(/[^a-z0-9]/g, '') || "";
-        return tEn.includes(cleanQuery) || cleanQuery.includes(tEn) ||
-            tRo.includes(cleanQuery) || cleanQuery.includes(tRo);
-    };
+    // Evaluate AniList result
+    const alTitleEn = result?.title?.english?.toLowerCase().replace(/[^a-z0-9]/g, '') || "";
+    const alTitleRo = result?.title?.romaji?.toLowerCase().replace(/[^a-z0-9]/g, '') || "";
 
-    let isGoodAnilist = checkMatch(result) && result?.coverImage?.extraLarge;
+    const isGoodAnilist = result && result.coverImage?.extraLarge &&
+        (alTitleEn.includes(cleanQuery) || cleanQuery.includes(alTitleEn) ||
+            alTitleRo.includes(cleanQuery) || cleanQuery.includes(alTitleRo));
 
-    // 2. If AniList is shaky or missing chapters, try MangaDex
-    if (!isGoodAnilist || !result?.chapters) {
+    // 2. If AniList is shaky or missing, try MangaDex
+    if (!isGoodAnilist) {
         const mdResult = await fetchMangadex(title);
         if (mdResult && mdResult.coverImage?.extraLarge) {
-            if (!result) {
+            const mdTitleEn = mdResult.title.english.toLowerCase().replace(/[^a-z0-9]/g, '');
+            // Pick MangaDex if it has a cover and either AniList didn't OR title match is better
+            if (!isGoodAnilist || mdTitleEn.includes(cleanQuery) || cleanQuery.includes(mdTitleEn)) {
                 result = mdResult;
-            } else {
-                // Merge: Keep AniList titles/images if good, but take MangaDex chapters
-                result = {
-                    ...result,
-                    chapters: mdResult.chapters || result.chapters,
-                    // If AniList was bad, take everything from MangaDex
-                    ...(isGoodAnilist ? {} : mdResult)
-                };
             }
         }
     }
 
-    // 3. Final fallback to MAL if still missing chapters
-    if (!result?.chapters) {
-        const jikanResult = await fetchJikanCover(title);
-        if (jikanResult) {
-            if (!result) {
-                result = jikanResult;
-            } else {
-                result.chapters = jikanResult.chapters || result.chapters;
-            }
-        }
+    // 3. Final fallback to MAL if still nothing
+    if (!result) {
+        result = await fetchJikanCover(title);
     }
 
     return result;

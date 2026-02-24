@@ -32,18 +32,18 @@ export interface Rank {
 }
 
 export interface Quest {
-    _id?: string;
-    id: string;
+    id: string;      // The frontend ID, mapped from MongoDB _id
+    _id?: string;    // The actual MongoDB ID
     title: string;
-    coverUrl: string;
-    totalChapters: number | null;
+    coverUrl?: string; // CHANGED FROM cover
+    totalChapters: number;
     currentChapter: number;
-    status: string;       // Unified: READING | COMPLETED | PLAN_TO_READ | DROPPED | ON_HOLD | ACTIVE | CONQUERED | SEVERED
-    classType?: string;   // Akashic Records extra field
-    link: string;
-    synopsis?: string;
-    rating?: number;
-    lastUpdated?: string;
+    status: string;
+    classType: string;
+    link?: string;     // CHANGED FROM readLink
+    lastUpdated?: number | string; // CHANGED FROM lastRead
+    synopsis?: string; // ADDED
+    rating?: number;   // ADDED
 }
 
 export type UserRank = Rank;

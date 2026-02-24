@@ -8,35 +8,126 @@ require('dotenv').config();
 
 const app = express();
 
+const getTodayStr = () => new Date().toISOString().split('T')[0];
+
 // Connect to Database
 connectDB();
+
+const BASE_QUESTS = [
+    {
+        title: 'TOWER OF GOD',
+        status: 'ACTIVE',
+        currentChapter: 580,
+        totalChapters: 600,
+        lastRead: Date.now(),
+        classType: 'S-RANK',
+        cover: 'https://images2.alphacoders.com/107/1079366.jpg',
+        readLink: 'https://www.webtoons.com/en/fantasy/tower-of-god/list?title_no=95'
+    },
+    {
+        title: 'SOLO LEVELING',
+        status: 'ACTIVE',
+        currentChapter: 179,
+        totalChapters: 179,
+        lastRead: Date.now() - 86400000,
+        classType: 'NATIONAL',
+        cover: 'https://wallpaperaccess.com/full/2405389.jpg',
+        readLink: 'https://sololevelingmanhwa.com/'
+    },
+    {
+        title: 'THE BEGINNING AFTER THE END',
+        status: 'IN_PROGRESS',
+        currentChapter: 175,
+        totalChapters: 175,
+        lastRead: Date.now() - 172800000,
+        classType: 'MAGE',
+        cover: 'https://wallpapercave.com/wp/wp8922416.jpg',
+        readLink: 'https://tapas.io/series/tbate-comic/info'
+    }
+];
+
+const seedDB = async () => {
+    const count = await Quest.countDocuments();
+    if (count === 0) {
+        console.log("Seeding Database with BASE_QUESTS...");
+        await Quest.insertMany(BASE_QUESTS);
+    }
+};
+
+const deduplicateDB = async () => {
+    try {
+        const allQuests = await Quest.find().sort({ lastRead: -1 });
+        const seenTitles = new Set();
+        const duplicates = [];
+
+        for (const quest of allQuests) {
+            const normalizedTitle = quest.title.trim().toLowerCase();
+            if (seenTitles.has(normalizedTitle)) {
+                duplicates.push(quest._id);
+            } else {
+                seenTitles.add(normalizedTitle);
+            }
+        }
+
+        if (duplicates.length > 0) {
+            console.log(`Found ${duplicates.length} duplicate Manhwa. Removing...`);
+            await Quest.deleteMany({ _id: { $in: duplicates } });
+            console.log('Duplicates removed.');
+        }
+    } catch (e) {
+        console.error("Deduplication failed", e);
+    }
+};
+
+seedDB().then(() => deduplicateDB());
 
 // Middleware
 app.use(cors());
 app.use(express.json());
 
-// ─────────────────────────────────────────
-// QUESTS
-// ─────────────────────────────────────────
+// --- ROUTES ---
 
-// GET /api/quests
+// GET /api/user/state - Fetch streak and daily absorb
+app.get('/api/user/state', async (req, res) => {
+    try {
+        let settings = await UserSettings.findOne({ userId: 'default' });
+        if (!settings) settings = await UserSettings.create({ userId: 'default' });
+
+        const today = getTodayStr();
+        let daily = await DailyQuest.findOne({ date: today });
+        if (!daily) daily = await DailyQuest.create({ date: today });
+
+        res.json({
+            streak: settings.streak,
+            lastReadDate: settings.lastReadDate,
+            dailyAbsorbed: daily.absorbedIds.length,
+            absorbedIds: daily.absorbedIds
+        });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+// GET /api/quests - Fetch all quests
 app.get('/api/quests', async (req, res) => {
     try {
-        const quests = await Quest.find().sort({ lastUpdated: -1 });
+        const quests = await Quest.find().sort({ lastRead: -1 });
         res.json(quests);
     } catch (err) {
         res.status(500).json({ message: err.message });
     }
 });
 
-// POST /api/quests
+// POST /api/quests - Create a new quest
 app.post('/api/quests', async (req, res) => {
     try {
-        const { title, link } = req.body;
-        if (!title || title.trim() === '' || title.trim() === '---')
-            return res.status(400).json({ message: 'Valid title is required.' });
-        if (!link || link.trim() === '')
-            return res.status(400).json({ message: 'Valid link (coordinates) is required.' });
+        const title = req.body.title;
+        // Case-insensitive title check to prevent duplicates
+        const existing = await Quest.findOne({ title: { $regex: new RegExp(`^${title.trim()}$`, "i") } });
+
+        if (existing) {
+            return res.status(409).json({ message: 'Artifact strictly classified as Duplicate.' });
+        }
 
         const newQuest = new Quest(req.body);
         const savedQuest = await newQuest.save();
@@ -46,12 +137,43 @@ app.post('/api/quests', async (req, res) => {
     }
 });
 
-// PUT /api/quests/:id
+// PUT /api/quests/:id - Update a quest
 app.put('/api/quests/:id', async (req, res) => {
     try {
+        const questId = req.params.id;
+        const body = req.body;
+
+        if (body.currentChapter !== undefined) {
+            const today = getTodayStr();
+
+            let settings = await UserSettings.findOne({ userId: 'default' });
+            if (!settings) settings = await UserSettings.create({ userId: 'default' });
+
+            if (settings.lastReadDate !== today) {
+                const yesterday = new Date();
+                yesterday.setDate(yesterday.getDate() - 1);
+                const yesterdayStr = yesterday.toISOString().split('T')[0];
+
+                if (settings.lastReadDate === yesterdayStr) {
+                    settings.streak += 1;
+                } else {
+                    settings.streak = 1;
+                }
+                settings.lastReadDate = today;
+                await settings.save();
+            }
+
+            let daily = await DailyQuest.findOne({ date: today });
+            if (!daily) daily = await DailyQuest.create({ date: today });
+            if (!daily.absorbedIds.includes(questId)) {
+                daily.absorbedIds.push(questId);
+                await daily.save();
+            }
+        }
+
         const updatedQuest = await Quest.findByIdAndUpdate(
-            req.params.id,
-            { ...req.body, lastUpdated: new Date().toISOString() },
+            questId,
+            { ...body, lastRead: Date.now() },
             { new: true }
         );
         res.json(updatedQuest);
@@ -60,7 +182,7 @@ app.put('/api/quests/:id', async (req, res) => {
     }
 });
 
-// DELETE /api/quests/:id
+// DELETE /api/quests/:id - Delete a quest
 app.delete('/api/quests/:id', async (req, res) => {
     try {
         await Quest.findByIdAndDelete(req.params.id);
@@ -70,77 +192,5 @@ app.delete('/api/quests/:id', async (req, res) => {
     }
 });
 
-// ─────────────────────────────────────────
-// USER SETTINGS (single doc, userId=default)
-// ─────────────────────────────────────────
-
-// GET /api/settings
-app.get('/api/settings', async (req, res) => {
-    try {
-        let settings = await UserSettings.findOne({ userId: 'default' });
-        if (!settings) settings = await UserSettings.create({ userId: 'default' });
-        res.json(settings);
-    } catch (err) {
-        res.status(500).json({ message: err.message });
-    }
-});
-
-// PATCH /api/settings  { activeQuestId?, theme? }
-app.patch('/api/settings', async (req, res) => {
-    try {
-        const settings = await UserSettings.findOneAndUpdate(
-            { userId: 'default' },
-            { $set: req.body },
-            { new: true, upsert: true }
-        );
-        res.json(settings);
-    } catch (err) {
-        res.status(400).json({ message: err.message });
-    }
-});
-
-// ─────────────────────────────────────────
-// DAILY QUEST — ABSORB 5 STORIES
-// ─────────────────────────────────────────
-
-// GET /api/daily  — returns today's absorbed count
-app.get('/api/daily', async (req, res) => {
-    try {
-        const today = new Date().toISOString().slice(0, 10);
-        const doc = await DailyQuest.findOne({ date: today });
-        res.json({ date: today, count: doc ? doc.absorbedIds.length : 0, ids: doc ? doc.absorbedIds : [] });
-    } catch (err) {
-        res.status(500).json({ message: err.message });
-    }
-});
-
-// POST /api/daily/absorb  { questId: string }
-// Records a newly absorbed quest for today. Capped at 5. Ignores duplicates.
-app.post('/api/daily/absorb', async (req, res) => {
-    try {
-        const today = new Date().toISOString().slice(0, 10);
-        const { questId } = req.body;
-        if (!questId) return res.status(400).json({ message: 'questId required' });
-
-        let doc = await DailyQuest.findOne({ date: today });
-        if (!doc) doc = new DailyQuest({ date: today, absorbedIds: [] });
-
-        if (!doc.absorbedIds.includes(questId)) {
-            if (doc.absorbedIds.length < 5) {
-                doc.absorbedIds.push(questId);
-            }
-        }
-        await doc.save();
-        res.json({ date: today, count: doc.absorbedIds.length, ids: doc.absorbedIds });
-    } catch (err) {
-        res.status(400).json({ message: err.message });
-    }
-});
-
-// ─────────────────────────────────────────
 const PORT = process.env.PORT || 5000;
-if (process.env.NODE_ENV !== 'production') {
-    app.listen(PORT, () => console.log(`Backend Pulse Active on Port ${PORT}`));
-}
-
-module.exports = app;
+app.listen(PORT, () => console.log(`Backend Pulse Active on Port ${PORT}`));

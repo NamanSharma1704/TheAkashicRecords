@@ -13,10 +13,11 @@ interface DivineSpireProps {
     items: Quest[];
     onActivate: (id: string) => void;
     itemsPerFloor: number;
-    playerRank: { label: string; color: string;[key: string]: any };
+    playerRank: { name: string; color: string };
+    streak: number;
 }
 
-const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items, onActivate, itemsPerFloor, playerRank }) => {
+const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items, onActivate, itemsPerFloor, playerRank, streak }) => {
     // TOWER SYSTEM STATE
     const [viewMode, setViewMode] = useState<'TOWER' | 'FLOOR'>('TOWER'); // 'TOWER' | 'FLOOR'
     const [selectedFloorIndex, setSelectedFloorIndex] = useState(0);
@@ -74,7 +75,7 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
             {/* TOWER BACKGROUND LAYER (FULLSCREEN) */}
             {viewMode === 'TOWER' && (
                 <div className="absolute inset-0 z-0 animate-in fade-in duration-700">
-                    <TowerHUD items={items} theme={theme} onActivate={onActivate} isFocused={isFocused} selectedFloorIndex={selectedFloorIndex} itemsPerFloor={itemsPerFloor} />
+                    <TowerHUD items={items} theme={theme} onActivate={onActivate} isFocused={isFocused} selectedFloorIndex={selectedFloorIndex} itemsPerFloor={itemsPerFloor} streak={streak} />
                     <TowerStructure theme={theme} onSelectFloor={handleSelectFloor} onFocus={handleFocus} items={items} itemsPerFloor={itemsPerFloor} isPaused={false} />
                 </div>
             )}
@@ -118,10 +119,10 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
                             </div>
                         </div>
 
-                        <div className="flex-1 overflow-y-auto custom-scrollbar scroll-smooth px-8 md:px-12 pb-32">
+                        <div className="flex-1 overflow-y-auto custom-scrollbar scroll-smooth px-3 sm:px-6 md:px-12 pb-32">
                             {/* Show only selected floor OR all if searching */}
                             {search.length > 0 ? (
-                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-8">
+                                <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 sm:gap-6 md:gap-8">
                                     {filteredItems.map((item, index) => {
                                         const rawRank = items.find(v => v.id === item.id) ? { name: "E", color: "text-gray-400", border: "border-gray-500", bg: "bg-gray-500" } as Rank : {} as Rank;
                                         return <QuestCard key={item.id} id={`item-${item.id}`} item={item} onClick={onActivate} index={index} theme={theme} rankStyle={rawRank} />
@@ -137,7 +138,7 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
                                                 <button disabled={selectedFloorIndex >= floors.length - 1} onClick={() => setSelectedFloorIndex(i => i + 1)} className={`p-1 hover:${theme.highlightText} disabled:opacity-30`}><ChevronRight size={18} className="md:w-6 md:h-6" /></button>
                                             </div>
                                         </div>
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-8">
+                                        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 sm:gap-6 md:gap-8">
                                             {floors[selectedFloorIndex].items.map((item, index) => {
                                                 const rawRank = items.find(v => v.id === item.id) ? { name: "E", color: "text-gray-400", border: "border-gray-500", bg: "bg-gray-500" } as Rank : {} as Rank;
                                                 return <QuestCard key={item.id} id={`item-${item.id}`} item={item} onClick={onActivate} index={index} theme={theme} rankStyle={rawRank} />

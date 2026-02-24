@@ -14,7 +14,7 @@ interface HunterProfileProps {
     onClose: () => void;
     theme: Theme;
     items: Quest[];
-    playerRank: { label: string; color: string;[key: string]: any };
+    playerRank: { name: string; color: string };
     onImport?: (items: Quest[]) => void;
 }
 
@@ -45,12 +45,12 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
     const topSeries = useMemo(() => [...items].sort((a, b) => (b.currentChapter || 0) - (a.currentChapter || 0)).slice(0, 5), [items]);
 
     // Active series with completion % 
-    const activeSeries = useMemo(() => items.filter(i => i.status === 'ACTIVE' && (i.totalChapters ?? 0) > 0 && i.currentChapter <= (i.totalChapters ?? 0))
-        .map(i => ({ ...i, pct: Math.min(100, Math.round((i.currentChapter / (i.totalChapters ?? 1)) * 100)) }))
+    const activeSeries = useMemo(() => items.filter(i => i.status === 'ACTIVE' && i.totalChapters > 0 && i.currentChapter <= i.totalChapters)
+        .map(i => ({ ...i, pct: Math.min(100, Math.round((i.currentChapter / i.totalChapters) * 100)) }))
         .sort((a, b) => b.pct - a.pct).slice(0, 4), [items]);
 
     // Current rank index for rank history
-    const currentRankIdx = useMemo(() => USER_RANKS.findIndex((r: any) => r.label === playerRank.label), [playerRank]);
+    const currentRankIdx = useMemo(() => USER_RANKS.findIndex((r: any) => r.label === playerRank.name), [playerRank]);
 
     const exportToCSV = () => {
         const headers = ['Title', 'Current Ch', 'Max Ch', 'Link', 'Cover URL', 'Status', 'Class'];
@@ -106,8 +106,7 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                         coverUrl: clean(matches[4]),
                         status: clean(matches[5]),
                         classType: clean(matches[6] || 'PLAYER'),
-                        lastUpdated: new Date().toISOString()
-
+                        lastUpdated: Date.now()
                     });
                 }
 
@@ -161,8 +160,8 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                         {/* Identity */}
                         <div className="flex-1 relative z-10">
                             <div className={`text-[10px] font-mono ${theme.highlightText} tracking-[0.3em] uppercase mb-1`}>HUNTER DESIGNATION</div>
-                            <div className="text-4xl font-black italic tracking-wide mb-2">
-                                <span className={`text-transparent bg-clip-text bg-gradient-to-r ${theme.gradient}`}>{playerRank.label}</span>
+                            <div className="text-4xl font-black italic tracking-wide flex items-baseline gap-1 mb-2">
+                                <span className={`text-transparent bg-clip-text bg-gradient-to-r ${theme.gradient}`}>{playerRank.name}</span>
                             </div>
                             <div className={`flex flex-wrap gap-4 text-xs font-mono ${theme.mutedText}`}>
                                 <span>{totalManhwa} TITLES TRACKED</span>
@@ -177,7 +176,7 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                             <div className={`text-[9px] font-mono ${theme.mutedText} tracking-widest uppercase`}>OVERALL COMPLETION</div>
                             <div className={`text-3xl font-black italic ${theme.highlightText}`}>{overallPct}<span className="text-lg">%</span></div>
                             <div className={`w-32 h-1.5 ${theme.isDark ? 'bg-gray-800' : 'bg-gray-200'}`}>
-                                <div className={`h-full bg-gradient-to-r ${theme.gradient} progress-bloom transition-all duration-700`} style={{ width: `${Math.min(100, overallPct)}%`, color: theme.id === 'LIGHT' ? '#0ea5e9' : '#fbbf24' }} />
+                                <div className={`h-full bg-gradient-to-r ${theme.gradient} progress-bloom transition-all duration-700`} style={{ width: `${overallPct}%`, color: theme.id === 'LIGHT' ? '#0ea5e9' : '#fbbf24' }} />
                             </div>
                         </div>
                     </div>
@@ -214,8 +213,8 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                             {currentRankIdx < USER_RANKS.length - 1 && (
                                 <div className="mt-4">
                                     <div className={`flex justify-between text-[9px] font-mono ${theme.mutedText} mb-1.5`}>
-                                        <span>{USER_RANKS[currentRankIdx].label} — {totalManhwa} TITLES</span>
-                                        <span>NEXT: {USER_RANKS[currentRankIdx + 1].label} @ {USER_RANKS[currentRankIdx + 1].minTitles} TITLES</span>
+                                        <span>{USER_RANKS[currentRankIdx].label} — {totalManhwa.toLocaleString()} TITLES</span>
+                                        <span>NEXT: {USER_RANKS[currentRankIdx + 1].label} @ {USER_RANKS[currentRankIdx + 1].minTitles.toLocaleString()} TITLES</span>
                                     </div>
                                     <div className={`h-1.5 w-full ${theme.isDark ? 'bg-gray-800' : 'bg-gray-200'}`}>
                                         <div className={`h-full bg-gradient-to-r ${theme.gradient} progress-bloom transition-all duration-700`}
@@ -286,7 +285,7 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                                             <span className={`text-xs font-mono font-bold ${theme.highlightText}`}>{count}</span>
                                         </div>
                                         <div className={`h-1 w-full ${theme.isDark ? 'bg-gray-800' : 'bg-gray-200'}`}>
-                                            <div className={`h-full bg-gradient-to-r ${theme.gradient} progress-bloom`} style={{ width: `${Math.min(100, (count / totalManhwa) * 100)}%`, color: theme.id === 'LIGHT' ? '#0ea5e9' : '#fbbf24' }} />
+                                            <div className={`h-full bg-gradient-to-r ${theme.gradient} progress-bloom`} style={{ width: `${(count / totalManhwa) * 100}%`, color: theme.id === 'LIGHT' ? '#0ea5e9' : '#fbbf24' }} />
                                         </div>
                                     </div>
                                 ))}

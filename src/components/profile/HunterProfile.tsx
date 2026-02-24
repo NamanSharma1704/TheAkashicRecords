@@ -173,66 +173,48 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
             </div>
 
             {/* CONTENT - NON SCROLLABLE STRICT LAYOUT */}
-            <div className="relative z-10 flex-1 px-4 lg:px-8 py-4 lg:py-6 overflow-hidden max-w-[1600px] mx-auto w-full flex flex-col lg:flex-row gap-4 lg:gap-6">
+            <div className="relative z-10 flex-1 px-4 lg:px-8 py-4 lg:py-6 overflow-y-auto hide-scrollbar max-w-[1600px] mx-auto w-full flex flex-col gap-6">
 
-                {/* LEFT: HERO & ESSENTIAL STATS */}
-                <div className="w-full lg:w-[40%] xl:w-[35%] flex flex-col gap-3 lg:gap-4 shrink-0 min-h-0">
-
-                    {/* TOP HERO: RANK BADGE + IDENTITY */}
-                    <div className={`${theme.isDark ? 'bg-black/50' : 'bg-white/50'} backdrop-blur-md border ${theme.borderSubtle} p-4 flex items-center gap-4 relative overflow-hidden shrink-0`}>
-                        <div className={`absolute inset-0 bg-gradient-to-r ${theme.gradient} opacity-5`} />
-                        <EntityAvatar theme={theme} size={72} className="shrink-0 scale-90 lg:scale-100 origin-left" />
-                        <div className="flex-1 min-w-0 relative z-10">
-                            <div className={`text-[9px] font-mono ${theme.highlightText} tracking-[0.3em] uppercase mb-1`}>HUNTER DESIGNATION</div>
-                            <div className="text-xl lg:text-3xl font-black italic tracking-wide flex items-baseline gap-1 mb-1 truncate">
-                                <span className={`text-transparent bg-clip-text bg-gradient-to-r ${theme.gradient}`}>{playerRank.name}</span>
-                            </div>
-                            <div className={`flex flex-wrap gap-2 text-[9px] lg:text-[10px] font-mono ${theme.mutedText}`}>
-                                <span>{totalManhwa} TRACKED</span><span className="opacity-30">•</span><span>{conquered} CQ</span><span className="opacity-30">•</span><span>{totalChapters.toLocaleString()} CH</span>
-                            </div>
+                {/* TOP HERO: RANK BADGE + IDENTITY */}
+                <div className={`${theme.isDark ? 'bg-black/50' : 'bg-white/50'} backdrop-blur-md border ${theme.borderSubtle} p-4 lg:p-6 flex flex-col sm:flex-row items-center sm:items-start gap-4 lg:gap-8 relative overflow-hidden shrink-0`}>
+                    <div className={`absolute inset-0 bg-gradient-to-r ${theme.gradient} opacity-5`} />
+                    <EntityAvatar theme={theme} size={96} className="shrink-0 scale-90 lg:scale-100" />
+                    <div className="flex-1 min-w-0 relative z-10 text-center sm:text-left">
+                        <div className={`text-[10px] font-mono ${theme.highlightText} tracking-[0.3em] uppercase mb-1`}>HUNTER DESIGNATION</div>
+                        <div className="text-2xl lg:text-4xl font-black italic tracking-wide flex items-baseline gap-1 mb-2 justify-center sm:justify-start">
+                            <span className={`text-transparent bg-clip-text bg-gradient-to-r ${theme.gradient}`}>{playerRank.name}</span>
+                        </div>
+                        <div className={`flex flex-wrap items-center justify-center sm:justify-start gap-3 text-xs font-mono ${theme.mutedText}`}>
+                            <span>{totalManhwa} TRACKED</span><span className="opacity-30">•</span><span>{conquered} CQ</span><span className="opacity-30">•</span><span>{totalChapters.toLocaleString()} CH</span>
                         </div>
                     </div>
+                </div>
 
-                    {/* OVERALL PROGRESS */}
-                    <div className={`${theme.isDark ? 'bg-black/40' : 'bg-white/40'} border ${theme.borderSubtle} backdrop-blur-md p-3 shrink-0 flex items-center justify-between`}>
-                        <div className={`text-[9px] lg:text-[10px] font-mono ${theme.mutedText} tracking-widest uppercase`}>OVERALL SYNC</div>
-                        <div className="flex items-center gap-3 lg:gap-4 flex-1 justify-end ml-4">
-                            <div className={`h-1.5 flex-1 max-w-[150px] ${theme.isDark ? 'bg-gray-800' : 'bg-gray-200'} rounded-full overflow-hidden`}>
-                                <div className={`h-full bg-gradient-to-r ${theme.gradient} progress-bloom transition-all duration-700`} style={{ width: `${overallPct}%`, color: theme.id === 'LIGHT' ? '#0ea5e9' : '#fbbf24' }} />
-                            </div>
-                            <div className={`text-lg lg:text-xl font-black italic ${theme.highlightText} min-w-[3rem] text-right`}>{overallPct}<span className="text-sm">%</span></div>
-                        </div>
+                {/* DATA LIFECYCLE */}
+                <div className="w-full">
+                    <div className={`flex items-center gap-2 mb-3 ${theme.highlightText}`}>
+                        <Database size={13} />
+                        <span className="text-[10px] font-mono font-bold tracking-[0.3em] uppercase">Data Lifecycle</span>
                     </div>
-
-                    {/* STATS GRID */}
-                    <div className="grid grid-cols-2 gap-3 shrink-0">
-                        {[
-                            { label: 'TOTAL TITLES', value: totalManhwa, color: theme.headingText },
-                            { label: 'CONQUERED', value: conquered, color: theme.highlightText },
-                            { label: 'IN PROGRESS', value: active, color: theme.highlightText },
-                            { label: 'CH ABSORBED', value: totalChapters.toLocaleString(), color: theme.highlightText },
-                        ].map(stat => (
-                            <div key={stat.label} className={`border ${theme.borderSubtle} ${theme.isDark ? 'bg-black/40' : 'bg-white/40'} backdrop-blur-md p-3`}>
-                                <div className={`text-[8px] lg:text-[9px] font-mono ${theme.mutedText} uppercase tracking-widest mb-1`}>{stat.label}</div>
-                                <div className={`text-lg lg:text-xl font-black italic ${stat.color}`}>{stat.value}</div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <button onClick={exportToCSV} className={`flex items-center justify-center gap-3 p-4 border ${theme.borderSubtle} ${theme.isDark ? 'bg-black/40 hover:bg-white/5' : 'bg-white/40 hover:bg-black/5'} transition-all group cursor-pointer`}>
+                            <Download size={18} className={`${theme.highlightText} group-hover:scale-110 transition-transform`} />
+                            <div className="text-left">
+                                <div className={`text-[10px] font-mono ${theme.mutedText} uppercase tracking-widest`}>Export Protocol</div>
+                                <div className={`text-sm font-bold ${theme.headingText} font-orbitron`}>DOWNLOAD RECORDS</div>
                             </div>
-                        ))}
-                    </div>
-
-                    {/* DATA LIFECYCLE (Compact format pushed to bottom left) */}
-                    <div className="grid grid-cols-2 flex-1 gap-3 lg:mt-auto content-end min-h-0">
-                        <button onClick={exportToCSV} className={`flex items-center justify-center gap-2 p-3 lg:p-4 border ${theme.borderSubtle} ${theme.isDark ? 'bg-black/40 hover:bg-white/5' : 'bg-white/40 hover:bg-black/5'} transition-all group`}>
-                            <Download size={14} className={`${theme.highlightText}`} />
-                            <span className={`text-[9px] font-bold ${theme.headingText} font-orbitron tracking-widest`}>EXPORT</span>
                         </button>
-                        <label className={`flex items-center justify-center gap-2 p-3 lg:p-4 border ${theme.borderSubtle} ${theme.isDark ? 'bg-black/40 hover:bg-white/5' : 'bg-white/40 hover:bg-black/5'} transition-all group cursor-pointer`}>
+                        <label className={`flex items-center justify-center gap-3 p-4 border ${theme.borderSubtle} ${theme.isDark ? 'bg-black/40 hover:bg-white/5' : 'bg-white/40 hover:bg-black/5'} transition-all group cursor-pointer relative`}>
                             <input type="file" accept=".csv" onChange={async (e) => {
                                 const confirmed = await showNotification("RE-SYNCHRONIZE DATABASE?", "WARNING", true);
                                 if (confirmed) handleImport(e);
                                 else e.target.value = "";
                             }} className="hidden" />
-                            <Upload size={14} className={`${theme.highlightText}`} />
-                            <span className={`text-[9px] font-bold ${theme.headingText} font-orbitron tracking-widest`}>IMPORT</span>
+                            <Upload size={18} className={`${theme.highlightText} group-hover:scale-110 transition-transform`} />
+                            <div className="text-left">
+                                <div className={`text-[10px] font-mono ${theme.mutedText} uppercase tracking-widest`}>Import Protocol</div>
+                                <div className={`text-sm font-bold ${theme.headingText} font-orbitron`}>SYNCHRONIZE DATA</div>
+                            </div>
                         </label>
                         <button onClick={async () => {
                             const confirmed = await showNotification("INITIALIZE GLOBAL RE-CLASSIFICATION?", 'WARNING', true);
@@ -252,29 +234,58 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                                     showNotification(`CRITICAL_PROTOCOL_FAILURE`, 'ERROR');
                                 }
                             }
-                        }} className={`flex items-center justify-center gap-2 p-3 lg:p-4 border ${theme.borderSubtle} ${theme.isDark ? 'bg-amber-500/5 hover:bg-amber-500/10' : 'bg-sky-500/5 hover:bg-sky-500/10'} transition-all group col-span-2`}>
-                            <RefreshCw size={14} className={`${theme.highlightText} group-hover:rotate-180 transition-transform duration-700`} />
-                            <span className={`text-[9px] font-bold ${theme.highlightText} font-orbitron tracking-widest`}>SYSTEM RE-CALIBRATE</span>
+                        }} className={`flex items-center justify-center gap-3 p-4 border ${theme.borderSubtle} ${theme.isDark ? 'bg-amber-500/5 hover:bg-amber-500/10' : 'bg-sky-500/5 hover:bg-sky-500/10'} transition-all group md:col-span-2 lg:col-span-1`}>
+                            <RefreshCw size={18} className={`${theme.highlightText} group-hover:rotate-180 transition-transform duration-700`} />
+                            <div className="text-left">
+                                <div className={`text-[10px] font-mono ${theme.mutedText} uppercase tracking-widest`}>System Reset</div>
+                                <div className={`text-sm font-bold ${theme.highlightText} font-orbitron`}>RE-CALIBRATE</div>
+                            </div>
                         </button>
                     </div>
                 </div>
 
-                {/* RIGHT: RANKS & DEMOGRAPHICS */}
-                <div className="flex-1 flex flex-col gap-3 lg:gap-4 min-w-0 overflow-y-auto hide-scrollbar lg:overflow-hidden h-full">
+                {/* OVERALL PROGRESS & STATS */}
+                <div className="flex flex-col xl:flex-row gap-6">
+                    <div className="flex-1 flex flex-col gap-4">
+                        <div className={`${theme.isDark ? 'bg-black/40' : 'bg-white/40'} border ${theme.borderSubtle} backdrop-blur-md p-4 shrink-0 flex items-center justify-between`}>
+                            <div className={`text-xs font-mono ${theme.mutedText} tracking-widest uppercase`}>OVERALL SYNC</div>
+                            <div className="flex items-center gap-4 flex-1 justify-end ml-4">
+                                <div className={`h-2 flex-1 max-w-[300px] ${theme.isDark ? 'bg-gray-800' : 'bg-gray-200'} rounded-full overflow-hidden`}>
+                                    <div className={`h-full bg-gradient-to-r ${theme.gradient} progress-bloom transition-all duration-700`} style={{ width: `${overallPct}%`, color: theme.id === 'LIGHT' ? '#0ea5e9' : '#fbbf24' }} />
+                                </div>
+                                <div className={`text-2xl font-black italic ${theme.highlightText} min-w-[4rem] text-right`}>{overallPct}<span className="text-sm">%</span></div>
+                            </div>
+                        </div>
+
+                        {/* STATS GRID */}
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                            {[
+                                { label: 'TOTAL TITLES', value: totalManhwa, color: theme.headingText },
+                                { label: 'CONQUERED', value: conquered, color: theme.highlightText },
+                                { label: 'IN PROGRESS', value: active, color: theme.highlightText },
+                                { label: 'CH ABSORBED', value: totalChapters.toLocaleString(), color: theme.highlightText },
+                            ].map(stat => (
+                                <div key={stat.label} className={`border ${theme.borderSubtle} ${theme.isDark ? 'bg-black/40' : 'bg-white/40'} backdrop-blur-md p-4`}>
+                                    <div className={`text-[9px] font-mono ${theme.mutedText} uppercase tracking-widest mb-2`}>{stat.label}</div>
+                                    <div className={`text-2xl font-black italic ${stat.color}`}>{stat.value}</div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
 
                     {/* RANK HISTORY */}
-                    <div className={`border ${theme.borderSubtle} ${theme.isDark ? 'bg-black/40' : 'bg-white/40'} backdrop-blur-md p-4 shrink-0`}>
-                        <div className={`flex items-center gap-2 mb-3 ${theme.highlightText}`}>
-                            <Crown size={12} />
-                            <span className="text-[9px] lg:text-[10px] font-mono font-bold tracking-[0.3em] uppercase">Rank History</span>
+                    <div className={`border ${theme.borderSubtle} ${theme.isDark ? 'bg-black/40' : 'bg-white/40'} backdrop-blur-md p-4 w-full xl:w-[400px] shrink-0 xl:mt-auto`}>
+                        <div className={`flex items-center gap-2 mb-4 ${theme.highlightText}`}>
+                            <Crown size={14} />
+                            <span className="text-xs font-mono font-bold tracking-[0.3em] uppercase">Rank History</span>
                         </div>
-                        <div className="flex items-center gap-1 flex-wrap">
+                        <div className="flex items-center gap-1.5 flex-wrap">
                             {USER_RANKS.map((rank: any, idx: number) => {
                                 const isReached = idx <= currentRankIdx;
                                 const isCurrent = idx === currentRankIdx;
                                 return (
-                                    <div key={rank.label} className="flex items-center gap-1">
-                                        <div className={`px-2 py-1 font-mono text-[8.5px] lg:text-[10px] font-bold tracking-wider transition-all border ${isCurrent
+                                    <div key={rank.label} className="flex items-center gap-1.5 mb-1.5">
+                                        <div className={`px-2 py-1 font-mono text-xs font-bold tracking-wider transition-all border ${isCurrent
                                             ? `${theme.border} ${theme.highlightText} ${theme.isDark ? 'bg-amber-500/10' : 'bg-sky-500/10'} shadow-lg`
                                             : isReached
                                                 ? `${theme.border} ${theme.highlightText} ${theme.isDark ? 'bg-white/5' : 'bg-black/5'}`
@@ -283,88 +294,89 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                                             {rank.label}
                                         </div>
                                         {idx < USER_RANKS.length - 1 && (
-                                            <ChevronRight size={10} className={isReached && idx < currentRankIdx ? theme.highlightText : theme.mutedText + ' opacity-20'} />
+                                            <ChevronRight size={12} className={isReached && idx < currentRankIdx ? theme.highlightText : theme.mutedText + ' opacity-20'} />
                                         )}
                                     </div>
                                 );
                             })}
                         </div>
                         {currentRankIdx < USER_RANKS.length - 1 && (
-                            <div className="mt-3">
-                                <div className={`flex justify-between text-[8px] lg:text-[9px] font-mono ${theme.mutedText} mb-1.5`}>
+                            <div className="mt-4">
+                                <div className={`flex justify-between text-xs font-mono ${theme.mutedText} mb-2`}>
                                     <span>{USER_RANKS[currentRankIdx].label} — {totalManhwa.toLocaleString()} TITLES</span>
                                     <span>NEXT: {USER_RANKS[currentRankIdx + 1].label} @ {USER_RANKS[currentRankIdx + 1].minTitles.toLocaleString()}</span>
                                 </div>
-                                <div className={`h-1 w-full ${theme.isDark ? 'bg-gray-800' : 'bg-gray-200'}`}>
-                                    <div className={`h-full bg-gradient-to-r ${theme.gradient} progress-bloom transition-all duration-700`}
+                                <div className={`h-1.5 w-full ${theme.isDark ? 'bg-gray-800' : 'bg-gray-200'} rounded-full`}>
+                                    <div className={`h-full rounded-full bg-gradient-to-r ${theme.gradient} progress-bloom transition-all duration-700`}
                                         style={{ width: `${Math.min(100, ((totalManhwa - USER_RANKS[currentRankIdx].minTitles) / (USER_RANKS[currentRankIdx + 1].minTitles - USER_RANKS[currentRankIdx].minTitles)) * 100)}%`, color: theme.id === 'LIGHT' ? '#0ea5e9' : '#fbbf24' }} />
                                 </div>
                             </div>
                         )}
                     </div>
+                </div>
 
-                    {/* BOTTOM GRID (Classes, Top, Active) */}
-                    <div className="flex-1 overflow-hidden grid grid-cols-1 md:grid-cols-3 gap-3 lg:gap-4 min-h-0">
-                        {/* CLASSES */}
-                        <div className="flex flex-col min-h-0 overflow-hidden">
-                            <div className={`flex items-center gap-2 mb-2 shrink-0 ${theme.highlightText}`}>
-                                <Database size={12} />
-                                <span className="text-[9px] font-mono font-bold tracking-[0.3em] uppercase truncate">Distribution</span>
-                            </div>
-                            <div className={`flex-1 overflow-y-auto hide-scrollbar border ${theme.borderSubtle} ${theme.isDark ? 'bg-black/40' : 'bg-white/40'} backdrop-blur-md p-4 flex flex-col gap-3 lg:gap-4`}>
-                                {classEntries.slice(0, 5).map(([cls, count]) => (
-                                    <div key={cls}>
-                                        <div className="flex justify-between mb-1">
-                                            <span className={`text-[10px] font-mono font-bold ${theme.headingText} uppercase`}>{cls}</span>
-                                            <span className={`text-[10px] font-mono font-bold ${theme.highlightText}`}>{count}</span>
-                                        </div>
-                                        <div className={`h-1 w-full ${theme.isDark ? 'bg-gray-800' : 'bg-gray-200'}`}>
-                                            <div className={`h-full bg-gradient-to-r ${theme.gradient} progress-bloom`} style={{ width: `${(count / totalManhwa) * 100}%`, color: theme.id === 'LIGHT' ? '#0ea5e9' : '#fbbf24' }} />
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
+                {/* BOTTOM ROW: CLASS DISTRIBUTION + TOP SERIES + ACTIVE PROGRESS */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+                    {/* CLASS DISTRIBUTION */}
+                    <div className="flex flex-col">
+                        <div className={`flex items-center gap-2 mb-2 ${theme.highlightText}`}>
+                            <Database size={13} />
+                            <span className="text-[10px] font-mono font-bold tracking-[0.3em] uppercase">Class Distribution</span>
                         </div>
-
-                        {/* TOP SERIES */}
-                        <div className="flex flex-col min-h-0 overflow-hidden">
-                            <div className={`flex items-center gap-2 mb-2 shrink-0 ${theme.highlightText}`}>
-                                <Layers size={12} />
-                                <span className="text-[9px] font-mono font-bold tracking-[0.3em] uppercase truncate">Top Series</span>
-                            </div>
-                            <div className={`flex-1 overflow-y-auto hide-scrollbar border ${theme.borderSubtle} ${theme.isDark ? 'bg-black/40' : 'bg-white/40'} backdrop-blur-md p-4 flex flex-col gap-3 lg:gap-4`}>
-                                {topSeries.map((item, i) => (
-                                    <div key={item.id} className="flex items-center gap-3">
-                                        <span className={`text-xs font-black font-mono ${i === 0 ? theme.highlightText : theme.mutedText}`}>#{i + 1}</span>
-                                        <div className="flex-1 min-w-0">
-                                            <div className={`text-[10px] font-bold truncate ${theme.headingText}`}>{item.title}</div>
-                                            <div className={`text-[9px] font-mono ${theme.highlightText}`}>{item.currentChapter.toLocaleString()} CH</div>
-                                        </div>
+                        <div className={`border ${theme.borderSubtle} ${theme.isDark ? 'bg-black/40' : 'bg-white/40'} backdrop-blur-md p-4 flex flex-col gap-4 flex-1`}>
+                            {classEntries.slice(0, 5).map(([cls, count]) => (
+                                <div key={cls}>
+                                    <div className="flex justify-between mb-1.5">
+                                        <span className={`text-xs font-mono font-bold ${theme.headingText} uppercase`}>{cls}</span>
+                                        <span className={`text-xs font-mono font-bold ${theme.highlightText}`}>{count}</span>
                                     </div>
-                                ))}
-                            </div>
+                                    <div className={`h-1.5 rounded-full w-full ${theme.isDark ? 'bg-gray-800' : 'bg-gray-200'}`}>
+                                        <div className={`h-full rounded-full bg-gradient-to-r ${theme.gradient} progress-bloom`} style={{ width: `${(count / totalManhwa) * 100}%`, color: theme.id === 'LIGHT' ? '#0ea5e9' : '#fbbf24' }} />
+                                    </div>
+                                </div>
+                            ))}
                         </div>
+                    </div>
 
-                        {/* ACTIVE P */}
-                        <div className="flex flex-col min-h-0 overflow-hidden">
-                            <div className={`flex items-center gap-2 mb-2 shrink-0 ${theme.highlightText}`}>
-                                <Target size={12} />
-                                <span className="text-[9px] font-mono font-bold tracking-[0.3em] uppercase truncate">Active Prog</span>
-                            </div>
-                            <div className={`flex-1 overflow-y-auto hide-scrollbar border ${theme.borderSubtle} ${theme.isDark ? 'bg-black/40' : 'bg-white/40'} backdrop-blur-md p-4 flex flex-col gap-3 lg:gap-4`}>
-                                {activeSeries.length === 0 && <div className={`text-[10px] font-mono ${theme.mutedText}`}>NO ACTIVE SERIES</div>}
-                                {activeSeries.map(item => (
-                                    <div key={item.id}>
-                                        <div className="flex justify-between mb-1">
-                                            <span className={`text-[10px] font-bold ${theme.headingText} truncate max-w-[100px] lg:max-w-[120px]`}>{item.title}</span>
-                                            <span className={`text-[10px] font-mono font-bold ${item.pct >= 50 ? theme.highlightText : theme.mutedText}`}>{item.pct}%</span>
-                                        </div>
-                                        <div className={`h-1 w-full ${theme.isDark ? 'bg-gray-800' : 'bg-gray-200'}`}>
-                                            <div className={`h-full transition-all duration-700 bg-gradient-to-r ${theme.gradient} progress-bloom`} style={{ width: `${item.pct}%`, color: theme.id === 'LIGHT' ? '#0ea5e9' : '#fbbf24' }} />
-                                        </div>
+                    {/* TOP SERIES */}
+                    <div className="flex flex-col">
+                        <div className={`flex items-center gap-2 mb-2 ${theme.highlightText}`}>
+                            <Layers size={13} />
+                            <span className="text-[10px] font-mono font-bold tracking-[0.3em] uppercase">Top Series</span>
+                        </div>
+                        <div className={`border ${theme.borderSubtle} ${theme.isDark ? 'bg-black/40' : 'bg-white/40'} backdrop-blur-md p-4 flex flex-col gap-4 flex-1`}>
+                            {topSeries.map((item, i) => (
+                                <div key={item.id} className="flex items-center gap-4">
+                                    <span className={`text-sm font-black font-mono ${i === 0 ? theme.highlightText : theme.mutedText}`}>#{i + 1}</span>
+                                    <div className="flex-1 min-w-0">
+                                        <div className={`text-xs font-bold truncate ${theme.headingText}`}>{item.title}</div>
+                                        <div className={`text-[10px] font-mono mt-0.5 ${theme.highlightText}`}>{item.currentChapter.toLocaleString()} CH</div>
                                     </div>
-                                ))}
-                            </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* ACTIVE P */}
+                    <div className="flex flex-col">
+                        <div className={`flex items-center gap-2 mb-2 ${theme.highlightText}`}>
+                            <Target size={13} />
+                            <span className="text-[10px] font-mono font-bold tracking-[0.3em] uppercase">Active Prog</span>
+                        </div>
+                        <div className={`border ${theme.borderSubtle} ${theme.isDark ? 'bg-black/40' : 'bg-white/40'} backdrop-blur-md p-4 flex flex-col gap-4 flex-1`}>
+                            {activeSeries.length === 0 && <div className={`text-xs font-mono ${theme.mutedText}`}>NO ACTIVE SERIES</div>}
+                            {activeSeries.map(item => (
+                                <div key={item.id}>
+                                    <div className="flex justify-between mb-1.5">
+                                        <span className={`text-xs font-bold ${theme.headingText} truncate max-w-[150px]`}>{item.title}</span>
+                                        <span className={`text-[10px] font-mono font-bold ${item.pct >= 50 ? theme.highlightText : theme.mutedText}`}>{item.pct}%</span>
+                                    </div>
+                                    <div className={`h-1.5 rounded-full w-full ${theme.isDark ? 'bg-gray-800' : 'bg-gray-200'}`}>
+                                        <div className={`h-full rounded-full transition-all duration-700 bg-gradient-to-r ${theme.gradient} progress-bloom`} style={{ width: `${item.pct}%`, color: theme.id === 'LIGHT' ? '#0ea5e9' : '#fbbf24' }} />
+                                    </div>
+                                </div>
+                            ))}
                         </div>
                     </div>
                 </div>

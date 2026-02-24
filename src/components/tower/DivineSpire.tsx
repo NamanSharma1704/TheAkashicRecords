@@ -150,9 +150,9 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
 
                             {/* HUD HEADER: Floor / Sector info (Hidden when searching) */}
                             {!search && floors.length > 0 && floors[selectedFloorIndex] && (
-                                <div className="absolute top-4 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center pointer-events-none drop-shadow-2xl">
-                                    <div className={`font-mono text-[10px] tracking-[0.4em] ${theme.highlightText} font-bold uppercase mb-1 opacity-80`}>SYSTEM.SECTOR_INTERFACE</div>
-                                    <div className="flex items-center gap-4 px-6 py-2 rounded-full border border-white/10 bg-black/40 backdrop-blur-md">
+                                <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[60] flex flex-col items-center drop-shadow-2xl">
+                                    <div className={`font-mono text-[10px] tracking-[0.4em] ${theme.highlightText} font-bold uppercase mb-1 opacity-80 pointer-events-none`}>SYSTEM.SECTOR_INTERFACE</div>
+                                    <div className="flex items-center gap-4 px-6 py-2 rounded-full border border-white/10 bg-black/40 backdrop-blur-md pointer-events-auto">
                                         <button disabled={selectedFloorIndex <= 0} onClick={() => setSelectedFloorIndex(i => i - 1)} className={`${theme.mutedText} hover:${theme.highlightText} disabled:opacity-30 transition-colors`}><ChevronLeft size={16} /></button>
                                         <span className={`font-black text-2xl font-orbitron tracking-widest ${theme.headingText}`}>LAYER {selectedFloorIndex + 1}</span>
                                         <div className="w-1.5 h-1.5 rounded-full bg-white/30" />
@@ -182,7 +182,7 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
 
                             {/* THE CAROUSEL */}
                             {search.length > 0 ? (
-                                <div ref={carouselRef} className="absolute inset-0 flex items-center overflow-x-auto hide-scrollbar snap-x snap-mandatory px-[15vw] md:px-[30vw] py-12 gap-8 md:gap-16">
+                                <div ref={carouselRef} className="absolute inset-0 flex items-center overflow-x-auto hide-scrollbar snap-x snap-mandatory px-4 md:px-16 py-12 gap-6 md:gap-10">
                                     {filteredItems.length === 0 ? (
                                         <div className="w-full flex-1 flex flex-col items-center justify-center translate-y-[-10vh]">
                                             <AlertCircle size={48} className={`${theme.mutedText} mb-4 opacity-50`} />
@@ -192,7 +192,7 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
                                         filteredItems.map((item, index) => {
                                             const rawRank = getQuestRankObj(items.find(v => v.id === item.id) || item);
                                             return (
-                                                <div key={item.id} className="w-[280px] md:w-[350px] lg:w-[400px] shrink-0 snap-center transition-all duration-700 hover:-translate-y-8 hover:scale-105 group relative pb-16">
+                                                <div key={item.id} className="w-[240px] md:w-[280px] lg:w-[320px] shrink-0 snap-center transition-all duration-700 hover:-translate-y-8 hover:scale-105 group relative pb-16">
                                                     {/* Floor Reflection Glow */}
                                                     <div className={`absolute -bottom-8 left-1/2 -translate-x-1/2 w-3/4 h-8 bg-gradient-to-t from-${theme.primary}-500/40 to-transparent blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-700`} />
                                                     {/* Backdrop Ambient Lighting */}
@@ -206,11 +206,11 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
                                 </div>
                             ) : (
                                 floors.length > 0 && floors[selectedFloorIndex] ? (
-                                    <div ref={carouselRef} className="absolute inset-0 flex items-center overflow-x-auto hide-scrollbar snap-x snap-mandatory px-[15vw] md:px-[30vw] py-12 gap-8 md:gap-16">
+                                    <div ref={carouselRef} className="absolute inset-0 flex items-center overflow-x-auto hide-scrollbar snap-x snap-mandatory px-4 md:px-16 py-12 gap-6 md:gap-10">
                                         {floors[selectedFloorIndex].items.map((item, index) => {
                                             const rawRank = getQuestRankObj(items.find(v => v.id === item.id) || item);
                                             return (
-                                                <div key={item.id} className="w-[280px] md:w-[350px] lg:w-[400px] shrink-0 snap-center transition-all duration-700 hover:-translate-y-8 hover:scale-[1.03] group relative pb-16">
+                                                <div key={item.id} className="w-[240px] md:w-[280px] lg:w-[320px] shrink-0 snap-center transition-all duration-700 hover:-translate-y-8 hover:scale-[1.03] group relative pb-16">
                                                     {/* Floor Reflection Glow */}
                                                     <div className={`absolute -bottom-8 left-1/2 -translate-x-1/2 w-3/4 h-8 bg-gradient-to-t ${theme.id === 'LIGHT' ? 'from-sky-500/40' : 'from-amber-500/40'} to-transparent blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-all duration-700`} />
                                                     {/* Backdrop Ambient Lighting */}

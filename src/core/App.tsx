@@ -75,6 +75,7 @@ const App: React.FC = () => {
             if (res.ok && Array.isArray(data)) {
                 // Map MongoDB _id to frontend id for compatibility
                 const mappedData = data.map((q: any) => ({ ...q, id: q._id }));
+                console.log(`[Frontend] Successfully fetched ${mappedData.length} quests.`);
                 setLibrary(mappedData);
 
                 if (!activeId && mappedData.length > 0) {
@@ -82,6 +83,7 @@ const App: React.FC = () => {
                     setActiveId(top ? top.id : (mappedData[0]?.id || null));
                 }
             } else {
+                console.error("[Frontend] API returned non-array data or error status:", data);
                 throw new Error((data && data.message) || 'Invalid API response');
             }
         } catch (e) {

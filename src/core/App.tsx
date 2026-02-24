@@ -256,10 +256,32 @@ const App: React.FC = () => {
     };
     const toggleTheme = () => { const newTheme = currentTheme === 'LIGHT' ? 'DARK' : 'LIGHT'; setCurrentTheme(newTheme); };
 
-    if (booting) return <BootScreen onComplete={() => setBooting(false)} theme={theme} />;
-
+    if (booting) return (
+        <>
+            <BootScreen onComplete={() => setBooting(false)} theme={theme} />
+            <button
+                onClick={() => setBooting(false)}
+                className="fixed bottom-4 right-4 z-[9999] px-4 py-2 bg-white/10 text-white font-mono text-[10px] border border-white/20 hover:bg-white/20 transition-all cursor-pointer"
+            >
+                FORCE_BYPASS_BOOT
+            </button>
+        </>
+    );
     return (
         <div className={`min-h-screen ${theme.appBg} ${theme.baseText} font-sans selection:bg-amber-500/30 overflow-hidden relative flex flex-col transition-colors duration-700 ease-in-out`}>
+            {/* --- VISUAL DEBUG HUD (Production Diagnostic) --- */}
+            <div className="fixed top-20 left-4 z-[9999] pointer-events-none flex flex-col gap-1">
+                <div className="bg-red-600 text-white px-2 py-0.5 text-[8px] font-bold shadow-lg">
+                    DEBUG_MODE: ACTIVE
+                </div>
+                <div className="bg-black/80 text-white px-2 py-0.5 text-[8px] font-mono border border-white/20">
+                    LIB_COUNT: {library.length} | ACTIVE: {activeQuest.id}
+                </div>
+                <div className="bg-black/80 text-white px-2 py-0.5 text-[8px] font-mono border border-white/20">
+                    THEME: {currentTheme} | SB_SIDEBAR: {activeQuests.length}
+                </div>
+            </div>
+
             <BackgroundController theme={theme} isPaused={isModalOpen || isReducedMotion} isMobile={isMobile} />
             <div className="absolute inset-0 pointer-events-none z-0 bg-[radial-gradient(circle,transparent_50%,rgba(0,0,0,0.4)_100%)] opacity-50" />
 

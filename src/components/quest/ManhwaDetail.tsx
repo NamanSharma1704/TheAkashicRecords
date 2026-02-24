@@ -68,9 +68,9 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
     useEffect(() => {
         if (quest) {
             setEditTitle(quest.title);
-            setEditSynopsis(quest.synopsis || media?.description || "");
-            setEditTotalCh(quest.totalChapters);
-            setEditCurrentCh(quest.currentChapter);
+            setEditSynopsis(quest.synopsis || ""); // Strictly from DB or empty
+            setEditTotalCh(quest.totalChapters || 0); // Strictly from DB
+            setEditCurrentCh(quest.currentChapter || 0);
         }
     }, [quest, isEditing]);
 
@@ -349,8 +349,14 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
 
                                                 {isEditing ? (
                                                     <div className="flex justify-between items-end mb-2">
-                                                        <input type="number" value={editCurrentCh} onChange={e => setEditCurrentCh(Number(e.target.value))} className={`w-20 bg-transparent border-b border-gray-500/50 outline-none text-2xl font-black ${theme.highlightText} tabular-nums text-left`} />
-                                                        <input type="number" value={editTotalCh} onChange={e => setEditTotalCh(Number(e.target.value))} className={`w-20 bg-transparent border-b border-gray-500/50 outline-none text-xl font-bold ${theme.highlightText} tabular-nums text-right`} />
+                                                        <div className="flex flex-col">
+                                                            <div className={`text-[8px] uppercase tracking-widest ${theme.mutedText} pb-1`}>CURRENT</div>
+                                                            <input type="number" value={editCurrentCh} onChange={e => setEditCurrentCh(Number(e.target.value))} className={`w-24 bg-transparent border-b border-gray-500/50 outline-none text-2xl font-black ${theme.highlightText} tabular-nums text-left`} />
+                                                        </div>
+                                                        <div className="flex flex-col items-end">
+                                                            <div className={`text-[8px] uppercase tracking-widest ${theme.mutedText} pb-1`}>TOTAL</div>
+                                                            <input type="number" value={editTotalCh} onChange={e => setEditTotalCh(Number(e.target.value))} className={`w-24 bg-transparent border-b border-gray-500/50 outline-none text-xl font-bold ${theme.highlightText} tabular-nums text-right`} />
+                                                        </div>
                                                     </div>
                                                 ) : (
                                                     <div className="flex justify-between items-end mb-1">
@@ -359,7 +365,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                                         </div>
                                                         <div className={`text-sm md:text-base font-bold ${theme.isDark ? 'text-amber-400' : 'text-cyan-500'} tabular-nums opacity-80 leading-none`}>
                                                             <div className={`text-[8px] uppercase tracking-widest ${theme.mutedText} pb-1 flex justify-end`}>TOTAL</div>
-                                                            {quest.totalChapters > 0 ? quest.totalChapters : '??'}
+                                                            {quest.totalChapters > 0 ? quest.totalChapters : '0'}
                                                         </div>
                                                     </div>
                                                 )}
@@ -431,7 +437,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                     ) : (
                                         <div
                                             className={`text-sm md:text-base leading-relaxed ${theme.baseText} font-sans`}
-                                            dangerouslySetInnerHTML={{ __html: quest.synopsis || media.description || "No synopsis available." }}
+                                            dangerouslySetInnerHTML={{ __html: quest.synopsis || "No synopsis available." }}
                                         />
                                     )}
                                 </div>

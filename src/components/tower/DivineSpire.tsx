@@ -123,27 +123,49 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
                         <div className="flex-1 overflow-y-auto custom-scrollbar scroll-smooth px-3 sm:px-6 md:px-12 pb-32">
                             {/* Show only selected floor OR all if searching */}
                             {search.length > 0 ? (
-                                <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 sm:gap-6 md:gap-8">
-                                    {filteredItems.map((item, index) => {
-                                        const rawRank = getQuestRankObj(items.find(v => v.id === item.id) || item);
-                                        return <QuestCard key={item.id} id={`item-${item.id}`} item={item} onClick={onActivate} index={index} theme={theme} rankStyle={rawRank} />
-                                    })}
+                                <div className="animate-in fade-in duration-500">
+                                    <div className={`relative p-4 md:p-6 border ${theme.isDark ? 'border-white/5 bg-black/20' : 'border-black/5 bg-white/20'} rounded-xl backdrop-blur-sm`}>
+                                        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 sm:gap-6 md:gap-8 relative z-10">
+                                            {filteredItems.map((item, index) => {
+                                                const rawRank = getQuestRankObj(items.find(v => v.id === item.id) || item);
+                                                return <QuestCard key={item.id} id={`item-${item.id}`} item={item} onClick={onActivate} index={index} theme={theme} rankStyle={rawRank} />
+                                            })}
+                                        </div>
+                                    </div>
                                 </div>
                             ) : (
                                 floors.length > 0 && floors[selectedFloorIndex] ? (
                                     <div className="animate-in fade-in duration-500">
-                                        <div className={`sticky top-0 z-20 ${theme.isDark ? 'bg-black/95' : 'bg-[#fdfbf7]/95'} backdrop-blur-md border-y ${theme.borderSubtle} py-2 px-4 mb-4 md:mb-8 flex items-center justify-between shadow-sm transition-colors duration-700`}>
-                                            <div className="flex items-center gap-2 md:gap-4"><Layers size={14} className={`${theme.highlightText} md:w-[16px] md:h-[16px] transition-colors duration-700`} /><span className={`font-black text-sm md:text-xl italic ${theme.headingText} transition-colors duration-700`}>LAYER {selectedFloorIndex + 1}</span><span className={`font-mono text-[9px] md:text-xs ${theme.highlightText} border ${theme.borderSubtle} px-1.5 md:px-2 py-0.5 rounded transition-colors duration-700 whitespace-nowrap`}>SECTOR {floors[selectedFloorIndex].range}</span></div>
-                                            <div className="flex gap-1 md:gap-2">
-                                                <button disabled={selectedFloorIndex <= 0} onClick={() => setSelectedFloorIndex(i => i - 1)} className={`p-1 hover:${theme.highlightText} disabled:opacity-30`}><ChevronLeft size={18} className="md:w-6 md:h-6" /></button>
-                                                <button disabled={selectedFloorIndex >= floors.length - 1} onClick={() => setSelectedFloorIndex(i => i + 1)} className={`p-1 hover:${theme.highlightText} disabled:opacity-30`}><ChevronRight size={18} className="md:w-6 md:h-6" /></button>
+                                        <div className={`sticky top-0 z-20 ${theme.isDark ? 'bg-[#020202]/95 border-white/10' : 'bg-[#f8f5f2]/95 border-black/10'} backdrop-blur-xl border-y py-3 px-4 md:px-6 mb-8 flex items-center justify-between shadow-[0_10px_30px_rgba(0,0,0,0.5)] transition-all duration-700`}>
+                                            <div className="flex items-center gap-3 md:gap-4">
+                                                <div className={`hidden md:block w-1 h-8 ${theme.id === 'LIGHT' ? 'bg-sky-500' : 'bg-amber-500'} shadow-[0_0_10px_currentColor] animate-pulse`} />
+                                                <div className="flex flex-col">
+                                                    <span className={`font-mono text-[8px] md:text-[10px] tracking-[0.3em] ${theme.mutedText} font-bold uppercase`}>SYSTEM.SECTOR_INTERFACE</span>
+                                                    <div className="flex items-baseline gap-2 md:gap-3">
+                                                        <span className={`font-black text-lg md:text-2xl font-orbitron tracking-wider ${theme.headingText}`}>LAYER {selectedFloorIndex + 1}</span>
+                                                        <span className={`font-mono text-[9px] md:text-xs ${theme.highlightText} border ${theme.borderSubtle} bg-black/20 px-1.5 py-0.5 rounded tracking-widest`}>SECTOR {floors[selectedFloorIndex].range}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div className="flex gap-2">
+                                                <button disabled={selectedFloorIndex <= 0} onClick={() => setSelectedFloorIndex(i => i - 1)} className={`p-1.5 md:p-2 border ${theme.borderSubtle} ${theme.isDark ? 'hover:bg-white/10' : 'hover:bg-black/10'} disabled:opacity-30 transition-all`}><ChevronLeft size={18} className="md:w-5 md:h-5" /></button>
+                                                <button disabled={selectedFloorIndex >= floors.length - 1} onClick={() => setSelectedFloorIndex(i => i + 1)} className={`p-1.5 md:p-2 border ${theme.borderSubtle} ${theme.isDark ? 'hover:bg-white/10' : 'hover:bg-black/10'} disabled:opacity-30 transition-all`}><ChevronRight size={18} className="md:w-5 md:h-5" /></button>
                                             </div>
                                         </div>
-                                        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 sm:gap-6 md:gap-8">
-                                            {floors[selectedFloorIndex].items.map((item, index) => {
-                                                const rawRank = getQuestRankObj(items.find(v => v.id === item.id) || item);
-                                                return <QuestCard key={item.id} id={`item-${item.id}`} item={item} onClick={onActivate} index={index} theme={theme} rankStyle={rawRank} />
-                                            })}
+
+                                        <div className={`relative p-4 md:p-6 border ${theme.isDark ? 'border-white/5 bg-black/20' : 'border-black/5 bg-white/20'} rounded-xl backdrop-blur-sm`}>
+                                            <div className={`absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 ${theme.borderSubtle} rounded-tl-lg`} />
+                                            <div className={`absolute top-0 right-0 w-4 h-4 border-t-2 border-r-2 ${theme.borderSubtle} rounded-tr-lg`} />
+                                            <div className={`absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 ${theme.borderSubtle} rounded-bl-lg`} />
+                                            <div className={`absolute bottom-0 right-0 w-4 h-4 border-b-2 border-r-2 ${theme.borderSubtle} rounded-br-lg`} />
+
+                                            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 sm:gap-6 md:gap-8 relative z-10">
+                                                {floors[selectedFloorIndex].items.map((item, index) => {
+                                                    const rawRank = getQuestRankObj(items.find(v => v.id === item.id) || item);
+                                                    return <QuestCard key={item.id} id={`item-${item.id}`} item={item} onClick={onActivate} index={index} theme={theme} rankStyle={rawRank} />
+                                                })}
+                                            </div>
                                         </div>
                                     </div>
                                 ) : (

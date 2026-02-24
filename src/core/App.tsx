@@ -182,8 +182,6 @@ const App: React.FC = () => {
             setSelectedQuest(item);
             setIsDetailOpen(true);
         }
-        // MODIFIED: Do not update Active Quest on dashboard when clicking in Tower/Floor
-        setIsSpireOpen(false);
     }
 
     const handleLogClick = async (id: string) => {

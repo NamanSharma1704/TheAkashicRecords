@@ -22,7 +22,6 @@ const TowerHUD: React.FC<TowerHUDProps> = ({ items, theme, onActivate, isFocused
     const displayItems = isFocused ? floorItems : items;
     const totalManhwa = displayItems.length;
     // For calculating rank, we always use GLOBAL totalChapters, but for display (if focused) we use floor chapters
-    const globalTotalChapters = items.reduce((acc, item) => acc + (item.currentChapter || 0), 0);
     const displayChapters = displayItems.reduce((acc, item) => acc + (item.currentChapter || 0), 0);
 
     const completedManhwa = displayItems.filter(i => i.status === 'CONQUERED').length;

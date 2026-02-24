@@ -8,7 +8,7 @@ interface BootScreenProps {
     theme: Theme;
 }
 
-const BootScreen: React.FC<BootScreenProps> = ({ onComplete, theme }) => {
+const BootScreen: React.FC<BootScreenProps> = ({ onComplete }) => {
     const [phase, setPhase] = useState(0);
 
     useEffect(() => {

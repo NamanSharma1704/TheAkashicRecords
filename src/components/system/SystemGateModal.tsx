@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Theme, Quest } from '../../core/types';
 import SystemFrame from './SystemFrame';
-import { X, RefreshCw, AlertCircle, CheckCircle, Database, Search, Activity, Trash2, Globe } from 'lucide-react';
+import { X, RefreshCw, AlertCircle, CheckCircle, Database, Search, Activity, Trash2 } from 'lucide-react';
 import { fetchMangadex, fetchAuto, fetchAnilistCover, fetchJikanCover } from '../../utils/api';
 
 interface SystemGateModalProps {
@@ -45,11 +45,10 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
     // --- HELPER TO GUESS CLASS ---
     const inferClassFromTitle = (title: string) => {
         const t = title.toLowerCase();
-        if (t.includes('level') || t.includes('hunter') || t.includes('dungeon') || t.includes('necromancer')) return "NECROMANCER";
-        if (t.includes('sword') || t.includes('blade') || t.includes('fist') || t.includes('boxer') || t.includes('god')) return "WARRIOR";
-        if (t.includes('mage') || t.includes('magic') || t.includes('return') || t.includes('reincarnat')) return "MAGE";
-        if (t.includes('villain') || t.includes('demon') || t.includes('regress')) return "DEMON KING";
-        if (t.includes('doctor') || t.includes('surgeon')) return "HEALER";
+        if (t.includes('necromancer') || t.includes('undead')) return "NECROMANCER";
+        if (t.includes('mage') || t.includes('magic') || t.includes('constellation') || t.includes('star')) return "CONSTELLATION";
+        if (t.includes('irregular') || t.includes('tower')) return "IRREGULAR";
+        if (t.includes('return') || t.includes('reincarnat') || t.includes('wizard')) return "MAGE";
         return "PLAYER";
     };
 

@@ -14,11 +14,12 @@ interface HunterProfileProps {
     onClose: () => void;
     theme: Theme;
     items: Quest[];
-    playerRank: { name: string; color: string };
-    onImport?: (items: Quest[]) => void;
+    playerRank: any;
+    onImport: (newItems: Quest[]) => void;
+    showNotification: (message: string, type?: 'INFO' | 'SUCCESS' | 'WARNING' | 'ERROR', confirm?: boolean) => Promise<boolean>;
 }
 
-const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, items, playerRank, onImport }) => {
+const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, items, playerRank, onImport, showNotification }) => {
     const totalChapters = useMemo(() => items.reduce((acc, i) => acc + (i.currentChapter || 0), 0), [items]);
     const totalManhwa = items.length;
     const conquered = useMemo(() => items.filter(i => i.status === 'CONQUERED').length, [items]);
@@ -130,10 +131,10 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
 
                 if (newQuests.length > 0 && onImport) {
                     onImport(newQuests);
-                    alert(`SYSTEM: Successfully synchronized ${newQuests.length} records.`);
+                    showNotification(`Successfully synchronized ${newQuests.length} records.`, 'SUCCESS');
                 }
             } catch (err) {
-                alert("SYSTEM ERROR: Data corruption detected in source file.");
+                showNotification("Data corruption detected in source file.", 'ERROR');
             }
         };
         reader.readAsText(file);
@@ -270,7 +271,8 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                             </label>
                             <button
                                 onClick={async () => {
-                                    if (confirm("INITIALIZE GLOBAL RE-CLASSIFICATION?")) {
+                                    const confirmed = await showNotification("INITIALIZE GLOBAL RE-CLASSIFICATION?", 'WARNING', true);
+                                    if (confirmed) {
                                         try {
                                             const res = await fetch('/api/admin/bulk-classify', { method: 'POST' });
                                             const contentType = res.headers.get("content-type");
@@ -285,11 +287,11 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                                             }
 
                                             const data = await res.json();
-                                            alert(`SYSTEM: ${data.message}. Updated ${data.updated} records.`);
+                                            await showNotification(`${data.message}. Updated ${data.updated} records.`, 'SUCCESS');
                                             window.location.reload();
                                         } catch (e: any) {
                                             console.error("Classification Failure:", e);
-                                            alert(`SYSTEM ERROR: CRITICAL_PROTOCOL_FAILURE [${e.message}]`);
+                                            showNotification(`CRITICAL_PROTOCOL_FAILURE [${e.message}]`, 'ERROR');
                                         }
                                     }
                                 }}

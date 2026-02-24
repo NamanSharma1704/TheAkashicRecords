@@ -12,6 +12,7 @@ import SystemConsole from '../components/system/SystemConsole';
 import BootScreen from '../components/system/BootScreen';
 import BackgroundController from '../components/fx/BackgroundController';
 import EntityAvatar from '../components/system/EntityAvatar';
+import SystemNotification from '../components/system/SystemNotification';
 
 const API_URL = '/api/quests';
 
@@ -76,6 +77,26 @@ const App: React.FC = () => {
 
     const [selectedQuest, setSelectedQuest] = useState<Quest | null>(null);
     const [editingItem, setEditingItem] = useState<Quest | null>(null);
+
+    // --- SYSTEM NOTIFICATION STATE ---
+    const [sysNote, setSysNote] = useState<{
+        isOpen: boolean;
+        message: string;
+        type: 'INFO' | 'SUCCESS' | 'WARNING' | 'ERROR';
+        confirm: boolean;
+        resolve?: (val: boolean) => void;
+    }>({ isOpen: false, message: "", type: 'INFO', confirm: false });
+
+    const showSystemNotification = (message: string, type: 'INFO' | 'SUCCESS' | 'WARNING' | 'ERROR' = 'INFO', confirm: boolean = false): Promise<boolean> => {
+        return new Promise((resolve) => {
+            setSysNote({ isOpen: true, message, type, confirm, resolve });
+        });
+    };
+
+    const handleSysNoteClose = (result: boolean) => {
+        if (sysNote.resolve) sysNote.resolve(result);
+        setSysNote(prev => ({ ...prev, isOpen: false }));
+    };
 
     // --- FETCH DATA FROM MONGODB ---
     const fetchQuests = async () => {
@@ -275,7 +296,7 @@ const App: React.FC = () => {
         }
         await fetchQuests();
         setBooting(false);
-        alert(`SYSTEM: Archive Reputed. ${count} New Origins Formed. ${updatedCount} Records Enhanced. ${skippedCount} Outdated Clusters Ignored.`);
+        showSystemNotification(`Archive Reputed. ${count} New Origins Formed. ${updatedCount} Records Enhanced. ${skippedCount} Outdated Clusters Ignored.`, 'SUCCESS');
     };
 
     const updateProgress = async (amt: number) => {
@@ -300,12 +321,16 @@ const App: React.FC = () => {
 
     const deleteQuest = async () => {
         if (editingItem) {
+            const confirmed = await showSystemNotification(`PURGE ARTIFACT "${editingItem.title}"?`, 'WARNING', true);
+            if (!confirmed) return;
+
             try {
                 await fetch(`${API_URL}/${editingItem.id}`, { method: 'DELETE' });
                 setLibrary(prev => prev.filter(i => i.id !== editingItem.id));
                 setIsModalOpen(false);
             } catch (e) {
                 console.error("Deletion failure", e);
+                showSystemNotification("PURGE_PROTOCOL_FAILED. ARCHIVE CORE STABLE.", "ERROR");
             }
         }
     };
@@ -491,6 +516,7 @@ const App: React.FC = () => {
                         items={library}
                         playerRank={playerRank}
                         onImport={handleImportQuests}
+                        showNotification={showSystemNotification}
                     />
                 )}
             </Suspense>
@@ -560,6 +586,15 @@ const App: React.FC = () => {
             </Suspense>
 
             <SystemConsole theme={theme} />
+
+            <SystemNotification
+                isOpen={sysNote.isOpen}
+                message={sysNote.message}
+                type={sysNote.type}
+                confirm={sysNote.confirm}
+                onClose={handleSysNoteClose}
+                theme={theme}
+            />
         </div>
     );
 };

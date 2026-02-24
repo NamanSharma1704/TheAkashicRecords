@@ -173,7 +173,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
 
     // Determine Status Color
     const getStatusColor = (status: string) => {
-        if (status === 'RELEASING') return 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20';
+        if (status === 'RELEASING') return `bg-${theme.accent}-500/10 text-${theme.accent}-500 border-${theme.accent}-500/20`;
         if (status === 'FINISHED') return 'bg-sky-500/10 text-sky-500 border-sky-500/20';
         return `bg-${theme.accent}-500/10 text-${theme.accent}-500 border-${theme.accent}-500/20`;
     };
@@ -252,11 +252,11 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                 href={quest.link}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className={`w-full py-4 px-6 rounded border ${theme.isDark ? 'bg-emerald-500/5 hover:bg-emerald-500/10 border-emerald-500/20' : 'bg-emerald-500/5 hover:bg-emerald-500/10 border-emerald-500/20'} text-emerald-500 font-bold transition-all flex items-center justify-between group/dive relative overflow-hidden`}
+                                className={`w-full py-4 px-6 rounded border ${theme.isDark ? 'bg-amber-500/5 hover:bg-amber-500/10 border-amber-500/20' : 'bg-sky-500/5 hover:bg-sky-500/10 border-sky-500/20'} ${theme.highlightText} font-bold transition-all flex items-center justify-between group/dive relative overflow-hidden`}
                             >
-                                <div className="absolute inset-x-0 bottom-0 h-[1px] bg-emerald-500/40 transform scale-x-0 group-hover/dive:scale-x-100 transition-transform duration-500" />
+                                <div className="absolute inset-x-0 bottom-0 h-[1px] bg-current opacity-40 transform scale-x-0 group-hover/dive:scale-x-100 transition-transform duration-500" />
                                 <div className="flex items-center gap-3 relative z-10">
-                                    <Zap size={18} className="fill-emerald-500/20 group-hover/dive:animate-pulse" />
+                                    <Zap size={18} className={`${theme.highlightText} group-hover/dive:animate-pulse`} />
                                     <ScrambleText text="INITIALIZE_DIVE" className="text-[10px] tracking-[0.2em] font-orbitron" />
                                 </div>
                                 <ChevronRight size={14} className="opacity-0 -translate-x-2 group-hover/dive:opacity-100 group-hover/dive:translate-x-0 transition-all font-bold" />
@@ -417,7 +417,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                                         <div className="flex gap-4">
                                                             <div className="text-right">
                                                                 <div className="text-[8px] font-mono text-white/20 uppercase tracking-widest mb-1">Stability</div>
-                                                                <div className="text-[10px] font-mono text-emerald-500 font-bold">98.4%</div>
+                                                                <div className={`text-[10px] font-mono ${theme.highlightText} font-bold`}>98.4%</div>
                                                             </div>
                                                             <div className="text-right">
                                                                 <div className="text-[8px] font-mono text-white/20 uppercase tracking-widest mb-1">Latency</div>
@@ -497,37 +497,29 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                     </div>
                                 )}
 
-                                {/* SIMILAR RECORDS */}
-                                {media.recommendations?.nodes?.length > 0 && (
+                                {/* SIMILAR RECORDS (BY CLASS) */}
+                                {allQuests && allQuests.filter(q => q.classType === quest.classType && q.id !== quest.id).length > 0 && (
                                     <div>
                                         <div className={`text-xs font-bold ${theme.mutedText} uppercase tracking-widest mb-4 flex items-center gap-2`}>
-                                            <Share2 size={14} /> SIMILAR RECORDS
+                                            <Share2 size={14} /> SIMILAR RECORDS (CLASS: {quest.classType})
                                         </div>
-                                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                                            {media.recommendations?.nodes
-                                                ?.filter((node: any) => {
-                                                    if (!allQuests) return true; // Show all if no tracker context
-                                                    const recTitle = node.mediaRecommendation.title.english || node.mediaRecommendation.title.romaji || "";
-                                                    const cleanRec = recTitle.toLowerCase().replace(/[^a-z0-9]/g, '');
-                                                    return allQuests.some(q => {
-                                                        const cleanQuest = q.title.toLowerCase().replace(/[^a-z0-9]/g, '');
-                                                        return cleanQuest.includes(cleanRec) || cleanRec.includes(cleanQuest);
-                                                    });
-                                                })
-                                                .map((node: any) => {
-                                                    const rec = node.mediaRecommendation;
+                                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                                            {allQuests
+                                                .filter(q => q.classType === quest.classType && q.id !== quest.id)
+                                                .slice(0, 5)
+                                                .map((rec) => {
                                                     return (
-                                                        <div key={rec.id} className="group relative aspect-[2/3] rounded-lg overflow-hidden cursor-pointer shadow-md hover:shadow-xl transition-all duration-500">
-                                                            <img src={rec.coverImage?.large} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" referrerPolicy="no-referrer" />
+                                                        <div key={rec.id} onClick={() => onSetActive && onSetActive(rec.id)} className="group relative aspect-[2/3] rounded-lg overflow-hidden cursor-pointer shadow-md hover:shadow-xl transition-all duration-500 border border-white/5">
+                                                            <img src={rec.coverUrl} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" referrerPolicy="no-referrer" />
                                                             <div className={`absolute inset-0 bg-gradient-to-t ${theme.isDark ? 'from-black/90 via-transparent' : 'from-white/90 via-transparent'} opacity-60 group-hover:opacity-100 transition-opacity`} />
                                                             <div className="absolute bottom-0 w-full p-2">
                                                                 <div className={`text-[10px] font-bold truncate ${theme.headingText} group-hover:${theme.highlightText} transition-colors uppercase`}>
-                                                                    {rec.title.english || rec.title.romaji}
+                                                                    {rec.title}
                                                                 </div>
                                                                 <div className="flex items-center gap-1 mt-1">
-                                                                    <Star size={8} className="text-yellow-500 fill-yellow-500" />
+                                                                    <Zap size={8} className={theme.highlightText} />
                                                                     <span className={`text-[9px] font-mono ${theme.mutedText}`}>
-                                                                        {rec.averageScore ? `${rec.averageScore}%` : 'N/A'}
+                                                                        {rec.status}
                                                                     </span>
                                                                 </div>
                                                             </div>

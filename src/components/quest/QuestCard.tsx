@@ -58,7 +58,7 @@ const QuestCard = React.memo<DivineMonolithProps>(({ item, onClick, index, id, t
                         <div className={`h-[1px] w-full ${theme.isDark ? 'bg-white/10' : 'bg-black/10'} overflow-hidden relative transition-colors duration-700`}><div className={`absolute inset-0 w-full h-full ${rankStyle.bg} -translate-x-full group-hover:translate-x-0 transition-transform duration-1000 delay-100`} /></div>
                         <div className={`flex justify-between items-center text-[10px] font-mono ${theme.mutedText} group-hover:${theme.baseText} transition-colors delay-300 duration-700`}>
                             <span className="flex items-center gap-1"><BookOpen size={10} /> CH: {item.currentChapter}</span>
-                            <span className={`px-2 py-0.5 border ${theme.borderSubtle} ${item.status === 'ACTIVE' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/30' : theme.isDark ? 'bg-white/5' : 'bg-black/5'} transition-colors duration-700`}>{item.status}</span>
+                            <span className={`px-2 py-0.5 border ${theme.borderSubtle} ${item.status === 'ACTIVE' ? (theme.id === 'LIGHT' ? 'bg-sky-500/10 text-sky-500 border-sky-500/30' : 'bg-amber-500/10 text-amber-500 border-amber-500/30') : theme.isDark ? 'bg-white/5' : 'bg-black/5'} transition-colors duration-700`}>{item.status}</span>
                         </div>
                     </div>
                 </div>

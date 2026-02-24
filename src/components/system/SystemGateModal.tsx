@@ -260,7 +260,7 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
                             </div>
                             {scanStatus === "ENCRYPTED" && <div className="text-amber-500 text-[9px] mt-1 tracking-widest flex items-center gap-1"><AlertCircle size={10} /> COORDINATES ENCRYPTED. INPUT TRUE NAME.</div>}
                             {scanStatus === "ERROR" && <div className="text-red-500 text-[9px] mt-1 tracking-widest flex items-center gap-1"><AlertCircle size={10} /> SCAN FAILED. NO MATCH FOUND.</div>}
-                            {scanStatus === "SUCCESS" && <div className="text-emerald-500 text-[9px] mt-1 tracking-widest flex items-center gap-1"><CheckCircle size={10} /> SCAN COMPLETE. ARTIFACT ACQUIRED.</div>}
+                            {scanStatus === "SUCCESS" && <div className={`${theme.id === 'LIGHT' ? 'text-sky-500' : 'text-amber-500'} text-[9px] mt-1 tracking-widest flex items-center gap-1`}><CheckCircle size={10} /> SCAN COMPLETE. ARTIFACT ACQUIRED.</div>}
                         </div>
                         <div>
                             <label className={`block ${theme.mutedText} mb-1 uppercase text-[9px] tracking-widest transition-colors duration-700`}>Title</label>

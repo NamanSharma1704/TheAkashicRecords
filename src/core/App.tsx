@@ -466,7 +466,7 @@ const App: React.FC = () => {
                                     <div className={`absolute inset-0 bg-[linear-gradient(rgba(${theme.starColor},0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(${theme.starColor},0.03)_1px,transparent_1px)] bg-[size:20px_20px] transition-colors duration-700`} />
                                     <div className="relative z-10">
                                         <div className="flex justify-between items-center mb-6"><div className={`flex items-center gap-2 ${theme.highlightText} font-mono text-[10px] tracking-widest font-bold transition-colors duration-700`}><Flame size={12} /> DIVINE_MANDATE</div><span className={`text-[9px] font-mono tracking-widest opacity-70 ${theme.mutedText} transition-colors duration-700`}>{userState.dailyAbsorbed >= 5 ? 'CONQUERED' : 'PENDING'}</span></div>
-                                        <div className="space-y-1 mb-2"><div className={`text-[9px] ${theme.mutedText} font-mono tracking-widest transition-colors duration-700`}>OBJECTIVE</div><div className="flex justify-between items-end"><div className={`text-xl font-black italic ${theme.headingText} tracking-wide transition-colors duration-700`}>ABSORB 5 STORIES</div><div className={`${theme.highlightText} font-mono text-lg font-bold transition-colors duration-700`}>{userState.dailyAbsorbed}<span className={`${theme.mutedText} text-sm transition-colors duration-700`}>/5</span></div></div></div>
+                                        <div className="space-y-1 mb-2"><div className={`text-[9px] ${theme.mutedText} font-mono tracking-widest transition-colors duration-700`}>OBJECTIVE</div><div className="flex justify-between items-end"><div className={`text-xl font-black italic ${theme.headingText} tracking-wide transition-colors duration-700`}>ABSORB 5 STORIES</div><div className={`${theme.highlightText} font-mono text-lg font-bold transition-colors duration-700`}>{Math.min(5, userState.dailyAbsorbed)}<span className={`${theme.mutedText} text-sm transition-colors duration-700`}>/5</span></div></div></div>
                                         <div className={`h-1 w-full ${theme.isDark ? 'bg-gray-900 border-gray-800' : 'bg-gray-200 border-gray-300'} border mt-2 transition-colors duration-700 overflow-hidden relative`}><div className={`h-full w-full bg-gradient-to-r ${theme.gradient} progress-bloom transition-transform duration-700 origin-left`} style={{ transform: `scaleX(${Math.min(1, userState.dailyAbsorbed / 5)})`, color: theme.id === 'LIGHT' ? '#06b6d4' : '#f59e0b' }} /></div>
                                     </div>
                                 </div>
@@ -475,7 +475,7 @@ const App: React.FC = () => {
 
                         {/* ACTIVE QUESTS LIST */}
                         <div className="flex-1 flex flex-col min-h-0 gap-1 mt-8">
-                            <div className={`text-[10px] font-mono text-white uppercase tracking-widest border-b ${theme.borderSubtle} pb-1.5 mb-1 transition-colors duration-700`}>ACTIVE QUESTS</div>
+                            <div className={`text-[10px] font-mono ${theme.headingText} uppercase tracking-widest border-b ${theme.borderSubtle} pb-1.5 mb-1 transition-colors duration-700`}>ACTIVE QUESTS</div>
                             <div className="flex-1 min-h-0 overflow-hidden relative">
                                 <div className="flex flex-col gap-1 h-full">
                                     {activeQuests.map((item, index) => {

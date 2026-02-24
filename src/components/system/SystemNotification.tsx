@@ -24,7 +24,7 @@ const SystemNotification: React.FC<SystemNotificationProps> = ({
 
     const getIcon = () => {
         switch (type) {
-            case 'SUCCESS': return <CheckCircle className="text-emerald-500" size={24} />;
+            case 'SUCCESS': return <CheckCircle className={theme.id === 'LIGHT' ? 'text-sky-500' : 'text-amber-500'} size={24} />;
             case 'WARNING': return <AlertTriangle className="text-amber-500" size={24} />;
             case 'ERROR': return <XCircle className="text-red-500" size={24} />;
             default: return <Info className="text-sky-500" size={24} />;

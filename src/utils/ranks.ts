@@ -3,7 +3,7 @@ import { Quest } from '../core/types';
 export const USER_RANKS = [
     { label: 'DRIFTER', minTitles: 0, color: 'text-stone-400', bg: 'bg-stone-500/20', border: 'border-stone-500/30' },
     { label: 'AWAKENED', minTitles: 1, color: 'text-slate-300', bg: 'bg-slate-500/20', border: 'border-slate-500/30' },
-    { label: 'ADEPT', minTitles: 5, color: 'text-emerald-400', bg: 'bg-emerald-500/20', border: 'border-emerald-500/30' },
+    { label: 'ADEPT', minTitles: 5, color: 'text-cyan-400', bg: 'bg-cyan-500/20', border: 'border-cyan-500/30' },
     { label: 'VANGUARD', minTitles: 15, color: 'text-blue-400', bg: 'bg-blue-500/20', border: 'border-blue-500/30' },
     { label: 'ASCENDANT', minTitles: 30, color: 'text-purple-400', bg: 'bg-purple-500/20', border: 'border-purple-500/30' },
     { label: 'PARAGON', minTitles: 50, color: 'text-rose-400', bg: 'bg-rose-500/20', border: 'border-rose-500/30' },

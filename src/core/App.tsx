@@ -15,6 +15,16 @@ import EntityAvatar from '../components/system/EntityAvatar';
 
 const API_URL = '/api/quests';
 
+// Helper to normalize quest data from both MongoDB and local BASE_QUESTS
+const mapQuest = (q: any): Quest => ({
+    ...q,
+    id: String(q._id || q.id || ""),
+    coverUrl: q.coverUrl || q.cover || "",
+    link: q.link || q.readLink || q.siteUrl || "",
+    status: (q.status || 'ACTIVE').toUpperCase(),
+    lastUpdated: q.lastRead || q.lastUpdated || Date.now()
+});
+
 // ----------------------------------------------------------------------
 // LAZY LOADED HEAVY COMPONENTS 
 // ----------------------------------------------------------------------
@@ -73,14 +83,8 @@ const App: React.FC = () => {
             const res = await fetch(API_URL);
             const data = await res.json();
             if (res.ok && Array.isArray(data)) {
-                // Map MongoDB _id and inconsistent keys to frontend expectations
-                const mappedData = data.map((q: any) => ({
-                    ...q,
-                    id: q._id,
-                    coverUrl: q.coverUrl || q.cover || "",
-                    link: q.link || q.readLink || ""
-                }));
-                console.log(`[Frontend] Successfully fetched ${mappedData.length} quests.`, mappedData[0]);
+                const mappedData = data.map(mapQuest);
+                console.log(`[Frontend] Normalized ${mappedData.length} items.`, mappedData[0]);
                 setLibrary(mappedData);
 
                 if (!activeId && mappedData.length > 0) {
@@ -94,7 +98,7 @@ const App: React.FC = () => {
         } catch (e) {
             console.error("Database connection failure:", e);
             // Fallback to BASE_QUESTS if DB is unreachable or returns error
-            setLibrary(BASE_QUESTS);
+            setLibrary(BASE_QUESTS.map(mapQuest));
         }
     };
     const fetchUserState = async () => {
@@ -196,7 +200,7 @@ const App: React.FC = () => {
                 body: JSON.stringify(data)
             });
             const saved = await res.json();
-            const mappedSaved = { ...saved, id: saved._id };
+            const mappedSaved = mapQuest(saved);
 
             if (isEditing) {
                 setLibrary(prev => prev.map(q => q.id === mappedSaved.id ? mappedSaved : q));
@@ -223,7 +227,7 @@ const App: React.FC = () => {
                 body: JSON.stringify({ currentChapter: next, lastUpdated: new Date().toISOString() })
             });
             const updated = await res.json();
-            setLibrary(prev => prev.map(q => q.id === activeId ? { ...updated, id: updated._id } : q));
+            setLibrary(prev => prev.map(q => q.id === activeId ? mapQuest(updated) : q));
             fetchUserState(); // Refresh Divine Mandate UI immediately
         } catch (e) {
             console.error("Progress update failed", e);
@@ -260,7 +264,9 @@ const App: React.FC = () => {
                         <div className="flex flex-col leading-none"><div className="flex gap-2 items-baseline"><span className={`font-mono text-[10px] tracking-[0.2em] ${theme.headingText} font-bold transition-colors duration-700`}>SYSTEM.ROOT</span></div><ScrambleText text="AKASHIC" className="font-orbitron text-lg tracking-[0.3em] font-bold drop-shadow-sm transition-colors duration-700" animatedGradient={true} gradientColors={currentTheme === 'LIGHT' ? "from-sky-500 to-cyan-500" : "from-amber-600 via-yellow-400 to-white"} /></div>
                     </div>
                     <div className="flex items-center gap-3">
-
+                        <div className={`px-2 py-0.5 border ${theme.borderSubtle} bg-black/20 rounded font-mono text-[8px] ${theme.highlightText} animate-pulse`}>
+                            LIB_SYNC: {library.length}
+                        </div>
                         <button onClick={toggleTheme} className={`w-8 h-8 flex items-center justify-center border ${theme.borderSubtle} ${theme.isDark ? 'bg-white/5 hover:bg-white/10' : 'bg-black/5 hover:bg-black/10'} rounded transition-colors duration-700`}>{currentTheme === 'LIGHT' ? <Sun size={14} className="text-sky-600 transition-colors duration-700" /> : <Moon size={14} className="text-amber-400 transition-colors duration-700" />}</button>
                         <button onClick={() => { setEditingItem(null); setIsModalOpen(true); }} className={`hidden lg:flex px-4 py-1.5 border ${theme.borderSubtle} ${theme.highlightText} ${theme.isDark ? 'hover:bg-white/5' : 'hover:bg-black/5'} transition-colors duration-700 font-mono text-[10px] tracking-widest items-center gap-2 cursor-pointer`}><Plus size={12} /> CREATE_GATE</button>
                     </div>

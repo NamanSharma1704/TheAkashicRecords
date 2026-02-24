@@ -53,7 +53,7 @@ const TowerHUD: React.FC<TowerHUDProps> = ({ items, theme, onActivate, isFocused
         <div className={`absolute inset-0 z-30 pointer-events-none pt-24 md:pt-24 px-2 md:px-8 pb-6 md:pb-8 flex flex-row items-center md:items-start justify-between overflow-hidden gap-1 md:gap-6 ${isFocused ? 'hidden md:flex' : 'flex'}`}>
             {/* LEFT: STATS PANEL */}
             <div className={`flex flex-col gap-2 md:gap-6 pointer-events-auto w-[45%] sm:w-[40%] md:w-[45%] max-w-xs transition-transform duration-700 ease-in-out ${isFocused ? 'translate-y-0' : 'translate-y-0'}`}>
-                <SystemFrame variant="brackets" theme={theme} className="bg-black/20 backdrop-blur-sm shadow-xl w-full">
+                <SystemFrame variant="brackets" theme={theme} className="bg-transparent shadow-none w-full">
                     <div className="p-1 md:p-4 space-y-2 md:space-y-4">
                         <div className="flex flex-col border-b border-gray-500/30 pb-2 gap-1 md:gap-2 w-full">
                             <div className="flex items-center gap-2 md:gap-3">
@@ -95,7 +95,7 @@ const TowerHUD: React.FC<TowerHUDProps> = ({ items, theme, onActivate, isFocused
                     <div className="flex flex-col gap-4 md:gap-6">
                         <div className="relative overflow-hidden group">
                             <div className={`absolute inset-0 bg-gradient-to-r ${theme.gradient} opacity-20 group-hover:opacity-30 transition-opacity`} />
-                            <div className={`border ${theme.border} p-1.5 md:p-3 flex flex-row items-center gap-4 md:gap-6 ${theme.isDark ? 'bg-black/60' : 'bg-white/60'} backdrop-blur-md shadow-lg`}>
+                            <div className={`p-1.5 md:p-3 flex flex-row items-center gap-4 md:gap-6 bg-transparent`}>
                                 <div className="flex flex-col min-w-0 flex-1">
                                     <span className={`text-[7px] md:text-[9px] ${theme.highlightText} font-bold font-mono uppercase tracking-tighter md:tracking-widest mb-1 opacity-100`}>Current Rank</span>
                                     <div className="text-xl md:text-2xl lg:text-3xl font-black font-manifold italic tracking-tight drop-shadow-sm flex items-baseline leading-normal min-w-0">
@@ -107,7 +107,7 @@ const TowerHUD: React.FC<TowerHUDProps> = ({ items, theme, onActivate, isFocused
                         </div>
 
                         {/* EXP BAR */}
-                        <div className={`border ${theme.borderSubtle} p-3 ${theme.isDark ? 'bg-black/40' : 'bg-white/40'} backdrop-blur-md`}>
+                        <div className={`p-3 bg-transparent`}>
                             <div className={`flex justify-between text-[8px] md:text-xs font-mono font-bold ${theme.highlightText} mb-2`}>
                                 <span className="truncate">TITLES DISCOVERED</span>
                                 <span className="whitespace-nowrap">{totalManhwa} TITLES</span>
@@ -137,7 +137,7 @@ const TowerHUD: React.FC<TowerHUDProps> = ({ items, theme, onActivate, isFocused
                             <div
                                 key={item.id}
                                 onClick={() => onActivate(item.id)}
-                                className={`group relative h-8 md:h-14 border ${theme.borderSubtle} ${theme.isDark ? 'bg-black/60' : 'bg-white/60'} backdrop-blur-md transition-all overflow-hidden flex items-center justify-start pl-1 md:pl-3 pr-1 md:pr-2 cursor-pointer hover:border-${theme.primary}-500/50`}
+                                className={`group relative h-8 md:h-14 bg-transparent transition-all overflow-hidden flex items-center justify-start pl-1 md:pl-3 pr-1 md:pr-2 cursor-pointer hover:border-${theme.primary}-500/50`}
                             >
                                 <div className="w-5 md:w-10 h-full shrink-0 relative mr-1.5 md:mr-3">
                                     <img src={item.coverUrl} className="w-full h-full object-cover grayscale opacity-70 group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-300" referrerPolicy="no-referrer" />
@@ -161,7 +161,7 @@ const TowerHUD: React.FC<TowerHUDProps> = ({ items, theme, onActivate, isFocused
                         <Database size={14} />
                     </div>
                     {displayItems.length > 0 && (
-                        <div className={`border ${theme.borderSubtle} ${theme.isDark ? 'bg-black/50' : 'bg-white/50'} backdrop-blur-md p-1.5 md:p-3 flex flex-col gap-1 md:gap-3`}>
+                        <div className={`bg-transparent p-1.5 md:p-3 flex flex-col gap-1 md:gap-3`}>
                             {(() => {
                                 return classEntries.slice(0, 5).map(([cls, count]) => {
                                     const pct = totalManhwa > 0 ? Math.round((count / totalManhwa) * 100) : 0;
@@ -191,7 +191,7 @@ const TowerHUD: React.FC<TowerHUDProps> = ({ items, theme, onActivate, isFocused
                         <Layers size={12} className="md:w-[14px] md:h-[14px]" />
                     </div>
                     {displayItems.length > 0 && (
-                        <div className={`border ${theme.borderSubtle} ${theme.isDark ? 'bg-black/50' : 'bg-white/50'} backdrop-blur-md p-3 flex flex-col gap-3`}>
+                        <div className={`bg-transparent p-3 flex flex-col gap-3`}>
                             {[...displayItems].sort((a, b) => (b.totalChapters || 0) - (a.totalChapters || 0)).slice(0, 3).map((item, i) => (
                                 <div key={item.id} className="flex items-center gap-3">
                                     <span className={`text-base font-black font-mono ${i === 0 ? theme.highlightText : theme.mutedText} `}>#{i + 1}</span>
@@ -213,7 +213,7 @@ const TowerHUD: React.FC<TowerHUDProps> = ({ items, theme, onActivate, isFocused
                         <Target size={12} className="md:w-[14px] md:h-[14px]" />
                     </div>
                     {displayItems.filter(i => i.status === 'ACTIVE' && i.totalChapters > 0).length > 0 && (
-                        <div className={`border ${theme.borderSubtle} ${theme.isDark ? 'bg-black/50' : 'bg-white/50'} backdrop-blur-md p-3 flex flex-col gap-3`}>
+                        <div className={`bg-transparent p-3 flex flex-col gap-3`}>
                             {[...displayItems]
                                 .filter(i => i.status === 'ACTIVE' && i.totalChapters > 0)
                                 .slice(0, 3)

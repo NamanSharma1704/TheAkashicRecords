@@ -82,6 +82,14 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
 
     return (
         <div className={`fixed inset-0 z-[60] bg-transparent animate-in fade-in zoom-in-95 duration-500 flex flex-col transition-colors duration-700`}>
+            {/* AMBIENT BACKGROUND GLOW (Root-level to cover header) */}
+            {viewMode === 'FLOOR' && (
+                <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
+                    <div className={`absolute -top-[20%] -right-[20%] w-[60%] h-[60%] ${theme.id === 'LIGHT' ? 'bg-sky-500/10' : `bg-${theme.primary}-500/10`} rounded-full blur-[150px] z-10 mix-blend-screen transition-colors duration-700`} />
+                    <div className={`absolute -bottom-[20%] -left-[20%] w-[60%] h-[60%] ${theme.id === 'LIGHT' ? 'bg-cyan-500/10' : `bg-${theme.accent}-500/10`} rounded-full blur-[150px] z-10 mix-blend-screen transition-colors duration-700`} />
+                </div>
+            )}
+
             {/* TOWER BACKGROUND LAYER (FULLSCREEN) */}
             {viewMode === 'TOWER' && (
                 <div className="absolute inset-0 z-0 animate-in fade-in duration-700">
@@ -119,11 +127,7 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
                 {viewMode === 'FLOOR' && (
                     <div className="w-full h-full flex flex-col animate-in slide-in-from-bottom-10 duration-500 pointer-events-auto">
 
-                        {/* THEME AMBIENT GLOW (BACKGROUND) */}
-                        <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
-                            <div className={`absolute -top-[20%] -right-[20%] w-[60%] h-[60%] bg-${theme.primary}-500/10 rounded-full blur-[150px] z-10 mix-blend-screen transition-colors duration-700`} />
-                            <div className={`absolute -bottom-[20%] -left-[20%] w-[60%] h-[60%] bg-${theme.accent}-500/10 rounded-full blur-[150px] z-10 mix-blend-screen transition-colors duration-700`} />
-                        </div>
+
 
                         {/* Search Bar HUD */}
                         <div className="relative z-20 shrink-0 w-full max-w-xl mx-auto mt-6 md:mt-10 px-4">

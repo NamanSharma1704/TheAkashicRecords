@@ -451,6 +451,11 @@ const App: React.FC = () => {
                         allQuests={library}
                         onSetActive={handleSetActiveQuest}
                         onUpdate={async (id, data) => handleSave({ id, ...data })}
+                        onEdit={(q) => {
+                            setEditingItem(q);
+                            setIsModalOpen(true);
+                            setIsDetailOpen(false);
+                        }}
                     />
                 )}
             </Suspense>

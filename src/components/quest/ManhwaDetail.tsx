@@ -12,6 +12,7 @@ interface ManhwaDetailProps {
     allQuests?: Quest[];
     onSetActive?: (id: string) => void;
     onUpdate?: (id: string, updates: Partial<Quest>) => Promise<void>;
+    onEdit?: (quest: Quest) => void;
 }
 
 interface AniListCharacter {
@@ -50,41 +51,13 @@ interface AniListMedia {
 }
 
 // --- COMPONENT ---
-const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, theme, allQuests, onSetActive, onUpdate }) => {
+const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, theme, allQuests, onSetActive, onUpdate, onEdit }) => {
     const [media, setMedia] = useState<AniListMedia | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    // Edit State
-    const [isEditing, setIsEditing] = useState(false);
-    const [editTitle, setEditTitle] = useState("");
-    const [editSynopsis, setEditSynopsis] = useState("");
-    const [editTotalCh, setEditTotalCh] = useState(0);
-    const [editCurrentCh, setEditCurrentCh] = useState(0);
-
     const isCustomCover = !!(quest?.coverUrl && quest.coverUrl !== "");
     const finalCover = isCustomCover ? quest.coverUrl : (media?.coverImage?.extraLarge || media?.coverImage?.large || quest?.coverUrl || "");
-
-    useEffect(() => {
-        if (quest) {
-            setEditTitle(quest.title);
-            setEditSynopsis(quest.synopsis || ""); // Strictly from DB or empty
-            setEditTotalCh(quest.totalChapters || 0); // Strictly from DB
-            setEditCurrentCh(quest.currentChapter || 0);
-        }
-    }, [quest, isEditing]);
-
-    const handleSaveEdits = async () => {
-        if (quest && onUpdate) {
-            await onUpdate(quest.id, {
-                title: editTitle,
-                synopsis: editSynopsis,
-                totalChapters: editTotalCh,
-                currentChapter: editCurrentCh
-            });
-            setIsEditing(false);
-        }
-    };
 
     console.log("ManhwaDetail Quest:", quest);
 
@@ -278,10 +251,10 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                             </a>
                         )}
                         <button
-                            onClick={() => isEditing ? handleSaveEdits() : setIsEditing(true)}
+                            onClick={() => quest && onEdit && onEdit(quest)}
                             className={`w-full py-3.5 rounded-lg ${theme.isDark ? 'bg-amber-500/10 hover:bg-amber-500/20' : 'bg-cyan-500/10 hover:bg-cyan-500/20'} ${theme.highlightText} font-bold border ${theme.borderSubtle} transition-all flex items-center justify-center gap-2 text-sm uppercase tracking-widest`}
                         >
-                            {isEditing ? <><Save size={16} /> SAVE_CHANGES</> : <><Edit2 size={16} /> EDIT_MANHWA</>}
+                            <Edit2 size={16} /> EDIT_MANHWA
                         </button>
                         <button
                             onClick={() => {
@@ -320,18 +293,10 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                 <div className="flex flex-col gap-4">
                                     <div className="flex justify-between items-start gap-4">
                                         <div className="flex-1 min-w-0">
-                                            {isEditing ? (
-                                                <input
-                                                    className={`w-full bg-transparent border-b ${theme.borderSubtle} focus:border-${theme.highlightText} outline-none text-3xl md:text-5xl font-black ${theme.headingText} mb-2 leading-tight tracking-tight uppercase`}
-                                                    value={editTitle}
-                                                    onChange={e => setEditTitle(e.target.value)}
-                                                />
-                                            ) : (
-                                                <h1 className={`text-3xl md:text-5xl font-black ${theme.headingText} mb-2 leading-tight tracking-tight drop-shadow-lg uppercase break-words`}>
-                                                    {quest.title || media.title.english || media.title.romaji}
-                                                </h1>
-                                            )}
-                                            {(media.title.native) && !isEditing && (
+                                            <h1 className={`text-3xl md:text-5xl font-black ${theme.headingText} mb-2 leading-tight tracking-tight drop-shadow-lg uppercase break-words`}>
+                                                {quest.title || media.title.english || media.title.romaji}
+                                            </h1>
+                                            {(media.title.native) && (
                                                 <h2 className={`text-lg md:text-xl ${theme.mutedText} font-medium mb-2`}>
                                                     {media.title.native}
                                                 </h2>
@@ -354,40 +319,25 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                                             <div className={`w-1.5 h-1.5 rounded-full ${theme.id === 'LIGHT' ? 'bg-cyan-500' : 'bg-amber-400'} animate-pulse`} />
                                                             <div className={`text-[10px] md:text-xs font-black font-mono tracking-[0.2em] ${theme.id === 'LIGHT' ? 'text-cyan-400' : 'text-amber-400'} uppercase`}>PROGRESS_MONITOR.v2</div>
                                                         </div>
-                                                        {!isEditing && (
-                                                            <div className={`px-2 py-0.5 rounded-sm text-[9px] font-mono font-bold tracking-tighter ${quest.currentChapter > (quest.totalChapters || 0) && (quest.totalChapters || 0) > 0 ? 'bg-red-500 text-white animate-bounce' : 'bg-white/10 text-white/60'}`}>
-                                                                {quest.currentChapter > (quest.totalChapters || 0) && (quest.totalChapters || 0) > 0 ? "!!! OVERFLOW !!!" : "SYNCRONIZED"}
-                                                            </div>
-                                                        )}
+                                                        <div className={`px-2 py-0.5 rounded-sm text-[9px] font-mono font-bold tracking-tighter ${quest.currentChapter > (quest.totalChapters || 0) && (quest.totalChapters || 0) > 0 ? 'bg-red-500 text-white animate-bounce' : 'bg-white/10 text-white/60'}`}>
+                                                            {quest.currentChapter > (quest.totalChapters || 0) && (quest.totalChapters || 0) > 0 ? "!!! OVERFLOW !!!" : "SYNCRONIZED"}
+                                                        </div>
                                                     </div>
 
-                                                    {isEditing ? (
-                                                        <div className="flex justify-between items-end gap-12 mb-6">
-                                                            <div className="flex-1">
-                                                                <div className={`text-[10px] uppercase tracking-widest text-white/40 font-mono mb-2`}>CURRENT_STATE</div>
-                                                                <input type="number" value={editCurrentCh} onChange={e => setEditCurrentCh(Number(e.target.value))} className={`w-full bg-white/5 border-b-2 ${theme.id === 'LIGHT' ? 'border-cyan-500' : 'border-amber-500'} outline-none text-4xl font-black text-white tabular-nums px-2 py-1 transition-all focus:bg-white/10`} />
-                                                            </div>
-                                                            <div className="flex-1 text-right">
-                                                                <div className={`text-[10px] uppercase tracking-widest text-white/40 font-mono mb-2`}>TOTAL_RECORDS</div>
-                                                                <input type="number" value={editTotalCh} onChange={e => setEditTotalCh(Number(e.target.value))} className={`w-full bg-white/5 border-b-2 ${theme.id === 'LIGHT' ? 'border-cyan-500' : 'border-amber-500'} outline-none text-3xl font-black text-white/80 tabular-nums px-2 py-1 text-right transition-all focus:bg-white/10`} />
+                                                    <div className="flex justify-between items-end mb-4">
+                                                        <div className="flex flex-col">
+                                                            <span className="text-[10px] uppercase tracking-widest text-white/40 font-mono font-bold mb-1">CHAPTERS_READ</span>
+                                                            <div className="text-5xl md:text-6xl font-black text-white tabular-nums leading-none drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]">
+                                                                {quest.currentChapter}
                                                             </div>
                                                         </div>
-                                                    ) : (
-                                                        <div className="flex justify-between items-end mb-4">
-                                                            <div className="flex flex-col">
-                                                                <span className="text-[10px] uppercase tracking-widest text-white/40 font-mono font-bold mb-1">CHAPTERS_READ</span>
-                                                                <div className="text-5xl md:text-6xl font-black text-white tabular-nums leading-none drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]">
-                                                                    {quest.currentChapter}
-                                                                </div>
-                                                            </div>
-                                                            <div className="text-right flex flex-col items-end">
-                                                                <span className="text-[10px] uppercase tracking-widest text-white/40 font-mono font-bold mb-1">DATA_LIMIT</span>
-                                                                <div className={`text-2xl md:text-3xl font-black text-white/60 tabular-nums leading-none`}>
-                                                                    / {quest.totalChapters > 0 ? quest.totalChapters : '??'}
-                                                                </div>
+                                                        <div className="text-right flex flex-col items-end">
+                                                            <span className="text-[10px] uppercase tracking-widest text-white/40 font-mono font-bold mb-1">DATA_LIMIT</span>
+                                                            <div className={`text-2xl md:text-3xl font-black text-white/60 tabular-nums leading-none`}>
+                                                                / {quest.totalChapters > 0 ? quest.totalChapters : '??'}
                                                             </div>
                                                         </div>
-                                                    )}
+                                                    </div>
 
                                                     {/* THE BAR - MORE PROMINENT */}
                                                     <div className={`h-4 w-full bg-black/40 rounded-sm overflow-hidden relative border border-white/10 shadow-[inner_0_2px_4px_rgba(0,0,0,0.5)]`}>
@@ -404,17 +354,15 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                                     </div>
 
                                                     {/* BOTTOM INFO */}
-                                                    {!isEditing && (
-                                                        <div className="flex justify-between items-center mt-4">
-                                                            <div className="flex items-center gap-2 text-white/50 font-mono text-[10px] font-bold uppercase tracking-widest">
-                                                                <BookOpen size={12} className={theme.id === 'LIGHT' ? 'text-cyan-400' : 'text-amber-400'} />
-                                                                <span>SYNCRONY_LEVEL</span>
-                                                            </div>
-                                                            <div className={`text-lg md:text-xl font-black font-mono ${theme.id === 'LIGHT' ? 'text-cyan-400' : 'text-amber-400'} drop-shadow-[0_0_8px_currentColor]`}>
-                                                                {((quest.totalChapters || 0) > 0) ? Math.round((quest.currentChapter / quest.totalChapters) * 100) : 0}%
-                                                            </div>
+                                                    <div className="flex justify-between items-center mt-4">
+                                                        <div className="flex items-center gap-2 text-white/50 font-mono text-[10px] font-bold uppercase tracking-widest">
+                                                            <BookOpen size={12} className={theme.id === 'LIGHT' ? 'text-cyan-400' : 'text-amber-400'} />
+                                                            <span>SYNCRONY_LEVEL</span>
                                                         </div>
-                                                    )}
+                                                        <div className={`text-lg md:text-xl font-black font-mono ${theme.id === 'LIGHT' ? 'text-cyan-400' : 'text-amber-400'} drop-shadow-[0_0_8px_currentColor]`}>
+                                                            {((quest.totalChapters || 0) > 0) ? Math.round((quest.currentChapter / quest.totalChapters) * 100) : 0}%
+                                                        </div>
+                                                    </div>
                                                 </div>
 
                                                 {/* CORNER ACCENTS */}
@@ -459,19 +407,10 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                     <div className={`text-xs font-bold ${theme.mutedText} uppercase tracking-widest mb-3 flex items-center justify-between`}>
                                         <span>SYNOPSIS</span>
                                     </div>
-                                    {isEditing ? (
-                                        <textarea
-                                            className={`w-full min-h-[200px] p-4 bg-black/20 backdrop-blur-sm border ${theme.borderSubtle} focus:border-${theme.highlightText} outline-none text-sm md:text-base leading-relaxed ${theme.baseText} font-sans rounded-xl resize-y custom-scrollbar`}
-                                            value={editSynopsis}
-                                            onChange={e => setEditSynopsis(e.target.value)}
-                                            placeholder="Enter synopsis..."
-                                        />
-                                    ) : (
-                                        <div
-                                            className={`text-sm md:text-base leading-relaxed ${theme.baseText} font-sans`}
-                                            dangerouslySetInnerHTML={{ __html: quest.synopsis || media?.description || "No synopsis available." }}
-                                        />
-                                    )}
+                                    <div
+                                        className={`text-sm md:text-base leading-relaxed ${theme.baseText} font-sans`}
+                                        dangerouslySetInnerHTML={{ __html: quest.synopsis || media?.description || "No synopsis available." }}
+                                    />
                                 </div>
 
                                 {/* CHARACTERS */}

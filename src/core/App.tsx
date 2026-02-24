@@ -256,32 +256,10 @@ const App: React.FC = () => {
     };
     const toggleTheme = () => { const newTheme = currentTheme === 'LIGHT' ? 'DARK' : 'LIGHT'; setCurrentTheme(newTheme); };
 
-    if (booting) return (
-        <>
-            <BootScreen onComplete={() => setBooting(false)} theme={theme} />
-            <button
-                onClick={() => setBooting(false)}
-                className="fixed bottom-4 right-4 z-[9999] px-4 py-2 bg-white/10 text-white font-mono text-[10px] border border-white/20 hover:bg-white/20 transition-all cursor-pointer"
-            >
-                FORCE_BYPASS_BOOT
-            </button>
-        </>
-    );
+    if (booting) return <BootScreen onComplete={() => setBooting(false)} theme={theme} />;
+
     return (
         <div className={`min-h-screen ${theme.appBg} ${theme.baseText} font-sans selection:bg-amber-500/30 overflow-hidden relative flex flex-col transition-colors duration-700 ease-in-out`}>
-            {/* --- VISUAL DEBUG HUD (Production Diagnostic) --- */}
-            <div className="fixed top-20 left-4 z-[9999] pointer-events-none flex flex-col gap-1">
-                <div className="bg-red-600 text-white px-2 py-0.5 text-[8px] font-bold shadow-lg">
-                    DEBUG_MODE: ACTIVE
-                </div>
-                <div className="bg-black/80 text-white px-2 py-0.5 text-[8px] font-mono border border-white/20">
-                    LIB_COUNT: {library.length} | ACTIVE: {activeQuest.id}
-                </div>
-                <div className="bg-black/80 text-white px-2 py-0.5 text-[8px] font-mono border border-white/20">
-                    THEME: {currentTheme} | SB_SIDEBAR: {activeQuests.length}
-                </div>
-            </div>
-
             <BackgroundController theme={theme} isPaused={isModalOpen || isReducedMotion} isMobile={isMobile} />
             <div className="absolute inset-0 pointer-events-none z-0 bg-[radial-gradient(circle,transparent_50%,rgba(0,0,0,0.4)_100%)] opacity-50" />
 
@@ -295,9 +273,6 @@ const App: React.FC = () => {
                         <div className="flex flex-col leading-none"><div className="flex gap-2 items-baseline"><span className={`font-mono text-[10px] tracking-[0.2em] ${theme.headingText} font-bold transition-colors duration-700`}>SYSTEM.ROOT</span></div><ScrambleText text="AKASHIC" className="font-orbitron text-lg tracking-[0.3em] font-bold drop-shadow-sm transition-colors duration-700" animatedGradient={true} gradientColors={currentTheme === 'LIGHT' ? "from-sky-500 to-cyan-500" : "from-amber-600 via-yellow-400 to-white"} /></div>
                     </div>
                     <div className="flex items-center gap-3">
-                        <div className={`px-2 py-0.5 border ${theme.borderSubtle} bg-black/20 rounded font-mono text-[8px] ${theme.highlightText} animate-pulse`}>
-                            LIB_SYNC: {library.length}
-                        </div>
                         <button onClick={toggleTheme} className={`w-8 h-8 flex items-center justify-center border ${theme.borderSubtle} ${theme.isDark ? 'bg-white/5 hover:bg-white/10' : 'bg-black/5 hover:bg-black/10'} rounded transition-colors duration-700`}>{currentTheme === 'LIGHT' ? <Sun size={14} className="text-sky-600 transition-colors duration-700" /> : <Moon size={14} className="text-amber-400 transition-colors duration-700" />}</button>
                         <button onClick={() => { setEditingItem(null); setIsModalOpen(true); }} className={`hidden lg:flex px-4 py-1.5 border ${theme.borderSubtle} ${theme.highlightText} ${theme.isDark ? 'hover:bg-white/5' : 'hover:bg-black/5'} transition-colors duration-700 font-mono text-[10px] tracking-widest items-center gap-2 cursor-pointer`}><Plus size={12} /> CREATE_GATE</button>
                     </div>

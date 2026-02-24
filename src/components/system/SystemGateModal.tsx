@@ -75,9 +75,9 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
             const newTitle = result.title.english || result.title.romaji || formData.title;
             setFormData(prev => ({
                 ...prev,
-                title: prev.title ? prev.title : newTitle, // Do not override if user entered something manually (though they did for the search)
-                coverUrl: prev.coverUrl ? prev.coverUrl : (result.coverImage?.extraLarge || prev.coverUrl), // Prevents overriding existing cover
-                totalChapters: prev.totalChapters === 0 && result.chapters ? result.chapters : prev.totalChapters,
+                title: prev.title && prev.title !== "" ? prev.title : newTitle,
+                coverUrl: result.coverImage?.extraLarge || prev.coverUrl,
+                totalChapters: result.chapters || prev.totalChapters,
                 classType: prev.classType === 'UNKNOWN' ? inferClassFromTitle(newTitle) : prev.classType
             }));
             setScanStatus("SUCCESS");
@@ -174,8 +174,8 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
                 ...prev,
                 title: prev.title && prev.title.trim() !== "" ? prev.title : (finalTitle !== "UNKNOWN ARTIFACT" ? finalTitle : prev.title),
                 classType: prev.classType && prev.classType !== 'UNKNOWN' ? prev.classType : inferClassFromTitle(finalTitle),
-                coverUrl: prev.coverUrl && prev.coverUrl.trim() !== "" ? prev.coverUrl : (fetchedData?.coverImage?.extraLarge || prev.coverUrl),
-                totalChapters: prev.totalChapters === 0 && fetchedData?.chapters ? fetchedData.chapters : prev.totalChapters,
+                coverUrl: fetchedData?.coverImage?.extraLarge || prev.coverUrl,
+                totalChapters: fetchedData?.chapters || prev.totalChapters,
                 currentChapter: prev.currentChapter === 0 ? 1 : prev.currentChapter
             }));
             setScanStatus("SUCCESS");

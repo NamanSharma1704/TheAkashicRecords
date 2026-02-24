@@ -204,8 +204,8 @@ const App: React.FC = () => {
         const method = isEditing ? 'PUT' : 'POST';
 
         // MAPPING: Convert frontend fields to backend schema names
-        // Also strip the 'id' field to avoid MongoDB _id conflicts
-        const { id, coverUrl, link, currentChapter, totalChapters, ...rest } = data;
+        // STRIP internal fields that might cause MongoDB validation errors
+        const { id, _id, __v, coverUrl, link, currentChapter, totalChapters, lastRead, lastUpdated, ...rest } = data as any;
 
         const body: any = {
             ...rest,
@@ -214,6 +214,11 @@ const App: React.FC = () => {
             currentChapter: Number(currentChapter) || 0,
             totalChapters: Number(totalChapters) || 0
         };
+
+        console.log(`[handleSave] ${method} to ${url}`, {
+            originalData: data,
+            mappedBody: body
+        });
 
         try {
             const res = await fetch(url, {

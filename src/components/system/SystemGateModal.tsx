@@ -101,43 +101,48 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
         try {
             // 1. EXTRACT TITLE FROM URL
             const url = new URL(formData.link!);
+            const hostname = url.hostname.toLowerCase();
             const pathSegments = url.pathname.split('/').filter(Boolean);
             let slug = pathSegments[pathSegments.length - 1];
 
-            // Handle cases like "/manga/title/chapter-1" -> grab "title"
-            if (slug.match(/chapter-\d+/)) {
-                slug = pathSegments[pathSegments.length - 2];
+            // Handle common structures: /manga/title-slug-id or /series/title-slug
+            if (slug.match(/chapter-\d+$/i) || slug.match(/ch-\d+$/i)) {
+                slug = pathSegments[pathSegments.length - 2] || slug;
             }
 
-            // WEBTOONS.COM SPECIFIC LOGIC
-            // Structure: /en/genre/title/list or /en/genre/title/viewer
-            if (url.hostname.includes('webtoons.com')) {
-                if (slug === 'list' || slug === 'viewer' || slug === 'rss') {
-                    if (pathSegments.length >= 2) {
-                        slug = pathSegments[pathSegments.length - 2];
-                    }
-                }
-            }
-
-            if (slug) {
-                // CLEANUP: Remove hash IDs from slug
-                const parts = slug.split('-');
-                const lastPart = parts[parts.length - 1];
-
-                // Strict check for "Is this just an ID?"
-                const strictNumeric = /^\d+$/.test(slug);
-                if (strictNumeric) {
+            // Site-Specific Overrides
+            if (hostname.includes('mangadex.org')) {
+                // /title/uuid/slug
+                if (pathSegments[0] === 'title' && pathSegments.length >= 3) {
+                    slug = pathSegments[2];
+                } else if (pathSegments[0] === 'title' && pathSegments.length === 2) {
+                    // It's just /title/uuid
                     isEncrypted = true;
-                } else {
-                    const isHash = /^\d+$/.test(lastPart) ||
-                        (/^(?=.*[0-9])(?=.*[a-zA-Z])([a-zA-Z0-9]+)$/).test(lastPart) ||
-                        (lastPart.length > 6 && /^[a-fA-F0-9]+$/.test(lastPart));
-
-                    if (isHash) {
-                        parts.pop();
-                    }
-                    inferredTitle = parts.join(' ').toUpperCase();
                 }
+            } else if (hostname.includes('webtoons.com')) {
+                if (['list', 'viewer', 'rss'].includes(slug.toLowerCase())) {
+                    slug = pathSegments[pathSegments.length - 2] || slug;
+                }
+            } else if (hostname.includes('asuracomic') || hostname.includes('asura')) {
+                // /series/title-slug-randomid
+                if (pathSegments[0] === 'series' && pathSegments.length >= 2) {
+                    slug = pathSegments[1];
+                }
+            }
+
+            if (slug && !isEncrypted) {
+                // CLEANUP: 
+                // 1. Remove common URL junk like "-manhwa", "-manga", "-comic"
+                // 2. Remove trailing hash-like IDs (e.g. title-827364)
+                let cleanedSlug = slug
+                    .replace(/-(manhwa|manga|comic|webtoon|novel)$/i, '')
+                    .replace(/-[a-f0-9]{8,}$/i, '') // Remove long hex IDs
+                    .replace(/-[0-9]{4,}$/i, '');   // Remove long numeric IDs
+
+                const parts = cleanedSlug.split('-').filter(p => p.length > 0);
+                inferredTitle = parts.join(' ').toUpperCase();
+
+                if (inferredTitle.length < 3) inferredTitle = "UNKNOWN ARTIFACT";
             }
 
             if (!isEncrypted && inferredTitle !== "UNKNOWN ARTIFACT") {

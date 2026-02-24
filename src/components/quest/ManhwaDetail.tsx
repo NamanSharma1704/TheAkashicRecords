@@ -108,8 +108,8 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
             },
             description: "King Grey has unrivaled strength, wealth, and prestige in a world governed by martial ability. However, solitude lingers closely behind those with great power. Reincarnated into a new world filled with magic and monsters, the king has a second chance to relive his life. Correcting the mistakes of his past will not be his only challenge, however. Underneath the peace and prosperity of the new world is an undercurrent threatening to destroy everything he has worked for, questioning his role and reason for being born again.",
             coverImage: {
-                extraLarge: quest?.coverUrl || "",
-                large: quest?.coverUrl || ""
+                extraLarge: quest?.coverUrl || media?.coverImage?.extraLarge || "https://s4.anilist.co/file/anilistcdn/media/manga/cover/large/bx108343-T9D6L7Gnd8d6.jpg",
+                large: quest?.coverUrl || media?.coverImage?.large || "https://s4.anilist.co/file/anilistcdn/media/manga/cover/large/bx108343-T9D6L7Gnd8d6.jpg"
             },
             bannerImage: "", // Use cover as fallback in UI
             genres: ["Fantasy", "Action", "Adventure", "Isekai"],
@@ -443,7 +443,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                     ) : (
                                         <div
                                             className={`text-sm md:text-base leading-relaxed ${theme.baseText} font-sans`}
-                                            dangerouslySetInnerHTML={{ __html: quest.synopsis || "No synopsis available." }}
+                                            dangerouslySetInnerHTML={{ __html: quest.synopsis || media?.description || "No synopsis available." }}
                                         />
                                     )}
                                 </div>

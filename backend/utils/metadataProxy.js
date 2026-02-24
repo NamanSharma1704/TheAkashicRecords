@@ -77,10 +77,17 @@ const fetchMangaDex = async (title) => {
 
         if (!searchData.data || searchData.data.length === 0) return null;
 
-        // Simple match or pick first
+        // Better Matching: Check all titles and alt titles
         const manga = searchData.data.find(m => {
-            const enTitle = m.attributes.title.en || Object.values(m.attributes.title)[0];
-            return enTitle.toLowerCase().includes(title.toLowerCase());
+            const titles = [
+                m.attributes.title.en,
+                ...Object.values(m.attributes.title),
+                ...m.attributes.altTitles.map(at => Object.values(at)[0])
+            ].filter(Boolean).map(t => t.toLowerCase().trim());
+
+            const searchLower = title.toLowerCase().trim();
+            // Check for exact match or contains
+            return titles.some(t => t === searchLower || t.includes(searchLower) || searchLower.includes(t));
         }) || searchData.data[0];
 
         const attributes = manga.attributes;

@@ -71,6 +71,7 @@ const App: React.FC = () => {
     const fetchQuests = async () => {
         try {
             const res = await fetch(API_URL);
+            const data = await res.json();
             if (res.ok && Array.isArray(data)) {
                 // Map MongoDB _id to frontend id for compatibility
                 const mappedData = data.map((q: any) => ({ ...q, id: q._id }));
@@ -81,7 +82,7 @@ const App: React.FC = () => {
                     setActiveId(top ? top.id : (mappedData[0]?.id || null));
                 }
             } else {
-                throw new Error(data.message || 'Invalid API response');
+                throw new Error((data && data.message) || 'Invalid API response');
             }
         } catch (e) {
             console.error("Database connection failure:", e);

@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const connectDB = require('./config/db');
+const { initDatabase } = require('./config/init');
 const Quest = require('./models/Quest');
 const UserSettings = require('./models/UserSettings');
 const DailyQuest = require('./models/DailyQuest');
@@ -42,7 +43,14 @@ app.get('/api/user/state', async (req, res) => {
 app.get('/api/quests', async (req, res) => {
     try {
         await connectDB();
-        const quests = await Quest.find().sort({ lastRead: -1 });
+        let quests = await Quest.find().sort({ lastRead: -1 });
+
+        // Lazy-seed if DB is completely empty (common on first production run)
+        if (quests.length === 0) {
+            await initDatabase(connectDB);
+            quests = await Quest.find().sort({ lastRead: -1 });
+        }
+
         res.json(quests);
     } catch (err) {
         res.status(500).json({ message: err.message });

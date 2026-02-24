@@ -246,19 +246,25 @@ const App: React.FC = () => {
         setBooting(true);
         let count = 0;
         let updatedCount = 0;
+        let skippedCount = 0;
 
         for (const item of newItems) {
             try {
-                // IDEMPOTENCY: Check if title already exists in the local library
                 const existing = library.find(q => q.title.toLowerCase().trim() === item.title.toLowerCase().trim());
 
                 if (existing) {
-                    // UPSERT: Perform an UPDATE (PUT) instead of a CREATE (POST)
-                    const { id: _, ...data } = item;
-                    await handleSave({ ...data, id: existing.id });
-                    updatedCount++;
+                    // SMART MERGE: Only update if the CSV progress is ahead or equal
+                    const shouldUpdate = item.totalChapters >= existing.totalChapters;
+
+                    if (shouldUpdate) {
+                        const { id: _, ...data } = item;
+                        await handleSave({ ...data, id: existing.id });
+                        updatedCount++;
+                    } else {
+                        skippedCount++;
+                        console.log(`[Import] Skipping outdated record: ${item.title} (CSV: ${item.totalChapters} < Library: ${existing.totalChapters})`);
+                    }
                 } else {
-                    // NEW: Create a new record (POST)
                     const { id: _, ...data } = item;
                     await handleSave(data);
                     count++;
@@ -269,7 +275,7 @@ const App: React.FC = () => {
         }
         await fetchQuests();
         setBooting(false);
-        alert(`SYSTEM: Archive Reputed. ${count} New Origins Formed. ${updatedCount} Existing Records Recalibrated.`);
+        alert(`SYSTEM: Archive Reputed. ${count} New Origins Formed. ${updatedCount} Records Enhanced. ${skippedCount} Outdated Clusters Ignored.`);
     };
 
     const updateProgress = async (amt: number) => {

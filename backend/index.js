@@ -5,7 +5,7 @@ const { initDatabase } = require('./config/init');
 const Quest = require('./models/Quest');
 const UserSettings = require('./models/UserSettings');
 const DailyQuest = require('./models/DailyQuest');
-const { fetchAniList, fetchMangaDex, fetchJikan } = require('./utils/metadataProxy');
+const { fetchAniList, fetchMangaDex, fetchJikan, fetchBest } = require('./utils/metadataProxy');
 require('dotenv').config();
 
 const app = express();
@@ -184,16 +184,8 @@ app.get('/api/proxy/metadata', async (req, res) => {
         } else if (source === 'MAL') {
             data = await fetchJikan(title);
         } else {
-            // AUTO Logic
-            data = await fetchAniList(title);
-            if (!data) {
-                console.log(`[Proxy] AniList missed, trying MangaDex for: ${title}`);
-                data = await fetchMangaDex(title);
-            }
-            if (!data) {
-                console.log(`[Proxy] MangaDex missed, trying Jikan for: ${title}`);
-                data = await fetchJikan(title);
-            }
+            // AUTO Logic: Parallel scoring competition
+            data = await fetchBest(title);
         }
 
         if (data) {

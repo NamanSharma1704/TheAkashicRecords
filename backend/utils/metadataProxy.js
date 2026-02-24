@@ -204,4 +204,68 @@ const fetchJikan = async (title) => {
     }
 };
 
-module.exports = { fetchAniList, fetchMangaDex, fetchJikan };
+const fetchBest = async (title) => {
+    const searchLower = title.toLowerCase().trim();
+    const searchWords = new Set(searchLower.split(/\s+/));
+
+    // 1. Fetch from all sources in parallel
+    const [aniResult, mdResult, jkResult] = await Promise.all([
+        fetchAniList(title).catch(() => null),
+        fetchMangaDex(title).catch(() => null),
+        fetchJikan(title).catch(() => null)
+    ]);
+
+    const results = [
+        { source: 'ANILIST', data: aniResult },
+        { source: 'MANGADEX', data: mdResult },
+        { source: 'MAL', data: jkResult }
+    ].filter(r => r.data !== null);
+
+    if (results.length === 0) return null;
+
+    // 2. Scoring Logic
+    const scoredResults = results.map(res => {
+        let score = 0;
+        const d = res.data;
+        const titles = [
+            d.title.english,
+            d.title.romaji,
+            ...(d.title.native ? [d.title.native] : []),
+            ...(d.altTitles || [])
+        ].filter(Boolean).map(t => t.toLowerCase().trim());
+
+        // Exact Match Bonus
+        if (titles.some(t => t === searchLower)) {
+            score += 100;
+        }
+
+        // Fuzzy/Word Overlap Score
+        const maxOverlap = Math.max(...titles.map(t => {
+            const words = t.split(/\s+/);
+            const overlap = words.filter(w => searchWords.has(w)).length;
+            return (overlap / Math.max(words.length, searchWords.size));
+        }));
+        score += maxOverlap * 50;
+
+        // Data Richness Bonus
+        if (d.chapters && d.chapters > 0) score += 20;
+        if (d.description && d.description.length > 50) score += 10;
+        if (d.genres && d.genres.length > 0) score += 5;
+        if (d.coverImage && d.coverImage.extraLarge) score += 15;
+
+        // Source Preference (User prefers MangaDex for Manhwa details)
+        if (res.source === 'MANGADEX') score += 10;
+        if (res.source === 'ANILIST') score += 5;
+
+        return { ...res, score };
+    });
+
+    // 3. Sort by score and pick the best
+    scoredResults.sort((a, b) => b.score - a.score);
+
+    console.log(`[Proxy] AUTO Selection scores:`, scoredResults.map(r => `${r.source}: ${Math.round(r.score)}`));
+
+    return scoredResults[0].data;
+};
+
+module.exports = { fetchAniList, fetchMangaDex, fetchJikan, fetchBest };

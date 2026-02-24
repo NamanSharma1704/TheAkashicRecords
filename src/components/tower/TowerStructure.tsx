@@ -13,7 +13,7 @@ interface TowerStructureProps {
     isPaused?: boolean;
 }
 
-const TowerStructure: React.FC<TowerStructureProps> = ({ onSelectFloor, theme, onFocus, isPaused = false }) => {
+const TowerStructure: React.FC<TowerStructureProps> = ({ onSelectFloor, theme, onFocus, items = [], itemsPerFloor = 20, isPaused = false }) => {
     const mountRef = useRef<HTMLDivElement>(null);
     const onSelectFloorRef = useRef(onSelectFloor);
 
@@ -232,12 +232,17 @@ const TowerStructure: React.FC<TowerStructureProps> = ({ onSelectFloor, theme, o
             originalY: number;
         }[] = [];
 
-        for (let i = 0; i < 8; i++) {
+        // Dynamically calculate number of floors, assuming minimum 1 floor
+        // Use 20 items per floor as requested instead of 8 panels
+        const defaultItemsCount = (items && items.length > 0) ? items.length : itemsPerFloor || 20;
+        const totalFloors = Math.max(1, Math.ceil(defaultItemsCount / (itemsPerFloor || 20)));
+
+        for (let i = 0; i < totalFloors; i++) {
             const floorGroup = new THREE.Group();
             const yPos = (i * 12) - 42;
             floorGroup.position.y = yPos;
 
-            const baseRadius = 8;
+            const baseRadius = 14; // Increased from 8 to fit 20 panels comfortably
             const floorRadius = baseRadius + (Math.log(i + 1) * 6);
 
             // Solid High-Tech Floors (Height 0.8)
@@ -264,18 +269,21 @@ const TowerStructure: React.FC<TowerStructureProps> = ({ onSelectFloor, theme, o
             // Add Solid Body + Wireframe Overlay + Neon Rims
             floorGroup.add(fill, floorWire, rimTop, rimBottom);
 
-            const panelGeo = new THREE.PlaneGeometry(4, 6);
+            const panelGeo = new THREE.PlaneGeometry(3.5, 5.5); // Slightly smaller to fit 20
             const panels = [];
             const panelRadius = floorRadius + 2;
 
-            for (let p = 0; p < 8; p++) {
-                const angle = (p / 8) * Math.PI * 2;
+            // Dynamically fit 20 panels per floor 
+            const numPanels = itemsPerFloor || 20;
+
+            for (let p = 0; p < numPanels; p++) {
+                const angle = (p / numPanels) * Math.PI * 2;
 
                 // 1. Wireframe Overlay
                 const panel = new THREE.Mesh(panelGeo, wireMat);
                 panel.position.set(Math.cos(angle) * panelRadius, 0, Math.sin(angle) * panelRadius);
                 panel.lookAt(0, 0, 0);
-                panel.rotateX(-Math.PI / 4);
+                panel.rotateX(-Math.PI / 8); // Tilted less steeply than before so they are easier to see as a carousel
 
                 // 2. Solid Backing (Split into Inner/Outer for lighting control)
 
@@ -414,12 +422,12 @@ const TowerStructure: React.FC<TowerStructureProps> = ({ onSelectFloor, theme, o
         const rodGeo = new THREE.CylinderGeometry(0.1, 0.1, 12, 4);
         const rodMat = new THREE.MeshBasicMaterial({ color: SECONDARY_COLOR });
 
-        for (let i = 0; i < 7; i++) { // Between 8 floors -> 7 gaps
+        for (let i = 0; i < totalFloors - 1; i++) {
             const yPos = (i * 12) - 36; // Midpoint
-            for (let p = 0; p < 4; p++) { // Only 4 rods, not 8, to keep it clean
+            for (let p = 0; p < 4; p++) {
                 const angle = (p / 4) * Math.PI * 2;
                 const rod = new THREE.Mesh(rodGeo, rodMat);
-                rod.position.set(Math.cos(angle) * 5, yPos, Math.sin(angle) * 5); // Reduce rod radius to 5 to fit inside 8
+                rod.position.set(Math.cos(angle) * 8, yPos, Math.sin(angle) * 8); // Increased rod radius to match broader core
                 group.add(rod);
             }
         }
@@ -671,7 +679,7 @@ const TowerStructure: React.FC<TowerStructureProps> = ({ onSelectFloor, theme, o
             });
             renderer.dispose();
         };
-    }, [theme]);
+    }, [theme, items, itemsPerFloor]);
 
     return <div ref={mountRef} className="w-full h-full min-h-[500px]" />;
 };

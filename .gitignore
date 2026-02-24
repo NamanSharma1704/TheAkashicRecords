@@ -23,7 +23,7 @@ tsc_log.txt
 .env.production.local
 
 # Editor settings
-.vscode/
+# .vscode/
 .idea/
 *.suo
 *.ntvs*

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Star, Calendar, BookOpen, Users, Share2, Heart, Sword, Zap, Edit2, Save, ChevronRight, Target, AlignLeft } from 'lucide-react';
+import { X, Star, Calendar, BookOpen, Users, Share2, Heart, Sword, Zap, Edit2, Save, ChevronRight, Target, AlignLeft, Check } from 'lucide-react';
 
 import { Theme, Quest } from '../../core/types';
 import ScrambleText from '../system/ScrambleText';
@@ -57,6 +57,8 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
     const [media, setMedia] = useState<AniListMedia | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [isEditingSynopsis, setIsEditingSynopsis] = useState(false);
+    const [draftSynopsis, setDraftSynopsis] = useState("");
 
     const isCustomCover = !!(quest?.coverUrl && quest.coverUrl !== "");
     const finalCover = isCustomCover ? quest.coverUrl : (media?.coverImage?.extraLarge || media?.coverImage?.large || quest?.coverUrl || "");
@@ -341,15 +343,40 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                     {/* TWO COLUMN DATA: SYNOPSIS & METADATA */}
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-4">
                         {/* LEFT: Synopsis */}
-                        <div className="lg:col-span-2 relative p-8 bg-black/30 backdrop-blur-xl border border-white/5 rounded-xl">
-                            <div className="flex items-center gap-2 mb-6 opacity-60">
-                                <AlignLeft size={16} className="text-white" />
-                                <span className="text-[10px] font-mono tracking-[0.3em] text-white font-bold uppercase">ARCHIVE_SYNOPSIS</span>
+                        <div className="lg:col-span-2 relative p-8 bg-black/30 backdrop-blur-xl border border-white/5 rounded-xl group/synopsis">
+                            <div className="flex items-center justify-between mb-6">
+                                <div className="flex items-center gap-2 opacity-60">
+                                    <AlignLeft size={16} className="text-white" />
+                                    <span className="text-[10px] font-mono tracking-[0.3em] text-white font-bold uppercase">ARCHIVE_SYNOPSIS</span>
+                                </div>
+                                <button
+                                    onClick={() => {
+                                        if (isEditingSynopsis) {
+                                            if (onUpdate && quest) onUpdate(quest.id, { synopsis: draftSynopsis });
+                                        } else {
+                                            setDraftSynopsis(quest.synopsis || media?.description || "");
+                                        }
+                                        setIsEditingSynopsis(!isEditingSynopsis);
+                                    }}
+                                    className={`px-3 py-1 rounded border border-white/10 hover:border-white/30 text-white/50 hover:text-white text-[9px] font-mono tracking-widest uppercase transition-colors flex items-center gap-2`}
+                                >
+                                    {isEditingSynopsis ? <><Check size={12} /> SAVE_OVERRIDE</> : <><Edit2 size={12} /> MODIFY</>}
+                                </button>
                             </div>
-                            <div
-                                className="text-sm md:text-base leading-loose text-white/80 font-sans"
-                                dangerouslySetInnerHTML={{ __html: quest.synopsis || media?.description || "No synopsis available." }}
-                            />
+
+                            {isEditingSynopsis ? (
+                                <textarea
+                                    value={draftSynopsis}
+                                    onChange={(e) => setDraftSynopsis(e.target.value)}
+                                    className={`w-full h-48 bg-black/40 border border-white/10 rounded-lg p-4 text-sm font-sans text-white/90 focus:outline-none focus:border-white/30 transition-colors resize-y shadow-inner`}
+                                    placeholder="Enter custom synopsis override..."
+                                />
+                            ) : (
+                                <div
+                                    className="text-sm md:text-base leading-loose text-white/80 font-sans"
+                                    dangerouslySetInnerHTML={{ __html: quest.synopsis || media?.description || "No synopsis available." }}
+                                />
+                            )}
                         </div>
 
                         {/* RIGHT: Quick Stats / Tags */}

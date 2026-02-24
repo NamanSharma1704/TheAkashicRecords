@@ -188,13 +188,18 @@ const App: React.FC = () => {
 
     const handleLogClick = async (id: string) => {
         setActiveId(id);
+        const now = new Date().toISOString();
+        // OPTIMISTIC UPDATE: Immediate UI Feedback
+        setLibrary(prev => prev.map(item => item.id === id ? { ...item, lastUpdated: now } : item));
+
         try {
             const res = await fetch(`${API_URL}/${id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ lastUpdated: new Date().toISOString() })
+                body: JSON.stringify({ lastUpdated: now })
             });
             const updated = await res.json();
+            // Silent sync
             setLibrary(prev => prev.map(item => item.id === id ? { ...updated, id: updated._id } : item));
         } catch (e) {
             console.error("Update failed", e);
@@ -203,11 +208,15 @@ const App: React.FC = () => {
 
     const handleSetActiveQuest = async (id: string) => {
         setActiveId(id);
+        const now = Date.now();
+        // OPTIMISTIC UPDATE
+        setLibrary(prev => prev.map(item => item.id === id ? { ...item, status: 'ACTIVE', lastUpdated: new Date(now).toISOString() } : item));
+
         try {
             const res = await fetch(`${API_URL}/${id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ status: 'ACTIVE', lastRead: Date.now() })
+                body: JSON.stringify({ status: 'ACTIVE', lastRead: now })
             });
             const updated = await res.json();
             setLibrary(prev => prev.map(item => item.id === id ? { ...updated, id: updated._id } : item));
@@ -303,6 +312,9 @@ const App: React.FC = () => {
             ? Math.min(Math.max(0, activeQuest.currentChapter + amt), activeQuest.totalChapters)
             : Math.max(0, activeQuest.currentChapter + amt);
 
+        // OPTIMISTIC UPDATE: Zero-Latency
+        setLibrary(prev => prev.map(q => q.id === activeId ? { ...q, currentChapter: next } : q));
+
         try {
             const res = await fetch(`${API_URL}/${activeId}`, {
                 method: 'PUT',
@@ -311,7 +323,7 @@ const App: React.FC = () => {
             });
             const updated = await res.json();
             setLibrary(prev => prev.map(q => q.id === activeId ? mapQuest(updated) : q));
-            fetchUserState(); // Refresh Divine Mandate UI immediately
+            fetchUserState(); // Refresh Divine Mandate UI
         } catch (e) {
             console.error("Progress update failed", e);
         }

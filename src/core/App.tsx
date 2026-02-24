@@ -245,17 +245,31 @@ const App: React.FC = () => {
     const handleImportQuests = async (newItems: Quest[]) => {
         setBooting(true);
         let count = 0;
+        let updatedCount = 0;
+
         for (const item of newItems) {
             try {
-                const { id, ...data } = item;
-                await handleSave(data);
-                count++;
+                // IDEMPOTENCY: Check if title already exists in the local library
+                const existing = library.find(q => q.title.toLowerCase().trim() === item.title.toLowerCase().trim());
+
+                if (existing) {
+                    // UPSERT: Perform an UPDATE (PUT) instead of a CREATE (POST)
+                    const { id: _, ...data } = item;
+                    await handleSave({ ...data, id: existing.id });
+                    updatedCount++;
+                } else {
+                    // NEW: Create a new record (POST)
+                    const { id: _, ...data } = item;
+                    await handleSave(data);
+                    count++;
+                }
             } catch (e) {
-                console.error(`[Import] Failed to save: ${item.title}`);
+                console.error(`[Import] Failed to process: ${item.title}`, e);
             }
         }
         await fetchQuests();
         setBooting(false);
+        alert(`SYSTEM: Archive Reputed. ${count} New Origins Formed. ${updatedCount} Existing Records Recalibrated.`);
     };
 
     const updateProgress = async (amt: number) => {

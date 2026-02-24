@@ -153,4 +153,39 @@ const fetchMangaDex = async (title) => {
     }
 };
 
-module.exports = { fetchAniList, fetchMangaDex };
+const fetchJikan = async (title) => {
+    try {
+        const searchUrl = `https://api.jikan.moe/v4/manga?q=${encodeURIComponent(title)}&limit=1&sfw=false`;
+        const response = await fetch(searchUrl);
+        const data = await response.json();
+
+        if (data.data && data.data.length > 0) {
+            const manga = data.data[0];
+            return {
+                id: manga.mal_id,
+                title: {
+                    english: manga.title_english || manga.title,
+                    romaji: manga.title,
+                    native: manga.title_japanese || ""
+                },
+                description: cleanDescription(manga.synopsis),
+                chapters: manga.chapters || 0,
+                coverImage: {
+                    extraLarge: manga.images.jpg.large_image_url || manga.images.jpg.image_url,
+                    large: manga.images.jpg.image_url
+                },
+                status: manga.status ? manga.status.toUpperCase() : "UNKNOWN",
+                genres: (manga.genres || []).map(g => g.name),
+                siteUrl: manga.url,
+                characters: { nodes: [] },
+                recommendations: { nodes: [] }
+            };
+        }
+        return null;
+    } catch (e) {
+        console.error("[Proxy] Jikan Error:", e.message);
+        return null;
+    }
+};
+
+module.exports = { fetchAniList, fetchMangaDex, fetchJikan };

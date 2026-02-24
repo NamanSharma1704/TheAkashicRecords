@@ -5,7 +5,7 @@ const { initDatabase } = require('./config/init');
 const Quest = require('./models/Quest');
 const UserSettings = require('./models/UserSettings');
 const DailyQuest = require('./models/DailyQuest');
-const { fetchAniList, fetchMangaDex } = require('./utils/metadataProxy');
+const { fetchAniList, fetchMangaDex, fetchJikan } = require('./utils/metadataProxy');
 require('dotenv').config();
 
 const app = express();
@@ -169,19 +169,31 @@ app.delete('/api/quests/:id', async (req, res) => {
 
 // GET /api/proxy/metadata - Proxy for external metadata APIs
 app.get('/api/proxy/metadata', async (req, res) => {
-    const { title } = req.query;
+    const { title, source } = req.query;
     if (!title) return res.status(400).json({ error: "Title required." });
 
-    console.log(`[Proxy] Fetching metadata for: ${title}`);
+    console.log(`[Proxy] Fetching metadata for: ${title} (Source: ${source || 'AUTO'})`);
 
     try {
-        // Try AniList first
-        let data = await fetchAniList(title);
+        let data = null;
 
-        // Fallback to MangaDex if AniList fails or mismatch (mismatch logic handled on client usually, but here we just provide data)
-        if (!data) {
-            console.log(`[Proxy] AniList missed, trying MangaDex for: ${title}`);
+        if (source === 'ANILIST') {
+            data = await fetchAniList(title);
+        } else if (source === 'MANGADEX') {
             data = await fetchMangaDex(title);
+        } else if (source === 'MAL') {
+            data = await fetchJikan(title);
+        } else {
+            // AUTO Logic
+            data = await fetchAniList(title);
+            if (!data) {
+                console.log(`[Proxy] AniList missed, trying MangaDex for: ${title}`);
+                data = await fetchMangaDex(title);
+            }
+            if (!data) {
+                console.log(`[Proxy] MangaDex missed, trying Jikan for: ${title}`);
+                data = await fetchJikan(title);
+            }
         }
 
         if (data) {

@@ -5,6 +5,7 @@ const { initDatabase } = require('./config/init');
 const Quest = require('./models/Quest');
 const UserSettings = require('./models/UserSettings');
 const DailyQuest = require('./models/DailyQuest');
+const { fetchAniList, fetchMangaDex } = require('./utils/metadataProxy');
 require('dotenv').config();
 
 const app = express();
@@ -163,6 +164,34 @@ app.delete('/api/quests/:id', async (req, res) => {
         res.json({ message: 'Quest Purged.' });
     } catch (err) {
         res.status(500).json({ message: err.message });
+    }
+});
+
+// GET /api/proxy/metadata - Proxy for external metadata APIs
+app.get('/api/proxy/metadata', async (req, res) => {
+    const { title } = req.query;
+    if (!title) return res.status(400).json({ error: "Title required." });
+
+    console.log(`[Proxy] Fetching metadata for: ${title}`);
+
+    try {
+        // Try AniList first
+        let data = await fetchAniList(title);
+
+        // Fallback to MangaDex if AniList fails or mismatch (mismatch logic handled on client usually, but here we just provide data)
+        if (!data) {
+            console.log(`[Proxy] AniList missed, trying MangaDex for: ${title}`);
+            data = await fetchMangaDex(title);
+        }
+
+        if (data) {
+            res.json(data);
+        } else {
+            res.status(404).json({ error: "Archive record not found." });
+        }
+    } catch (err) {
+        console.error("[Proxy] Critical Failure:", err.message);
+        res.status(500).json({ error: "Communication with archives severed." });
     }
 });
 

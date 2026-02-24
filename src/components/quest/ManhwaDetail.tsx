@@ -149,107 +149,14 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
             .trim();
     };
 
-    // --- MANGADEX API FETCH ---
-    const fetchMangaDex = async (title: string): Promise<AniListMedia | null> => {
+    // --- PROXY API FETCH ---
+    const fetchFromProxy = async (title: string): Promise<AniListMedia | null> => {
         try {
-            // Search for the title (Fetch 20 results to find best match) - Added includes[]=manga for recommendations
-            const searchRes = await fetch(`https://api.mangadex.org/manga?title=${encodeURIComponent(title)}&limit=20&includes[]=cover_art&includes[]=author&includes[]=manga&contentRating[]=safe&contentRating[]=suggestive&contentRating[]=erotica`);
-            const searchData = await searchRes.json();
-
-            if (!searchData.data || searchData.data.length === 0) return null;
-
-            // Find best match among results
-            const cleanSearch = title.toLowerCase().replace(/[^a-z0-9\s]/g, '');
-            const manga = searchData.data.find((m: any) => {
-                const enTitle = m.attributes.title.en || Object.values(m.attributes.title)[0] as string;
-                const cleanResult = enTitle.toLowerCase().replace(/[^a-z0-9\s]/g, '');
-                return cleanResult.includes(cleanSearch) || cleanSearch.includes(cleanResult);
-            }) || searchData.data[0];
-
-            const attributes = manga.attributes;
-
-            // Get Cover URL
-            const coverRel = manga.relationships.find((r: any) => r.type === 'cover_art');
-            const fileName = coverRel ? coverRel.attributes.fileName : '';
-            const coverUrl = fileName ? `https://uploads.mangadex.org/covers/${manga.id}/${fileName}` : '';
-
-            // Get Recommendations (Same Category/Tags)
-            let recommendations: AniListRecommendation[] = [];
-
-            // Extract usable tags (Genre/Theme)
-            const tags = (attributes.tags || [])
-                .filter((t: any) => t.attributes.group === 'genre' || t.attributes.group === 'theme')
-                .slice(0, 3) // Limit to top 3 tags to broaden search
-                .map((t: any) => t.id);
-
-            if (tags.length > 0) {
-                const params = new URLSearchParams();
-                params.append('limit', '6');
-                params.append('includes[]', 'cover_art'); // Fetch covers for recs
-                tags.forEach((tagId: string) => params.append('includedTags[]', tagId));
-                params.append('contentRating[]', 'safe');
-                params.append('contentRating[]', 'suggestive');
-
-                // Exclude current manga is hard via API params in v5 easily without ids[] logic which is exclusive/inclusive, 
-                // but easier to just filter client side since we only fetch 6. 
-                // We'll fetch 7 just in case.
-                params.set('limit', '7');
-
-                const recRes = await fetch(`https://api.mangadex.org/manga?${params.toString()}`);
-                const recData = await recRes.json();
-
-                if (recData.data) {
-                    recommendations = recData.data
-                        .filter((m: any) => m.id !== manga.id)
-                        .slice(0, 6)
-                        .map((m: any) => {
-                            const recCover = m.relationships.find((r: any) => r.type === 'cover_art');
-                            const recFileName = recCover ? recCover.attributes.fileName : '';
-                            const recCoverUrl = recFileName ? `https://uploads.mangadex.org/covers/${m.id}/${recFileName}.256.jpg` : ''; // Use thumbnail
-
-                            return {
-                                id: parseInt(m.id.substring(0, 8), 16),
-                                mediaRecommendation: {
-                                    id: parseInt(m.id.substring(0, 8), 16),
-                                    title: {
-                                        english: m.attributes.title.en || Object.values(m.attributes.title)[0],
-                                        romaji: m.attributes.title.en || Object.values(m.attributes.title)[0]
-                                    },
-                                    coverImage: { large: recCoverUrl },
-                                    averageScore: 0 // score not readily available in search list
-                                }
-                            };
-                        });
-                }
-            }
-
-            // Map to AniListMedia format
-            return {
-                id: manga.id,
-                title: {
-                    english: attributes.title.en || Object.values(attributes.title)[0] as string,
-                    romaji: attributes.title.en || Object.values(attributes.title)[0] as string,
-                    native: attributes.altTitles.find((t: any) => t.ja || t.ko)?.ja || attributes.altTitles.find((t: any) => t.ko)?.ko || ""
-                },
-                description: cleanDescription(attributes.description.en),
-                coverImage: {
-                    extraLarge: coverUrl,
-                    large: coverUrl
-                },
-                bannerImage: "",
-                genres: attributes.tags.map((t: any) => t.attributes.name.en),
-                averageScore: 0,
-                meanScore: 0,
-                status: attributes.status.toUpperCase(),
-                seasonYear: parseInt(attributes.year) || 0,
-                episodes: 0,
-                chapters: 0,
-                siteUrl: `https://mangadex.org/title/${manga.id}`,
-                characters: { nodes: [] }, // MangaDex doesn't provide characters
-                recommendations: { nodes: recommendations }
-            } as unknown as AniListMedia;
+            const res = await fetch(`/api/proxy/metadata?title=${encodeURIComponent(title)}`);
+            if (!res.ok) return null;
+            return await res.json();
         } catch (e) {
-            console.error("MangaDex Fetch Failed", e);
+            console.error("[Proxy] Fetch Failed", e);
             return null;
         }
     };
@@ -272,118 +179,16 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
             .trim();
 
         try {
-
-            const query = `
-            query ($search: String) {
-              Media (search: $search, type: MANGA, sort: SEARCH_MATCH) {
-                id
-                title {
-                  english
-                  romaji
-                  native
-                }
-                description
-                coverImage {
-                  extraLarge
-                  large
-                }
-                bannerImage
-                genres
-                averageScore
-                meanScore
-                status
-                seasonYear
-                chapters
-                siteUrl
-                characters(sort: ROLE, perPage: 10) {
-                  edges {
-                    role
-                    node {
-                      id
-                      name {
-                        full
-                      }
-                      image {
-                        large
-                      }
-                    }
-                  }
-                }
-                recommendations(sort: RATING_DESC, perPage: 6) {
-                  nodes {
-                    mediaRecommendation {
-                      id
-                      title {
-                        english
-                        romaji
-                      }
-                      coverImage {
-                        large
-                      }
-                      averageScore
-                    }
-                  }
-                }
-              }
-            }
-            `;
-
-            const response = await fetch('https://graphql.anilist.co', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-                body: JSON.stringify({ query, variables: { search: cleanTitle } })
-            });
-            const data = await response.json();
-
-            if (data.data?.Media) {
-                const mediaData = data.data.Media;
-                const resultTitle = mediaData.title.english || mediaData.title.romaji || "";
-
-                // STRICT MATCHING Check
-                const searchLower = cleanTitle.toLowerCase();
-                const resultLower = resultTitle.toLowerCase();
-
-                // Remove stop words
-                const stopWords = ['the', 'a', 'an', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by'];
-                const searchWords = searchLower.split(/\s+/).filter((w: string) => !stopWords.includes(w) && w.length > 2);
-                const resultWords = resultLower.split(/\s+/).filter((w: string) => !stopWords.includes(w) && w.length > 2);
-
-                const matchCount = searchWords.filter((w: string) => resultWords.some((rw: string) => rw.includes(w) || w.includes(rw))).length;
-
-                // Require at least 50% of keywords to match, or strict substring
-                const isMatch = (matchCount >= searchWords.length * 0.5) || resultLower.includes(searchLower);
-
-                if (isMatch || searchWords.length === 0) {
-                    if (mediaData.characters?.edges) {
-                        mediaData.characters.nodes = mediaData.characters.edges.map((edge: any) => ({
-                            ...edge.node,
-                            role: edge.role
-                        }));
-                    }
-                    // Apply description cleaning
-                    mediaData.description = cleanDescription(mediaData.description);
-
-                    setMedia(mediaData);
-                    setLoading(false);
-                    return; // EXIT
-                } else {
-                    console.warn(`AniList Mismatch: Searched "${cleanTitle}", Got "${resultTitle}". Falling back to MangaDex.`);
-                }
-            }
-        } catch (e) {
-            console.warn("AniList Fetch Failed/Mismatch, trying MangaDex...", e);
-        }
-
-        // Fallback to MangaDex
-        try {
-            const mdData = await fetchMangaDex(cleanTitle);
-            if (mdData) {
-                setMedia(mdData);
+            const data = await fetchFromProxy(cleanTitle);
+            if (data) {
+                // Apply description cleaning (redundant but safe)
+                data.description = cleanDescription(data.description);
+                setMedia(data);
             } else {
                 setError("NO RECORDS FOUND IN ARCHIVES");
             }
         } catch (e) {
-            console.error("MangaDex Failed", e);
+            console.error("Proxy Fetch Failed", e);
             setError("ARCHIVE CONNECTION SEVERED");
         } finally {
             setLoading(false);

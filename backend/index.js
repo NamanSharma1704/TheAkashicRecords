@@ -15,6 +15,33 @@ const getTodayStr = () => new Date().toISOString().split('T')[0];
 app.use(cors());
 app.use(express.json());
 
+// --- DIAGNOSTICS ---
+app.get('/api/health', async (req, res) => {
+    try {
+        const mongoose = require('mongoose');
+        const dbStatus = mongoose.connection.readyState;
+        const statusMap = {
+            0: 'disconnected',
+            1: 'connected',
+            2: 'connecting',
+            3: 'disconnecting'
+        };
+
+        await connectDB();
+        const questCount = await Quest.countDocuments();
+
+        res.json({
+            status: 'Pulse Active',
+            database: statusMap[dbStatus] || 'unknown',
+            documentCount: questCount,
+            environment: process.env.NODE_ENV || 'development',
+            timestamp: new Date().toISOString()
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // --- ROUTES ---
 
 // GET /api/user/state - Fetch streak and daily absorb
@@ -45,14 +72,19 @@ app.get('/api/quests', async (req, res) => {
         await connectDB();
         let quests = await Quest.find().sort({ lastRead: -1 });
 
+        console.log(`[API] Quests requested. Found: ${quests.length} documents.`);
+
         // Lazy-seed if DB is completely empty (common on first production run)
         if (quests.length === 0) {
+            console.log('[API] Database empty. Attempting lazy seeding...');
             await initDatabase(connectDB);
             quests = await Quest.find().sort({ lastRead: -1 });
+            console.log(`[API] Seeding complete. New count: ${quests.length}`);
         }
 
         res.json(quests);
     } catch (err) {
+        console.error('[API] Error fetching quests:', err.message);
         res.status(500).json({ message: err.message });
     }
 });

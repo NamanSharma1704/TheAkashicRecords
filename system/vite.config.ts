@@ -14,10 +14,16 @@ export default defineConfig({
     server: {
         fs: {
             allow: ['..']
+        },
+        proxy: {
+            '/api': {
+                target: 'http://localhost:5000',
+                changeOrigin: true,
+            }
         }
     },
     build: {
-        outDir: '../dist',
+        outDir: '../system_dist',
         emptyOutDir: true
     },
     publicDir: './public',

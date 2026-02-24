@@ -13,7 +13,7 @@ import BootScreen from '../components/system/BootScreen';
 import BackgroundController from '../components/fx/BackgroundController';
 import EntityAvatar from '../components/system/EntityAvatar';
 
-const API_URL = 'http://localhost:5000/api/quests';
+const API_URL = '/api/quests';
 
 // ----------------------------------------------------------------------
 // LAZY LOADED HEAVY COMPONENTS 
@@ -86,10 +86,9 @@ const App: React.FC = () => {
             setLibrary(BASE_QUESTS);
         }
     };
-
     const fetchUserState = async () => {
         try {
-            const res = await fetch('http://localhost:5000/api/user/state');
+            const res = await fetch('/api/user/state');
             if (res.ok) {
                 const data = await res.json();
                 setUserState(data);

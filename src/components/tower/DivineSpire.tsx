@@ -91,7 +91,7 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
             )}
 
             {/* HEADER */}
-            <div className={`relative z-10 h-20 md:h-24 flex items-center justify-between px-4 md:px-6 border-b ${viewMode === 'TOWER' ? 'border-transparent' : theme.borderSubtle} ${viewMode === 'TOWER' ? 'bg-transparent' : (theme.isDark ? 'bg-black/40' : 'bg-white/40')} ${viewMode === 'TOWER' ? '' : 'backdrop-blur-md'} transition-all duration-700`}>
+            <div className={`relative z-10 h-20 md:h-24 flex items-center justify-between px-4 md:px-6 bg-transparent transition-all duration-700`}>
                 <div className="flex items-center gap-3 md:gap-4 overflow-hidden">
                     <div className="relative w-10 h-10 md:w-12 md:h-12 flex items-center justify-center shrink-0">
                         <SystemLogo theme={theme} className="w-full h-full" />

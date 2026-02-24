@@ -45,21 +45,14 @@ const HeavyLoader = ({ theme }: { theme: any }) => (
 const App: React.FC = () => {
     console.log("App Version v25 Loaded");
     const [booting, setBooting] = useState<boolean>(true);
-    const [isReducedMotion, setIsReducedMotion] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
 
     useEffect(() => {
-        const motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
-        setIsReducedMotion(motionQuery.matches);
-        const motionHandler = (e: MediaQueryListEvent) => setIsReducedMotion(e.matches);
-        motionQuery.addEventListener('change', motionHandler);
-
         const checkMobile = () => setIsMobile(window.innerWidth < 768);
         checkMobile();
         window.addEventListener('resize', checkMobile);
 
         return () => {
-            motionQuery.removeEventListener('change', motionHandler);
             window.removeEventListener('resize', checkMobile);
         };
     }, []);
@@ -348,7 +341,7 @@ const App: React.FC = () => {
 
     return (
         <div className={`min-h-screen ${theme.appBg} ${theme.baseText} font-sans selection:bg-amber-500/30 overflow-hidden relative flex flex-col transition-colors duration-700 ease-in-out`}>
-            <BackgroundController theme={theme} isPaused={isModalOpen || isReducedMotion} isMobile={isMobile} />
+            <BackgroundController theme={theme} isPaused={isModalOpen} isMobile={isMobile} />
             <div className="absolute inset-0 pointer-events-none z-0 bg-[radial-gradient(circle,transparent_50%,rgba(0,0,0,0.4)_100%)] opacity-50" />
 
             {/* HEADER */}

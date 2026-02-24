@@ -98,6 +98,7 @@ app.use(express.json());
 // GET /api/user/state - Fetch streak and daily absorb
 app.get('/api/user/state', async (req, res) => {
     try {
+        await connectDB();
         let settings = await UserSettings.findOne({ userId: 'default' });
         if (!settings) settings = await UserSettings.create({ userId: 'default' });
 
@@ -119,6 +120,7 @@ app.get('/api/user/state', async (req, res) => {
 // GET /api/quests - Fetch all quests
 app.get('/api/quests', async (req, res) => {
     try {
+        await connectDB();
         const quests = await Quest.find().sort({ lastRead: -1 });
         res.json(quests);
     } catch (err) {
@@ -129,6 +131,7 @@ app.get('/api/quests', async (req, res) => {
 // POST /api/quests - Create a new quest
 app.post('/api/quests', async (req, res) => {
     try {
+        await connectDB();
         const title = req.body.title;
         // Case-insensitive title check to prevent duplicates
         const existing = await Quest.findOne({ title: { $regex: new RegExp(`^${title.trim()}$`, "i") } });
@@ -148,6 +151,7 @@ app.post('/api/quests', async (req, res) => {
 // PUT /api/quests/:id - Update a quest
 app.put('/api/quests/:id', async (req, res) => {
     try {
+        await connectDB();
         const questId = req.params.id;
         const body = req.body;
 
@@ -193,6 +197,7 @@ app.put('/api/quests/:id', async (req, res) => {
 // DELETE /api/quests/:id - Delete a quest
 app.delete('/api/quests/:id', async (req, res) => {
     try {
+        await connectDB();
         await Quest.findByIdAndDelete(req.params.id);
         res.json({ message: 'Quest Purged.' });
     } catch (err) {

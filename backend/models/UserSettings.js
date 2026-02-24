@@ -12,4 +12,4 @@ const userSettingsSchema = new mongoose.Schema({
     collection: 'user_settings'
 });
 
-module.exports = mongoose.model('UserSettings', userSettingsSchema);
+module.exports = mongoose.models.UserSettings || mongoose.model('UserSettings', userSettingsSchema);

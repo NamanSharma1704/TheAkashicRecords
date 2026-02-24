@@ -12,4 +12,4 @@ const QuestSchema = new mongoose.Schema({
     lastRead: { type: Number, default: Date.now }
 }, { timestamps: true });
 
-module.exports = mongoose.model('Quest', QuestSchema);
+module.exports = mongoose.models.Quest || mongoose.model('Quest', QuestSchema);

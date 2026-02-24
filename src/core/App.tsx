@@ -71,18 +71,21 @@ const App: React.FC = () => {
     const fetchQuests = async () => {
         try {
             const res = await fetch(API_URL);
-            const data = await res.json();
-            // Map MongoDB _id to frontend id for compatibility
-            const mappedData = data.map((q: any) => ({ ...q, id: q._id }));
-            setLibrary(mappedData);
+            if (res.ok && Array.isArray(data)) {
+                // Map MongoDB _id to frontend id for compatibility
+                const mappedData = data.map((q: any) => ({ ...q, id: q._id }));
+                setLibrary(mappedData);
 
-            if (!activeId && mappedData.length > 0) {
-                const top = mappedData.filter((i: any) => i.status === 'ACTIVE').sort((a: any, b: any) => new Date(b.lastUpdated || 0).getTime() - new Date(a.lastUpdated || 0).getTime())[0];
-                setActiveId(top ? top.id : (mappedData[0]?.id || null));
+                if (!activeId && mappedData.length > 0) {
+                    const top = mappedData.filter((i: any) => i.status === 'ACTIVE').sort((a: any, b: any) => new Date(b.lastUpdated || 0).getTime() - new Date(a.lastUpdated || 0).getTime())[0];
+                    setActiveId(top ? top.id : (mappedData[0]?.id || null));
+                }
+            } else {
+                throw new Error(data.message || 'Invalid API response');
             }
         } catch (e) {
             console.error("Database connection failure:", e);
-            // Fallback to BASE_QUESTS if DB is unreachable
+            // Fallback to BASE_QUESTS if DB is unreachable or returns error
             setLibrary(BASE_QUESTS);
         }
     };
@@ -91,7 +94,9 @@ const App: React.FC = () => {
             const res = await fetch('/api/user/state');
             if (res.ok) {
                 const data = await res.json();
-                setUserState(data);
+                if (data && typeof data === 'object' && !data.message) {
+                    setUserState(data);
+                }
             }
         } catch (e) {
             console.error("User state fetch failed:", e);

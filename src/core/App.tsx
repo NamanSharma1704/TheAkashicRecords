@@ -203,11 +203,23 @@ const App: React.FC = () => {
         const url = isEditing ? `${API_URL}/${targetId}` : API_URL;
         const method = isEditing ? 'PUT' : 'POST';
 
+        // MAPPING: Convert frontend fields to backend schema names
+        // Also strip the 'id' field to avoid MongoDB _id conflicts
+        const { id, coverUrl, link, currentChapter, totalChapters, ...rest } = data;
+
+        const body: any = {
+            ...rest,
+            cover: coverUrl,
+            readLink: link,
+            currentChapter: Number(currentChapter) || 0,
+            totalChapters: Number(totalChapters) || 0
+        };
+
         try {
             const res = await fetch(url, {
                 method,
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
+                body: JSON.stringify(body)
             });
             const saved = await res.json();
             const mappedSaved = mapQuest(saved);
@@ -219,6 +231,7 @@ const App: React.FC = () => {
                 handleActivate(mappedSaved.id);
             }
             setIsModalOpen(false);
+            setEditingItem(null); // Clear editing state
         } catch (e) {
             console.error("Save failure", e);
         }

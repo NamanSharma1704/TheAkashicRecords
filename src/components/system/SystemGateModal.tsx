@@ -37,8 +37,9 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
     }, [initialData]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
+        const { name, value, type } = e.target as HTMLInputElement;
+        const val = type === 'number' ? (value === "" ? 0 : Number(value)) : value;
+        setFormData(prev => ({ ...prev, [name]: val }));
     };
 
 

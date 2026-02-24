@@ -167,7 +167,35 @@ app.delete('/api/quests/:id', async (req, res) => {
     }
 });
 
-// GET /api/proxy/metadata - Proxy for external metadata APIs
+// POST /api/admin/bulk-classify - Admin only migration
+app.post('/api/admin/bulk-classify', async (req, res) => {
+    try {
+        console.log("[Admin] Starting Bulk Classification...");
+        const quests = await Quest.find({
+            $or: [
+                { classType: 'UNKNOWN' },
+                { classType: { $exists: false } },
+                { classType: '' },
+                { classType: 'PLAYER' } // Re-evaluate players to see if they fit better classes
+            ]
+        });
+
+        let updated = 0;
+        for (const quest of quests) {
+            const newClass = inferClassFromTitle(quest.title);
+            if (newClass !== quest.classType) {
+                quest.classType = newClass;
+                await quest.save();
+                updated++;
+            }
+        }
+
+        res.json({ message: "Classification Synchronized", total: quests.length, updated });
+    } catch (err) {
+        console.error("[Admin] Classification Failure:", err.message);
+        res.status(500).json({ error: "Classification Engine Failure" });
+    }
+});
 app.get('/api/proxy/metadata', async (req, res) => {
     const { title, source } = req.query;
     if (!title) return res.status(400).json({ error: "Title required." });
@@ -198,5 +226,15 @@ app.get('/api/proxy/metadata', async (req, res) => {
         res.status(500).json({ error: "Communication with archives severed." });
     }
 });
+
+const inferClassFromTitle = (title) => {
+    const t = title.toLowerCase();
+    if (t.includes('necromancer') || t.includes('undead')) return "NECROMANCER";
+    if (t.includes('mage') || t.includes('magic') || t.includes('constellation') || t.includes('star')) return "CONSTELLATION";
+    if (t.includes('irregular') || t.includes('tower')) return "IRREGULAR";
+    if (t.includes('return') || t.includes('reincarnat') || t.includes('wizard')) return "MAGE";
+    if (t.includes('player') || t.includes('ranker') || t.includes('level')) return "PLAYER";
+    return "PLAYER";
+};
 
 module.exports = app;

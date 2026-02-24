@@ -305,7 +305,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                     </div>
 
                                     {/* PROGRESS BAR SECTION */}
-                                    {quest.status === 'ACTIVE' && (
+                                    {['ACTIVE', 'PLANNED', 'COMPLETED', 'READING', 'IN_PROGRESS'].includes(quest.status) && (
                                         <div className="w-full mt-6 group relative">
                                             {/* Outer Frame with Glassmorphism and Sharp Border */}
                                             <div className={`relative rounded-xl p-5 md:p-8 ${theme.isDark ? 'bg-[#0a0a0c]/80' : 'bg-slate-900/90'} border-2 ${theme.id === 'LIGHT' ? 'border-cyan-500/30' : 'border-amber-500/30'} shadow-[0_0_30px_rgba(0,0,0,0.4)] overflow-hidden transition-all duration-500 group-hover:border-opacity-100`}>

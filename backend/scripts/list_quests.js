@@ -9,9 +9,9 @@ async function listQuests() {
         await mongoose.connect(uri);
         console.log('Connected.');
 
-        const quests = await Quest.find({}, 'title').limit(20);
+        const quests = await Quest.find({}, 'title classType').limit(20);
         console.log('\n--- First 20 Quests in DB ---');
-        quests.forEach(q => console.log(`- ${q.title}`));
+        quests.forEach(q => console.log(`- ${q.title} [${q.classType || 'UNSET'}]`));
         console.log('-----------------------------\n');
 
     } catch (err) {

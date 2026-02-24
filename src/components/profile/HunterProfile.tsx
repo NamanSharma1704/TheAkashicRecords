@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { Theme, Quest } from '../../core/types';
 import SystemLogo from '../system/SystemLogo';
 import EntityAvatar from '../system/EntityAvatar';
-import { X, Crown, Database, Layers, Target, ChevronRight, Download, Upload } from 'lucide-react';
+import { X, Crown, Database, Layers, Target, ChevronRight, Download, Upload, RefreshCw } from 'lucide-react';
 import { USER_RANKS } from '../../utils/ranks';
 import GalaxyNebula from '../fx/GalaxyNebula';
 import OmniscientField from '../fx/OmniscientField';
@@ -250,6 +250,27 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                                     <div className={`text-sm font-bold ${theme.headingText} font-orbitron`}>SYNCHRONIZE DATA</div>
                                 </div>
                             </label>
+                            <button
+                                onClick={async () => {
+                                    if (confirm("INITIALIZE GLOBAL RE-CLASSIFICATION?")) {
+                                        try {
+                                            const res = await fetch('/api/admin/bulk-classify', { method: 'POST' });
+                                            const data = await res.json();
+                                            alert(`SYSTEM: ${data.message}. Updated ${data.updated} records.`);
+                                            window.location.reload(); // Refresh to see new classes
+                                        } catch (e) {
+                                            alert("SYSTEM ERROR: CRITICAL_FAILURE_IN_CLASSIFICATION_ENGINE");
+                                        }
+                                    }
+                                }}
+                                className={`flex items-center justify-center gap-3 p-4 border ${theme.borderSubtle} ${theme.isDark ? 'bg-amber-500/5 hover:bg-amber-500/10' : 'bg-sky-500/5 hover:bg-sky-500/10'} transition-all group cursor-pointer sm:col-span-2`}
+                            >
+                                <RefreshCw size={18} className={`${theme.highlightText} group-hover:rotate-180 transition-transform duration-700`} />
+                                <div className="text-left">
+                                    <div className={`text-[10px] font-mono ${theme.mutedText} uppercase tracking-widest`}>Admin Protocol</div>
+                                    <div className={`text-sm font-bold ${theme.highlightText} font-orbitron`}>RE-CALIBRATE SYSTEM CLASSES</div>
+                                </div>
+                            </button>
                         </div>
                     </div>
 

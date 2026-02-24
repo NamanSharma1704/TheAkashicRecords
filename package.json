@@ -1,7 +1,7 @@
 {
   "scripts": {
     "build": "cd system && npm install && npm run build",
-    "install": "npm install && cd system && npm install && cd ../backend && npm install"
+    "postinstall": "cd system && npm install && cd ../backend && npm install"
   },
   "dependencies": {
     "typescript": "^5.9.3",

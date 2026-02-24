@@ -23,7 +23,7 @@ export default defineConfig({
         }
     },
     build: {
-        outDir: '../system_dist',
+        outDir: '../dist',
         emptyOutDir: true
     },
     publicDir: './public',

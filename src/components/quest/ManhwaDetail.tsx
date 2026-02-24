@@ -278,13 +278,19 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                             </a>
                         )}
                         <button
+                            onClick={() => isEditing ? handleSaveEdits() : setIsEditing(true)}
+                            className={`w-full py-3.5 rounded-lg ${theme.isDark ? 'bg-amber-500/10 hover:bg-amber-500/20' : 'bg-cyan-500/10 hover:bg-cyan-500/20'} ${theme.highlightText} font-bold border ${theme.borderSubtle} transition-all flex items-center justify-center gap-2 text-sm uppercase tracking-widest`}
+                        >
+                            {isEditing ? <><Save size={16} /> SAVE_CHANGES</> : <><Edit2 size={16} /> EDIT_MANHWA</>}
+                        </button>
+                        <button
                             onClick={() => {
                                 if (quest && onSetActive) {
                                     onSetActive(quest.id);
                                     onClose();
                                 }
                             }}
-                            className={`w-full py-3.5 rounded-lg ${theme.isDark ? 'bg-white/5 hover:bg-white/10' : 'bg-black/5 hover:bg-black/10'} ${theme.highlightText} font-bold border ${theme.borderSubtle} transition-all flex items-center justify-center gap-2 text-sm uppercase tracking-widest`}
+                            className={`w-full py-3.5 rounded-lg ${theme.isDark ? 'bg-white/5 hover:bg-white/10' : 'bg-black/5 hover:bg-black/10'} ${theme.baseText} font-bold border ${theme.borderSubtle} transition-all flex items-center justify-center gap-2 text-sm uppercase tracking-widest`}
                         >
                             <Sword size={16} /> SET AS ACTIVE QUEST
                         </button>
@@ -331,13 +337,6 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                                 </h2>
                                             )}
                                         </div>
-                                        {/* EDIT TOGGLE BUTTON */}
-                                        <button
-                                            onClick={() => isEditing ? handleSaveEdits() : setIsEditing(true)}
-                                            className={`shrink-0 p-2 md:p-3 rounded-full ${theme.isDark ? 'bg-white/5 hover:bg-white/10' : 'bg-black/5 hover:bg-black/10'} ${theme.baseText} hover:${theme.highlightText} transition-all border ${theme.borderSubtle} shadow-md`}
-                                        >
-                                            {isEditing ? <Save size={18} /> : <Edit2 size={18} />}
-                                        </button>
                                     </div>
 
                                     {/* PROGRESS BAR */}
@@ -366,10 +365,14 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                                 )}
 
                                                 {/* BAR ITSELF */}
-                                                <div className={`h-2.5 w-full ${theme.isDark ? 'bg-white/5' : 'bg-black/5'} rounded-full overflow-hidden relative shadow-inner`}>
+                                                <div className={`h-2.5 w-full ${theme.isDark ? 'bg-white/10' : 'bg-black/5'} rounded-full overflow-hidden relative shadow-inner`}>
                                                     <div
                                                         className={`h-full bg-gradient-to-r ${theme.gradient} progress-bloom transition-all duration-700 ease-out`}
-                                                        style={{ width: `${Math.min(100, quest.totalChapters > 0 ? (quest.currentChapter / quest.totalChapters) * 100 : 0)}%`, color: theme.id === 'LIGHT' ? '#0ea5e9' : '#fbbf24' }}
+                                                        style={{
+                                                            width: `${Math.min(100, (quest.totalChapters || 0) > 0 ? (quest.currentChapter / quest.totalChapters) * 100 : 0)}%`,
+                                                            color: theme.id === 'LIGHT' ? '#0ea5e9' : '#fbbf24',
+                                                            boxShadow: '0 0 10px currentColor'
+                                                        }}
                                                     />
                                                 </div>
 
@@ -378,9 +381,9 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                                     <div className="flex justify-between items-center mt-2 text-[8px] md:text-[10px] font-mono font-bold uppercase tracking-wider">
                                                         <div className={`${theme.mutedText} opacity-70`}>CH {quest.currentChapter}</div>
                                                         <div className={`${theme.isDark ? 'text-amber-500' : 'text-cyan-600'} opacity-90`}>
-                                                            {quest.totalChapters > 0 ? Math.round((quest.currentChapter / quest.totalChapters) * 100) : 0}%
+                                                            {(quest.totalChapters || 0) > 0 ? Math.round((quest.currentChapter / quest.totalChapters) * 100) : 0}%
                                                         </div>
-                                                        <div className={`${theme.mutedText} opacity-70`}>/ {quest.totalChapters > 0 ? quest.totalChapters : '??'}</div>
+                                                        <div className={`${theme.mutedText} opacity-70`}>/ {(quest.totalChapters || 0) > 0 ? quest.totalChapters : 'ONGOING'}</div>
                                                     </div>
                                                 )}
                                             </div>

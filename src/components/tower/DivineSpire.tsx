@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Theme, Quest, Rank } from '../../core/types';
 import TowerHUD from './TowerHUD';
 import TowerStructure from './TowerStructure';
@@ -24,6 +24,15 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
     const [selectedFloorIndex, setSelectedFloorIndex] = useState(0);
     const [isFocused, setIsFocused] = useState(false); // New state for camera focus
     const [search, setSearch] = useState('');
+
+    const carouselRef = useRef<HTMLDivElement>(null);
+
+    const scrollCarousel = (direction: 'left' | 'right') => {
+        if (carouselRef.current) {
+            const scrollAmount = window.innerWidth * 0.5;
+            carouselRef.current.scrollBy({ left: direction === 'left' ? -scrollAmount : scrollAmount, behavior: 'smooth' });
+        }
+    };
 
     // Handler for focus change from TowerStructure
     const handleFocus = (focused: boolean, index?: number) => {
@@ -144,9 +153,11 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
                                 <div className="absolute top-4 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center pointer-events-none drop-shadow-2xl">
                                     <div className={`font-mono text-[10px] tracking-[0.4em] ${theme.highlightText} font-bold uppercase mb-1 opacity-80`}>SYSTEM.SECTOR_INTERFACE</div>
                                     <div className="flex items-center gap-4 px-6 py-2 rounded-full border border-white/10 bg-black/40 backdrop-blur-md">
+                                        <button disabled={selectedFloorIndex <= 0} onClick={() => setSelectedFloorIndex(i => i - 1)} className={`${theme.mutedText} hover:${theme.highlightText} disabled:opacity-30 transition-colors`}><ChevronLeft size={16} /></button>
                                         <span className={`font-black text-2xl font-orbitron tracking-widest ${theme.headingText}`}>LAYER {selectedFloorIndex + 1}</span>
                                         <div className="w-1.5 h-1.5 rounded-full bg-white/30" />
                                         <span className={`font-mono text-xs ${theme.mutedText} tracking-widest`}>SECTOR {floors[selectedFloorIndex].range}</span>
+                                        <button disabled={selectedFloorIndex >= floors.length - 1} onClick={() => setSelectedFloorIndex(i => i + 1)} className={`${theme.mutedText} hover:${theme.highlightText} disabled:opacity-30 transition-colors`}><ChevronRight size={16} /></button>
                                     </div>
                                 </div>
                             )}
@@ -155,16 +166,14 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
                             {!search && (
                                 <>
                                     <button
-                                        disabled={selectedFloorIndex <= 0}
-                                        onClick={() => setSelectedFloorIndex(i => i - 1)}
-                                        className={`absolute left-4 md:left-12 top-1/2 -translate-y-1/2 z-30 p-4 rounded-full border border-white/10 ${theme.isDark ? 'bg-black/50 hover:bg-white/10' : 'bg-white/50 hover:bg-black/10'} backdrop-blur-md disabled:opacity-0 opacity-0 group-hover/carousel:opacity-100 transition-all duration-500 transform hover:scale-110 shadow-[0_0_30px_rgba(0,0,0,0.5)]`}
+                                        onClick={() => scrollCarousel('left')}
+                                        className={`absolute left-4 md:left-12 top-1/2 -translate-y-1/2 z-30 p-4 rounded-full border border-white/10 ${theme.isDark ? 'bg-black/50 hover:bg-white/10' : 'bg-white/50 hover:bg-black/10'} backdrop-blur-md opacity-0 group-hover/carousel:opacity-100 transition-all duration-500 transform hover:scale-110 shadow-[0_0_30px_rgba(0,0,0,0.5)]`}
                                     >
                                         <ChevronLeft size={32} className={theme.highlightText} />
                                     </button>
                                     <button
-                                        disabled={selectedFloorIndex >= floors.length - 1}
-                                        onClick={() => setSelectedFloorIndex(i => i + 1)}
-                                        className={`absolute right-4 md:right-12 top-1/2 -translate-y-1/2 z-30 p-4 rounded-full border border-white/10 ${theme.isDark ? 'bg-black/50 hover:bg-white/10' : 'bg-white/50 hover:bg-black/10'} backdrop-blur-md disabled:opacity-0 opacity-0 group-hover/carousel:opacity-100 transition-all duration-500 transform hover:scale-110 shadow-[0_0_30px_rgba(0,0,0,0.5)]`}
+                                        onClick={() => scrollCarousel('right')}
+                                        className={`absolute right-4 md:right-12 top-1/2 -translate-y-1/2 z-30 p-4 rounded-full border border-white/10 ${theme.isDark ? 'bg-black/50 hover:bg-white/10' : 'bg-white/50 hover:bg-black/10'} backdrop-blur-md opacity-0 group-hover/carousel:opacity-100 transition-all duration-500 transform hover:scale-110 shadow-[0_0_30px_rgba(0,0,0,0.5)]`}
                                     >
                                         <ChevronRight size={32} className={theme.highlightText} />
                                     </button>
@@ -173,7 +182,7 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
 
                             {/* THE CAROUSEL */}
                             {search.length > 0 ? (
-                                <div className="absolute inset-0 flex items-center overflow-x-auto hide-scrollbar snap-x snap-mandatory px-[15vw] md:px-[30vw] py-12 gap-8 md:gap-16">
+                                <div ref={carouselRef} className="absolute inset-0 flex items-center overflow-x-auto hide-scrollbar snap-x snap-mandatory px-[15vw] md:px-[30vw] py-12 gap-8 md:gap-16">
                                     {filteredItems.length === 0 ? (
                                         <div className="w-full flex-1 flex flex-col items-center justify-center translate-y-[-10vh]">
                                             <AlertCircle size={48} className={`${theme.mutedText} mb-4 opacity-50`} />
@@ -197,7 +206,7 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
                                 </div>
                             ) : (
                                 floors.length > 0 && floors[selectedFloorIndex] ? (
-                                    <div className="absolute inset-0 flex items-center overflow-x-auto hide-scrollbar snap-x snap-mandatory px-[15vw] md:px-[30vw] py-12 gap-8 md:gap-16">
+                                    <div ref={carouselRef} className="absolute inset-0 flex items-center overflow-x-auto hide-scrollbar snap-x snap-mandatory px-[15vw] md:px-[30vw] py-12 gap-8 md:gap-16">
                                         {floors[selectedFloorIndex].items.map((item, index) => {
                                             const rawRank = getQuestRankObj(items.find(v => v.id === item.id) || item);
                                             return (

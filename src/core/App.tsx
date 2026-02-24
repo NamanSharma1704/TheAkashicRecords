@@ -6,7 +6,7 @@ import SystemLogo from '../components/system/SystemLogo';
 import ScrambleText from '../components/system/ScrambleText';
 import { Cpu, Sword, Activity, Target, Hash, ExternalLink, Terminal, Sun, Moon, Plus, Flame, LayoutTemplate, Zap, Crown } from 'lucide-react';
 import { getPlayerRank, getThemedRankStyle, calculateQuestRank } from '../utils/ranks';
-import { BASE_QUESTS, THEMES, ITEMS_PER_FLOOR } from './constants';
+import { THEMES, ITEMS_PER_FLOOR } from './constants';
 
 import SystemConsole from '../components/system/SystemConsole';
 import BootScreen from '../components/system/BootScreen';
@@ -118,8 +118,8 @@ const App: React.FC = () => {
             }
         } catch (e) {
             console.error("Database connection failure:", e);
-            // Fallback to BASE_QUESTS if DB is unreachable or returns error
-            setLibrary(BASE_QUESTS.map(mapQuest));
+            // Fallback to empty if DB is unreachable or returns error
+            setLibrary([]);
         }
     };
     const fetchUserState = async () => {

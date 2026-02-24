@@ -1,38 +1,4 @@
-export const BASE_QUESTS = [
-    {
-        id: '1',
-        title: 'TOWER OF GOD',
-        status: 'ACTIVE',
-        currentChapter: 580,
-        totalChapters: 600,
-        lastRead: Date.now(),
-        classType: 'S-RANK',
-        cover: 'https://images2.alphacoders.com/107/1079366.jpg',
-        readLink: 'https://www.webtoons.com/en/fantasy/tower-of-god/list?title_no=95'
-    },
-    {
-        id: '2',
-        title: 'SOLO LEVELING',
-        status: 'ACTIVE',
-        currentChapter: 179,
-        totalChapters: 179,
-        lastRead: Date.now() - 86400000,
-        classType: 'NATIONAL',
-        cover: 'https://wallpaperaccess.com/full/2405389.jpg',
-        readLink: 'https://sololevelingmanhwa.com/'
-    },
-    {
-        id: '3',
-        title: 'THE BEGINNING AFTER THE END',
-        status: 'IN_PROGRESS',
-        currentChapter: 175,
-        totalChapters: 175,
-        lastRead: Date.now() - 172800000,
-        classType: 'MAGE',
-        cover: 'https://wallpapercave.com/wp/wp8922416.jpg',
-        readLink: 'https://tapas.io/series/tbate-comic/info'
-    }
-];
+
 import { Theme } from './types';
 
 export const THEMES: Record<string, Theme> = {

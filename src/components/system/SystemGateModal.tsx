@@ -218,7 +218,7 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 transition-colors duration-700 animate-in fade-in zoom-in-95 duration-200">
             <SystemFrame variant="full" theme={theme} className="w-full max-w-md h-auto">
                 <div className="p-6">
-                    <div className={`flex justify-between items-center mb-6 pb-4 border-b ${theme.borderSubtle} transition-colors duration-700`}>
+                    <div className={`flex justify-between items-center mb-6 pb-4 transition-colors duration-700`}>
                         <span className={`${theme.highlightText} font-mono tracking-widest text-sm flex items-center gap-2 transition-colors duration-700`}>
                             <RefreshCw size={14} className={isScanning ? "animate-spin" : ""} />
                             {isScanning ? "ANALYZING COORDINATES..." : "SYSTEM_OVERWRITE"}

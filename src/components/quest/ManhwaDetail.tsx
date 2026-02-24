@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { X, Star, Calendar, BookOpen, Users, Share2, Heart, Sword, Zap, Edit2, Save } from 'lucide-react';
+import { X, Star, Calendar, BookOpen, Users, Share2, Heart, Sword, Zap, Edit2, Save, ChevronRight } from 'lucide-react';
 
 import { Theme, Quest } from '../../core/types';
+import ScrambleText from '../system/ScrambleText';
 
 
 interface ManhwaDetailProps {
@@ -189,7 +190,13 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
             </div>
 
             {/* MAIN CONTENT CARD */}
-            <div className={`relative w-[95vw] max-w-[1800px] h-full md:h-[95vh] mx-auto md:rounded-2xl border ${theme.borderSubtle} ${theme.isDark ? 'bg-black/50' : 'bg-white/50'} shadow-2xl overflow-hidden flex flex-col md:flex-row`}>
+            <div className={`relative w-[95vw] max-w-[1700px] h-full md:h-[95vh] mx-auto md:rounded-2xl border ${theme.borderSubtle} ${theme.isDark ? 'bg-[#050505]/80' : 'bg-white/80'} shadow-2xl overflow-hidden flex flex-col md:flex-row backdrop-blur-3xl`}>
+
+                {/* HUD ACCENTS */}
+                <div className={`absolute top-0 left-0 w-16 h-16 border-t-2 border-l-2 ${theme.id === 'LIGHT' ? 'border-sky-500/10' : 'border-amber-500/10'} pointer-events-none z-50`} />
+                <div className={`absolute top-0 right-0 w-16 h-16 border-t-2 border-r-2 ${theme.id === 'LIGHT' ? 'border-sky-500/10' : 'border-amber-500/10'} pointer-events-none z-50`} />
+                <div className={`absolute bottom-0 left-0 w-16 h-16 border-b-2 border-l-2 ${theme.id === 'LIGHT' ? 'border-sky-500/10' : 'border-amber-500/10'} pointer-events-none z-50`} />
+                <div className={`absolute bottom-0 right-0 w-16 h-16 border-b-2 border-r-2 ${theme.id === 'LIGHT' ? 'border-sky-500/10' : 'border-amber-500/10'} pointer-events-none z-50`} />
 
                 {/* CLOSE BUTTON */}
                 <button
@@ -245,16 +252,26 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                 href={quest.link}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className={`w-full py-3.5 rounded-lg ${theme.isDark ? 'bg-emerald-500/10 hover:bg-emerald-500/20' : 'bg-emerald-500/10 hover:bg-emerald-500/20'} text-emerald-500 font-bold border border-emerald-500/30 transition-all flex items-center justify-center gap-2 text-sm uppercase tracking-widest hover:shadow-[0_0_15px_rgba(16,185,129,0.2)]`}
+                                className={`w-full py-4 px-6 rounded border ${theme.isDark ? 'bg-emerald-500/5 hover:bg-emerald-500/10 border-emerald-500/20' : 'bg-emerald-500/5 hover:bg-emerald-500/10 border-emerald-500/20'} text-emerald-500 font-bold transition-all flex items-center justify-between group/dive relative overflow-hidden`}
                             >
-                                <Zap size={16} className="fill-emerald-500/20" /> INITIALIZE DIVE
+                                <div className="absolute inset-x-0 bottom-0 h-[1px] bg-emerald-500/40 transform scale-x-0 group-hover/dive:scale-x-100 transition-transform duration-500" />
+                                <div className="flex items-center gap-3 relative z-10">
+                                    <Zap size={18} className="fill-emerald-500/20 group-hover/dive:animate-pulse" />
+                                    <ScrambleText text="INITIALIZE_DIVE" className="text-[10px] tracking-[0.2em] font-orbitron" />
+                                </div>
+                                <ChevronRight size={14} className="opacity-0 -translate-x-2 group-hover/dive:opacity-100 group-hover/dive:translate-x-0 transition-all font-bold" />
                             </a>
                         )}
                         <button
                             onClick={() => quest && onEdit && onEdit(quest)}
-                            className={`w-full py-3.5 rounded-lg ${theme.isDark ? 'bg-amber-500/10 hover:bg-amber-500/20' : 'bg-cyan-500/10 hover:bg-cyan-500/20'} ${theme.highlightText} font-bold border ${theme.borderSubtle} transition-all flex items-center justify-center gap-2 text-sm uppercase tracking-widest`}
+                            className={`w-full py-4 px-6 rounded border ${theme.isDark ? 'bg-amber-500/5 hover:bg-amber-500/10 border-amber-500/20' : 'bg-sky-500/5 hover:bg-sky-500/10 border-sky-500/20'} ${theme.highlightText} font-bold transition-all flex items-center justify-between group/edit relative overflow-hidden`}
                         >
-                            <Edit2 size={16} /> EDIT_MANHWA
+                            <div className="absolute inset-x-0 bottom-0 h-[1px] bg-current opacity-40 transform scale-x-0 group-hover/edit:scale-x-100 transition-transform duration-500" />
+                            <div className="flex items-center gap-3 relative z-10">
+                                <Edit2 size={18} />
+                                <ScrambleText text="EDIT_ARTIFACT" className="text-[10px] tracking-[0.2em] font-orbitron" />
+                            </div>
+                            <ChevronRight size={14} className="opacity-0 -translate-x-2 group-hover/edit:opacity-100 group-hover/edit:translate-x-0 transition-all" />
                         </button>
                         <button
                             onClick={() => {
@@ -263,9 +280,14 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                     onClose();
                                 }
                             }}
-                            className={`w-full py-3.5 rounded-lg ${theme.isDark ? 'bg-white/5 hover:bg-white/10' : 'bg-black/5 hover:bg-black/10'} ${theme.baseText} font-bold border ${theme.borderSubtle} transition-all flex items-center justify-center gap-2 text-sm uppercase tracking-widest`}
+                            className={`w-full py-4 px-6 rounded border ${theme.isDark ? 'bg-white/5 hover:bg-white/10 border-white/10' : 'bg-black/5 hover:bg-black/10 border-black/10'} ${theme.baseText} font-bold transition-all flex items-center justify-between group/active relative overflow-hidden`}
                         >
-                            <Sword size={16} /> SET AS ACTIVE QUEST
+                            <div className="absolute inset-x-0 bottom-0 h-[1px] bg-current opacity-20 transform scale-x-0 group-hover/active:scale-x-100 transition-transform duration-500" />
+                            <div className="flex items-center gap-3 relative z-10">
+                                <Sword size={18} />
+                                <ScrambleText text="MARK_AS_TARGET" className="text-[10px] tracking-[0.2em] font-orbitron" />
+                            </div>
+                            <ChevronRight size={14} className="opacity-0 -translate-x-2 group-hover/active:opacity-100 group-hover/active:translate-x-0 transition-all" />
                         </button>
                     </div>
                 </div>
@@ -308,68 +330,107 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                     {['ACTIVE', 'PLANNED', 'COMPLETED', 'READING', 'IN_PROGRESS'].includes(quest.status) && (
                                         <div className="w-full mt-6 group relative">
                                             {/* Outer Frame with Glassmorphism and Sharp Border */}
-                                            <div className={`relative rounded-xl p-5 md:p-8 ${theme.isDark ? 'bg-[#0a0a0c]/80' : 'bg-slate-900/90'} border-2 ${theme.id === 'LIGHT' ? 'border-cyan-500/30' : 'border-amber-500/30'} shadow-[0_0_30px_rgba(0,0,0,0.4)] overflow-hidden transition-all duration-500 group-hover:border-opacity-100`}>
+                                            <div className={`relative rounded-lg p-6 md:p-10 ${theme.isDark ? 'bg-black/60' : 'bg-slate-900/95'} border border-white/10 shadow-2xl overflow-hidden transition-all duration-500`}>
+
+                                                {/* GRID BACKGROUND */}
+                                                <div className="absolute inset-0 opacity-[0.03] pointer-events-none z-0" style={{ backgroundImage: 'radial-gradient(circle, white 1px, transparent 1px)', backgroundSize: '20px 20px' }} />
 
                                                 {/* SCANLINE EFFECT */}
-                                                <div className="absolute inset-0 pointer-events-none bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.1)_50%),linear-gradient(90deg,rgba(255,0,0,0.03),rgba(0,255,0,0.01),rgba(0,0,255,0.03))] z-0 bg-[length:100%_2px,3px_100%]" />
+                                                <div className="absolute inset-0 pointer-events-none bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.1)_50%),linear-gradient(90deg,rgba(255,0,0,0.02),rgba(0,255,0,0.01),rgba(0,0,255,0.02))] z-0 bg-[length:100%_2px,3px_100%]" />
 
                                                 <div className="relative z-10">
-                                                    <div className="flex justify-between items-center mb-6">
-                                                        <div className="flex items-center gap-2">
-                                                            <div className={`w-1.5 h-1.5 rounded-full ${theme.id === 'LIGHT' ? 'bg-cyan-500' : 'bg-amber-400'} animate-pulse`} />
-                                                            <div className={`text-[10px] md:text-xs font-black font-mono tracking-[0.2em] ${theme.id === 'LIGHT' ? 'text-cyan-400' : 'text-amber-400'} uppercase`}>PROGRESS_MONITOR.v2</div>
+                                                    <div className="flex justify-between items-start mb-8">
+                                                        <div className="flex flex-col gap-1">
+                                                            <div className="flex items-center gap-2">
+                                                                <div className={`w-1 h-1 rounded-full ${theme.id === 'LIGHT' ? 'bg-sky-400' : 'bg-amber-400'} animate-pulse`} />
+                                                                <ScrambleText text="PROGRESS_MONITOR.V3" className={`text-[10px] font-black font-mono tracking-[0.3em] ${theme.id === 'LIGHT' ? 'text-sky-400' : 'text-amber-400'} uppercase`} />
+                                                            </div>
+                                                            <div className="text-[8px] font-mono text-white/20 tracking-[0.4em] ml-3">SERIAL: AR-{(quest.id || 'XXXX').substring(0, 8).toUpperCase()}</div>
                                                         </div>
-                                                        <div className={`px-2 py-0.5 rounded-sm text-[9px] font-mono font-bold tracking-tighter ${quest.currentChapter > (quest.totalChapters || 0) && (quest.totalChapters || 0) > 0 ? 'bg-red-500 text-white animate-bounce' : 'bg-white/10 text-white/60'}`}>
-                                                            {quest.currentChapter > (quest.totalChapters || 0) && (quest.totalChapters || 0) > 0 ? "!!! OVERFLOW !!!" : "SYNCRONIZED"}
+                                                        <div className={`px-2 py-0.5 border ${theme.id === 'LIGHT' ? 'border-sky-500/30 text-sky-400' : 'border-amber-500/30 text-amber-400'} text-[9px] font-mono font-bold tracking-widest bg-white/5`}>
+                                                            {quest.currentChapter > (quest.totalChapters || 0) && (quest.totalChapters || 0) > 0 ? "STATUS: OVERFLOW" : "STATUS: SYNCRONIZED"}
                                                         </div>
                                                     </div>
 
-                                                    <div className="flex justify-between items-end mb-4">
-                                                        <div className="flex flex-col">
-                                                            <span className="text-[10px] uppercase tracking-widest text-white/40 font-mono font-bold mb-1">CHAPTERS_READ</span>
-                                                            <div className="text-5xl md:text-6xl font-black text-white tabular-nums leading-none drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]">
+                                                    <div className="grid grid-cols-2 gap-8 mb-8">
+                                                        <div className="flex flex-col border-l-2 border-white/5 pl-4">
+                                                            <span className="text-[9px] uppercase tracking-[0.3em] text-white/30 font-mono font-bold mb-2">CHAPTERS_ABSORBED</span>
+                                                            <div className="text-6xl md:text-7xl font-black text-white tabular-nums leading-none tracking-tighter drop-shadow-[0_0_15px_rgba(255,255,255,0.2)]">
                                                                 {quest.currentChapter}
                                                             </div>
                                                         </div>
-                                                        <div className="text-right flex flex-col items-end">
-                                                            <span className="text-[10px] uppercase tracking-widest text-white/40 font-mono font-bold mb-1">DATA_LIMIT</span>
-                                                            <div className={`text-2xl md:text-3xl font-black text-white/60 tabular-nums leading-none`}>
+                                                        <div className="flex flex-col items-end border-r-2 border-white/5 pr-4">
+                                                            <span className="text-[9px] uppercase tracking-[0.3em] text-white/30 font-mono font-bold mb-2">TARGET_LIMIT</span>
+                                                            <div className={`text-3xl md:text-4xl font-black text-white/50 tabular-nums leading-none`}>
                                                                 / {quest.totalChapters > 0 ? quest.totalChapters : '??'}
+                                                            </div>
+                                                            <div className="mt-2 text-[8px] font-mono text-white/20 uppercase tracking-widest">Global Rank: #{(allQuests?.indexOf(quest) || 0) + 1}</div>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* THE BAR - ADVANCED HUD STYLE */}
+                                                    <div className="relative group/bar">
+                                                        <div className={`h-6 w-full bg-black/60 rounded-sm overflow-hidden relative border border-white/5 shadow-inner`}>
+                                                            {/* TICK MARKS */}
+                                                            <div className="absolute inset-0 flex justify-between px-[1%] pointer-events-none z-10">
+                                                                {[...Array(11)].map((_, i) => (
+                                                                    <div key={i} className={`h-full w-[1px] ${i % 5 === 0 ? 'bg-white/20' : 'bg-white/5'}`} />
+                                                                ))}
+                                                            </div>
+
+                                                            <div
+                                                                className={`h-full bg-gradient-to-r ${theme.gradient} transition-all duration-1000 ease-out relative`}
+                                                                style={{
+                                                                    width: `${Math.min(100, (quest.totalChapters || 0) > 0 ? (quest.currentChapter / quest.totalChapters) * 100 : 0)}%`,
+                                                                }}
+                                                            >
+                                                                {/* BLOOM EFFECT */}
+                                                                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-white/40 animate-[shimmer_2s_infinite]" />
+                                                                <div className="absolute right-0 top-0 bottom-0 w-4 bg-white/20 blur-sm" />
+                                                            </div>
+                                                        </div>
+
+                                                        {/* PERCENTAGE FLOATER */}
+                                                        <div
+                                                            className="absolute -top-6 transition-all duration-1000 ease-out hidden md:block"
+                                                            style={{ left: `${Math.min(95, (quest.totalChapters || 0) > 0 ? (quest.currentChapter / quest.totalChapters) * 100 : 0)}%` }}
+                                                        >
+                                                            <div className={`text-[9px] font-mono font-bold ${theme.id === 'LIGHT' ? 'text-sky-400' : 'text-amber-400'} whitespace-nowrap`}>
+                                                                PTR_{Math.round(((quest.totalChapters || 0) > 0 ? (quest.currentChapter / quest.totalChapters) * 100 : 0))}%
                                                             </div>
                                                         </div>
                                                     </div>
 
-                                                    {/* THE BAR - MORE PROMINENT */}
-                                                    <div className={`h-4 w-full bg-black/40 rounded-sm overflow-hidden relative border border-white/10 shadow-[inner_0_2px_4px_rgba(0,0,0,0.5)]`}>
-                                                        <div
-                                                            className={`h-full bg-gradient-to-r ${theme.gradient} transition-all duration-1000 ease-out relative`}
-                                                            style={{
-                                                                width: `${Math.min(100, (quest.totalChapters || 0) > 0 ? (quest.currentChapter / quest.totalChapters) * 100 : 0)}%`,
-                                                            }}
-                                                        >
-                                                            {/* SHINE EFFECT ON BAR */}
-                                                            <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/30 to-white/0 animate-[shimmer_3s_infinite]" />
-                                                            <div className="absolute inset-0 shadow-[0_0_20px_currentColor]" style={{ color: theme.id === 'LIGHT' ? '#0ea5e9' : '#fbbf24' }} />
+                                                    <div className="flex justify-between items-end mt-6">
+                                                        <div className="flex flex-col gap-1">
+                                                            <div className="flex items-center gap-2 text-white/40 font-mono text-[9px] font-bold uppercase tracking-[0.2em]">
+                                                                <BookOpen size={10} className={theme.id === 'LIGHT' ? 'text-sky-400' : 'text-amber-400'} />
+                                                                <span>SYNCRONY_LEVEL</span>
+                                                            </div>
+                                                            <div className={`text-xl font-black font-mono ${theme.id === 'LIGHT' ? 'text-sky-400' : 'text-amber-400'} drop-shadow-[0_0_10px_currentColor]`}>
+                                                                {((quest.totalChapters || 0) > 0) ? Math.round((quest.currentChapter / quest.totalChapters) * 100) : 0}.00%
+                                                            </div>
                                                         </div>
-                                                    </div>
 
-                                                    {/* BOTTOM INFO */}
-                                                    <div className="flex justify-between items-center mt-4">
-                                                        <div className="flex items-center gap-2 text-white/50 font-mono text-[10px] font-bold uppercase tracking-widest">
-                                                            <BookOpen size={12} className={theme.id === 'LIGHT' ? 'text-cyan-400' : 'text-amber-400'} />
-                                                            <span>SYNCRONY_LEVEL</span>
-                                                        </div>
-                                                        <div className={`text-lg md:text-xl font-black font-mono ${theme.id === 'LIGHT' ? 'text-cyan-400' : 'text-amber-400'} drop-shadow-[0_0_8px_currentColor]`}>
-                                                            {((quest.totalChapters || 0) > 0) ? Math.round((quest.currentChapter / quest.totalChapters) * 100) : 0}%
+                                                        {/* MINI DATA READOUT */}
+                                                        <div className="flex gap-4">
+                                                            <div className="text-right">
+                                                                <div className="text-[8px] font-mono text-white/20 uppercase tracking-widest mb-1">Stability</div>
+                                                                <div className="text-[10px] font-mono text-emerald-500 font-bold">98.4%</div>
+                                                            </div>
+                                                            <div className="text-right">
+                                                                <div className="text-[8px] font-mono text-white/20 uppercase tracking-widest mb-1">Latency</div>
+                                                                <div className="text-[10px] font-mono text-sky-500 font-bold">12ms</div>
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 </div>
 
                                                 {/* CORNER ACCENTS */}
-                                                <div className={`absolute top-0 left-0 w-2 h-2 border-t-2 border-l-2 ${theme.id === 'LIGHT' ? 'border-cyan-500' : 'border-amber-500'} opacity-50`} />
-                                                <div className={`absolute top-0 right-0 w-2 h-2 border-t-2 border-r-2 ${theme.id === 'LIGHT' ? 'border-cyan-500' : 'border-amber-500'} opacity-50`} />
-                                                <div className={`absolute bottom-0 left-0 w-2 h-2 border-b-2 border-l-2 ${theme.id === 'LIGHT' ? 'border-cyan-500' : 'border-amber-500'} opacity-50`} />
-                                                <div className={`absolute bottom-0 right-0 w-2 h-2 border-b-2 border-r-2 ${theme.id === 'LIGHT' ? 'border-cyan-500' : 'border-amber-500'} opacity-50`} />
+                                                <div className={`absolute top-0 left-0 w-8 h-8 border-t border-l ${theme.id === 'LIGHT' ? 'border-sky-500/40' : 'border-amber-500/40'}`} />
+                                                <div className={`absolute top-0 right-0 w-8 h-8 border-t border-r ${theme.id === 'LIGHT' ? 'border-sky-500/40' : 'border-amber-500/40'}`} />
+                                                <div className={`absolute bottom-0 left-0 w-8 h-8 border-b border-l ${theme.id === 'LIGHT' ? 'border-sky-500/40' : 'border-amber-500/40'}`} />
+                                                <div className={`absolute bottom-0 right-0 w-8 h-8 border-b border-r ${theme.id === 'LIGHT' ? 'border-sky-500/40' : 'border-amber-500/40'}`} />
                                             </div>
 
                                             {/* FLOATING AMBIENT GLOW */}

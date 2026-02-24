@@ -4,6 +4,7 @@ import TowerHUD from './TowerHUD';
 import TowerStructure from './TowerStructure';
 import QuestCard from '../quest/QuestCard';
 import SystemLogo from '../system/SystemLogo';
+import { getQuestRankObj } from '../../utils/ranks';
 import { ChevronLeft, ChevronRight, X, Search, Layers, AlertCircle } from 'lucide-react';
 
 interface DivineSpireProps {
@@ -124,7 +125,7 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
                             {search.length > 0 ? (
                                 <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 sm:gap-6 md:gap-8">
                                     {filteredItems.map((item, index) => {
-                                        const rawRank = items.find(v => v.id === item.id) ? { name: "E", color: "text-gray-400", border: "border-gray-500", bg: "bg-gray-500" } as Rank : {} as Rank;
+                                        const rawRank = getQuestRankObj(items.find(v => v.id === item.id) || item);
                                         return <QuestCard key={item.id} id={`item-${item.id}`} item={item} onClick={onActivate} index={index} theme={theme} rankStyle={rawRank} />
                                     })}
                                 </div>
@@ -140,7 +141,7 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
                                         </div>
                                         <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 sm:gap-6 md:gap-8">
                                             {floors[selectedFloorIndex].items.map((item, index) => {
-                                                const rawRank = items.find(v => v.id === item.id) ? { name: "E", color: "text-gray-400", border: "border-gray-500", bg: "bg-gray-500" } as Rank : {} as Rank;
+                                                const rawRank = getQuestRankObj(items.find(v => v.id === item.id) || item);
                                                 return <QuestCard key={item.id} id={`item-${item.id}`} item={item} onClick={onActivate} index={index} theme={theme} rankStyle={rawRank} />
                                             })}
                                         </div>

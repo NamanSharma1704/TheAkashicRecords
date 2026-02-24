@@ -242,6 +242,22 @@ const App: React.FC = () => {
         }
     };
 
+    const handleImportQuests = async (newItems: Quest[]) => {
+        setBooting(true);
+        let count = 0;
+        for (const item of newItems) {
+            try {
+                const { id, ...data } = item;
+                await handleSave(data);
+                count++;
+            } catch (e) {
+                console.error(`[Import] Failed to save: ${item.title}`);
+            }
+        }
+        await fetchQuests();
+        setBooting(false);
+    };
+
     const updateProgress = async (amt: number) => {
         if (!activeQuest.id) return;
         const next = activeQuest.totalChapters > 0
@@ -454,7 +470,7 @@ const App: React.FC = () => {
                         theme={theme}
                         items={library}
                         playerRank={playerRank}
-                        onImport={setLibrary}
+                        onImport={handleImportQuests}
                     />
                 )}
             </Suspense>

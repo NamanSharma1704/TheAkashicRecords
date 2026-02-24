@@ -92,20 +92,38 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                     const line = lines[i].trim();
                     if (!line) continue;
 
-                    const matches = line.match(/(".*?"|[^,]+)/g);
-                    if (!matches || matches.length < 6) continue;
+                    // Robust CSV line parser (handles quotes and empty fields)
+                    const fields: string[] = [];
+                    let currentField = "";
+                    let inQuotes = false;
+                    for (let charIndex = 0; charIndex < line.length; charIndex++) {
+                        const char = line[charIndex];
+                        if (char === '"') inQuotes = !inQuotes;
+                        else if (char === ',' && !inQuotes) {
+                            fields.push(currentField);
+                            currentField = "";
+                        } else {
+                            currentField += char;
+                        }
+                    }
+                    fields.push(currentField);
 
-                    const clean = (s: string) => s.replace(/^"|"$/g, '').replace(/""/g, '"');
+                    if (fields.length < 6) {
+                        console.warn(`[Import] Skipping malformed line ${i + 1}: Expected 7 fields, found ${fields.length}`, line);
+                        continue;
+                    }
+
+                    const clean = (s: string) => s ? s.replace(/^"|"$/g, '').replace(/""/g, '"').trim() : "";
 
                     newQuests.push({
                         id: Math.random().toString(36).substring(2, 11),
-                        title: clean(matches[0]),
-                        currentChapter: parseInt(clean(matches[1])) || 0,
-                        totalChapters: parseInt(clean(matches[2])) || 0,
-                        link: clean(matches[3]),
-                        coverUrl: clean(matches[4]),
-                        status: clean(matches[5]),
-                        classType: clean(matches[6] || 'PLAYER'),
+                        title: clean(fields[0]),
+                        currentChapter: parseInt(clean(fields[1])) || 0,
+                        totalChapters: parseInt(clean(fields[2])) || 0,
+                        link: clean(fields[3]),
+                        coverUrl: clean(fields[4]),
+                        status: clean(fields[5]) || 'ACTIVE',
+                        classType: clean(fields[6] || 'PLAYER'),
                         lastUpdated: Date.now()
                     });
                 }

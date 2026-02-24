@@ -10,6 +10,9 @@ const QuestSchema = new mongoose.Schema({
     classType: { type: String, default: 'UNKNOWN' },
     readLink: { type: String, default: "" },
     lastRead: { type: Number, default: Date.now }
-}, { timestamps: true });
+}, {
+    timestamps: true,
+    collection: 'manhwas'
+});
 
 module.exports = mongoose.models.Quest || mongoose.model('Quest', QuestSchema);

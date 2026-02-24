@@ -133,7 +133,12 @@ const App: React.FC = () => {
         link: ''
     };
 
-    const activeQuest = useMemo(() => library.find(q => q.id === activeId) || library[0] || DEFAULT_QUEST, [library, activeId]);
+    const activeQuest = useMemo(() => {
+        const found = library.find(q => q.id === activeId) || library[0] || DEFAULT_QUEST;
+        console.log("[Rendering] Active Quest selected:", found.title, found.id);
+        return found;
+    }, [library, activeId]);
+
     const progressPercent = useMemo(() => Math.min(100, Math.round((activeQuest.currentChapter / (activeQuest.totalChapters || 1)) * 100)), [activeQuest]);
     const totalChaptersRead = useMemo(() => library.reduce((acc, item) => acc + (item.currentChapter || 0), 0), [library]);
 
@@ -144,7 +149,11 @@ const App: React.FC = () => {
         return { ...rawPlayerRank, name: rawPlayerRank.label, style: rankStyle };
     }, [library.length, currentTheme]);
 
-    const activeQuests = useMemo(() => { return library.filter(item => item.status === 'ACTIVE').sort((a, b) => new Date(b.lastUpdated || 0).getTime() - new Date(a.lastUpdated || 0).getTime()).slice(0, 5); }, [library]);
+    const activeQuests = useMemo(() => {
+        const filtered = library.filter(item => item.status === 'ACTIVE').sort((a, b) => new Date(b.lastUpdated || 0).getTime() - new Date(a.lastUpdated || 0).getTime()).slice(0, 5);
+        console.log("[Rendering] Sidebar Active Quests count:", filtered.length);
+        return filtered;
+    }, [library]);
     const spireItems = useMemo(() => [...library].sort((a, b) => (a.id || '').localeCompare(b.id || '')), [library]);
 
     const handleActivate = (id: string) => {

@@ -16,9 +16,9 @@ const QuestCard = React.memo<DivineMonolithProps>(({ item, onClick, index, id, t
     const animationDuration = `${5 + (index % 3)}s`;
 
     return (
-        <div id={id} onClick={() => onClick(item.id)} className="group relative cursor-pointer perspective-1000 w-full" style={{ animationName: 'float-item', animationDuration: animationDuration, animationTimingFunction: 'ease-in-out', animationIterationCount: 'infinite', animationDelay: `${index * 150}ms` }}>
-            <div className={`relative aspect-[9/14] ${theme.panelBg} border ${theme.borderSubtle} group-hover:border-opacity-0 transition-all duration-700 ease-out overflow-hidden transform group-hover:scale-[1.02]`}>
-                <div className={`absolute inset-0 z-20 ${theme.overlay} group-hover:opacity-0 transition-opacity duration-700 flex flex-col items-center justify-center`}>
+        <div id={id} onClick={() => onClick(item.id)} className="group relative cursor-pointer perspective-1000 w-full h-full" style={{ animationName: 'float-item', animationDuration: animationDuration, animationTimingFunction: 'ease-in-out', animationIterationCount: 'infinite', animationDelay: `${index * 150}ms` }}>
+            <div className={`relative w-full h-full min-h-[400px] md:min-h-[500px] aspect-[9/13] ${theme.panelBg} border ${theme.borderSubtle} group-hover:border-opacity-0 transition-all duration-700 ease-out overflow-hidden transform group-hover:scale-[1.02] shadow-2xl`}>
+                <div className={`absolute inset-0 z-20 ${theme.overlay} group-hover:opacity-0 transition-opacity duration-700 flex flex-col items-center justify-center bg-black/40 backdrop-blur-[2px]`}>
                     <div className={`w-[1px] h-16 ${rankStyle.bg} opacity-50 mb-4 shadow-[0_0_15px_currentColor]`} />
                     <Fingerprint size={32} className={`${rankStyle.color} opacity-30 animate-pulse`} />
                     <div className={`mt-4 text-[10px] font-mono ${theme.mutedText} tracking-[0.3em] uppercase transition-colors duration-700`}>Stasis Locked</div>
@@ -56,9 +56,9 @@ const QuestCard = React.memo<DivineMonolithProps>(({ item, onClick, index, id, t
                         </h3>
 
                         <div className={`h-[1px] w-full ${theme.isDark ? 'bg-white/10' : 'bg-black/10'} overflow-hidden relative transition-colors duration-700`}><div className={`absolute inset-0 w-full h-full ${rankStyle.bg} -translate-x-full group-hover:translate-x-0 transition-transform duration-1000 delay-100`} /></div>
-                        <div className={`flex justify-between items-center text-[10px] font-mono ${theme.mutedText} group-hover:${theme.baseText} transition-colors delay-300 duration-700`}>
-                            <span className="flex items-center gap-1"><BookOpen size={10} /> CH: {item.currentChapter}</span>
-                            <span className={`px-2 py-0.5 border ${theme.borderSubtle} ${item.status === 'ACTIVE' ? (theme.id === 'LIGHT' ? 'bg-sky-500/10 text-sky-500 border-sky-500/30' : 'bg-amber-500/10 text-amber-500 border-amber-500/30') : theme.isDark ? 'bg-white/5' : 'bg-black/5'} transition-colors duration-700`}>{item.status}</span>
+                        <div className={`flex justify-between items-center text-xs md:text-sm font-mono ${theme.mutedText} group-hover:${theme.baseText} transition-colors delay-300 duration-700`}>
+                            <span className="flex items-center gap-2"><BookOpen size={14} /> CH: {item.currentChapter}</span>
+                            <span className={`px-2 md:px-3 py-1 border ${theme.borderSubtle} ${item.status === 'SEVERED' ? (theme.id === 'LIGHT' ? 'bg-sky-500/10 text-sky-500 border-sky-500/30' : 'bg-amber-500/10 text-amber-500 border-amber-500/30') : theme.isDark ? 'bg-white/5' : 'bg-black/5'} transition-colors duration-700 uppercase tracking-widest`}>{item.status}</span>
                         </div>
                     </div>
                 </div>

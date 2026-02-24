@@ -106,81 +106,116 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
             {/* MAIN CONTENT AREA */}
             <div className={`relative z-10 flex-1 overflow-hidden flex flex-col ${viewMode === 'TOWER' ? 'pointer-events-none' : ''}`}>
 
-                {/* VIEW MODE: FLOOR (GRID) */}
+                {/* VIEW MODE: FLOOR (CINEMATIC CAROUSEL) */}
                 {viewMode === 'FLOOR' && (
                     <div className="w-full h-full flex flex-col animate-in slide-in-from-bottom-10 duration-500 pointer-events-auto">
-                        {/* Search Bar relative */}
-                        <div className="shrink-0 w-full max-w-2xl mx-auto mt-4 md:mt-8 px-4 mb-4 md:mb-8">
+
+                        {/* THEME AMBIENT GLOW (BACKGROUND) */}
+                        <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
+                            <div className={`absolute -top-[20%] -right-[20%] w-[60%] h-[60%] bg-${theme.primary}-500/10 rounded-full blur-[150px] z-10 mix-blend-screen transition-colors duration-700`} />
+                            <div className={`absolute -bottom-[20%] -left-[20%] w-[60%] h-[60%] bg-${theme.accent}-500/10 rounded-full blur-[150px] z-10 mix-blend-screen transition-colors duration-700`} />
+                        </div>
+
+                        {/* Search Bar HUD */}
+                        <div className="relative z-20 shrink-0 w-full max-w-xl mx-auto mt-6 md:mt-10 px-4">
                             <div className="relative group">
-                                <div className={`absolute inset-0 bg-${theme.primary}-500/20 blur-xl group-focus-within:bg-${theme.primary}-500/40 transition-all duration-500`} />
-                                <div className={`relative ${theme.inputBg} backdrop-blur-md border ${theme.borderSubtle} p-1 md:p-2 flex items-center shadow-2xl transition-colors duration-700`}>
-                                    <div className={`p-2 md:p-3 ${theme.highlightText} transition-colors duration-700`}><Search size={20} className="md:w-6 md:h-6" /></div>
-                                    <input type="text" placeholder="INVOKE TRUE NAME..." className={`w-full bg-transparent text-sm md:text-xl font-mono ${theme.baseText} placeholder:${theme.mutedText} outline-none uppercase tracking-wider transition-colors duration-700`} value={search} onChange={(e) => setSearch(e.target.value)} autoFocus />
+                                <div className={`absolute -inset-1 bg-gradient-to-r ${theme.gradient} opacity-20 blur-md group-focus-within:opacity-40 transition-all duration-500 rounded-full`} />
+                                <div className={`relative ${theme.isDark ? 'bg-black/60' : 'bg-white/60'} backdrop-blur-xl border border-white/10 rounded-full px-4 py-3 flex items-center shadow-2xl transition-all duration-700`}>
+                                    <Search size={20} className={`${theme.highlightText} mr-3 opacity-70`} />
+                                    <input
+                                        type="text"
+                                        placeholder="SEARCH ARCHIVES..."
+                                        className={`w-full bg-transparent text-sm md:text-base font-mono ${theme.baseText} placeholder:${theme.mutedText} placeholder:opacity-50 outline-none uppercase tracking-widest transition-colors duration-700`}
+                                        value={search}
+                                        onChange={(e) => setSearch(e.target.value)}
+                                        autoFocus
+                                    />
+                                    {search && (
+                                        <button onClick={() => setSearch('')} className={`${theme.mutedText} hover:${theme.highlightText} ml-2`}><X size={16} /></button>
+                                    )}
                                 </div>
                             </div>
                         </div>
 
-                        <div className="flex-1 overflow-hidden flex flex-col px-0 pb-12 relative w-full">
-                            {/* Show only selected floor OR all if searching */}
-                            {search.length > 0 ? (
-                                <div className="animate-in fade-in duration-500">
-                                    <div className={`relative p-4 md:p-6 border ${theme.isDark ? 'border-white/5 bg-black/20' : 'border-black/5 bg-white/20'} rounded-xl backdrop-blur-sm`}>
-                                        <div className="flex overflow-x-auto hide-scrollbar gap-8 relative z-10 snap-x snap-mandatory pt-8 pb-12 px-[10vw] items-center min-h-[480px]">
-                                            {filteredItems.map((item, index) => {
-                                                const rawRank = getQuestRankObj(items.find(v => v.id === item.id) || item);
-                                                return (
-                                                    <div key={item.id} className="w-[200px] sm:w-[240px] md:w-[280px] shrink-0 snap-center transition-all duration-500 hover:-translate-y-4 hover:scale-105 group relative">
-                                                        <div className={`absolute -inset-4 bg-${theme.primary}-500/20 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none`} />
-                                                        <QuestCard id={`item-${item.id}`} item={item} onClick={onActivate} index={index} theme={theme} rankStyle={rawRank} />
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
+                        <div className="flex-1 flex flex-col relative w-full z-10 group/carousel">
+
+                            {/* HUD HEADER: Floor / Sector info (Hidden when searching) */}
+                            {!search && floors.length > 0 && floors[selectedFloorIndex] && (
+                                <div className="absolute top-4 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center pointer-events-none drop-shadow-2xl">
+                                    <div className={`font-mono text-[10px] tracking-[0.4em] ${theme.highlightText} font-bold uppercase mb-1 opacity-80`}>SYSTEM.SECTOR_INTERFACE</div>
+                                    <div className="flex items-center gap-4 px-6 py-2 rounded-full border border-white/10 bg-black/40 backdrop-blur-md">
+                                        <span className={`font-black text-2xl font-orbitron tracking-widest ${theme.headingText}`}>LAYER {selectedFloorIndex + 1}</span>
+                                        <div className="w-1.5 h-1.5 rounded-full bg-white/30" />
+                                        <span className={`font-mono text-xs ${theme.mutedText} tracking-widest`}>SECTOR {floors[selectedFloorIndex].range}</span>
                                     </div>
+                                </div>
+                            )}
+
+                            {/* FLOATING NAVIGATION CONTROLS */}
+                            {!search && (
+                                <>
+                                    <button
+                                        disabled={selectedFloorIndex <= 0}
+                                        onClick={() => setSelectedFloorIndex(i => i - 1)}
+                                        className={`absolute left-4 md:left-12 top-1/2 -translate-y-1/2 z-30 p-4 rounded-full border border-white/10 ${theme.isDark ? 'bg-black/50 hover:bg-white/10' : 'bg-white/50 hover:bg-black/10'} backdrop-blur-md disabled:opacity-0 opacity-0 group-hover/carousel:opacity-100 transition-all duration-500 transform hover:scale-110 shadow-[0_0_30px_rgba(0,0,0,0.5)]`}
+                                    >
+                                        <ChevronLeft size={32} className={theme.highlightText} />
+                                    </button>
+                                    <button
+                                        disabled={selectedFloorIndex >= floors.length - 1}
+                                        onClick={() => setSelectedFloorIndex(i => i + 1)}
+                                        className={`absolute right-4 md:right-12 top-1/2 -translate-y-1/2 z-30 p-4 rounded-full border border-white/10 ${theme.isDark ? 'bg-black/50 hover:bg-white/10' : 'bg-white/50 hover:bg-black/10'} backdrop-blur-md disabled:opacity-0 opacity-0 group-hover/carousel:opacity-100 transition-all duration-500 transform hover:scale-110 shadow-[0_0_30px_rgba(0,0,0,0.5)]`}
+                                    >
+                                        <ChevronRight size={32} className={theme.highlightText} />
+                                    </button>
+                                </>
+                            )}
+
+                            {/* THE CAROUSEL */}
+                            {search.length > 0 ? (
+                                <div className="absolute inset-0 flex items-center overflow-x-auto hide-scrollbar snap-x snap-mandatory px-[15vw] md:px-[30vw] py-12 gap-8 md:gap-16">
+                                    {filteredItems.length === 0 ? (
+                                        <div className="w-full flex-1 flex flex-col items-center justify-center translate-y-[-10vh]">
+                                            <AlertCircle size={48} className={`${theme.mutedText} mb-4 opacity-50`} />
+                                            <p className={`font-mono text-sm tracking-widest ${theme.mutedText}`}>NO RECORDS DETECTED</p>
+                                        </div>
+                                    ) : (
+                                        filteredItems.map((item, index) => {
+                                            const rawRank = getQuestRankObj(items.find(v => v.id === item.id) || item);
+                                            return (
+                                                <div key={item.id} className="w-[280px] md:w-[350px] lg:w-[400px] shrink-0 snap-center transition-all duration-700 hover:-translate-y-8 hover:scale-105 group relative pb-16">
+                                                    {/* Floor Reflection Glow */}
+                                                    <div className={`absolute -bottom-8 left-1/2 -translate-x-1/2 w-3/4 h-8 bg-gradient-to-t from-${theme.primary}-500/40 to-transparent blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-700`} />
+                                                    {/* Backdrop Ambient Lighting */}
+                                                    <div className={`absolute -inset-8 bg-${theme.primary}-500/10 blur-[50px] rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none`} />
+
+                                                    <QuestCard id={`item-${item.id}`} item={item} onClick={onActivate} index={index} theme={theme} rankStyle={rawRank} />
+                                                </div>
+                                            );
+                                        })
+                                    )}
                                 </div>
                             ) : (
                                 floors.length > 0 && floors[selectedFloorIndex] ? (
-                                    <div className="animate-in fade-in duration-500">
-                                        <div className={`sticky top-0 z-20 ${theme.isDark ? 'bg-[#020202]/95 border-white/10' : 'bg-[#f8f5f2]/95 border-black/10'} backdrop-blur-xl border-y py-3 px-4 md:px-6 mb-8 flex items-center justify-between shadow-[0_10px_30px_rgba(0,0,0,0.5)] transition-all duration-700`}>
-                                            <div className="flex items-center gap-3 md:gap-4">
-                                                <div className={`hidden md:block w-1 h-8 ${theme.id === 'LIGHT' ? 'bg-sky-500' : 'bg-amber-500'} shadow-[0_0_10px_currentColor] animate-pulse`} />
-                                                <div className="flex flex-col">
-                                                    <span className={`font-mono text-[8px] md:text-[10px] tracking-[0.3em] ${theme.mutedText} font-bold uppercase`}>SYSTEM.SECTOR_INTERFACE</span>
-                                                    <div className="flex items-baseline gap-2 md:gap-3">
-                                                        <span className={`font-black text-lg md:text-2xl font-orbitron tracking-wider ${theme.headingText}`}>LAYER {selectedFloorIndex + 1}</span>
-                                                        <span className={`font-mono text-[9px] md:text-xs ${theme.highlightText} border ${theme.borderSubtle} bg-black/20 px-1.5 py-0.5 rounded tracking-widest`}>SECTOR {floors[selectedFloorIndex].range}</span>
+                                    <div className="absolute inset-0 flex items-center overflow-x-auto hide-scrollbar snap-x snap-mandatory px-[15vw] md:px-[30vw] py-12 gap-8 md:gap-16">
+                                        {floors[selectedFloorIndex].items.map((item, index) => {
+                                            const rawRank = getQuestRankObj(items.find(v => v.id === item.id) || item);
+                                            return (
+                                                <div key={item.id} className="w-[280px] md:w-[350px] lg:w-[400px] shrink-0 snap-center transition-all duration-700 hover:-translate-y-8 hover:scale-[1.03] group relative pb-16">
+                                                    {/* Floor Reflection Glow */}
+                                                    <div className={`absolute -bottom-8 left-1/2 -translate-x-1/2 w-3/4 h-8 bg-gradient-to-t ${theme.id === 'LIGHT' ? 'from-sky-500/40' : 'from-amber-500/40'} to-transparent blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-all duration-700`} />
+                                                    {/* Backdrop Ambient Lighting */}
+                                                    <div className={`absolute -inset-8 ${theme.id === 'LIGHT' ? 'bg-sky-500/10' : 'bg-amber-500/10'} blur-[50px] rounded-full opacity-0 group-hover:opacity-100 transition-all duration-700 pointer-events-none`} />
+
+                                                    <div className="relative z-10 shadow-[0_20px_50px_rgba(0,0,0,0.5)] group-hover:shadow-[0_40px_80px_rgba(0,0,0,0.8)] transition-shadow duration-700 rounded-lg overflow-hidden border border-white/5 group-hover:border-white/20">
+                                                        <QuestCard id={`item-${item.id}`} item={item} onClick={onActivate} index={index} theme={theme} rankStyle={rawRank} />
                                                     </div>
                                                 </div>
-                                            </div>
-
-                                            <div className="flex gap-2">
-                                                <button disabled={selectedFloorIndex <= 0} onClick={() => setSelectedFloorIndex(i => i - 1)} className={`p-1.5 md:p-2 border ${theme.borderSubtle} ${theme.isDark ? 'hover:bg-white/10' : 'hover:bg-black/10'} disabled:opacity-30 transition-all`}><ChevronLeft size={18} className="md:w-5 md:h-5" /></button>
-                                                <button disabled={selectedFloorIndex >= floors.length - 1} onClick={() => setSelectedFloorIndex(i => i + 1)} className={`p-1.5 md:p-2 border ${theme.borderSubtle} ${theme.isDark ? 'hover:bg-white/10' : 'hover:bg-black/10'} disabled:opacity-30 transition-all`}><ChevronRight size={18} className="md:w-5 md:h-5" /></button>
-                                            </div>
-                                        </div>
-
-                                        <div className={`relative p-4 md:p-6 border ${theme.isDark ? 'border-white/5 bg-black/20' : 'border-black/5 bg-white/20'} rounded-xl backdrop-blur-sm`}>
-                                            <div className={`absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 ${theme.borderSubtle} rounded-tl-lg`} />
-                                            <div className={`absolute top-0 right-0 w-4 h-4 border-t-2 border-r-2 ${theme.borderSubtle} rounded-tr-lg`} />
-                                            <div className={`absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 ${theme.borderSubtle} rounded-bl-lg`} />
-                                            <div className={`absolute bottom-0 right-0 w-4 h-4 border-b-2 border-r-2 ${theme.borderSubtle} rounded-br-lg`} />
-
-                                            {/* HORIZONTAL SECTOR TIMELINE */}
-                                            <div className="flex overflow-x-auto hide-scrollbar gap-8 relative z-10 snap-x snap-mandatory pt-8 pb-12 px-[10vw] items-center min-h-[480px]">
-                                                {floors[selectedFloorIndex].items.map((item, index) => {
-                                                    const rawRank = getQuestRankObj(items.find(v => v.id === item.id) || item);
-                                                    return (
-                                                        <div key={item.id} className="w-[200px] sm:w-[240px] md:w-[280px] shrink-0 snap-center transition-all duration-500 hover:-translate-y-4 hover:scale-105 group relative">
-                                                            <div className={`absolute -inset-4 bg-${theme.primary}-500/20 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none`} />
-                                                            <QuestCard id={`item-${item.id}`} item={item} onClick={onActivate} index={index} theme={theme} rankStyle={rawRank} />
-                                                        </div>
-                                                    );
-                                                })}
-                                            </div>
-                                        </div>
+                                            );
+                                        })}
                                     </div>
                                 ) : (
-                                    <div className={`flex flex-col items-center justify-center py-32 ${theme.mutedText}`}>
+                                    <div className={`w-full flex-1 flex flex-col items-center justify-center translate-y-[-10vh] ${theme.mutedText}`}>
                                         <AlertCircle size={48} className="mb-4 opacity-50" />
                                         <p className="font-mono text-sm tracking-widest">LAYER EMPTY / LOCKED</p>
                                     </div>

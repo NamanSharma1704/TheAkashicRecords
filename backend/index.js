@@ -170,6 +170,7 @@ app.delete('/api/quests/:id', async (req, res) => {
 // POST /api/admin/bulk-classify - Admin only migration
 app.post('/api/admin/bulk-classify', async (req, res) => {
     try {
+        await connectDB();
         console.log("[Admin] Starting Bulk Classification...");
         const quests = await Quest.find({
             $or: [
@@ -203,6 +204,7 @@ app.get('/api/proxy/metadata', async (req, res) => {
     console.log(`[Proxy] Fetching metadata for: ${title} (Source: ${source || 'AUTO'})`);
 
     try {
+        await connectDB();
         let data = null;
 
         if (source === 'ANILIST') {

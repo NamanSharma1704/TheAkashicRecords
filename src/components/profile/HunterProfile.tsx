@@ -255,11 +255,23 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                                     if (confirm("INITIALIZE GLOBAL RE-CLASSIFICATION?")) {
                                         try {
                                             const res = await fetch('/api/admin/bulk-classify', { method: 'POST' });
+                                            const contentType = res.headers.get("content-type");
+
+                                            if (!res.ok) {
+                                                const errData = contentType?.includes("application/json") ? await res.json() : null;
+                                                throw new Error(errData?.error || `STATUS_${res.status}`);
+                                            }
+
+                                            if (!contentType?.includes("application/json")) {
+                                                throw new Error("UNEXPECTED_RESPONSE_FORMAT");
+                                            }
+
                                             const data = await res.json();
                                             alert(`SYSTEM: ${data.message}. Updated ${data.updated} records.`);
-                                            window.location.reload(); // Refresh to see new classes
-                                        } catch (e) {
-                                            alert("SYSTEM ERROR: CRITICAL_FAILURE_IN_CLASSIFICATION_ENGINE");
+                                            window.location.reload();
+                                        } catch (e: any) {
+                                            console.error("Classification Failure:", e);
+                                            alert(`SYSTEM ERROR: CRITICAL_PROTOCOL_FAILURE [${e.message}]`);
                                         }
                                     }
                                 }}

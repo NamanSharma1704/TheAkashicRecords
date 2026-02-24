@@ -3,6 +3,7 @@ import { X, Star, Calendar, BookOpen, Users, Share2, Heart, Sword, Zap, Edit2, S
 
 import { Theme, Quest } from '../../core/types';
 import ScrambleText from '../system/ScrambleText';
+import { cleanDescription } from '../../utils/api';
 
 
 interface ManhwaDetailProps {
@@ -353,13 +354,6 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
 
                         {/* RIGHT: Quick Stats / Tags */}
                         <div className="flex flex-col gap-4">
-                            <div className="p-6 bg-black/30 backdrop-blur-xl border border-white/5 rounded-xl flex items-center justify-between">
-                                <span className="text-[10px] font-mono text-white/40 tracking-widest uppercase">Community Rating</span>
-                                <div className="flex items-center gap-1.5 text-amber-400 font-bold">
-                                    <Star size={14} fill="currentColor" />
-                                    <span>{media?.averageScore || 'N/A'}%</span>
-                                </div>
-                            </div>
                             <div className="p-6 bg-black/30 backdrop-blur-xl border border-white/5 rounded-xl flex flex-col gap-4">
                                 <span className="text-[10px] font-mono text-white/40 tracking-widest uppercase">Genres</span>
                                 <div className="flex flex-wrap gap-2">

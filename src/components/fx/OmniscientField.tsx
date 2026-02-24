@@ -44,7 +44,7 @@ const OmniscientField: React.FC<OmniscientFieldProps> = ({ isDivineMode, forceAm
             const glowColor = forceAmber || isDivineMode ? '245, 158, 11' : '139, 92, 246'; // Gold vs Violet
             const regColor = forceAmber ? '34, 211, 238' : (isDivineMode ? '245, 158, 11' : '139, 92, 246'); // More vibrant Cyan (#22d3ee)
 
-            stars.forEach(star => {
+            stars.forEach((star, i) => {
                 const dx = mouseX - star.x;
                 const dy = mouseY - star.y;
 
@@ -55,22 +55,25 @@ const OmniscientField: React.FC<OmniscientFieldProps> = ({ isDivineMode, forceAm
                 ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
                 ctx.fillStyle = star.glow
                     ? `rgba(${glowColor}, 0.8)`
-                    : `rgba(${regColor}, ${Math.random() * 0.5 + 0.2})`;
+                    : `rgba(${regColor}, ${Math.random() * 0.2 + 0.3})`; // Reduced random calls
                 ctx.fill();
 
-                for (let j = 0; j < stars.length; j++) {
+                // Optimized Link Logic: Batch lines to reduce draw calls
+                ctx.beginPath();
+                ctx.lineWidth = 0.5;
+                for (let j = i + 1; j < stars.length; j++) {
                     const s2 = stars[j];
-                    const dist2 = Math.sqrt((star.x - s2.x) ** 2 + (star.y - s2.y) ** 2);
-                    if (dist2 < 80) {
-                        ctx.beginPath();
+                    const distSq = (star.x - s2.x) ** 2 + (star.y - s2.y) ** 2;
+                    if (distSq < 6400) { // 80 * 80
+                        const dist = Math.sqrt(distSq);
                         ctx.moveTo(star.x, star.y);
                         ctx.lineTo(s2.x, s2.y);
                         ctx.strokeStyle = star.glow
-                            ? `rgba(${glowColor}, ${0.1 - dist2 / 800})`
-                            : `rgba(${regColor}, ${0.05 - dist2 / 1600})`;
-                        ctx.stroke();
+                            ? `rgba(${glowColor}, ${0.1 - dist / 800})`
+                            : `rgba(${regColor}, ${0.05 - dist / 1600})`;
                     }
                 }
+                ctx.stroke();
             });
             requestRef.current = requestAnimationFrame(animate);
         };

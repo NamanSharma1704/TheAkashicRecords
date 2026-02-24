@@ -369,7 +369,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                                     </div>
 
                                                     {/* THE BAR - ADVANCED HUD STYLE */}
-                                                    <div className="relative group/bar">
+                                                    <div className="relative group/bar overflow-hidden">
                                                         <div className={`h-6 w-full bg-black/60 rounded-sm overflow-hidden relative border border-white/5 shadow-inner`}>
                                                             {/* TICK MARKS */}
                                                             <div className="absolute inset-0 flex justify-between px-[1%] pointer-events-none z-10">
@@ -379,9 +379,10 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                                             </div>
 
                                                             <div
-                                                                className={`h-full bg-gradient-to-r ${theme.gradient} transition-all duration-1000 ease-out relative`}
+                                                                className={`h-full bg-gradient-to-r ${theme.gradient} transition-transform duration-1000 ease-out relative origin-left`}
                                                                 style={{
-                                                                    width: `${Math.min(100, (quest.totalChapters || 0) > 0 ? (quest.currentChapter / quest.totalChapters) * 100 : 0)}%`,
+                                                                    transform: `scaleX(${Math.min(1, (quest.totalChapters || 0) > 0 ? (quest.currentChapter / quest.totalChapters) : 0)})`,
+                                                                    width: '100%'
                                                                 }}
                                                             >
                                                                 {/* BLOOM EFFECT */}
@@ -392,8 +393,8 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
 
                                                         {/* PERCENTAGE FLOATER */}
                                                         <div
-                                                            className="absolute -top-6 transition-all duration-1000 ease-out hidden md:block"
-                                                            style={{ left: `${Math.min(95, (quest.totalChapters || 0) > 0 ? (quest.currentChapter / quest.totalChapters) * 100 : 0)}%` }}
+                                                            className="absolute -top-6 transition-transform duration-1000 ease-out hidden md:block"
+                                                            style={{ transform: `translateX(${Math.min(950, (quest.totalChapters || 0) > 0 ? (quest.currentChapter / quest.totalChapters) * 1000 : 0) / 10}%)` }}
                                                         >
                                                             <div className={`text-[9px] font-mono font-bold ${theme.id === 'LIGHT' ? 'text-sky-400' : 'text-amber-400'} whitespace-nowrap`}>
                                                                 PTR_{Math.round(((quest.totalChapters || 0) > 0 ? (quest.currentChapter / quest.totalChapters) * 100 : 0))}%

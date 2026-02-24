@@ -22,11 +22,11 @@
 
 @keyframes scanning {
     0% {
-        top: 0%;
+        transform: translateY(-100%);
     }
 
     100% {
-        top: 100%;
+        transform: translateY(100vh);
     }
 }
 
@@ -106,9 +106,18 @@
 
     .progress-bloom {
         box-shadow: 0 0 12px 1px currentColor;
+        will-change: transform;
     }
 
     .text-bloom {
         filter: drop-shadow(0 0 10px var(--bloom-color, currentColor));
+        will-change: filter;
+    }
+
+    .gpu-accelerated {
+        transform: translateZ(0);
+        backface-visibility: hidden;
+        perspective: 1000px;
+        will-change: transform;
     }
 }

@@ -155,9 +155,7 @@ const App: React.FC = () => {
     };
 
     const activeQuest = useMemo(() => {
-        const found = library.find(q => q.id === activeId) || library[0] || DEFAULT_QUEST;
-        console.log("[Rendering] Active Quest selected:", found.title, found.id);
-        return found;
+        return library.find(q => q.id === activeId) || library[0] || DEFAULT_QUEST;
     }, [library, activeId]);
 
     const progressPercent = useMemo(() => Math.min(100, Math.round((activeQuest.currentChapter / (activeQuest.totalChapters || 1)) * 100)), [activeQuest]);
@@ -398,7 +396,7 @@ const App: React.FC = () => {
                                             </div>
                                             <div className="space-y-2">
                                                 <div className={`flex justify-between text-[10px] font-mono ${theme.mutedText} tracking-wider transition-colors duration-700`}><span className={`flex items-center gap-2 ${theme.headingText} transition-colors duration-700`}><Zap size={12} /> COMPLETION_RATE</span><span className={`font-bold ${theme.headingText} transition-colors duration-700`}>{progressPercent}%</span></div>
-                                                <div className={`h-1.5 ${theme.isDark ? 'bg-gray-800' : 'bg-gray-200'} w-full relative transition-colors duration-700`}><div className={`h-full bg-gradient-to-r ${theme.gradient} progress-bloom transition-all duration-700 ease-out`} style={{ width: `${progressPercent}%`, color: theme.id === 'LIGHT' ? '#06b6d4' : '#f59e0b' }} /></div>
+                                                <div className={`h-1.5 ${theme.isDark ? 'bg-gray-800' : 'bg-gray-200'} w-full relative transition-colors duration-700 overflow-hidden`}><div className={`h-full bg-gradient-to-r ${theme.gradient} progress-bloom transition-transform duration-700 ease-out origin-left`} style={{ transform: `scaleX(${progressPercent / 100})`, color: theme.id === 'LIGHT' ? '#06b6d4' : '#f59e0b' }} /></div>
                                                 <div className={`flex justify-between text-[9px] font-mono ${theme.mutedText} uppercase tracking-widest transition-colors duration-700`}><span>Current: {activeQuest.currentChapter}</span><span>Terminal: {activeQuest.totalChapters}</span></div>
                                             </div>
                                             <div className="flex gap-4">
@@ -456,7 +454,7 @@ const App: React.FC = () => {
                                             </div>
                                         </div>
                                     </div>
-                                    <div className="mt-3"><div className={`flex justify-between text-[8px] font-mono ${theme.highlightText} mb-0.5 transition-colors duration-700`}><span>EXP ACQUIRED</span><span>{totalChaptersRead} PTS</span></div><div className={`h-1 w-full ${theme.isDark ? 'bg-gray-800' : 'bg-gray-200'} transition-colors duration-700`}><div className={`h-full w-[60%] bg-gradient-to-r ${theme.gradient} progress-bloom transition-all duration-700`} style={{ color: theme.id === 'LIGHT' ? '#06b6d4' : '#f59e0b' }} /></div></div>
+                                    <div className="mt-3"><div className={`flex justify-between text-[8px] font-mono ${theme.highlightText} mb-0.5 transition-colors duration-700`}><span>EXP ACQUIRED</span><span>{totalChaptersRead} PTS</span></div><div className={`h-1 w-full ${theme.isDark ? 'bg-gray-800' : 'bg-gray-200'} transition-colors duration-700 overflow-hidden relative`}><div className={`h-full w-full bg-gradient-to-r ${theme.gradient} progress-bloom transition-transform duration-700 origin-left`} style={{ transform: `scaleX(0.6)`, color: theme.id === 'LIGHT' ? '#06b6d4' : '#f59e0b' }} /></div></div>
                                 </div>
                             </SystemFrame>
                         </div>
@@ -469,7 +467,7 @@ const App: React.FC = () => {
                                     <div className="relative z-10">
                                         <div className="flex justify-between items-center mb-6"><div className={`flex items-center gap-2 ${theme.highlightText} font-mono text-[10px] tracking-widest font-bold transition-colors duration-700`}><Flame size={12} /> DIVINE_MANDATE</div><span className={`text-[9px] font-mono tracking-widest opacity-70 ${theme.mutedText} transition-colors duration-700`}>{userState.dailyAbsorbed >= 5 ? 'CONQUERED' : 'PENDING'}</span></div>
                                         <div className="space-y-1 mb-2"><div className={`text-[9px] ${theme.mutedText} font-mono tracking-widest transition-colors duration-700`}>OBJECTIVE</div><div className="flex justify-between items-end"><div className={`text-xl font-black italic ${theme.headingText} tracking-wide transition-colors duration-700`}>ABSORB 5 STORIES</div><div className={`${theme.highlightText} font-mono text-lg font-bold transition-colors duration-700`}>{userState.dailyAbsorbed}<span className={`${theme.mutedText} text-sm transition-colors duration-700`}>/5</span></div></div></div>
-                                        <div className={`h-1 w-full ${theme.isDark ? 'bg-gray-900 border-gray-800' : 'bg-gray-200 border-gray-300'} border mt-2 transition-colors duration-700`}><div className={`h-full bg-gradient-to-r ${theme.gradient} progress-bloom transition-all duration-700`} style={{ width: `${Math.min(100, (userState.dailyAbsorbed / 5) * 100)}%`, color: theme.id === 'LIGHT' ? '#06b6d4' : '#f59e0b' }} /></div>
+                                        <div className={`h-1 w-full ${theme.isDark ? 'bg-gray-900 border-gray-800' : 'bg-gray-200 border-gray-300'} border mt-2 transition-colors duration-700 overflow-hidden relative`}><div className={`h-full w-full bg-gradient-to-r ${theme.gradient} progress-bloom transition-transform duration-700 origin-left`} style={{ transform: `scaleX(${Math.min(1, userState.dailyAbsorbed / 5)})`, color: theme.id === 'LIGHT' ? '#06b6d4' : '#f59e0b' }} /></div>
                                     </div>
                                 </div>
                             </SystemFrame>

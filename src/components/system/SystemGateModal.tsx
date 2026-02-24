@@ -201,10 +201,15 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
 
         // DUPLICATE CHECK
         // Check if title already exists in the library (exclude current item if editing)
-        const isDuplicate = existingQuests.some(q =>
-            q.title.trim().toLowerCase() === formData.title?.trim().toLowerCase() &&
-            q.id !== (initialData?.id || "")
-        );
+        const isDuplicate = existingQuests.some(q => {
+            const sameTitle = q.title.trim().toLowerCase() === formData.title?.trim().toLowerCase();
+            if (!sameTitle) return false;
+
+            const currentId = String(initialData?.id || initialData?._id || '');
+            const otherId = String(q.id || q._id || '');
+
+            return otherId !== currentId;
+        });
 
         if (isDuplicate) {
             setError("ARTIFACT ALREADY EXISTS IN DATABASE");

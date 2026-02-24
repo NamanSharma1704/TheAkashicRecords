@@ -87,6 +87,19 @@
         background: var(--scrollbar-thumb-hover, #6b7280);
     }
 
+    /* Hide Scrollbar */
+    .hide-scrollbar {
+        -ms-overflow-style: none;
+        /* IE and Edge */
+        scrollbar-width: none;
+        /* Firefox */
+    }
+
+    .hide-scrollbar::-webkit-scrollbar {
+        display: none;
+        /* Chrome, Safari and Opera */
+    }
+
     /* Utilities using top-level animations */
     .animate-gradient-x {
         animation: gradient-x 3s ease infinite;

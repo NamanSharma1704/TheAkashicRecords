@@ -120,15 +120,20 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
                             </div>
                         </div>
 
-                        <div className="flex-1 overflow-y-auto custom-scrollbar scroll-smooth px-3 sm:px-6 md:px-12 pb-32">
+                        <div className="flex-1 overflow-hidden flex flex-col px-0 pb-12 relative w-full">
                             {/* Show only selected floor OR all if searching */}
                             {search.length > 0 ? (
                                 <div className="animate-in fade-in duration-500">
                                     <div className={`relative p-4 md:p-6 border ${theme.isDark ? 'border-white/5 bg-black/20' : 'border-black/5 bg-white/20'} rounded-xl backdrop-blur-sm`}>
-                                        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 sm:gap-6 md:gap-8 relative z-10">
+                                        <div className="flex overflow-x-auto hide-scrollbar gap-8 relative z-10 snap-x snap-mandatory pt-8 pb-12 px-[10vw] items-center min-h-[480px]">
                                             {filteredItems.map((item, index) => {
                                                 const rawRank = getQuestRankObj(items.find(v => v.id === item.id) || item);
-                                                return <QuestCard key={item.id} id={`item-${item.id}`} item={item} onClick={onActivate} index={index} theme={theme} rankStyle={rawRank} />
+                                                return (
+                                                    <div key={item.id} className="w-[200px] sm:w-[240px] md:w-[280px] shrink-0 snap-center transition-all duration-500 hover:-translate-y-4 hover:scale-105 group relative">
+                                                        <div className={`absolute -inset-4 bg-${theme.primary}-500/20 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none`} />
+                                                        <QuestCard id={`item-${item.id}`} item={item} onClick={onActivate} index={index} theme={theme} rankStyle={rawRank} />
+                                                    </div>
+                                                );
                                             })}
                                         </div>
                                     </div>
@@ -160,10 +165,16 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
                                             <div className={`absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 ${theme.borderSubtle} rounded-bl-lg`} />
                                             <div className={`absolute bottom-0 right-0 w-4 h-4 border-b-2 border-r-2 ${theme.borderSubtle} rounded-br-lg`} />
 
-                                            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 sm:gap-6 md:gap-8 relative z-10">
+                                            {/* HORIZONTAL SECTOR TIMELINE */}
+                                            <div className="flex overflow-x-auto hide-scrollbar gap-8 relative z-10 snap-x snap-mandatory pt-8 pb-12 px-[10vw] items-center min-h-[480px]">
                                                 {floors[selectedFloorIndex].items.map((item, index) => {
                                                     const rawRank = getQuestRankObj(items.find(v => v.id === item.id) || item);
-                                                    return <QuestCard key={item.id} id={`item-${item.id}`} item={item} onClick={onActivate} index={index} theme={theme} rankStyle={rawRank} />
+                                                    return (
+                                                        <div key={item.id} className="w-[200px] sm:w-[240px] md:w-[280px] shrink-0 snap-center transition-all duration-500 hover:-translate-y-4 hover:scale-105 group relative">
+                                                            <div className={`absolute -inset-4 bg-${theme.primary}-500/20 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none`} />
+                                                            <QuestCard id={`item-${item.id}`} item={item} onClick={onActivate} index={index} theme={theme} rankStyle={rawRank} />
+                                                        </div>
+                                                    );
                                                 })}
                                             </div>
                                         </div>

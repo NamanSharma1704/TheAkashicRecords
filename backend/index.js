@@ -10,9 +10,6 @@ const app = express();
 
 const getTodayStr = () => new Date().toISOString().split('T')[0];
 
-// Connect to Database
-connectDB();
-
 const BASE_QUESTS = [
     {
         title: 'TOWER OF GOD',
@@ -79,7 +76,18 @@ const deduplicateDB = async () => {
     }
 };
 
-seedDB().then(() => deduplicateDB());
+// Connect to Database
+const initDB = async () => {
+    try {
+        await connectDB();
+        await seedDB();
+        await deduplicateDB();
+    } catch (err) {
+        console.error("DB Init Failure:", err);
+    }
+};
+
+initDB();
 
 // Middleware
 app.use(cors());

@@ -339,67 +339,93 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                         </div>
                                     </div>
 
-                                    {/* PROGRESS BAR */}
+                                    {/* PROGRESS BAR SECTION */}
                                     {quest.status === 'ACTIVE' && (
                                         <div className="w-full mt-6 group relative">
-                                            <div className="border border-white/10 rounded-xl p-4 md:p-6 bg-black/40 backdrop-blur-sm shadow-xl">
-                                                <div className="flex justify-between items-center mb-4">
-                                                    <div className={`text-[10px] font-bold font-mono tracking-widest ${theme.mutedText} uppercase opacity-60`}>CHAPTER PROGRESS</div>
+                                            {/* Outer Frame with Glassmorphism and Sharp Border */}
+                                            <div className={`relative rounded-xl p-5 md:p-8 ${theme.isDark ? 'bg-[#0a0a0c]/80' : 'bg-slate-900/90'} border-2 ${theme.id === 'LIGHT' ? 'border-cyan-500/30' : 'border-amber-500/30'} shadow-[0_0_30px_rgba(0,0,0,0.4)] overflow-hidden transition-all duration-500 group-hover:border-opacity-100`}>
+
+                                                {/* SCANLINE EFFECT */}
+                                                <div className="absolute inset-0 pointer-events-none bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.1)_50%),linear-gradient(90deg,rgba(255,0,0,0.03),rgba(0,255,0,0.01),rgba(0,0,255,0.03))] z-0 bg-[length:100%_2px,3px_100%]" />
+
+                                                <div className="relative z-10">
+                                                    <div className="flex justify-between items-center mb-6">
+                                                        <div className="flex items-center gap-2">
+                                                            <div className={`w-1.5 h-1.5 rounded-full ${theme.id === 'LIGHT' ? 'bg-cyan-500' : 'bg-amber-400'} animate-pulse`} />
+                                                            <div className={`text-[10px] md:text-xs font-black font-mono tracking-[0.2em] ${theme.id === 'LIGHT' ? 'text-cyan-400' : 'text-amber-400'} uppercase`}>PROGRESS_MONITOR.v2</div>
+                                                        </div>
+                                                        {!isEditing && (
+                                                            <div className={`px-2 py-0.5 rounded-sm text-[9px] font-mono font-bold tracking-tighter ${quest.currentChapter > (quest.totalChapters || 0) && (quest.totalChapters || 0) > 0 ? 'bg-red-500 text-white animate-bounce' : 'bg-white/10 text-white/60'}`}>
+                                                                {quest.currentChapter > (quest.totalChapters || 0) && (quest.totalChapters || 0) > 0 ? "!!! OVERFLOW !!!" : "SYNCRONIZED"}
+                                                            </div>
+                                                        )}
+                                                    </div>
+
+                                                    {isEditing ? (
+                                                        <div className="flex justify-between items-end gap-12 mb-6">
+                                                            <div className="flex-1">
+                                                                <div className={`text-[10px] uppercase tracking-widest text-white/40 font-mono mb-2`}>CURRENT_STATE</div>
+                                                                <input type="number" value={editCurrentCh} onChange={e => setEditCurrentCh(Number(e.target.value))} className={`w-full bg-white/5 border-b-2 ${theme.id === 'LIGHT' ? 'border-cyan-500' : 'border-amber-500'} outline-none text-4xl font-black text-white tabular-nums px-2 py-1 transition-all focus:bg-white/10`} />
+                                                            </div>
+                                                            <div className="flex-1 text-right">
+                                                                <div className={`text-[10px] uppercase tracking-widest text-white/40 font-mono mb-2`}>TOTAL_RECORDS</div>
+                                                                <input type="number" value={editTotalCh} onChange={e => setEditTotalCh(Number(e.target.value))} className={`w-full bg-white/5 border-b-2 ${theme.id === 'LIGHT' ? 'border-cyan-500' : 'border-amber-500'} outline-none text-3xl font-black text-white/80 tabular-nums px-2 py-1 text-right transition-all focus:bg-white/10`} />
+                                                            </div>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="flex justify-between items-end mb-4">
+                                                            <div className="flex flex-col">
+                                                                <span className="text-[10px] uppercase tracking-widest text-white/40 font-mono font-bold mb-1">CHAPTERS_READ</span>
+                                                                <div className="text-5xl md:text-6xl font-black text-white tabular-nums leading-none drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]">
+                                                                    {quest.currentChapter}
+                                                                </div>
+                                                            </div>
+                                                            <div className="text-right flex flex-col items-end">
+                                                                <span className="text-[10px] uppercase tracking-widest text-white/40 font-mono font-bold mb-1">DATA_LIMIT</span>
+                                                                <div className={`text-2xl md:text-3xl font-black text-white/60 tabular-nums leading-none`}>
+                                                                    / {quest.totalChapters > 0 ? quest.totalChapters : '??'}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    {/* THE BAR - MORE PROMINENT */}
+                                                    <div className={`h-4 w-full bg-black/40 rounded-sm overflow-hidden relative border border-white/10 shadow-[inner_0_2px_4px_rgba(0,0,0,0.5)]`}>
+                                                        <div
+                                                            className={`h-full bg-gradient-to-r ${theme.gradient} transition-all duration-1000 ease-out relative`}
+                                                            style={{
+                                                                width: `${Math.min(100, (quest.totalChapters || 0) > 0 ? (quest.currentChapter / quest.totalChapters) * 100 : 0)}%`,
+                                                            }}
+                                                        >
+                                                            {/* SHINE EFFECT ON BAR */}
+                                                            <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/30 to-white/0 animate-[shimmer_3s_infinite]" />
+                                                            <div className="absolute inset-0 shadow-[0_0_20px_currentColor]" style={{ color: theme.id === 'LIGHT' ? '#0ea5e9' : '#fbbf24' }} />
+                                                        </div>
+                                                    </div>
+
+                                                    {/* BOTTOM INFO */}
+                                                    {!isEditing && (
+                                                        <div className="flex justify-between items-center mt-4">
+                                                            <div className="flex items-center gap-2 text-white/50 font-mono text-[10px] font-bold uppercase tracking-widest">
+                                                                <BookOpen size={12} className={theme.id === 'LIGHT' ? 'text-cyan-400' : 'text-amber-400'} />
+                                                                <span>SYNCRONY_LEVEL</span>
+                                                            </div>
+                                                            <div className={`text-lg md:text-xl font-black font-mono ${theme.id === 'LIGHT' ? 'text-cyan-400' : 'text-amber-400'} drop-shadow-[0_0_8px_currentColor]`}>
+                                                                {((quest.totalChapters || 0) > 0) ? Math.round((quest.currentChapter / quest.totalChapters) * 100) : 0}%
+                                                            </div>
+                                                        </div>
+                                                    )}
                                                 </div>
 
-                                                {isEditing ? (
-                                                    <div className="flex justify-between items-end mb-2">
-                                                        <div className="flex flex-col">
-                                                            <div className={`text-[8px] uppercase tracking-widest ${theme.mutedText} pb-1`}>CURRENT</div>
-                                                            <input type="number" value={editCurrentCh} onChange={e => setEditCurrentCh(Number(e.target.value))} className={`w-24 bg-transparent border-b border-gray-500/50 outline-none text-2xl font-black ${theme.highlightText} tabular-nums text-left`} />
-                                                        </div>
-                                                        <div className="flex flex-col items-end">
-                                                            <div className={`text-[8px] uppercase tracking-widest ${theme.mutedText} pb-1`}>TOTAL</div>
-                                                            <input type="number" value={editTotalCh} onChange={e => setEditTotalCh(Number(e.target.value))} className={`w-24 bg-transparent border-b border-gray-500/50 outline-none text-xl font-bold ${theme.highlightText} tabular-nums text-right`} />
-                                                        </div>
-                                                    </div>
-                                                ) : (
-                                                    <div className="flex justify-between items-end mb-1">
-                                                        <div className={`text-2xl md:text-3xl font-black ${theme.isDark ? 'text-amber-400' : 'text-cyan-500'} tabular-nums leading-none`}>
-                                                            {quest.currentChapter}
-                                                        </div>
-                                                        <div className={`text-sm md:text-base font-bold ${theme.isDark ? 'text-amber-400' : 'text-cyan-500'} tabular-nums opacity-80 leading-none`}>
-                                                            <div className={`text-[8px] uppercase tracking-widest ${theme.mutedText} pb-1 flex justify-end`}>TOTAL</div>
-                                                            {quest.totalChapters > 0 ? quest.totalChapters : '0'}
-                                                        </div>
-                                                    </div>
-                                                )}
-
-                                                {/* BAR ITSELF */}
-                                                <div className={`h-3 w-full ${theme.isDark ? 'bg-white/10' : 'bg-black/10'} rounded-full overflow-hidden relative shadow-inner border ${theme.borderSubtle}`}>
-                                                    <div
-                                                        className={`h-full bg-gradient-to-r ${theme.gradient} progress-bloom transition-all duration-700 ease-out`}
-                                                        style={{
-                                                            width: `${Math.min(100, (quest.totalChapters || 0) > 0 ? (quest.currentChapter / quest.totalChapters) * 100 : 0)}%`,
-                                                            color: theme.id === 'LIGHT' ? '#0ea5e9' : '#fbbf24',
-                                                            boxShadow: '0 0 15px currentColor'
-                                                        }}
-                                                    />
-                                                </div>
-
-                                                {/* SUB-LABELS */}
-                                                {!isEditing && (
-                                                    <div className="flex justify-between items-center mt-3 text-[10px] md:text-xs font-mono font-bold uppercase tracking-wider">
-                                                        <div className={`${theme.mutedText} opacity-80 flex items-center gap-1`}>
-                                                            <BookOpen size={10} /> {quest.currentChapter} <span className="text-[8px] opacity-40">CH</span>
-                                                        </div>
-                                                        <div className={`px-2 py-0.5 rounded ${quest.currentChapter > (quest.totalChapters || 0) && (quest.totalChapters || 0) > 0 ? 'bg-red-500/20 text-red-400 animate-pulse' : `${theme.isDark ? 'text-amber-400' : 'text-cyan-600'}`}`}>
-                                                            {quest.currentChapter > (quest.totalChapters || 0) && (quest.totalChapters || 0) > 0
-                                                                ? 'OVERFLOW'
-                                                                : `${(quest.totalChapters || 0) > 0 ? Math.round((quest.currentChapter / quest.totalChapters) * 100) : 0}%`}
-                                                        </div>
-                                                        <div className={`${theme.mutedText} opacity-80`}>
-                                                            / {(quest.totalChapters || 0) > 0 ? quest.totalChapters : '??'} <span className="text-[8px] opacity-40">TTL</span>
-                                                        </div>
-                                                    </div>
-                                                )}
+                                                {/* CORNER ACCENTS */}
+                                                <div className={`absolute top-0 left-0 w-2 h-2 border-t-2 border-l-2 ${theme.id === 'LIGHT' ? 'border-cyan-500' : 'border-amber-500'} opacity-50`} />
+                                                <div className={`absolute top-0 right-0 w-2 h-2 border-t-2 border-r-2 ${theme.id === 'LIGHT' ? 'border-cyan-500' : 'border-amber-500'} opacity-50`} />
+                                                <div className={`absolute bottom-0 left-0 w-2 h-2 border-b-2 border-l-2 ${theme.id === 'LIGHT' ? 'border-cyan-500' : 'border-amber-500'} opacity-50`} />
+                                                <div className={`absolute bottom-0 right-0 w-2 h-2 border-b-2 border-r-2 ${theme.id === 'LIGHT' ? 'border-cyan-500' : 'border-amber-500'} opacity-50`} />
                                             </div>
-                                            <div className={`absolute -inset-2 bg-gradient-to-r ${theme.gradient} opacity-0 group-hover:opacity-5 blur-2xl transition-opacity duration-700 pointer-events-none`} />
+
+                                            {/* FLOATING AMBIENT GLOW */}
+                                            <div className={`absolute -inset-4 bg-gradient-to-r ${theme.gradient} opacity-0 group-hover:opacity-10 blur-3xl transition-opacity duration-1000 pointer-events-none`} />
                                         </div>
                                     )}
 

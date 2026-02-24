@@ -73,9 +73,14 @@ const App: React.FC = () => {
             const res = await fetch(API_URL);
             const data = await res.json();
             if (res.ok && Array.isArray(data)) {
-                // Map MongoDB _id to frontend id for compatibility
-                const mappedData = data.map((q: any) => ({ ...q, id: q._id }));
-                console.log(`[Frontend] Successfully fetched ${mappedData.length} quests.`);
+                // Map MongoDB _id and inconsistent keys to frontend expectations
+                const mappedData = data.map((q: any) => ({
+                    ...q,
+                    id: q._id,
+                    coverUrl: q.coverUrl || q.cover || "",
+                    link: q.link || q.readLink || ""
+                }));
+                console.log(`[Frontend] Successfully fetched ${mappedData.length} quests.`, mappedData[0]);
                 setLibrary(mappedData);
 
                 if (!activeId && mappedData.length > 0) {

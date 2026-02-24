@@ -53,7 +53,10 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
     // Current rank index for rank history
     const currentRankIdx = useMemo(() => USER_RANKS.findIndex((r: any) => r.label === playerRank.name), [playerRank]);
 
-    const exportToCSV = () => {
+    const exportToCSV = async () => {
+        const confirmed = await showNotification("INITIATE DATA EXTRACTION PROTOCOL?", 'INFO', true);
+        if (!confirmed) return;
+
         const headers = ['Title', 'Current Ch', 'Max Ch', 'Link', 'Cover URL', 'Status', 'Class'];
         const csvRows = items.map(item => [
             item.title,
@@ -74,6 +77,8 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+
+        showNotification("ARCHIVE EXTRACTED SUCCESSFULLY.", "SUCCESS");
     };
 
     const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -262,7 +267,11 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                                 </div>
                             </button>
                             <label className={`flex items-center justify-center gap-3 p-4 border ${theme.borderSubtle} ${theme.isDark ? 'bg-black/40 hover:bg-white/5' : 'bg-white/40 hover:bg-black/5'} transition-all group cursor-pointer relative`}>
-                                <input type="file" accept=".csv" onChange={handleImport} className="hidden" />
+                                <input type="file" accept=".csv" onChange={async (e) => {
+                                    const confirmed = await showNotification("RE-SYNCHRONIZE DATABASE FROM SOURCE?", "WARNING", true);
+                                    if (confirmed) handleImport(e);
+                                    else e.target.value = ""; // Reset
+                                }} className="hidden" />
                                 <Upload size={18} className={`${theme.highlightText} group-hover:scale-110 transition-transform`} />
                                 <div className="text-left">
                                     <div className={`text-[10px] font-mono ${theme.mutedText} uppercase tracking-widest`}>Import Protocol</div>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Star, Calendar, BookOpen, Users, Share2, Heart, Sword, Zap, Edit2, Save, ChevronRight } from 'lucide-react';
+import { X, Star, Calendar, BookOpen, Users, Share2, Heart, Sword, Zap, Edit2, Save, ChevronRight, Target, AlignLeft } from 'lucide-react';
 
 import { Theme, Quest } from '../../core/types';
 import ScrambleText from '../system/ScrambleText';
@@ -179,372 +179,260 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
     };
 
     return (
-        <div className={`fixed inset-0 z-[70] ${theme.appBg} flex items-center justify-center animate-in fade-in zoom-in-95 duration-300`}>
-            {/* BACKDROP BLUR & DARKEN */}
-            <div className={`absolute inset-0 ${theme.isDark ? 'bg-black/95' : 'bg-white/95'} backdrop-blur-xl transition-colors duration-700`} onClick={onClose} />
+        <div className={`fixed inset-0 z-[70] ${theme.appBg} flex animate-in fade-in duration-500`}>
+            {/* FULL-BLEED CINEMATIC BACKDROP */}
+            <div className="absolute inset-0 z-0 overflow-hidden bg-black">
+                <div className={`absolute inset-0 ${theme.isDark ? 'bg-[#020202]/90' : 'bg-slate-900/90'} z-10`} />
+                {(quest?.coverUrl || media?.bannerImage || finalCover) ? (
+                    <img
+                        src={quest?.coverUrl || media?.bannerImage || finalCover}
+                        className="w-full h-full object-cover blur-[100px] opacity-40 scale-125 transform-gpu"
+                        referrerPolicy="no-referrer"
+                        alt="Background Aura"
+                    />
+                ) : null}
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,transparent_0%,rgba(0,0,0,0.8)_100%)] z-20 pointer-events-none" />
 
-            {/* BACKGROUND FX */}
-            <div className="absolute inset-0 pointer-events-none opacity-20 overflow-hidden">
-                <div className={`absolute -top-[20%] -right-[20%] w-[50%] h-[50%] bg-${theme.primary}-500/20 rounded-full blur-[120px]`} />
-                <div className={`absolute -bottom-[20%] -left-[20%] w-[50%] h-[50%] bg-${theme.accent}-500/20 rounded-full blur-[120px]`} />
+                {/* THEME AMBIENT GLOW */}
+                <div className={`absolute -top-[20%] -right-[20%] w-[60%] h-[60%] bg-${theme.primary}-500/10 rounded-full blur-[150px] z-10 pointer-events-none mix-blend-screen`} />
+                <div className={`absolute -bottom-[20%] -left-[20%] w-[60%] h-[60%] bg-${theme.accent}-500/10 rounded-full blur-[150px] z-10 pointer-events-none mix-blend-screen`} />
             </div>
 
-            {/* MAIN CONTENT CARD */}
-            <div className={`relative w-[95vw] max-w-[1700px] h-full md:h-[95vh] mx-auto md:rounded-2xl border ${theme.borderSubtle} ${theme.isDark ? 'bg-[#050505]/80' : 'bg-white/80'} shadow-2xl overflow-hidden flex flex-col md:flex-row backdrop-blur-3xl`}>
-
-                {/* HUD ACCENTS */}
-                <div className={`absolute top-0 left-0 w-16 h-16 border-t-2 border-l-2 ${theme.id === 'LIGHT' ? 'border-sky-500/10' : 'border-amber-500/10'} pointer-events-none z-50`} />
-                <div className={`absolute top-0 right-0 w-16 h-16 border-t-2 border-r-2 ${theme.id === 'LIGHT' ? 'border-sky-500/10' : 'border-amber-500/10'} pointer-events-none z-50`} />
-                <div className={`absolute bottom-0 left-0 w-16 h-16 border-b-2 border-l-2 ${theme.id === 'LIGHT' ? 'border-sky-500/10' : 'border-amber-500/10'} pointer-events-none z-50`} />
-                <div className={`absolute bottom-0 right-0 w-16 h-16 border-b-2 border-r-2 ${theme.id === 'LIGHT' ? 'border-sky-500/10' : 'border-amber-500/10'} pointer-events-none z-50`} />
-
-                {/* CLOSE BUTTON */}
+            {/* TOP NAVIGATION BAR */}
+            <div className="absolute top-0 left-0 w-full h-20 flex justify-between items-center px-8 z-50 pointer-events-none">
+                <div className="flex items-center gap-3">
+                    <div className={`w-1 h-8 ${theme.id === 'LIGHT' ? 'bg-sky-500' : 'bg-amber-500'} shadow-[0_0_15px_currentColor]`} />
+                    <div className={`font-mono text-[10px] tracking-[0.4em] ${theme.highlightText} font-bold uppercase`}>SYSTEM.ARCHIVE_INSPECTION</div>
+                </div>
                 <button
                     onClick={onClose}
-                    className={`absolute top-4 right-4 z-50 p-2 rounded-full ${theme.isDark ? 'bg-black/50 hover:bg-white/10' : 'bg-white/50 hover:bg-black/10'} ${theme.baseText} backdrop-blur-md transition-all border ${theme.borderSubtle}`}
+                    className={`pointer-events-auto p-3 rounded-full bg-black/40 hover:bg-white/10 ${theme.baseText} backdrop-blur-md transition-all border border-white/10 group`}
                 >
-                    <X size={20} />
+                    <X size={24} className="group-hover:rotate-90 transition-transform duration-500" />
                 </button>
+            </div>
 
-                {/* LEFT COLUMN: VISUALS (COVER + BANNER) */}
-                <div className="w-full md:w-[400px] lg:w-[450px] shrink-0 relative flex flex-col border-b md:border-b-0 md:border-r border-white/5 group">
-                    {/* Background Banner (Blurred) */}
-                    <div className="absolute inset-0 z-0 overflow-hidden">
-                        {(quest?.coverUrl || media?.bannerImage || finalCover) ? (
-                            <img src={quest?.coverUrl || media?.bannerImage || finalCover} className={`w-full h-full object-cover blur-xl ${theme.isDark ? 'opacity-50' : 'opacity-80'} scale-110`} referrerPolicy="no-referrer" />
-                        ) : null}
-                        <div className={`absolute inset-0 bg-gradient-to-b ${theme.isDark ? 'from-transparent via-[#020202]/50 to-[#020202]' : 'from-transparent via-white/50 to-white'}`} />
-                    </div>
+            {/* MAIN SCROLLABLE CONTENT (CENTERED COLUMN) */}
+            <div
+                className="relative z-30 w-full h-full overflow-y-auto custom-scrollbar pt-24 pb-32 px-4 sm:px-8 md:px-16"
+                style={{
+                    '--scrollbar-thumb': theme.id === 'LIGHT' ? '#0ea5e9' : '#f59e0b',
+                    '--scrollbar-track': 'transparent',
+                    '--scrollbar-thumb-hover': theme.id === 'LIGHT' ? '#0284c7' : '#d97706'
+                } as React.CSSProperties}
+            >
+                <div className="max-w-6xl mx-auto flex flex-col gap-12">
 
-                    {/* Main Cover Image */}
-                    <div className="relative z-10 flex-1 flex items-center justify-center p-8 md:p-12 pb-0 md:pb-8">
-                        <div className={`relative w-[240px] md:w-full max-w-[320px] aspect-[2/3] shadow-2xl rounded-xl overflow-hidden border border-white/10 group-hover:scale-[1.02] transition-transform duration-700 ease-out`}>
+                    {/* HERO SECTION: COVER + TITLE + STATS */}
+                    <div className="flex flex-col md:flex-row gap-8 md:gap-16 items-start md:items-center">
+                        {/* COVER ART */}
+                        <div className="shrink-0 w-[200px] md:w-[280px] aspect-[2/3] rounded-lg overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.5)] border border-white/10 relative group mx-auto md:mx-0">
                             <img
                                 src={finalCover}
                                 alt={quest.title}
-                                className="w-full h-full object-cover"
+                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
                                 referrerPolicy="no-referrer"
                             />
-                            {/* Overlay Gradient for Text Visibility */}
-                            <div className={`absolute inset-0 bg-gradient-to-t ${theme.isDark ? 'from-black/90' : 'from-black/40'} via-transparent to-transparent opacity-80`} />
+                            <div className="absolute inset-0 border-2 border-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 mix-blend-overlay pointer-events-none" />
+                        </div>
 
-                            {/* Stats Overlay on Cover (Reference Style) */}
-                            <div className="absolute bottom-0 left-0 w-full p-4 flex justify-between items-end">
-                                <div className="flex items-center gap-1.5 text-amber-400 font-bold text-sm drop-shadow-md">
-                                    <Star size={16} fill="currentColor" />
-                                    <span>{media?.averageScore || 0}%</span>
-                                </div>
-                                <div className="flex items-center gap-1.5 text-white/90 font-mono text-xs drop-shadow-md">
-                                    <Heart size={14} fill="currentColor" />
-                                    <span>{(media?.averageScore || 0) * 123 / 10}K</span>
-                                </div>
+                        {/* TITLE & METADATA */}
+                        <div className="flex-1 flex flex-col items-center md:items-start text-center md:text-left">
+                            <div className="flex flex-wrap gap-2 justify-center md:justify-start mb-4">
+                                {media?.status && (
+                                    <span className={`px-2 py-0.5 border text-[9px] font-bold tracking-widest uppercase ${getStatusColor(media.status)}`}>
+                                        {media.status.replace('_', ' ')}
+                                    </span>
+                                )}
+                                <span className={`px-2 py-0.5 border border-white/10 bg-white/5 text-white/70 text-[9px] font-mono tracking-widest uppercase`}>
+                                    CLASS: {quest.classType}
+                                </span>
                             </div>
 
-                            {/* Shine Effect */}
-                            <div className="absolute inset-0 bg-gradient-to-tr from-white/0 via-white/10 to-white/0 translate-x-[-100%] group-hover:animate-[shimmer_2s_infinite]" />
+                            <h1 className="text-4xl md:text-6xl font-black text-white mb-2 leading-tight tracking-tighter drop-shadow-xl uppercase">
+                                {quest.title || media?.title?.english || media?.title?.romaji}
+                            </h1>
+                            {media?.title?.native && (
+                                <h2 className="text-xl md:text-2xl text-white/50 font-medium mb-8">
+                                    {media.title.native}
+                                </h2>
+                            )}
+
+                            {/* PROTOCOL BUTTONS ROW */}
+                            <div className="flex flex-wrap gap-3 w-full justify-center md:justify-start mt-auto">
+                                {quest?.link && (
+                                    <a
+                                        href={quest.link}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className={`px-8 py-3 rounded-sm border ${theme.isDark ? 'bg-amber-500/10 hover:bg-amber-500/20 border-amber-500/30 shadow-[0_0_15px_rgba(245,158,11,0.2)]' : 'bg-sky-500/10 hover:bg-sky-500/20 border-sky-500/30 shadow-[0_0_15px_rgba(14,165,233,0.2)]'} ${theme.highlightText} font-bold transition-all flex items-center gap-3 group/dive hover:scale-105 active:scale-95`}
+                                    >
+                                        <Zap size={16} className={`${theme.highlightText} group-hover/dive:animate-pulse`} />
+                                        <ScrambleText text="INITIALIZE_DIVE" className="text-[10px] tracking-[0.2em] font-orbitron" />
+                                    </a>
+                                )}
+                                <button
+                                    onClick={() => quest && onEdit && onEdit(quest)}
+                                    className={`px-6 py-3 rounded-sm border bg-white/5 hover:bg-white/10 border-white/10 text-white font-bold transition-all flex items-center gap-3 group/edit hover:border-white/30`}
+                                >
+                                    <Edit2 size={16} className="opacity-70 group-hover/edit:opacity-100 transition-opacity" />
+                                    <span className="text-[10px] tracking-[0.2em] font-orbitron">EDIT_ARTIFACT</span>
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        if (quest && onSetActive) {
+                                            onSetActive(quest.id);
+                                            onClose();
+                                        }
+                                    }}
+                                    className={`px-6 py-3 rounded-sm border bg-white/5 hover:bg-white/10 border-white/10 text-white font-bold transition-all flex items-center gap-3 group/active hover:border-white/30`}
+                                >
+                                    <Target size={16} className="opacity-70 group-hover/active:opacity-100 transition-opacity" />
+                                    <span className="text-[10px] tracking-[0.2em] font-orbitron">MARK_TARGET</span>
+                                </button>
+                            </div>
                         </div>
                     </div>
 
-                    {/* Action Buttons */}
-                    <div className="relative z-10 p-6 md:p-12 pt-6 flex flex-col gap-3">
-                        {quest?.link && (
-                            <a
-                                href={quest.link}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className={`w-full py-4 px-6 rounded border ${theme.isDark ? 'bg-amber-500/5 hover:bg-amber-500/10 border-amber-500/20' : 'bg-sky-500/5 hover:bg-sky-500/10 border-sky-500/20'} ${theme.highlightText} font-bold transition-all flex items-center justify-between group/dive relative overflow-hidden`}
-                            >
-                                <div className="absolute inset-x-0 bottom-0 h-[1px] bg-current opacity-40 transform scale-x-0 group-hover/dive:scale-x-100 transition-transform duration-500" />
-                                <div className="flex items-center gap-3 relative z-10">
-                                    <Zap size={18} className={`${theme.highlightText} group-hover/dive:animate-pulse`} />
-                                    <ScrambleText text="INITIALIZE_DIVE" className="text-[10px] tracking-[0.2em] font-orbitron" />
-                                </div>
-                                <ChevronRight size={14} className="opacity-0 -translate-x-2 group-hover/dive:opacity-100 group-hover/dive:translate-x-0 transition-all font-bold" />
-                            </a>
-                        )}
-                        <button
-                            onClick={() => quest && onEdit && onEdit(quest)}
-                            className={`w-full py-4 px-6 rounded border ${theme.isDark ? 'bg-amber-500/5 hover:bg-amber-500/10 border-amber-500/20' : 'bg-sky-500/5 hover:bg-sky-500/10 border-sky-500/20'} ${theme.highlightText} font-bold transition-all flex items-center justify-between group/edit relative overflow-hidden`}
-                        >
-                            <div className="absolute inset-x-0 bottom-0 h-[1px] bg-current opacity-40 transform scale-x-0 group-hover/edit:scale-x-100 transition-transform duration-500" />
-                            <div className="flex items-center gap-3 relative z-10">
-                                <Edit2 size={18} />
-                                <ScrambleText text="EDIT_ARTIFACT" className="text-[10px] tracking-[0.2em] font-orbitron" />
-                            </div>
-                            <ChevronRight size={14} className="opacity-0 -translate-x-2 group-hover/edit:opacity-100 group-hover/edit:translate-x-0 transition-all" />
-                        </button>
-                        <button
-                            onClick={() => {
-                                if (quest && onSetActive) {
-                                    onSetActive(quest.id);
-                                    onClose();
-                                }
-                            }}
-                            className={`w-full py-4 px-6 rounded border ${theme.isDark ? 'bg-white/5 hover:bg-white/10 border-white/10' : 'bg-black/5 hover:bg-black/10 border-black/10'} ${theme.baseText} font-bold transition-all flex items-center justify-between group/active relative overflow-hidden`}
-                        >
-                            <div className="absolute inset-x-0 bottom-0 h-[1px] bg-current opacity-20 transform scale-x-0 group-hover/active:scale-x-100 transition-transform duration-500" />
-                            <div className="flex items-center gap-3 relative z-10">
-                                <Sword size={18} />
-                                <ScrambleText text="MARK_AS_TARGET" className="text-[10px] tracking-[0.2em] font-orbitron" />
-                            </div>
-                            <ChevronRight size={14} className="opacity-0 -translate-x-2 group-hover/active:opacity-100 group-hover/active:translate-x-0 transition-all" />
-                        </button>
-                    </div>
-                </div>
+                    {/* PROGRESS HUD: THE RUNIC THREAD */}
+                    <div className="w-full relative group mt-4">
+                        <div className="relative rounded-xl p-8 bg-black/40 backdrop-blur-2xl border border-white/10 shadow-2xl overflow-hidden">
+                            {/* Ambient internal glow */}
+                            <div className={`absolute inset-0 bg-gradient-to-r ${theme.gradient} opacity-5 blur-xl pointer-events-none`} />
 
-                {/* RIGHT COLUMN: DETAILS */}
-                <div
-                    className="flex-1 overflow-y-auto custom-scrollbar relative"
-                    style={{
-                        '--scrollbar-thumb': theme.id === 'LIGHT' ? '#0ea5e9' : '#f59e0b', // Sky-500 : Amber-500
-                        '--scrollbar-track': 'transparent',
-                        '--scrollbar-thumb-hover': theme.id === 'LIGHT' ? '#0284c7' : '#d97706' // Sky-600 : Amber-600
-                    } as React.CSSProperties}
-                >
-                    <div className="p-6 md:p-12 pb-32">
-                        {loading && (
-                            <div className="flex flex-col items-center justify-center h-full py-20 animate-pulse">
-                                <div className={`text-xl font-mono ${theme.highlightText} tracking-widest`}>ACCESSING ARCHIVES...</div>
-                            </div>
-                        )}
-
-                        {!loading && media && (
-                            <div className="flex flex-col gap-10 animate-in slide-in-from-bottom-4 duration-700">
-
-                                {/* HEADER SECTION */}
-                                <div className="flex flex-col gap-4">
-                                    <div className="flex justify-between items-start gap-4">
-                                        <div className="flex-1 min-w-0">
-                                            <h1 className={`text-3xl md:text-5xl font-black ${theme.headingText} mb-2 leading-tight tracking-tight drop-shadow-lg uppercase break-words`}>
-                                                {quest.title || media.title.english || media.title.romaji}
-                                            </h1>
-                                            {(media.title.native) && (
-                                                <h2 className={`text-lg md:text-xl ${theme.mutedText} font-medium mb-2`}>
-                                                    {media.title.native}
-                                                </h2>
-                                            )}
-                                        </div>
+                            <div className="relative z-10 flex flex-col">
+                                <div className="flex justify-between items-end mb-4">
+                                    <div className="flex items-center gap-2">
+                                        <div className={`w-1.5 h-1.5 rounded-full ${theme.id === 'LIGHT' ? 'bg-sky-400' : 'bg-amber-400'} animate-pulse shadow-[0_0_10px_currentColor]`} />
+                                        <div className={`text-[10px] font-mono font-bold tracking-[0.4em] ${theme.highlightText} uppercase`}>SYNCHRONIZATION_THREAD</div>
                                     </div>
-
-                                    {/* PROGRESS BAR SECTION */}
-                                    {['ACTIVE', 'PLANNED', 'COMPLETED', 'READING', 'IN_PROGRESS'].includes(quest.status) && (
-                                        <div className="w-full mt-6 group relative">
-                                            {/* Outer Frame with Glassmorphism and Sharp Border */}
-                                            <div className={`relative rounded-lg p-6 md:p-10 ${theme.isDark ? 'bg-black/60' : 'bg-slate-900/95'} border border-white/10 shadow-2xl overflow-hidden transition-all duration-500`}>
-
-                                                {/* GRID BACKGROUND */}
-                                                <div className="absolute inset-0 opacity-[0.03] pointer-events-none z-0" style={{ backgroundImage: 'radial-gradient(circle, white 1px, transparent 1px)', backgroundSize: '20px 20px' }} />
-
-                                                {/* SCANLINE EFFECT */}
-                                                <div className="absolute inset-0 pointer-events-none bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.1)_50%),linear-gradient(90deg,rgba(255,0,0,0.02),rgba(0,255,0,0.01),rgba(0,0,255,0.02))] z-0 bg-[length:100%_2px,3px_100%]" />
-
-                                                <div className="relative z-10">
-                                                    <div className="flex justify-between items-start mb-8">
-                                                        <div className="flex flex-col gap-1">
-                                                            <div className="flex items-center gap-2">
-                                                                <div className={`w-1 h-1 rounded-full ${theme.id === 'LIGHT' ? 'bg-sky-400' : 'bg-amber-400'} animate-pulse`} />
-                                                                <ScrambleText text="PROGRESS_MONITOR.V3" className={`text-[10px] font-black font-mono tracking-[0.3em] ${theme.id === 'LIGHT' ? 'text-sky-400' : 'text-amber-400'} uppercase`} />
-                                                            </div>
-                                                            <div className="text-[8px] font-mono text-white/20 tracking-[0.4em] ml-3">SERIAL: AR-{(quest.id || 'XXXX').substring(0, 8).toUpperCase()}</div>
-                                                        </div>
-                                                        <div className={`px-2 py-0.5 border ${theme.id === 'LIGHT' ? 'border-sky-500/30 text-sky-400' : 'border-amber-500/30 text-amber-400'} text-[9px] font-mono font-bold tracking-widest bg-white/5`}>
-                                                            {quest.currentChapter > (quest.totalChapters || 0) && (quest.totalChapters || 0) > 0 ? "STATUS: OVERFLOW" : "STATUS: SYNCRONIZED"}
-                                                        </div>
-                                                    </div>
-
-                                                    <div className="grid grid-cols-2 gap-8 mb-8">
-                                                        <div className="flex flex-col border-l-2 border-white/5 pl-4">
-                                                            <span className="text-[9px] uppercase tracking-[0.3em] text-white/30 font-mono font-bold mb-2">CHAPTERS_ABSORBED</span>
-                                                            <div className="text-6xl md:text-7xl font-black text-white tabular-nums leading-none tracking-tighter drop-shadow-[0_0_15px_rgba(255,255,255,0.2)]">
-                                                                {quest.currentChapter}
-                                                            </div>
-                                                        </div>
-                                                        <div className="flex flex-col items-end border-r-2 border-white/5 pr-4">
-                                                            <span className="text-[9px] uppercase tracking-[0.3em] text-white/30 font-mono font-bold mb-2">TARGET_LIMIT</span>
-                                                            <div className={`text-3xl md:text-4xl font-black text-white/50 tabular-nums leading-none`}>
-                                                                / {quest.totalChapters > 0 ? quest.totalChapters : '??'}
-                                                            </div>
-                                                            <div className="mt-2 text-[8px] font-mono text-white/20 uppercase tracking-widest">Global Rank: #{(allQuests?.indexOf(quest) || 0) + 1}</div>
-                                                        </div>
-                                                    </div>
-
-                                                    {/* THE BAR - ADVANCED HUD STYLE */}
-                                                    <div className="relative group/bar overflow-hidden">
-                                                        <div className={`h-6 w-full bg-black/60 rounded-sm overflow-hidden relative border border-white/5 shadow-inner`}>
-                                                            {/* TICK MARKS */}
-                                                            <div className="absolute inset-0 flex justify-between px-[1%] pointer-events-none z-10">
-                                                                {[...Array(11)].map((_, i) => (
-                                                                    <div key={i} className={`h-full w-[1px] ${i % 5 === 0 ? 'bg-white/20' : 'bg-white/5'}`} />
-                                                                ))}
-                                                            </div>
-
-                                                            <div
-                                                                className={`h-full bg-gradient-to-r ${theme.gradient} transition-transform duration-1000 ease-out relative origin-left`}
-                                                                style={{
-                                                                    transform: `scaleX(${Math.min(1, (quest.totalChapters || 0) > 0 ? (quest.currentChapter / quest.totalChapters) : 0)})`,
-                                                                    width: '100%'
-                                                                }}
-                                                            >
-                                                                {/* BLOOM EFFECT */}
-                                                                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-white/40 animate-[shimmer_2s_infinite]" />
-                                                                <div className="absolute right-0 top-0 bottom-0 w-4 bg-white/20 blur-sm" />
-                                                            </div>
-                                                        </div>
-
-                                                        {/* PERCENTAGE FLOATER */}
-                                                        <div
-                                                            className="absolute -top-6 transition-transform duration-1000 ease-out hidden md:block"
-                                                            style={{ transform: `translateX(${Math.min(950, (quest.totalChapters || 0) > 0 ? (quest.currentChapter / quest.totalChapters) * 1000 : 0) / 10}%)` }}
-                                                        >
-                                                            <div className={`text-[9px] font-mono font-bold ${theme.id === 'LIGHT' ? 'text-sky-400' : 'text-amber-400'} whitespace-nowrap`}>
-                                                                PTR_{Math.round(((quest.totalChapters || 0) > 0 ? (quest.currentChapter / quest.totalChapters) * 100 : 0))}%
-                                                            </div>
-                                                        </div>
-                                                    </div>
-
-                                                    <div className="flex justify-between items-end mt-6">
-                                                        <div className="flex flex-col gap-1">
-                                                            <div className="flex items-center gap-2 text-white/40 font-mono text-[9px] font-bold uppercase tracking-[0.2em]">
-                                                                <BookOpen size={10} className={theme.id === 'LIGHT' ? 'text-sky-400' : 'text-amber-400'} />
-                                                                <span>SYNCRONY_LEVEL</span>
-                                                            </div>
-                                                            <div className={`text-xl font-black font-mono ${theme.id === 'LIGHT' ? 'text-sky-400' : 'text-amber-400'} drop-shadow-[0_0_10px_currentColor]`}>
-                                                                {((quest.totalChapters || 0) > 0) ? Math.round((quest.currentChapter / quest.totalChapters) * 100) : 0}.00%
-                                                            </div>
-                                                        </div>
-
-                                                        {/* MINI DATA READOUT */}
-                                                        <div className="flex gap-4">
-                                                            <div className="text-right">
-                                                                <div className="text-[8px] font-mono text-white/20 uppercase tracking-widest mb-1">Stability</div>
-                                                                <div className={`text-[10px] font-mono ${theme.highlightText} font-bold`}>98.4%</div>
-                                                            </div>
-                                                            <div className="text-right">
-                                                                <div className="text-[8px] font-mono text-white/20 uppercase tracking-widest mb-1">Latency</div>
-                                                                <div className="text-[10px] font-mono text-sky-500 font-bold">12ms</div>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-
-                                                {/* CORNER ACCENTS */}
-                                                <div className={`absolute top-0 left-0 w-8 h-8 border-t border-l ${theme.id === 'LIGHT' ? 'border-sky-500/40' : 'border-amber-500/40'}`} />
-                                                <div className={`absolute top-0 right-0 w-8 h-8 border-t border-r ${theme.id === 'LIGHT' ? 'border-sky-500/40' : 'border-amber-500/40'}`} />
-                                                <div className={`absolute bottom-0 left-0 w-8 h-8 border-b border-l ${theme.id === 'LIGHT' ? 'border-sky-500/40' : 'border-amber-500/40'}`} />
-                                                <div className={`absolute bottom-0 right-0 w-8 h-8 border-b border-r ${theme.id === 'LIGHT' ? 'border-sky-500/40' : 'border-amber-500/40'}`} />
-                                            </div>
-
-                                            {/* FLOATING AMBIENT GLOW */}
-                                            <div className={`absolute -inset-4 bg-gradient-to-r ${theme.gradient} opacity-0 group-hover:opacity-10 blur-3xl transition-opacity duration-1000 pointer-events-none`} />
-                                        </div>
-                                    )}
-
-                                    {/* PILLS ROW */}
-                                    <div className="flex flex-wrap gap-3 items-center">
-                                        <div className={`px-3 py-1.5 bg-white/5 border border-white/10 rounded text-xs font-mono text-gray-300 flex items-center gap-2`}>
-                                            <BookOpen size={12} /> {media.status ? media.status.charAt(0) + media.status.slice(1).toLowerCase().replace('_', ' ') : 'Unknown'}
-                                        </div>
-                                        <div className={`px-3 py-1.5 bg-white/5 border border-white/10 rounded text-xs font-mono text-gray-300 flex items-center gap-2`}>
-                                            <Calendar size={12} /> {media.seasonYear || 'Unknown'}
-                                        </div>
-                                        {media.status && (
-                                            <div className={`px-3 py-1.5 border border-white/20 rounded text-xs font-bold tracking-wider uppercase ${getStatusColor(media.status)} bg-transparent`}>
-                                                {media.status.replace('_', ' ')}
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    {/* GENRES */}
-                                    <div className="flex flex-wrap gap-2 mt-4">
-                                        {media.genres.map(genre => (
-                                            <span key={genre} className={`px-3 py-1 text-xs font-medium border border-white/10 rounded-full bg-white/5 text-gray-400 hover:text-white hover:border-white/30 transition-colors cursor-default`}>
-                                                {genre}
-                                            </span>
-                                        ))}
+                                    <div className="text-[10px] font-mono text-white/40 tracking-widest uppercase">
+                                        STATUS: {quest.status}
                                     </div>
                                 </div>
 
-                                {/* SYNOPSIS */}
-                                <div>
-                                    <div className={`text-xs font-bold ${theme.mutedText} uppercase tracking-widest mb-3 flex items-center justify-between`}>
-                                        <span>SYNOPSIS</span>
-                                    </div>
+                                {/* Numeric Readouts */}
+                                <div className="flex items-baseline gap-2 mb-2">
+                                    <span className="text-5xl font-black text-white tabular-nums tracking-tighter drop-shadow-md">
+                                        {quest.currentChapter}
+                                    </span>
+                                    <span className="text-xl font-medium text-white/30 tracking-widest">
+                                        / {(quest.totalChapters || 0) > 0 ? quest.totalChapters : '∞'}
+                                    </span>
+                                    <span className={`ml-auto text-sm font-mono font-bold ${theme.highlightText}`}>
+                                        {((quest.totalChapters || 0) > 0) ? Math.min(100, Math.round((quest.currentChapter / quest.totalChapters) * 100)) : 0}%
+                                    </span>
+                                </div>
+
+                                {/* The Thread */}
+                                <div className="h-1 w-full bg-white/10 rounded-full overflow-hidden relative shadow-inner">
                                     <div
-                                        className={`text-sm md:text-base leading-relaxed ${theme.baseText} font-sans`}
-                                        dangerouslySetInnerHTML={{ __html: quest.synopsis || media?.description || "No synopsis available." }}
-                                    />
+                                        className={`absolute top-0 left-0 h-full bg-gradient-to-r ${theme.gradient} transition-transform duration-1000 ease-out origin-left`}
+                                        style={{ transform: `scaleX(${Math.min(1, (quest.totalChapters || 0) > 0 ? (quest.currentChapter / quest.totalChapters) : 0)})`, width: '100%' }}
+                                    >
+                                        <div className="absolute right-0 top-0 h-full w-8 bg-white opacity-50 blur-sm" />
+                                    </div>
                                 </div>
-
-                                {/* CHARACTERS */}
-                                {media.characters?.nodes?.length > 0 && (
-                                    <div>
-                                        <div className={`text-xs font-bold ${theme.mutedText} uppercase tracking-widest mb-4 flex items-center gap-2`}>
-                                            <Users size={14} /> CHARACTERS
-                                        </div>
-                                        <div className="flex overflow-x-auto gap-6 pb-4 custom-scrollbar snap-x">
-                                            {media.characters.nodes.map(char => (
-                                                <div key={char.id} className="w-[80px] shrink-0 snap-start flex flex-col items-center gap-2 group cursor-pointer">
-                                                    <div className={`w-[80px] h-[80px] rounded-full overflow-hidden border-2 ${theme.borderSubtle} group-hover:border-${theme.highlightText} transition-colors relative`}>
-                                                        <img src={char.image.large} alt={char.name.full} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" referrerPolicy="no-referrer" />
-                                                    </div>
-                                                    <div className="text-center w-full">
-                                                        <div className={`text-[10px] font-bold ${theme.headingText} truncate w-full`}>{char.name.full}</div>
-                                                        <div className={`text-[8px] ${theme.mutedText} uppercase truncate w-full`}>{char.role}</div>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
-
-                                {/* SIMILAR RECORDS (BY CLASS) */}
-                                {allQuests && allQuests.filter(q => q.classType === quest.classType && q.id !== quest.id).length > 0 && (
-                                    <div>
-                                        <div className={`text-xs font-bold ${theme.mutedText} uppercase tracking-widest mb-4 flex items-center gap-2`}>
-                                            <Share2 size={14} /> SIMILAR RECORDS (CLASS: {quest.classType})
-                                        </div>
-                                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                                            {allQuests
-                                                .filter(q => q.classType === quest.classType && q.id !== quest.id)
-                                                .slice(0, 5)
-                                                .map((rec) => {
-                                                    return (
-                                                        <div key={rec.id} onClick={() => onSetActive && onSetActive(rec.id)} className="group relative aspect-[2/3] rounded-lg overflow-hidden cursor-pointer shadow-md hover:shadow-xl transition-all duration-500 border border-white/5">
-                                                            <img src={rec.coverUrl} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" referrerPolicy="no-referrer" />
-                                                            <div className={`absolute inset-0 bg-gradient-to-t ${theme.isDark ? 'from-black/90 via-transparent' : 'from-white/90 via-transparent'} opacity-60 group-hover:opacity-100 transition-opacity`} />
-                                                            <div className="absolute bottom-0 w-full p-2">
-                                                                <div className={`text-[10px] font-bold truncate ${theme.headingText} group-hover:${theme.highlightText} transition-colors uppercase`}>
-                                                                    {rec.title}
-                                                                </div>
-                                                                <div className="flex items-center gap-1 mt-1">
-                                                                    <Zap size={8} className={theme.highlightText} />
-                                                                    <span className={`text-[9px] font-mono ${theme.mutedText}`}>
-                                                                        {rec.status}
-                                                                    </span>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    );
-                                                })}
-                                        </div>
-                                    </div>
-                                )}
                             </div>
-                        )}
-
-                        {!loading && !media && !error && (
-                            <div className="text-center py-20 font-mono text-xs opacity-50">INITIALIZING SCAN...</div>
-                        )}
-
-                        {error && (
-                            <div className="flex flex-col items-center justify-center h-full py-20 text-center">
-                                <div className="text-red-500 font-mono mb-2 uppercase tracking-widest">{error}</div>
-                                <div className={`text-xs ${theme.mutedText}`}>Data could not be retrieved from the Akashic Records.</div>
-                            </div>
-                        )}
+                        </div>
                     </div>
+
+                    {/* TWO COLUMN DATA: SYNOPSIS & METADATA */}
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-4">
+                        {/* LEFT: Synopsis */}
+                        <div className="lg:col-span-2 relative p-8 bg-black/30 backdrop-blur-xl border border-white/5 rounded-xl">
+                            <div className="flex items-center gap-2 mb-6 opacity-60">
+                                <AlignLeft size={16} className="text-white" />
+                                <span className="text-[10px] font-mono tracking-[0.3em] text-white font-bold uppercase">ARCHIVE_SYNOPSIS</span>
+                            </div>
+                            <div
+                                className="text-sm md:text-base leading-loose text-white/80 font-sans"
+                                dangerouslySetInnerHTML={{ __html: quest.synopsis || media?.description || "No synopsis available." }}
+                            />
+                        </div>
+
+                        {/* RIGHT: Quick Stats / Tags */}
+                        <div className="flex flex-col gap-4">
+                            <div className="p-6 bg-black/30 backdrop-blur-xl border border-white/5 rounded-xl flex items-center justify-between">
+                                <span className="text-[10px] font-mono text-white/40 tracking-widest uppercase">Community Rating</span>
+                                <div className="flex items-center gap-1.5 text-amber-400 font-bold">
+                                    <Star size={14} fill="currentColor" />
+                                    <span>{media?.averageScore || 'N/A'}%</span>
+                                </div>
+                            </div>
+                            <div className="p-6 bg-black/30 backdrop-blur-xl border border-white/5 rounded-xl flex flex-col gap-4">
+                                <span className="text-[10px] font-mono text-white/40 tracking-widest uppercase">Genres</span>
+                                <div className="flex flex-wrap gap-2">
+                                    {media?.genres?.length ? media.genres.map(genre => (
+                                        <span key={genre} className="px-3 py-1 text-[10px] font-mono border border-white/10 rounded-full bg-white/5 text-white/70">
+                                            {genre}
+                                        </span>
+                                    )) : <span className="text-xs text-white/20">UNKNOWN</span>}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* CHARACTERS ROW */}
+                    {media?.characters?.nodes?.length ? (
+                        <div className="mt-8">
+                            <div className="flex items-center gap-2 mb-6 opacity-60 px-2">
+                                <Users size={16} className="text-white" />
+                                <span className="text-[10px] font-mono tracking-[0.3em] text-white font-bold uppercase">ENTITIES_DETECTED</span>
+                            </div>
+                            <div className="flex overflow-x-auto gap-4 pb-4 custom-scrollbar snap-x">
+                                {media.characters.nodes.map(char => (
+                                    <div key={char.id} className="w-[100px] shrink-0 snap-start flex flex-col items-center gap-3 group cursor-pointer p-4 bg-black/20 backdrop-blur-md rounded-lg border border-white/5 hover:bg-white/5 transition-colors">
+                                        <div className="w-[60px] h-[60px] rounded-full overflow-hidden border border-white/20 group-hover:border-white/50 transition-colors">
+                                            <img src={char.image.medium || char.image.large} alt={char.name.full} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" referrerPolicy="no-referrer" />
+                                        </div>
+                                        <div className="text-center w-full">
+                                            <div className="text-[10px] font-bold text-white truncate w-full">{char.name.full}</div>
+                                            <div className="text-[8px] text-white/40 uppercase truncate w-full mt-1">{char.role}</div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    ) : null}
+
+                    {/* SIMILAR RECORDS (BY CLASS) */}
+                    {allQuests && allQuests.filter(q => q.classType === quest.classType && q.id !== quest.id).length > 0 && (
+                        <div className="mt-8">
+                            <div className="flex items-center justify-between mb-6 px-2 opacity-60">
+                                <div className="flex items-center gap-2">
+                                    <Share2 size={16} className="text-white" />
+                                    <span className="text-[10px] font-mono tracking-[0.3em] text-white font-bold uppercase">SIMILAR_RECORDS_FOUND</span>
+                                </div>
+                                <span className="text-[9px] font-mono tracking-widest uppercase border border-white/20 px-2 py-0.5 rounded text-white">CLASS: {quest.classType}</span>
+                            </div>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                                {allQuests
+                                    .filter(q => q.classType === quest.classType && q.id !== quest.id)
+                                    .slice(0, 5)
+                                    .map((rec) => (
+                                        <div key={rec.id} onClick={() => onSetActive && onSetActive(rec.id)} className="group relative aspect-[2/3] rounded-lg overflow-hidden cursor-pointer shadow-lg border border-white/5">
+                                            <img src={rec.coverUrl} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" referrerPolicy="no-referrer" />
+                                            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-80 group-hover:opacity-100 transition-opacity duration-300" />
+                                            <div className="absolute bottom-0 w-full p-4 transform translate-y-2 group-hover:translate-y-0 transition-transform duration-300">
+                                                <div className="text-[10px] font-bold truncate text-white uppercase group-hover:textShadow-glow">
+                                                    {rec.title}
+                                                </div>
+                                                <div className={`text-[8px] font-mono mt-1 uppercase ${theme.highlightText}`}>
+                                                    {rec.status}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
+
+            {/* NOISE & SCANLINES */}
+            <div className="absolute inset-0 pointer-events-none z-50 mix-blend-overlay opacity-20 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0IiBoZWlnaHQ9IjQiPgo8cmVjdCB3aWR0aD0iNCIgaGVpZ2h0PSI0IiBmaWxsPSIjZmZmIiBmaWxsLW9wYWNpdHk9IjAuMDUiLz4KPC9zdmc+')] animate-noise" />
+            <div className="absolute inset-0 pointer-events-none z-50 bg-[linear-gradient(rgba(0,0,0,0)_50%,rgba(0,0,0,0.1)_50%)] bg-[length:100%_4px]" />
         </div>
     );
 };

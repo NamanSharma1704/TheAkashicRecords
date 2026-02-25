@@ -20,11 +20,15 @@ const API_URL = '/api/quests';
 
 // Helper to normalize quest data from both MongoDB and local BASE_QUESTS
 const mapQuest = (q: any): Quest => ({
-    ...q,
     id: String(q._id || q.id || ""),
-    coverUrl: getProxiedImageUrl(q.coverUrl || q.cover || ""),
-    link: q.link || q.readLink || q.siteUrl || "",
+    title: q.title || "",
+    coverUrl: getProxiedImageUrl(q.cover || q.coverUrl || ""),
+    link: q.readLink || q.link || q.siteUrl || "",
+    synopsis: q.synopsis || "",
+    currentChapter: Number(q.currentChapter) || 0,
+    totalChapters: Number(q.totalChapters) || 0,
     status: (q.status || 'ACTIVE').toUpperCase(),
+    classType: q.classType || "PLAYER",
     lastUpdated: q.lastRead || q.lastUpdated || Date.now()
 });
 

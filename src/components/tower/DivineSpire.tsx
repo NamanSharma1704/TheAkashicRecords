@@ -100,9 +100,10 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
             )}
 
             {/* HEADER */}
-            <div className={`relative z-10 h-20 md:h-24 flex items-center justify-between px-4 md:px-6 bg-transparent transition-all duration-700`}>
-                <div className="flex items-center gap-3 md:gap-4 overflow-hidden">
-                    <div className="relative w-10 h-10 md:w-12 md:h-12 flex items-center justify-center shrink-0">
+            <div className="relative z-10 w-full h-full flex flex-col pt-24 pb-12 overflow-hidden">
+                {/* Header: Title & Info */}
+                <div className="shrink-0 w-full max-w-7xl mx-auto px-4 md:px-8 mb-4 md:mb-6">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                         <SystemLogo theme={theme} className="w-full h-full" />
                     </div>
                     <div className="flex flex-col leading-none overflow-hidden">
@@ -155,7 +156,7 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
 
                             {/* HUD HEADER: Floor / Sector info (Hidden when searching) */}
                             {!search && floors.length > 0 && floors[selectedFloorIndex] && (
-                                <div className="relative z-[60] flex flex-col items-center drop-shadow-2xl mt-4 mb-2 md:absolute md:top-2 md:left-1/2 md:-translate-x-1/2 md:mt-0">
+                                <div className="z-[60] flex flex-col items-center drop-shadow-2xl mt-4 mb-2">
                                     <div className={`font-mono text-[9px] md:text-[10px] tracking-[0.4em] ${theme.highlightText} font-bold uppercase mb-1 opacity-80 pointer-events-none`}>SYSTEM.SECTOR_INTERFACE</div>
                                     <div className="flex items-center gap-4 px-4 py-1.5 md:px-6 md:py-2 rounded-full border border-white/10 bg-black/40 backdrop-blur-md pointer-events-auto">
                                         <button disabled={selectedFloorIndex <= 0} onClick={() => setSelectedFloorIndex(i => i - 1)} className={`${theme.mutedText} hover:${theme.highlightText} disabled:opacity-30 transition-colors`}><ChevronLeft size={14} className="md:w-4 md:h-4" /></button>
@@ -166,7 +167,10 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
                                     </div>
                                 </div>
                             )}
+                        </div>
 
+                        {/* Carousel Area */}
+                        <div className="relative flex-1 w-full min-h-0">
                             {/* FLOATING NAVIGATION CONTROLS */}
                             {!search && (
                                 <>
@@ -211,7 +215,7 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
                                 </div>
                             ) : (
                                 floors.length > 0 && floors[selectedFloorIndex] ? (
-                                    <div ref={carouselRef} className="absolute inset-0 flex items-center overflow-x-auto hide-scrollbar snap-x snap-mandatory px-3 sm:px-6 md:px-12 py-12 pt-24 md:pt-12 gap-8 md:gap-10 pb-40 md:pb-12">
+                                    <div ref={carouselRef} className="absolute inset-0 flex items-center overflow-x-auto hide-scrollbar snap-x snap-mandatory px-3 sm:px-6 md:px-12 py-12 gap-8 md:gap-10">
                                         {floors[selectedFloorIndex].items.map((item, index) => {
                                             const rawRank = getQuestRankObj(items.find(v => v.id === item.id) || item);
                                             return (

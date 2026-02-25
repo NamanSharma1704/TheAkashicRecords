@@ -121,24 +121,35 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
             )}
 
             {/* HEADER */}
-            <div className="relative z-10 w-full flex flex-col pt-10 md:pt-24 pb-2 md:pb-4 overflow-hidden shrink-0">
+            <div className="relative z-50 w-full flex flex-col pt-6 md:pt-10 pb-2 md:pb-4 overflow-hidden shrink-0">
                 {/* Header: Title & Info */}
-                <div className="w-full max-w-7xl mx-auto px-6 md:px-12 flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-4">
-                        <div className="relative w-10 h-10 md:w-12 md:h-12 flex items-center justify-center shrink-0">
-                            <SystemLogo theme={theme} className="w-full h-full" />
+                <div className="w-full max-w-[1800px] mx-auto px-6 md:px-12 flex items-start justify-between">
+                    <div className="flex items-center gap-4 group cursor-default">
+                        <div className="relative w-10 h-10 md:w-16 md:h-16 flex items-center justify-center shrink-0">
+                            {/* Decorative scanner line for logo */}
+                            <div className={`absolute inset-x-0 h-[1px] ${theme.id === 'LIGHT' ? 'bg-sky-400' : 'bg-amber-400'} opacity-20 animate-[scanning_4s_linear_infinite] z-20`} />
+                            <SystemLogo theme={theme} className="w-full h-full drop-shadow-[0_0_10px_rgba(251,191,36,0.3)]" />
                         </div>
                         <div className="flex flex-col leading-none">
-                            <span className={`font-mono text-[9px] md:text-[10px] tracking-[0.2em] ${theme.headingText} font-bold transition-colors duration-700`}>
-                                ACCESS: {playerRank.name}
-                            </span>
-                            <span className={`font-orbitron text-sm md:text-lg tracking-normal font-bold drop-shadow-sm transition-colors duration-700 text-transparent bg-clip-text bg-gradient-to-r ${theme.id === 'LIGHT' ? "from-sky-500 to-cyan-500" : "from-amber-600 via-yellow-400 to-white"}`}>
+                            <div className="flex items-center gap-2 mb-1">
+                                <div className={`w-1 h-3 ${theme.id === 'LIGHT' ? 'bg-sky-500' : 'bg-amber-500'} opacity-50`} />
+                                <span className={`font-mono text-[9px] md:text-[11px] tracking-[0.3em] ${theme.headingText} font-bold transition-colors duration-700 uppercase`}>
+                                    ACCESS: {playerRank.name}
+                                </span>
+                            </div>
+                            <span className={`font-orbitron text-lg md:text-2xl tracking-[0.1em] font-black italic drop-shadow-sm transition-colors duration-700 text-transparent bg-clip-text bg-gradient-to-r ${theme.id === 'LIGHT' ? "from-sky-400 via-cyan-500 to-sky-400" : "from-amber-400 via-yellow-200 to-amber-500"} animate-gradient-x`}>
                                 THE DIVINE SPIRE
                             </span>
                         </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                        <button onClick={viewMode === 'FLOOR' ? handleBackToTower : onClose} className={`p-1 md:p-2 ${theme.mutedText} hover:${theme.baseText} hover:rotate-90 transition-all duration-300`}><X size={24} className="md:w-8 md:h-8" /></button>
+                    <div className="flex items-center pt-2">
+                        <button
+                            onClick={viewMode === 'FLOOR' ? handleBackToTower : onClose}
+                            className={`group relative p-2 md:p-3 ${theme.mutedText} hover:${theme.baseText} transition-all duration-300 overflow-hidden rounded-md border border-transparent hover:border-white/10 hover:bg-white/5`}
+                        >
+                            <X size={28} className="relative z-10 transition-transform duration-500 group-hover:rotate-180" />
+                            <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
+                        </button>
                     </div>
                 </div>
             </div>

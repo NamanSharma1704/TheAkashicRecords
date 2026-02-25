@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { X, Star, Calendar, BookOpen, Users, Share2, Heart, Sword, Zap, Edit2, Save, ChevronRight, Target, AlignLeft, Check } from 'lucide-react';
+import { X, Users, Share2, Zap, Edit2, Target, AlignLeft, Check } from 'lucide-react';
 
 import { Theme, Quest } from '../../core/types';
 import ScrambleText from '../system/ScrambleText';
-import { cleanDescription } from '../../utils/api';
+
 
 
 interface ManhwaDetailProps {
@@ -55,8 +55,6 @@ interface AniListMedia {
 // --- COMPONENT ---
 const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, theme, allQuests, onSetActive, onUpdate, onEdit }) => {
     const [media, setMedia] = useState<AniListMedia | null>(null);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
     const [isEditingSynopsis, setIsEditingSynopsis] = useState(false);
     const [draftSynopsis, setDraftSynopsis] = useState("");
 
@@ -69,7 +67,6 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
     useEffect(() => {
         if (isOpen && quest) {
             setMedia(null);
-            setError(null);
             fetchDetails(quest.title);
         }
     }, [isOpen, quest]);
@@ -139,13 +136,9 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
     };
 
     const fetchDetails = async (title: string) => {
-        setLoading(true);
-        setError(null);
-
         // 1. Check Manual Metadata First
         if (MANUAL_METADATA[title]) {
             setMedia(MANUAL_METADATA[title]);
-            setLoading(false);
             return;
         }
 
@@ -161,14 +154,9 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                 // Apply description cleaning (redundant but safe)
                 data.description = cleanDescription(data.description);
                 setMedia(data);
-            } else {
-                setError("NO RECORDS FOUND IN ARCHIVES");
             }
         } catch (e) {
             console.error("Proxy Fetch Failed", e);
-            setError("ARCHIVE CONNECTION SEVERED");
-        } finally {
-            setLoading(false);
         }
     };
 

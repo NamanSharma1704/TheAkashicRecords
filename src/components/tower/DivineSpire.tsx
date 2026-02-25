@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Theme, Quest, Rank } from '../../core/types';
+import { Theme, Quest } from '../../core/types';
 import TowerHUD from './TowerHUD';
 import TowerStructure from './TowerStructure';
 import QuestCard from '../quest/QuestCard';
 import SystemLogo from '../system/SystemLogo';
 import { getQuestRankObj } from '../../utils/ranks';
-import { ChevronLeft, ChevronRight, X, Search, Layers, AlertCircle } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X, Search, AlertCircle } from 'lucide-react';
 
 interface DivineSpireProps {
     isOpen: boolean;

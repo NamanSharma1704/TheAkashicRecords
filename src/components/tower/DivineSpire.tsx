@@ -73,6 +73,27 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
         }
     }, [search, viewMode]);
 
+    // KEYBOARD NAVIGATION FOR CAROUSEL
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (viewMode !== 'FLOOR' || search.length > 0) return;
+            if (e.key === 'ArrowLeft') scrollCarousel('left');
+            if (e.key === 'ArrowRight') scrollCarousel('right');
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [viewMode, search]);
+
+    const handleWheel = (e: React.WheelEvent) => {
+        if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
+            // Natural horizontal scroll (trackpad)
+            return;
+        }
+        if (Math.abs(e.deltaY) > 5) {
+            scrollCarousel(e.deltaY > 0 ? 'right' : 'left');
+        }
+    };
+
     // Filtered items memoization 
     const filteredItems = useMemo(() => {
         if (!search) return [];
@@ -191,7 +212,7 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
 
                             {/* THE CAROUSEL */}
                             {search.length > 0 ? (
-                                <div ref={carouselRef} className="absolute inset-0 flex items-center overflow-x-auto hide-scrollbar snap-x snap-mandatory px-3 sm:px-6 md:px-12 py-8 gap-6 md:gap-10 pb-24 md:pb-12">
+                                <div ref={carouselRef} onWheel={handleWheel} className="absolute inset-0 flex items-center overflow-x-auto hide-scrollbar snap-x snap-mandatory px-3 sm:px-6 md:px-12 py-8 gap-6 md:gap-10 pb-24 md:pb-12">
                                     {filteredItems.length === 0 ? (
                                         <div className="w-full flex-1 flex flex-col items-center justify-center translate-y-[-10vh]">
                                             <AlertCircle size={48} className={`${theme.mutedText} mb-4 opacity-50`} />
@@ -215,7 +236,7 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
                                 </div>
                             ) : (
                                 floors.length > 0 && floors[selectedFloorIndex] ? (
-                                    <div ref={carouselRef} className="absolute inset-0 flex items-center overflow-x-auto hide-scrollbar snap-x snap-mandatory px-3 sm:px-6 md:px-12 py-12 gap-8 md:gap-10">
+                                    <div ref={carouselRef} onWheel={handleWheel} className="absolute inset-0 flex items-center overflow-x-auto hide-scrollbar snap-x snap-mandatory px-3 sm:px-6 md:px-12 py-12 gap-8 md:gap-10">
                                         {floors[selectedFloorIndex].items.map((item, index) => {
                                             const rawRank = getQuestRankObj(items.find(v => v.id === item.id) || item);
                                             return (

@@ -100,7 +100,7 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
             )}
 
             {/* HEADER */}
-            <div className="relative z-10 w-full flex flex-col pt-24 pb-4 overflow-hidden shrink-0">
+            <div className="relative z-10 w-full flex flex-col pt-10 md:pt-24 pb-2 md:pb-4 overflow-hidden shrink-0">
                 {/* Header: Title & Info */}
                 <div className="w-full max-w-7xl mx-auto px-6 md:px-12 flex items-center justify-between gap-4">
                     <div className="flex items-center gap-4">
@@ -152,7 +152,7 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
                             </div>
                         </div>
 
-                        <div className="flex-1 flex flex-col relative w-full z-10 group/carousel">
+                        <div className="shrink-0 flex flex-col relative w-full z-10 group/carousel">
 
                             {/* HUD HEADER: Floor / Sector info (Hidden when searching) */}
                             {!search && floors.length > 0 && floors[selectedFloorIndex] && (

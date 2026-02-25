@@ -23,7 +23,9 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
         status: 'ACTIVE',
         classType: 'PLAYER',
         coverUrl: '',
-        link: ''
+        link: '',
+        synopsis: '',
+        rating: 0
     });
     const [isScanning, setIsScanning] = useState(false);
     const [scanStatus, setScanStatus] = useState("IDLE"); // IDLE, SCANNING, SUCCESS, ERROR, ENCRYPTED
@@ -78,6 +80,7 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
                 title: prev.title && prev.title !== "" ? prev.title : newTitle,
                 coverUrl: result.coverImage?.extraLarge || prev.coverUrl,
                 totalChapters: result.chapters || prev.totalChapters,
+                synopsis: result.description || prev.synopsis,
                 classType: prev.classType === 'UNKNOWN' ? inferClassFromTitle(newTitle) : prev.classType
             }));
             setScanStatus("SUCCESS");
@@ -306,6 +309,14 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
                                     <option value="NECROMANCER">NECROMANCER</option>
                                 </select>
                             </div>
+                            <div>
+                                <label className={`block ${theme.mutedText} mb-1 uppercase text-[9px] tracking-widest transition-colors duration-700`}>Rating (0-10)</label>
+                                <input name="rating" type="number" min="0" max="10" step="0.1" value={formData.rating} onFocus={(e) => e.target.select()} onChange={handleChange} className={`w-full ${theme.inputBg} border ${theme.borderSubtle} p-2 ${theme.baseText} focus:${theme.border} outline-none transition-colors duration-700 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`} />
+                            </div>
+                        </div>
+                        <div>
+                            <label className={`block ${theme.mutedText} mb-1 uppercase text-[9px] tracking-widest transition-colors duration-700`}>Synopsis</label>
+                            <textarea name="synopsis" value={formData.synopsis} onChange={(e) => setFormData(prev => ({ ...prev, synopsis: e.target.value }))} className={`w-full h-24 ${theme.inputBg} border ${theme.borderSubtle} p-2 ${theme.baseText} focus:${theme.border} outline-none transition-colors duration-700 font-sans text-[10px] resize-none overflow-y-auto block`} />
                         </div>
                         <div className="flex gap-4 pt-4">
                             {initialData && <button type="button" onClick={onDelete} className="px-4 py-2 border border-red-500/50 text-red-500 hover:bg-red-500/10 transition-colors duration-700"><Trash2 size={14} /></button>}

@@ -238,6 +238,11 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                 <span className={`px-2 py-0.5 border border-white/10 bg-white/5 text-white/70 text-[9px] font-mono tracking-widest uppercase`}>
                                     CLASS: {quest.classType}
                                 </span>
+                                {(quest.rating ?? 0) > 0 && (
+                                    <span className={`px-2 py-0.5 border border-${theme.primary}-500/20 bg-${theme.primary}-500/5 text-${theme.highlightText} text-[9px] font-mono tracking-widest uppercase`}>
+                                        RATING: {quest.rating}/10
+                                    </span>
+                                )}
                             </div>
 
                             <h1 className="text-3xl md:text-6xl font-black text-white mb-2 leading-tight tracking-tighter drop-shadow-xl uppercase">

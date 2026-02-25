@@ -9,6 +9,7 @@ const QuestSchema = new mongoose.Schema({
     status: { type: String, default: 'PLANNED' },
     classType: { type: String, default: 'UNKNOWN' },
     readLink: { type: String, default: "" },
+    rating: { type: Number, default: 0 },
     lastRead: { type: Number, default: Date.now }
 }, {
     timestamps: true,

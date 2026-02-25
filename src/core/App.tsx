@@ -189,9 +189,8 @@ const App: React.FC = () => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ lastUpdated: now })
             });
-            const updated = await res.json();
-            // Silent sync
-            setLibrary(prev => prev.map(item => item.id === id ? { ...updated, id: updated._id } : item));
+            const mappedUpdated = mapQuest(updated);
+            setLibrary(prev => prev.map(item => item.id === id ? mappedUpdated : item));
         } catch (e) {
             console.error("Update failed", e);
         }
@@ -209,8 +208,8 @@ const App: React.FC = () => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ status: 'ACTIVE', lastRead: now })
             });
-            const updated = await res.json();
-            setLibrary(prev => prev.map(item => item.id === id ? { ...updated, id: updated._id } : item));
+            const mappedUpdated = mapQuest(updated);
+            setLibrary(prev => prev.map(item => item.id === id ? mappedUpdated : item));
         } catch (e) {
             console.error("Set active failed", e);
         }
@@ -482,7 +481,7 @@ const App: React.FC = () => {
                             <div className="flex-1 min-h-0 overflow-hidden relative">
                                 <div className="flex flex-col gap-1 h-full">
                                     {activeQuests.map((item, index) => {
-                                        const isHighlighted = activeId === item.id || index === 0;
+                                        const isHighlighted = activeId === item.id;
                                         return (
                                             <div key={item.id} onClick={() => handleLogClick(item.id)} className={`relative group cursor-pointer border py-1.5 px-3 transition-all duration-200 ${isHighlighted ? `${theme.border} ${theme.isDark ? 'bg-white/5' : 'bg-sky-500/5'}` : `border-transparent hover:${theme.borderSubtle} bg-transparent`}`}>
                                                 <div className="flex justify-between items-center">

@@ -100,25 +100,25 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
             )}
 
             {/* HEADER */}
-            <div className="relative z-10 w-full h-full flex flex-col pt-24 pb-12 overflow-hidden">
+            <div className="relative z-10 w-full flex flex-col pt-24 pb-4 overflow-hidden shrink-0">
                 {/* Header: Title & Info */}
-                <div className="shrink-0 w-full max-w-7xl mx-auto px-4 md:px-8 mb-4 md:mb-6">
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                        <SystemLogo theme={theme} className="w-full h-full" />
-                    </div>
-                    <div className="flex flex-col leading-none overflow-hidden">
-                        <div className="flex gap-2 items-baseline">
-                            <span className={`font-mono text-[8px] md:text-[10px] tracking-[0.2em] ${theme.headingText} font-bold transition-colors duration-700 truncate`}>
+                <div className="w-full max-w-7xl mx-auto px-6 md:px-12 flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-4">
+                        <div className="relative w-10 h-10 md:w-12 md:h-12 flex items-center justify-center shrink-0">
+                            <SystemLogo theme={theme} className="w-full h-full" />
+                        </div>
+                        <div className="flex flex-col leading-none">
+                            <span className={`font-mono text-[9px] md:text-[10px] tracking-[0.2em] ${theme.headingText} font-bold transition-colors duration-700`}>
                                 ACCESS: {playerRank.name}
                             </span>
+                            <span className={`font-orbitron text-sm md:text-lg tracking-normal font-bold drop-shadow-sm transition-colors duration-700 text-transparent bg-clip-text bg-gradient-to-r ${theme.id === 'LIGHT' ? "from-sky-500 to-cyan-500" : "from-amber-600 via-yellow-400 to-white"}`}>
+                                THE DIVINE SPIRE
+                            </span>
                         </div>
-                        <span className={`font-orbitron text-xs sm:text-sm md:text-lg tracking-normal font-bold drop-shadow-sm transition-colors duration-700 text-transparent bg-clip-text bg-gradient-to-r ${theme.id === 'LIGHT' ? "from-sky-500 to-cyan-500" : "from-amber-600 via-yellow-400 to-white"} truncate`}>
-                            THE DIVINE SPIRE
-                        </span>
                     </div>
-                </div>
-                <div className="flex items-center gap-2 md:gap-4">
-                    <button onClick={viewMode === 'FLOOR' ? handleBackToTower : onClose} className={`p-1 md:p-2 ${theme.mutedText} hover:${theme.baseText} hover:rotate-90 transition-all duration-300`}><X size={24} className="md:w-8 md:h-8" /></button>
+                    <div className="flex items-center gap-2">
+                        <button onClick={viewMode === 'FLOOR' ? handleBackToTower : onClose} className={`p-1 md:p-2 ${theme.mutedText} hover:${theme.baseText} hover:rotate-90 transition-all duration-300`}><X size={24} className="md:w-8 md:h-8" /></button>
+                    </div>
                 </div>
             </div>
 

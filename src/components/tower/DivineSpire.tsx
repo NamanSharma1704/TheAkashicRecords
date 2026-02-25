@@ -221,7 +221,7 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
 
                             {/* THE CAROUSEL */}
                             {search.length > 0 ? (
-                                <div ref={carouselRef} onWheel={handleWheel} className="absolute inset-0 flex items-center overflow-x-auto hide-scrollbar snap-x snap-mandatory px-3 sm:px-6 md:px-12 pt-16 md:pt-20 pb-24 md:pb-12 gap-6 md:gap-10">
+                                <div ref={carouselRef} onWheel={handleWheel} className="absolute inset-0 flex items-center overflow-x-auto hide-scrollbar snap-x snap-mandatory px-3 sm:px-6 md:px-12 pt-12 md:pt-14 pb-24 md:pb-12 gap-6 md:gap-10">
                                     {filteredItems.length === 0 ? (
                                         <div className="w-full h-full flex flex-col items-center justify-center">
                                             <AlertCircle size={48} className={`${theme.mutedText} mb-4 opacity-50`} />
@@ -231,7 +231,7 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
                                         filteredItems.map((item, index) => {
                                             const rawRank = getQuestRankObj(items.find(v => v.id === item.id) || item);
                                             return (
-                                                <div key={item.id} className="w-[240px] md:w-[280px] lg:w-[320px] shrink-0 snap-center transition-all duration-700 hover:-translate-y-8 hover:scale-105 group relative mt-4 md:mt-8">
+                                                <div key={item.id} className="w-[240px] md:w-[280px] lg:w-[320px] shrink-0 snap-center transition-all duration-700 hover:-translate-y-8 hover:scale-105 group relative mt-2 md:mt-4">
                                                     {/* Floor Reflection Glow */}
                                                     <div className={`absolute -bottom-8 left-1/2 -translate-x-1/2 w-3/4 h-8 bg-gradient-to-t from-${theme.primary}-500/40 to-transparent blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-700`} />
                                                     {/* Backdrop Ambient Lighting */}
@@ -245,11 +245,11 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
                                 </div>
                             ) : (
                                 floors.length > 0 && floors[selectedFloorIndex] ? (
-                                    <div ref={carouselRef} onWheel={handleWheel} className="absolute inset-0 flex items-center overflow-x-auto hide-scrollbar snap-x snap-mandatory px-3 sm:px-6 md:px-12 pt-20 md:pt-24 pb-12 gap-8 md:gap-10">
+                                    <div ref={carouselRef} onWheel={handleWheel} className="absolute inset-0 flex items-center overflow-x-auto hide-scrollbar snap-x snap-mandatory px-3 sm:px-6 md:px-12 pt-14 md:pt-16 pb-12 gap-8 md:gap-10">
                                         {floors[selectedFloorIndex].items.map((item, index) => {
                                             const rawRank = getQuestRankObj(items.find(v => v.id === item.id) || item);
                                             return (
-                                                <div key={item.id} className="w-[260px] xs:w-[280px] sm:w-[300px] md:w-[320px] lg:w-[360px] shrink-0 snap-center transition-all duration-700 hover:-translate-y-8 hover:scale-[1.03] group relative mt-4 md:mt-8">
+                                                <div key={item.id} className="w-[260px] xs:w-[280px] sm:w-[300px] md:w-[320px] lg:w-[360px] shrink-0 snap-center transition-all duration-700 hover:-translate-y-8 hover:scale-[1.03] group relative mt-2 md:mt-4">
                                                     {/* Floor Reflection Glow */}
                                                     <div className={`absolute -bottom-8 left-1/2 -translate-x-1/2 w-3/4 h-8 bg-gradient-to-t ${theme.id === 'LIGHT' ? 'from-sky-500/40' : 'from-amber-500/40'} to-transparent blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-all duration-700`} />
                                                     {/* Backdrop Ambient Lighting */}

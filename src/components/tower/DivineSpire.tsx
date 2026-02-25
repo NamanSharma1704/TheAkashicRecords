@@ -30,7 +30,7 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
     const scrollCarousel = (direction: 'left' | 'right') => {
         if (carouselRef.current) {
             // Adaptive scroll amount based on screen width
-            const cardWidth = window.innerWidth < 768 ? 240 : window.innerWidth < 1024 ? 280 : 320;
+            const cardWidth = window.innerWidth < 768 ? 280 : window.innerWidth < 1024 ? 300 : 320;
             const scrollAmount = direction === 'left' ? -cardWidth : cardWidth;
             carouselRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
         }
@@ -211,11 +211,11 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
                                 </div>
                             ) : (
                                 floors.length > 0 && floors[selectedFloorIndex] ? (
-                                    <div ref={carouselRef} className="absolute inset-0 flex items-center overflow-x-auto hide-scrollbar snap-x snap-mandatory px-3 sm:px-6 md:px-12 py-12 pt-20 md:pt-12 gap-6 md:gap-10 pb-36 md:pb-12">
+                                    <div ref={carouselRef} className="absolute inset-0 flex items-center overflow-x-auto hide-scrollbar snap-x snap-mandatory px-3 sm:px-6 md:px-12 py-12 pt-24 md:pt-12 gap-8 md:gap-10 pb-40 md:pb-12">
                                         {floors[selectedFloorIndex].items.map((item, index) => {
                                             const rawRank = getQuestRankObj(items.find(v => v.id === item.id) || item);
                                             return (
-                                                <div key={item.id} className="w-[180px] sm:w-[240px] md:w-[280px] lg:w-[320px] shrink-0 snap-center transition-all duration-700 hover:-translate-y-8 hover:scale-[1.03] group relative pb-16">
+                                                <div key={item.id} className="w-[260px] xs:w-[280px] sm:w-[300px] md:w-[320px] lg:w-[360px] shrink-0 snap-center transition-all duration-700 hover:-translate-y-8 hover:scale-[1.03] group relative pb-16">
                                                     {/* Floor Reflection Glow */}
                                                     <div className={`absolute -bottom-8 left-1/2 -translate-x-1/2 w-3/4 h-8 bg-gradient-to-t ${theme.id === 'LIGHT' ? 'from-sky-500/40' : 'from-amber-500/40'} to-transparent blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-all duration-700`} />
                                                     {/* Backdrop Ambient Lighting */}

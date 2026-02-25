@@ -20,9 +20,9 @@ const BootScreen: React.FC<BootScreenProps> = ({ onComplete }) => {
     }, [onComplete]);
 
     return (
-        <div className="fixed inset-0 z-[100] bg-[#020202] flex flex-col items-center justify-center overflow-hidden cursor-wait font-mono">
+        <div className="fixed inset-0 z-[100] bg-[#020202] flex flex-col items-center justify-center overflow-hidden cursor-wait font-mono w-full h-full min-h-[100svh]">
             <OmniscientField forceAmber={true} />
-            <div className="relative z-10 flex flex-col items-center">
+            <div className="relative z-10 flex flex-col items-center justify-center w-full">
                 <div className={`relative transition-all duration-1000 ${phase >= 2 ? 'scale-100 opacity-100' : 'scale-0 opacity-0'}`}>
                     {/* Outer Ring: Dominant Gold with Internal Bloom */}
                     <div className="w-48 h-48 sm:w-64 sm:h-64 md:w-96 md:h-96 rounded-full p-[2px] md:p-[2.5px] bg-gradient-to-tr from-amber-600 via-amber-600 to-cyan-500 animate-[spin_10s_linear_infinite] absolute inset-0 m-auto flex items-center justify-center opacity-100 overflow-hidden shadow-[inset_0_0_15px_rgba(255,255,255,0.2)]">

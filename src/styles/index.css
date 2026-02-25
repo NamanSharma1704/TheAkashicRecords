@@ -5,6 +5,20 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer base {
+    html, body {
+        @apply bg-[#020202] text-white overflow-x-hidden;
+        background-color: #020202; /* Force for Safari rubber-banding */
+        height: 100%;
+        width: 100%;
+    }
+
+    #root {
+        height: 100%;
+        width: 100%;
+    }
+}
+
 /* Animations (Top Level for global access) */
 @keyframes gradient-x {
 

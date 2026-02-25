@@ -534,19 +534,36 @@ const TowerStructure: React.FC<TowerStructureProps> = ({ onSelectFloor, theme, o
             if (!mountRef.current || !renderer || !camera) return;
             const w = mountRef.current.clientWidth;
             const h = mountRef.current.clientHeight;
-            renderer.setSize(w, h);
-            camera.aspect = w / h;
+            const aspect = w / h;
 
-            // Adjust Zoom for Mobile & Tablet (Portrait/Landscape)
-            if (w < 1280) {
-                if (w < 450) {
-                    camera.fov = 80; // Shorter tower visual on narrow screens
-                    targetZ = 240;  // Ultra zoom-out
+            renderer.setSize(w, h);
+            camera.aspect = aspect;
+
+            // Responsive Logic 2.0: Aspect-Ratio & Width aware
+            if (w < 768) {
+                // Mobile (Portrait & Landscape)
+                if (aspect < 1) {
+                    // Mobile Portrait
+                    camera.fov = 75;
+                    targetZ = 160;
                 } else {
-                    camera.fov = w < 768 ? 75 : 65;
-                    targetZ = 180;
+                    // Mobile Landscape
+                    camera.fov = 50;
+                    targetZ = 120;
+                }
+            } else if (w < 1280) {
+                // Tablet / Small Laptop
+                if (aspect < 1) {
+                    // Tablet Portrait
+                    camera.fov = 70;
+                    targetZ = 140;
+                } else {
+                    // Tablet Landscape
+                    camera.fov = 60;
+                    targetZ = 100;
                 }
             } else {
+                // Desktop
                 camera.fov = 60;
                 targetZ = 100;
             }

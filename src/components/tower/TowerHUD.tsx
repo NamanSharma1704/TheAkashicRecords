@@ -50,7 +50,7 @@ const TowerHUD: React.FC<TowerHUDProps> = ({ items, theme, onActivate, isFocused
     const classEntries = Object.entries(classCounts).sort((a, b) => b[1] - a[1]);
 
     return (
-        <div className={`absolute inset-0 z-30 pointer-events-none pt-24 md:pt-24 px-2 md:px-8 pb-[8.5rem] md:pb-8 flex flex-row items-end md:items-start justify-between overflow-hidden gap-1 md:gap-6`}>
+        <div className={`absolute inset-0 z-30 pointer-events-none pt-20 md:pt-24 px-2 md:px-8 pb-[8.5rem] md:pb-8 flex flex-row items-end md:items-start justify-between overflow-hidden gap-1 md:gap-6`}>
             {/* MOBILE COMPACT HUD (BOTTOM STRIP) */}
             <div className="md:hidden absolute bottom-6 left-1/2 -translate-x-1/2 w-[95%] pointer-events-auto">
                 <SystemFrame variant="brackets" theme={theme} className="bg-black/60 backdrop-blur-md">
@@ -83,7 +83,7 @@ const TowerHUD: React.FC<TowerHUDProps> = ({ items, theme, onActivate, isFocused
             </div>
 
             {/* LEFT: STATS PANEL (DESKTOP) */}
-            <div className={`hidden md:flex flex-col gap-2 md:gap-6 pointer-events-auto w-[45%] sm:w-[40%] md:w-[45%] max-w-xs transition-transform duration-700 ease-in-out ${isFocused ? 'translate-y-0' : 'translate-y-0'}`}>
+            <div className={`hidden md:flex flex-col gap-2 md:gap-6 pointer-events-auto w-[40%] md:w-[35%] lg:w-[45%] max-w-[280px] md:max-w-xs transition-transform duration-700 ease-in-out ${isFocused ? 'translate-y-0' : 'translate-y-0'}`}>
                 <SystemFrame variant="brackets" theme={theme} className="bg-transparent shadow-none w-full">
                     <div className="p-1 md:p-4 space-y-2 md:space-y-4">
                         <div className="flex flex-col border-b border-gray-500/30 pb-2 gap-1 md:gap-2 w-full">
@@ -154,7 +154,7 @@ const TowerHUD: React.FC<TowerHUDProps> = ({ items, theme, onActivate, isFocused
             </div>
 
             {/* RIGHT: TOWER LOG & DETAILS (DESKTOP) */}
-            <div className={`hidden md:flex pointer-events-auto flex flex-col items-end gap-2 md:gap-3 w-[45%] sm:w-[40%] md:w-72 max-w-xs transition-transform duration-700 ease-in-out ${isFocused ? 'translate-y-[0]' : 'translate-y-0'}`}>
+            <div className={`hidden md:flex pointer-events-auto flex flex-col items-end gap-2 md:gap-3 w-[40%] md:w-64 lg:w-72 max-w-[280px] md:max-w-xs transition-transform duration-700 ease-in-out ${isFocused ? 'translate-y-[0]' : 'translate-y-0'}`}>
 
                 {/* ACTIVE QUESTS / RECENT CONQUESTS */}
                 <div className="w-full">

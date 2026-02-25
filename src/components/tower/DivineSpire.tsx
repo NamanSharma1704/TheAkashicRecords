@@ -29,8 +29,10 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
 
     const scrollCarousel = (direction: 'left' | 'right') => {
         if (carouselRef.current) {
-            const scrollAmount = window.innerWidth * 0.5;
-            carouselRef.current.scrollBy({ left: direction === 'left' ? -scrollAmount : scrollAmount, behavior: 'smooth' });
+            // Adaptive scroll amount based on screen width
+            const cardWidth = window.innerWidth < 768 ? 240 : window.innerWidth < 1024 ? 280 : 320;
+            const scrollAmount = direction === 'left' ? -cardWidth : cardWidth;
+            carouselRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
         }
     };
 
@@ -109,7 +111,7 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
                                 ACCESS: {playerRank.name}
                             </span>
                         </div>
-                        <span className={`font-orbitron text-sm md:text-lg tracking-normal font-bold drop-shadow-sm transition-colors duration-700 text-transparent bg-clip-text bg-gradient-to-r ${theme.id === 'LIGHT' ? "from-sky-500 to-cyan-500" : "from-amber-600 via-yellow-400 to-white"} truncate`}>
+                        <span className={`font-orbitron text-xs sm:text-sm md:text-lg tracking-normal font-bold drop-shadow-sm transition-colors duration-700 text-transparent bg-clip-text bg-gradient-to-r ${theme.id === 'LIGHT' ? "from-sky-500 to-cyan-500" : "from-amber-600 via-yellow-400 to-white"} truncate`}>
                             THE DIVINE SPIRE
                         </span>
                     </div>
@@ -170,13 +172,13 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
                                 <>
                                     <button
                                         onClick={() => scrollCarousel('left')}
-                                        className={`absolute left-4 md:left-12 top-1/2 -translate-y-1/2 z-30 p-4 rounded-full border border-white/10 ${theme.isDark ? 'bg-black/50 hover:bg-white/10' : 'bg-white/50 hover:bg-black/10'} backdrop-blur-md opacity-0 group-hover/carousel:opacity-100 transition-all duration-500 transform hover:scale-110 shadow-[0_0_30px_rgba(0,0,0,0.5)]`}
+                                        className={`absolute left-2 md:left-12 top-1/2 -translate-y-1/2 z-30 p-2 md:p-4 rounded-full border border-white/10 ${theme.isDark ? 'bg-black/50 hover:bg-white/10' : 'bg-white/50 hover:bg-black/10'} backdrop-blur-md opacity-0 md:group-hover/carousel:opacity-100 transition-all duration-500 transform hover:scale-110 shadow-[0_0_30px_rgba(0,0,0,0.5)] hidden md:flex`}
                                     >
                                         <ChevronLeft size={32} className={theme.highlightText} />
                                     </button>
                                     <button
                                         onClick={() => scrollCarousel('right')}
-                                        className={`absolute right-4 md:right-12 top-1/2 -translate-y-1/2 z-30 p-4 rounded-full border border-white/10 ${theme.isDark ? 'bg-black/50 hover:bg-white/10' : 'bg-white/50 hover:bg-black/10'} backdrop-blur-md opacity-0 group-hover/carousel:opacity-100 transition-all duration-500 transform hover:scale-110 shadow-[0_0_30px_rgba(0,0,0,0.5)]`}
+                                        className={`absolute right-2 md:right-12 top-1/2 -translate-y-1/2 z-30 p-2 md:p-4 rounded-full border border-white/10 ${theme.isDark ? 'bg-black/50 hover:bg-white/10' : 'bg-white/50 hover:bg-black/10'} backdrop-blur-md opacity-0 md:group-hover/carousel:opacity-100 transition-all duration-500 transform hover:scale-110 shadow-[0_0_30px_rgba(0,0,0,0.5)] hidden md:flex`}
                                     >
                                         <ChevronRight size={32} className={theme.highlightText} />
                                     </button>

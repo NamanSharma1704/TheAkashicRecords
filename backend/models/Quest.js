@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 
 const QuestSchema = new mongoose.Schema({
-    title: { type: String, required: true },
+    title: { type: String, required: true, unique: true },
     cover: { type: String, default: "" },
     synopsis: { type: String, default: "" },
     totalChapters: { type: Number, default: 0 },

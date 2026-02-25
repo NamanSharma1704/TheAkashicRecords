@@ -91,22 +91,30 @@ app.get('/api/quests', async (req, res) => {
     }
 });
 
-// POST /api/quests - Create a new quest
 app.post('/api/quests', async (req, res) => {
     try {
         await connectDB();
         const { title } = req.body;
-        // Case-insensitive title check to prevent duplicates
-        const existing = await Quest.findOne({ title: { $regex: new RegExp(`^${title.trim()}$`, "i") } });
+        if (!title) return res.status(400).json({ message: "Title required" });
 
-        if (existing) {
-            return res.status(409).json({ message: 'Artifact strictly classified as Duplicate.' });
+        // 1. AGGRESSIVE DUPLICATE CHECK (Ignores punctuation, apostrophes, and casing)
+        const normalizedTitle = title.toLowerCase().replace(/[^a-z0-9]/g, '');
+        const allQuests = await Quest.find({});
+        const collision = allQuests.find(q => q.title.toLowerCase().replace(/[^a-z0-9]/g, '') === normalizedTitle);
+
+        if (collision) {
+            return res.status(409).json({
+                message: `Artifact strictly classified as Duplicate. Existing entry detected: "${collision.title}"`
+            });
         }
 
         const newQuest = new Quest(req.body);
         const savedQuest = await newQuest.save();
         res.status(201).json(savedQuest);
     } catch (err) {
+        if (err.code === 11000) {
+            return res.status(409).json({ message: "Database Archive Collision: Title already exists in the records." });
+        }
         res.status(400).json({ message: err.message });
     }
 });
@@ -196,6 +204,55 @@ app.post('/api/admin/bulk-classify', async (req, res) => {
     } catch (err) {
         console.error("[Admin] Classification Failure:", err.message);
         res.status(500).json({ error: "Classification Engine Failure" });
+    }
+});
+
+// POST /api/admin/purge-duplicates - Deduplicate archives
+app.post('/api/admin/purge-duplicates', async (req, res) => {
+    try {
+        await connectDB();
+        console.log("[Admin] Initiating Duplicate Purge...");
+
+        // 1. Group by title (Aggressive Normalization)
+        const allQuests = await Quest.find({});
+        const groups = {};
+
+        allQuests.forEach(q => {
+            // Aggressive normalization: lowercase and remove all non-alphanumeric
+            const key = q.title.toLowerCase().replace(/[^a-z0-9]/g, '');
+            if (!groups[key]) groups[key] = [];
+            groups[key].push(q);
+        });
+
+        let removedCount = 0;
+        let processedTitles = 0;
+
+        for (const title in groups) {
+            const matches = groups[title];
+            if (matches.length > 1) {
+                // Keep the one with highest progress, then most recent
+                matches.sort((a, b) => {
+                    if (b.currentChapter !== a.currentChapter) {
+                        return b.currentChapter - a.currentChapter;
+                    }
+                    return b.lastRead - a.lastRead;
+                });
+
+                const toKeep = matches[0];
+                const toRemove = matches.slice(1);
+
+                for (const quest of toRemove) {
+                    await Quest.findByIdAndDelete(quest._id);
+                    removedCount++;
+                }
+                processedTitles++;
+            }
+        }
+
+        res.json({ message: "Deduplication Engine Complete", removedCount, uniqueTitlesProcessed: processedTitles });
+    } catch (err) {
+        console.error("[Admin] Purge Failure:", err.message);
+        res.status(500).json({ error: "Deduplication Engine Failure" });
     }
 });
 app.get('/api/proxy/metadata', async (req, res) => {

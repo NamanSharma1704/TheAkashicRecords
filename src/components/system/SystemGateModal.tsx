@@ -216,16 +216,16 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
 
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 transition-colors duration-700 animate-in fade-in zoom-in-95 duration-200">
-            <SystemFrame variant="full" theme={theme} className="w-full max-w-md h-auto">
-                <div className="p-6">
-                    <div className={`flex justify-between items-center mb-6 pb-4 transition-colors duration-700`}>
+            <SystemFrame variant="full" theme={theme} className="w-full max-w-md max-h-[90dvh] flex flex-col transition-all">
+                <div className="p-6 flex-1 flex flex-col overflow-hidden">
+                    <div className={`flex justify-between items-center mb-6 pb-4 transition-colors duration-700 shrink-0`}>
                         <span className={`${theme.highlightText} font-mono tracking-widest text-sm flex items-center gap-2 transition-colors duration-700`}>
                             <RefreshCw size={14} className={isScanning ? "animate-spin" : ""} />
                             {isScanning ? "ANALYZING COORDINATES..." : "SYSTEM_OVERWRITE"}
                         </span>
                         <button onClick={onClose}><X className={`${theme.mutedText} hover:${theme.headingText} transition-colors duration-700`} /></button>
                     </div>
-                    <form onSubmit={handleSubmit} className="space-y-4 font-mono text-xs">
+                    <form onSubmit={handleSubmit} className="space-y-4 font-mono text-xs flex-1 overflow-y-auto pr-2 hide-scrollbar">
                         {error && (
                             <div className="bg-red-500/10 border border-red-500/30 text-red-500 p-2 text-[10px] tracking-widest flex items-center gap-2 animate-pulse">
                                 <AlertCircle size={12} />

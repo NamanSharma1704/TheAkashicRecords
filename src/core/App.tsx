@@ -189,6 +189,7 @@ const App: React.FC = () => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ lastUpdated: now })
             });
+            const updated = await res.json();
             const mappedUpdated = mapQuest(updated);
             setLibrary(prev => prev.map(item => item.id === id ? mappedUpdated : item));
         } catch (e) {
@@ -208,6 +209,7 @@ const App: React.FC = () => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ status: 'ACTIVE', lastRead: now })
             });
+            const updated = await res.json();
             const mappedUpdated = mapQuest(updated);
             setLibrary(prev => prev.map(item => item.id === id ? mappedUpdated : item));
         } catch (e) {
@@ -361,7 +363,7 @@ const App: React.FC = () => {
 
             {/* MAIN GRID */}
             {!isSpireOpen && (
-                <main className="w-full pt-24 pb-0 px-4 max-w-[1400px] mx-auto flex-1 flex flex-col lg:flex-row gap-8 lg:gap-8 lg:h-screen overflow-hidden z-10">
+                <main className="w-full pt-20 sm:pt-24 pb-24 lg:pb-0 px-4 max-w-[1400px] mx-auto flex-1 flex flex-col lg:flex-row gap-8 lg:gap-8 lg:h-screen lg:overflow-hidden z-10">
                     {/* LEFT COLUMN: ACTIVE CARD & STATS */}
                     <div className="flex-none lg:flex-1 flex flex-col gap-8 min-h-0 order-1 relative lg:pb-16">
                         <div className="w-full min-h-[450px] sm:h-[550px] lg:h-auto lg:flex-1 relative pb-4 lg:pb-0">
@@ -385,7 +387,7 @@ const App: React.FC = () => {
                                                 <div className={`border ${theme.borderSubtle} ${theme.isDark ? 'bg-black/90' : 'bg-white/90'} backdrop-blur-sm px-3 py-1 flex items-center gap-2 transition-colors duration-700`}><Crown size={12} className={`${theme.highlightText} transition-colors duration-700`} /><span className={`font-mono font-bold text-xs tracking-widest ${theme.headingText} transition-colors duration-700`}>RANK: {calculateQuestRank(activeQuest)}</span></div>
                                             </div>
                                             <div className="text-right">
-                                                <div className={`text-[10px] ${theme.mutedText} font-mono tracking-widest flex items-center justify-end gap-2 transition-colors duration-700`}><Hash size={12} /> ID: #{activeQuest.id?.padStart(4, '0')}</div>
+                                                <div className={`text-[10px] ${theme.mutedText} font-mono tracking-widest flex items-center justify-end gap-2 transition-colors duration-700`}><Hash size={12} /> ID: <span className="max-w-[130px] sm:max-w-none truncate inline-block">#{activeQuest.id?.padStart(4, '0')}</span></div>
                                                 <div className={`text-xs ${theme.highlightText} font-mono mt-1 border-b ${theme.borderSubtle} pb-0.5 inline-block transition-colors duration-700`}>{activeQuest.classType}</div>
                                             </div>
                                         </div>

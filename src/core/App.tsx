@@ -223,17 +223,18 @@ const App: React.FC = () => {
         const url = isEditing ? `${API_URL}/${targetId}` : API_URL;
         const method = isEditing ? 'PUT' : 'POST';
 
-        // MAPPING: Convert frontend fields to backend schema names
-        // STRIP internal fields that might cause MongoDB validation errors
-        const { id, _id, __v, coverUrl, link, currentChapter, totalChapters, lastRead, lastUpdated, ...rest } = data as any;
+        // 1. CLEAN BODY: Remove internal fields and map to backend schema
+        const body: any = {};
 
-        const body: any = {
-            ...rest,
-            cover: coverUrl,
-            readLink: link,
-            currentChapter: Number(currentChapter) || 0,
-            totalChapters: Number(totalChapters) || 0
-        };
+        // Map all fields in data to body, using special mapping for schema mismatches
+        Object.entries(data).forEach(([key, value]) => {
+            if (['id', '_id', '__v', 'lastRead', 'lastUpdated', 'cover', 'readLink'].includes(key)) return;
+
+            if (key === 'coverUrl') body.cover = value;
+            else if (key === 'link') body.readLink = value;
+            else if (['currentChapter', 'totalChapters'].includes(key)) body[key] = Number(value) || 0;
+            else body[key] = value;
+        });
 
         console.log(`[handleSave] ${method} to ${url}`, {
             originalData: data,
@@ -246,19 +247,30 @@ const App: React.FC = () => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(body)
             });
+
+            if (!res.ok) {
+                const errData = await res.json();
+                throw new Error(errData.message || 'Save failure');
+            }
+
             const saved = await res.json();
             const mappedSaved = mapQuest(saved);
 
             if (isEditing) {
                 setLibrary(prev => prev.map(q => q.id === mappedSaved.id ? mappedSaved : q));
+                // Update selectedQuest if it's the one we just edited
+                if (selectedQuest?.id === mappedSaved.id) {
+                    setSelectedQuest(mappedSaved);
+                }
             } else {
                 setLibrary(prev => [mappedSaved, ...prev]);
                 handleActivate(mappedSaved.id);
             }
             setIsModalOpen(false);
-            setEditingItem(null); // Clear editing state
-        } catch (e) {
-            console.error("Save failure", e);
+            setEditingItem(null);
+        } catch (e: any) {
+            console.error("Save failure:", e);
+            showSystemNotification(`SAVE_PROTOCOL_FAILED: ${e.message}`, 'ERROR');
         }
     };
 

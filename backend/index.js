@@ -243,7 +243,10 @@ app.get('/api/proxy/image', async (req, res) => {
                 'Accept-Language': 'en-US,en;q=0.9',
                 'Cache-Control': 'no-cache',
                 'Pragma': 'no-cache',
-                'Referer': new URL(url).origin
+                'Sec-Fetch-Dest': 'image',
+                'Sec-Fetch-Mode': 'no-cors',
+                'Sec-Fetch-Site': 'cross-site'
+                // Removed Referer as many sites block hotlinking if Referer is present but "wrong"
             },
             redirect: 'follow'
         };

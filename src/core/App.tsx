@@ -144,8 +144,7 @@ const App: React.FC = () => {
         currentChapter: 0,
         status: 'LOCKED',
         classType: 'UNKNOWN',
-        link: '',
-        rating: 0
+        link: ''
     };
 
     const activeQuest = useMemo(() => {

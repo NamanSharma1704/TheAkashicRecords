@@ -24,8 +24,7 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
         classType: 'PLAYER',
         coverUrl: '',
         link: '',
-        synopsis: '',
-        rating: 0
+        synopsis: ''
     });
     const [isScanning, setIsScanning] = useState(false);
     const [scanStatus, setScanStatus] = useState("IDLE"); // IDLE, SCANNING, SUCCESS, ERROR, ENCRYPTED
@@ -308,10 +307,6 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
                                     <option value="CONSTELLATION">CONSTELLATION</option>
                                     <option value="NECROMANCER">NECROMANCER</option>
                                 </select>
-                            </div>
-                            <div>
-                                <label className={`block ${theme.mutedText} mb-1 uppercase text-[9px] tracking-widest transition-colors duration-700`}>Rating (0-10)</label>
-                                <input name="rating" type="number" min="0" max="10" step="0.1" value={formData.rating} onFocus={(e) => e.target.select()} onChange={handleChange} className={`w-full ${theme.inputBg} border ${theme.borderSubtle} p-2 ${theme.baseText} focus:${theme.border} outline-none transition-colors duration-700 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`} />
                             </div>
                         </div>
                         <div>

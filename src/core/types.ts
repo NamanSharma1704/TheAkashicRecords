@@ -43,7 +43,6 @@ export interface Quest {
     link?: string;     // CHANGED FROM readLink
     lastUpdated?: number | string; // CHANGED FROM lastRead
     synopsis?: string; // ADDED
-    rating?: number;   // ADDED
 }
 
 export type UserRank = Rank;

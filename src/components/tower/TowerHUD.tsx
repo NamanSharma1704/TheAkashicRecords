@@ -29,8 +29,8 @@ const TowerHUD: React.FC<TowerHUDProps> = ({ items, theme, onActivate, isFocused
     // Derived Rank (Always based on global titles)
     const rawRank = getPlayerRank(items.length);
 
-    // 2. Recent Conquests (Top 3)
-    const recents = [...displayItems].sort((a, b) => {
+    // 2. Recent Conquests (Top 3) - FILTER BY ACTIVE STATUS
+    const recents = items.filter(i => i.status === 'ACTIVE').sort((a, b) => {
         const dateA = a.lastUpdated ? new Date(a.lastUpdated).getTime() : 0;
         const dateB = b.lastUpdated ? new Date(b.lastUpdated).getTime() : 0;
         return dateB - dateA;

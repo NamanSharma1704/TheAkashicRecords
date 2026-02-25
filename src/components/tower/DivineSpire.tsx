@@ -53,10 +53,9 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
 
     // Handle Floor Selection from Tower
     const handleSelectFloor = (index: number) => {
-        // Ensure index is within bounds (Tower has 8 visual floors, map to actual data)
-        const targetIndex = Math.min(index, floors.length - 1);
-        if (targetIndex < 0) return; // No data
-        setSelectedFloorIndex(targetIndex);
+        // ALLOW any index clicked, don't clamp to existing floors
+        // This prevents Sector 8 from showing Floor 1 data if library is small.
+        setSelectedFloorIndex(index);
         setViewMode('FLOOR');
     };
 
@@ -130,7 +129,7 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
 
 
                         {/* Search Bar HUD */}
-                        <div className="relative z-20 shrink-0 w-full max-w-xl mx-auto mt-6 md:mt-10 px-4">
+                        <div className="relative z-20 shrink-0 w-full max-w-xl mx-auto mt-2 md:mt-10 px-4">
                             <div className="relative group">
                                 <div className={`absolute -inset-1 bg-gradient-to-r ${theme.gradient} opacity-20 blur-md group-focus-within:opacity-40 transition-all duration-500 rounded-full`} />
                                 <div className={`relative ${theme.isDark ? 'bg-black/60' : 'bg-white/60'} backdrop-blur-xl border border-white/10 rounded-full px-4 py-3 flex items-center shadow-2xl transition-all duration-700`}>
@@ -154,7 +153,7 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
 
                             {/* HUD HEADER: Floor / Sector info (Hidden when searching) */}
                             {!search && floors.length > 0 && floors[selectedFloorIndex] && (
-                                <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[60] flex flex-col items-center drop-shadow-2xl">
+                                <div className="absolute top-2 left-1/2 -translate-x-1/2 z-[60] flex flex-col items-center drop-shadow-2xl">
                                     <div className={`font-mono text-[10px] tracking-[0.4em] ${theme.highlightText} font-bold uppercase mb-1 opacity-80 pointer-events-none`}>SYSTEM.SECTOR_INTERFACE</div>
                                     <div className="flex items-center gap-4 px-6 py-2 rounded-full border border-white/10 bg-black/40 backdrop-blur-md pointer-events-auto">
                                         <button disabled={selectedFloorIndex <= 0} onClick={() => setSelectedFloorIndex(i => i - 1)} className={`${theme.mutedText} hover:${theme.highlightText} disabled:opacity-30 transition-colors`}><ChevronLeft size={16} /></button>
@@ -186,7 +185,7 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
 
                             {/* THE CAROUSEL */}
                             {search.length > 0 ? (
-                                <div ref={carouselRef} className="absolute inset-0 flex items-center overflow-x-auto hide-scrollbar snap-x snap-mandatory px-3 sm:px-6 md:px-12 py-12 gap-6 md:gap-10 pb-36 md:pb-12">
+                                <div ref={carouselRef} className="absolute inset-0 flex items-center overflow-x-auto hide-scrollbar snap-x snap-mandatory px-3 sm:px-6 md:px-12 py-8 gap-6 md:gap-10 pb-24 md:pb-12">
                                     {filteredItems.length === 0 ? (
                                         <div className="w-full flex-1 flex flex-col items-center justify-center translate-y-[-10vh]">
                                             <AlertCircle size={48} className={`${theme.mutedText} mb-4 opacity-50`} />

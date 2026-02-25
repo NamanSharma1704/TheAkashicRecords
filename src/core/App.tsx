@@ -363,10 +363,10 @@ const App: React.FC = () => {
 
             {/* MAIN GRID */}
             {!isSpireOpen && (
-                <main className="w-full pt-20 sm:pt-24 pb-24 lg:pb-0 px-4 max-w-[1400px] mx-auto flex-1 flex flex-col lg:flex-row gap-8 lg:gap-8 lg:h-screen lg:overflow-hidden z-10">
+                <main className="w-full pt-16 sm:pt-24 pb-24 lg:pb-0 px-4 max-w-[1400px] mx-auto flex-1 flex flex-col lg:flex-row gap-8 lg:gap-8 lg:h-screen lg:overflow-hidden z-10">
                     {/* LEFT COLUMN: ACTIVE CARD & STATS */}
-                    <div className="flex-none lg:flex-1 flex flex-col gap-8 min-h-0 order-1 relative lg:pb-16">
-                        <div className="w-full min-h-[450px] sm:h-[550px] lg:h-auto lg:flex-1 relative pb-4 lg:pb-0">
+                    <div className="flex-none lg:flex-1 flex flex-col gap-2 sm:gap-4 lg:gap-8 min-h-0 order-1 relative lg:pb-16">
+                        <div className="w-full min-h-[380px] sm:h-[550px] lg:h-auto lg:flex-1 relative pb-4 lg:pb-0">
                             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[140%] aspect-square opacity-100 pointer-events-none z-0">
                                 <div className={`absolute inset-0 border ${theme.isDark ? 'border-white/30' : 'border-black/30'} rounded-full animate-[spin_60s_linear_infinite] transition-colors duration-700`} />
                                 <div className={`absolute inset-[5%] border border-dashed ${theme.isDark ? 'border-white/30' : 'border-black/30'} rounded-full animate-[spin_40s_linear_infinite_reverse] transition-colors duration-700`} />
@@ -558,20 +558,22 @@ const App: React.FC = () => {
             </Suspense>
 
             {/* MOBILE STICKY ACTION BAR (Visible only on small screens) */}
-            <div className={`lg:hidden fixed bottom-8 left-0 w-full px-4 z-40 flex gap-2 pointer-events-none transition-all duration-700`}>
-                <button
-                    onClick={() => setIsSpireOpen(true)}
-                    className={`pointer-events-auto flex-1 py-3 ${theme.isDark ? 'bg-black/80' : 'bg-white/80'} backdrop-blur-md border ${theme.border} ${theme.highlightText} shadow-[0_0_15px_rgba(0,0,0,0.5)] font-mono font-bold tracking-widest uppercase transition-all flex items-center justify-center gap-2 text-xs`}
-                >
-                    <LayoutTemplate size={16} /> SPIRE
-                </button>
-                <button
-                    onClick={() => { setEditingItem(null); setIsModalOpen(true); }}
-                    className={`pointer-events-auto w-14 h-[42px] ${theme.isDark ? 'bg-[#0a0a0c]' : 'bg-slate-50'} border ${theme.borderSubtle} ${theme.highlightText} flex items-center justify-center shadow-lg transition-colors duration-700`}
-                >
-                    <Plus size={20} />
-                </button>
-            </div>
+            {!isSpireOpen && (
+                <div className={`lg:hidden fixed bottom-8 left-0 w-full px-4 z-40 flex gap-2 pointer-events-none transition-all duration-700`}>
+                    <button
+                        onClick={() => setIsSpireOpen(true)}
+                        className={`pointer-events-auto flex-1 py-3 ${theme.isDark ? 'bg-black/80' : 'bg-white/80'} backdrop-blur-md border ${theme.border} ${theme.highlightText} shadow-[0_0_15px_rgba(0,0,0,0.5)] font-mono font-bold tracking-widest uppercase transition-all flex items-center justify-center gap-2 text-xs`}
+                    >
+                        <LayoutTemplate size={16} /> SPIRE
+                    </button>
+                    <button
+                        onClick={() => { setEditingItem(null); setIsModalOpen(true); }}
+                        className={`pointer-events-auto w-14 h-[42px] ${theme.isDark ? 'bg-[#0a0a0c]' : 'bg-slate-50'} border ${theme.borderSubtle} ${theme.highlightText} flex items-center justify-center shadow-lg transition-colors duration-700`}
+                    >
+                        <Plus size={20} />
+                    </button>
+                </div>
+            )}
 
             <Suspense fallback={null}>
                 {isModalOpen && (

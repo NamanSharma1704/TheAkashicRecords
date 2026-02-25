@@ -205,14 +205,14 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
 
             {/* MAIN SCROLLABLE CONTENT (CENTERED COLUMN) */}
             <div
-                className="relative z-30 w-full h-full overflow-y-auto custom-scrollbar pt-24 pb-32 px-4 sm:px-8 md:px-16"
+                className="relative z-30 w-full h-full overflow-y-auto custom-scrollbar pt-16 sm:pt-24 pb-32 px-4 sm:px-8 md:px-16"
                 style={{
                     '--scrollbar-thumb': theme.id === 'LIGHT' ? '#0ea5e9' : '#f59e0b',
                     '--scrollbar-track': 'transparent',
                     '--scrollbar-thumb-hover': theme.id === 'LIGHT' ? '#0284c7' : '#d97706'
                 } as React.CSSProperties}
             >
-                <div className="max-w-6xl mx-auto flex flex-col gap-12">
+                <div className="max-w-6xl mx-auto flex flex-col gap-6 md:gap-12">
 
                     {/* HERO SECTION: COVER + TITLE + STATS */}
                     <div className="flex flex-col md:flex-row gap-8 md:gap-16 items-start md:items-center">
@@ -240,7 +240,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                 </span>
                             </div>
 
-                            <h1 className="text-4xl md:text-6xl font-black text-white mb-2 leading-tight tracking-tighter drop-shadow-xl uppercase">
+                            <h1 className="text-3xl md:text-6xl font-black text-white mb-2 leading-tight tracking-tighter drop-shadow-xl uppercase">
                                 {quest.title || media?.title?.english || media?.title?.romaji}
                             </h1>
                             {media?.title?.native && (
@@ -287,7 +287,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
 
                     {/* PROGRESS HUD: THE RUNIC THREAD */}
                     <div className="w-full relative group mt-4">
-                        <div className="relative rounded-xl p-8 bg-black/40 backdrop-blur-2xl border border-white/10 shadow-2xl overflow-hidden">
+                        <div className="relative rounded-xl p-4 md:p-8 bg-black/40 backdrop-blur-2xl border border-white/10 shadow-2xl overflow-hidden">
                             {/* Ambient internal glow */}
                             <div className={`absolute inset-0 bg-gradient-to-r ${theme.gradient} opacity-5 blur-xl pointer-events-none`} />
 
@@ -331,7 +331,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                     {/* TWO COLUMN DATA: SYNOPSIS & METADATA */}
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-4">
                         {/* LEFT: Synopsis */}
-                        <div className="lg:col-span-2 relative p-8 bg-black/30 backdrop-blur-xl border border-white/5 rounded-xl group/synopsis">
+                        <div className="lg:col-span-2 relative p-4 md:p-8 bg-black/30 backdrop-blur-xl border border-white/5 rounded-xl group/synopsis">
                             <div className="flex items-center justify-between mb-6">
                                 <div className="flex items-center gap-2 opacity-60">
                                     <AlignLeft size={16} className="text-white" />

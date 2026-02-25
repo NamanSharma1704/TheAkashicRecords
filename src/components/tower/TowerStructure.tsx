@@ -13,7 +13,7 @@ interface TowerStructureProps {
     isPaused?: boolean;
 }
 
-const TowerStructure: React.FC<TowerStructureProps> = ({ onSelectFloor, theme, onFocus, isPaused = false }) => {
+const TowerStructure: React.FC<TowerStructureProps> = ({ onSelectFloor, theme, onFocus, items = [], itemsPerFloor = 5, isPaused = false }) => {
     const mountRef = useRef<HTMLDivElement>(null);
     const onSelectFloorRef = useRef(onSelectFloor);
 
@@ -230,6 +230,7 @@ const TowerStructure: React.FC<TowerStructureProps> = ({ onSelectFloor, theme, o
             panels: THREE.Mesh[];
             label: THREE.Sprite;
             originalY: number;
+            isEmpty: boolean;
         }[] = [];
 
         for (let i = 0; i < 8; i++) {
@@ -239,6 +240,9 @@ const TowerStructure: React.FC<TowerStructureProps> = ({ onSelectFloor, theme, o
 
             const baseRadius = 8;
             const floorRadius = baseRadius + (Math.log(i + 1) * 6);
+
+            const floorItemsCount = items.slice(i * itemsPerFloor, (i + 1) * itemsPerFloor).length;
+            const isEmpty = floorItemsCount === 0;
 
             // Solid High-Tech Floors (Height 0.8)
             const platGeo = new THREE.CylinderGeometry(floorRadius, floorRadius, 0.8, 64, 1);
@@ -251,7 +255,9 @@ const TowerStructure: React.FC<TowerStructureProps> = ({ onSelectFloor, theme, o
 
             // Glowing Rims for Definition (Top & Bottom Highlighting)
             const rimGeo = new THREE.TorusGeometry(floorRadius, 0.05, 8, 128);
-            const rimMat = new THREE.MeshBasicMaterial({ color: isDark ? 0xffea00 : 0x0ea5e9 }); // Bright Neon Rim
+            const rimMat = new THREE.MeshBasicMaterial({
+                color: isDark ? 0xffea00 : 0x0ea5e9
+            }); // Bright Neon Rim
 
             const rimTop = new THREE.Mesh(rimGeo, rimMat);
             rimTop.rotation.x = Math.PI / 2;
@@ -403,7 +409,8 @@ const TowerStructure: React.FC<TowerStructureProps> = ({ onSelectFloor, theme, o
                 fill,
                 panels,
                 label,
-                originalY: yPos
+                originalY: yPos,
+                isEmpty
             });
 
             disposables.push(platGeo, panelGeo, hitGeo, hitMat, labelMat, labelTex);

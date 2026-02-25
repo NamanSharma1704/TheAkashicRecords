@@ -6,7 +6,8 @@ const Quest = require('./models/Quest');
 const UserSettings = require('./models/UserSettings');
 const DailyQuest = require('./models/DailyQuest');
 const { fetchAniList, fetchMangaDex, fetchJikan, fetchBest } = require('./utils/metadataProxy');
-require('dotenv').config();
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 const app = express();
 

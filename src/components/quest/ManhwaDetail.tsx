@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Users, Share2, Zap, Edit2, Target, AlignLeft, Check } from 'lucide-react';
+import { getProxiedImageUrl } from '../../utils/api';
 
 import { Theme, Quest } from '../../core/types';
 import ScrambleText from '../system/ScrambleText';
@@ -82,8 +83,8 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
             },
             description: "King Grey has unrivaled strength, wealth, and prestige in a world governed by martial ability. However, solitude lingers closely behind those with great power. Reincarnated into a new world filled with magic and monsters, the king has a second chance to relive his life. Correcting the mistakes of his past will not be his only challenge, however. Underneath the peace and prosperity of the new world is an undercurrent threatening to destroy everything he has worked for, questioning his role and reason for being born again.",
             coverImage: {
-                extraLarge: quest?.coverUrl || media?.coverImage?.extraLarge || "https://s4.anilist.co/file/anilistcdn/media/manga/cover/large/bx108343-T9D6L7Gnd8d6.jpg",
-                large: quest?.coverUrl || media?.coverImage?.large || "https://s4.anilist.co/file/anilistcdn/media/manga/cover/large/bx108343-T9D6L7Gnd8d6.jpg"
+                extraLarge: getProxiedImageUrl(quest?.coverUrl || media?.coverImage?.extraLarge || "https://s4.anilist.co/file/anilistcdn/media/manga/cover/large/bx108343-T9D6L7Gnd8d6.jpg"),
+                large: getProxiedImageUrl(quest?.coverUrl || media?.coverImage?.large || "https://s4.anilist.co/file/anilistcdn/media/manga/cover/large/bx108343-T9D6L7Gnd8d6.jpg")
             },
             bannerImage: "", // Use cover as fallback in UI
             genres: ["Fantasy", "Action", "Adventure", "Isekai"],
@@ -176,7 +177,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                 <div className={`absolute inset-0 ${theme.isDark ? 'bg-[#020202]/90' : 'bg-slate-900/90'} z-10`} />
                 {(quest?.coverUrl || media?.bannerImage || finalCover) ? (
                     <img
-                        src={quest?.coverUrl || media?.bannerImage || finalCover}
+                        src={getProxiedImageUrl(quest?.coverUrl || media?.bannerImage || finalCover)}
                         className="w-full h-full object-cover blur-[100px] opacity-40 scale-125 transform-gpu"
                         referrerPolicy="no-referrer"
                         alt="Background Aura"
@@ -219,7 +220,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                         {/* COVER ART */}
                         <div className="shrink-0 w-[200px] md:w-[280px] aspect-[2/3] rounded-lg overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.5)] border border-white/10 relative group mx-auto md:mx-0">
                             <img
-                                src={finalCover}
+                                src={getProxiedImageUrl(finalCover)}
                                 alt={quest.title}
                                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
                                 referrerPolicy="no-referrer"
@@ -393,7 +394,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                 {media.characters.nodes.map(char => (
                                     <div key={char.id} className="w-[100px] shrink-0 snap-start flex flex-col items-center gap-3 group cursor-pointer p-4 bg-black/20 backdrop-blur-md rounded-lg border border-white/5 hover:bg-white/5 transition-colors">
                                         <div className="w-[60px] h-[60px] rounded-full overflow-hidden border border-white/20 group-hover:border-white/50 transition-colors">
-                                            <img src={char.image.medium || char.image.large} alt={char.name.full} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" referrerPolicy="no-referrer" />
+                                            <img src={getProxiedImageUrl(char.image.medium || char.image.large)} alt={char.name.full} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" referrerPolicy="no-referrer" />
                                         </div>
                                         <div className="text-center w-full">
                                             <div className="text-[10px] font-bold text-white truncate w-full">{char.name.full}</div>
@@ -421,7 +422,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                     .slice(0, 5)
                                     .map((rec) => (
                                         <div key={rec.id} onClick={() => onSetActive && onSetActive(rec.id)} className="group relative aspect-[2/3] rounded-lg overflow-hidden cursor-pointer shadow-lg border border-white/5">
-                                            <img src={rec.coverUrl} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" referrerPolicy="no-referrer" />
+                                            <img src={getProxiedImageUrl(rec.coverUrl)} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" referrerPolicy="no-referrer" />
                                             <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-80 group-hover:opacity-100 transition-opacity duration-300" />
                                             <div className="absolute bottom-0 w-full p-4 transform translate-y-2 group-hover:translate-y-0 transition-transform duration-300">
                                                 <div className="text-[10px] font-bold truncate text-white uppercase group-hover:textShadow-glow">

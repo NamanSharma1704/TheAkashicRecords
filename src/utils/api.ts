@@ -51,3 +51,9 @@ export const fetchAuto = async (title: string) => {
         return null;
     }
 };
+export const getProxiedImageUrl = (url: string | undefined): string => {
+    if (!url || !url.startsWith('http')) return url || "";
+    // Avoid proxying if already proxied or a local blob
+    if (url.includes('/api/proxy/image')) return url;
+    return `/api/proxy/image?url=${encodeURIComponent(url)}`;
+};

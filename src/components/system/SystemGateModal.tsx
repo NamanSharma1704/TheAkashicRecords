@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Theme, Quest } from '../../core/types';
 import SystemFrame from './SystemFrame';
 import { X, RefreshCw, AlertCircle, CheckCircle, Database, Search, Activity, Trash2 } from 'lucide-react';
-import { fetchMangadex, fetchAuto, fetchAnilistCover, fetchJikanCover } from '../../utils/api';
+import { fetchMangadex, fetchAuto, fetchAnilistCover, fetchJikanCover, getProxiedImageUrl } from '../../utils/api';
 
 interface SystemGateModalProps {
     isOpen: boolean;
@@ -286,7 +286,7 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
                             <label className={`block ${theme.mutedText} mb-1 uppercase text-[9px] tracking-widest transition-colors duration-700`}>Cover URL</label>
                             <div className="flex gap-2 items-center">
                                 <input name="coverUrl" value={formData.coverUrl} onChange={handleChange} className={`flex-1 ${theme.inputBg} border ${theme.borderSubtle} p-2 ${theme.baseText} focus:${theme.border} outline-none transition-colors duration-700`} />
-                                {formData.coverUrl && <img src={formData.coverUrl} alt="Preview" className="w-8 h-8 object-cover border border-slate-500 rounded" referrerPolicy="no-referrer" />}
+                                {formData.coverUrl && <img src={getProxiedImageUrl(formData.coverUrl)} alt="Preview" className="w-8 h-8 object-cover border border-slate-500 rounded" referrerPolicy="no-referrer" />}
                             </div>
                         </div>
                         <div className="grid grid-cols-2 gap-4">

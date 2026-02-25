@@ -14,13 +14,15 @@ import BackgroundController from '../components/fx/BackgroundController';
 import EntityAvatar from '../components/system/EntityAvatar';
 import SystemNotification from '../components/system/SystemNotification';
 
+import { getProxiedImageUrl } from '../utils/api';
+
 const API_URL = '/api/quests';
 
 // Helper to normalize quest data from both MongoDB and local BASE_QUESTS
 const mapQuest = (q: any): Quest => ({
     ...q,
     id: String(q._id || q.id || ""),
-    coverUrl: q.coverUrl || q.cover || "",
+    coverUrl: getProxiedImageUrl(q.coverUrl || q.cover || ""),
     link: q.link || q.readLink || q.siteUrl || "",
     status: (q.status || 'ACTIVE').toUpperCase(),
     lastUpdated: q.lastRead || q.lastUpdated || Date.now()

@@ -230,6 +230,35 @@ app.get('/api/proxy/metadata', async (req, res) => {
     }
 });
 
+// GET /api/proxy/image - Image proxy to bypass CORS/CORP blocks
+app.get('/api/proxy/image', async (req, res) => {
+    const { url } = req.query;
+    if (!url) return res.status(400).send("URL required");
+
+    try {
+        const response = await fetch(url, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Referer': new URL(url).origin
+            }
+        });
+
+        if (!response.ok) throw new Error(`Fetch failed: ${response.status}`);
+
+        const contentType = response.headers.get('content-type');
+        if (contentType) res.setHeader('Content-Type', contentType);
+
+        // Cache images for 24 hours
+        res.setHeader('Cache-Control', 'public, max-age=86400');
+
+        const arrayBuffer = await response.arrayBuffer();
+        res.send(Buffer.from(arrayBuffer));
+    } catch (err) {
+        console.error("[ImageProxy] Failure:", err.message, url);
+        res.status(500).send("Failed to proxy image");
+    }
+});
+
 const inferClassFromTitle = (title) => {
     const t = title.toLowerCase();
     if (t.includes('necromancer') || t.includes('undead')) return "NECROMANCER";

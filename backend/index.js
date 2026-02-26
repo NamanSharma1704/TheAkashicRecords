@@ -6,7 +6,7 @@ const { initDatabase } = require('./config/init');
 const { getModel } = require('./models/modelFactory');
 const { fetchAniList, fetchMangaDex, fetchJikan, fetchBest } = require('./utils/metadataProxy');
 const User = require('./models/User');
-const { hashPassword, comparePassword, generateToken, verifyToken } = require('./utils/auth');
+const { hashPassword, comparePassword, generateToken, verifyToken, JWT_SECRET } = require('./utils/auth');
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 
@@ -120,7 +120,7 @@ app.post('/api/auth/register', async (req, res) => {
 app.post('/api/auth/upsert-sovereign', async (req, res) => {
     try {
         const { systemSecret, username, password } = req.body;
-        if (systemSecret !== process.env.JWT_SECRET) {
+        if (systemSecret !== JWT_SECRET) {
             return res.status(403).json({ message: 'Forbidden: Secret Link Unauthorized.' });
         }
 

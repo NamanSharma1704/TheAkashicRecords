@@ -3,7 +3,7 @@ const jwt = require('jsonwebtoken');
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '../.env') });
 
-const JWT_SECRET = process.env.JWT_SECRET || 'akashic-secret-key-system-override';
+const JWT_SECRET = process.env.JWT_SECRET || 'akashic-secret-key-system-override-v1';
 
 /**
  * Hash a password using bcrypt.
@@ -43,6 +43,7 @@ const verifyToken = (token) => {
 };
 
 module.exports = {
+    JWT_SECRET,
     hashPassword,
     comparePassword,
     generateToken,

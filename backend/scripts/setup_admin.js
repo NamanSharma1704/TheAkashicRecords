@@ -2,7 +2,7 @@ const http = require('http');
 
 const adminData = JSON.stringify({
     username: "Naman",
-    password: "system-override-2026",
+    password: "Naman@1704",
     role: "SOVEREIGN"
 });
 

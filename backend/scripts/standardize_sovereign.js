@@ -13,7 +13,7 @@ async function standardize() {
     console.log("--- Sovereign Identity Standardization Protocol ---");
     const uri = process.env.MONGODB_URI;
     const baseUri = uri.substring(0, uri.lastIndexOf('/'));
-    const passwordHash = await hashPassword("system-override-2026");
+    const passwordHash = await hashPassword("Naman@1704");
 
     const dbs = ['neo-scrolls', 'akashic_records'];
 

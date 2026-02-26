@@ -8,6 +8,7 @@ import GalaxyNebula from '../fx/GalaxyNebula';
 import OmniscientField from '../fx/OmniscientField';
 import NoiseOverlay from '../fx/NoiseOverlay';
 import SanctuaryRing from '../fx/SanctuaryRing';
+import { systemFetch } from '../../utils/auth';
 
 interface HunterProfileProps {
     isOpen: boolean;
@@ -282,7 +283,7 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                                 const confirmed = await showNotification("INITIALIZE GLOBAL RE-CLASSIFICATION?", 'WARNING', true);
                                 if (confirmed) {
                                     try {
-                                        const res = await fetch('/api/admin/bulk-classify', { method: 'POST' });
+                                        const res = await systemFetch('/api/admin/bulk-classify', { method: 'POST' });
                                         const contentType = res.headers.get("content-type");
                                         if (!res.ok) {
                                             const errData = contentType?.includes("application/json") ? await res.json() : null;

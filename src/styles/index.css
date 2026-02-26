@@ -6,11 +6,15 @@
 @tailwind utilities;
 
 @layer base {
-    html, body {
+
+    html,
+    body {
         @apply bg-[#020202] text-white overflow-x-hidden;
-        background-color: #020202; /* Force for Safari rubber-banding */
+        background-color: #020202;
+        /* Force for Safari rubber-banding */
         height: 100%;
         width: 100%;
+        contain: paint;
     }
 
     #root {
@@ -129,6 +133,7 @@
 
     .animate-text-shimmer {
         animation: text-shimmer 3s linear infinite;
+        will-change: background-position;
     }
 
     .progress-bloom {

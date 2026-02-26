@@ -102,6 +102,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, theme }) => {
                                         placeholder="INPUT_ID..."
                                         required
                                         disabled={loading}
+                                        autoComplete="username"
                                     />
                                 </div>
                                 <div className="space-y-1">
@@ -116,6 +117,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, theme }) => {
                                         placeholder="••••••••"
                                         required
                                         disabled={loading}
+                                        autoComplete="current-password"
                                     />
                                 </div>
                             </div>

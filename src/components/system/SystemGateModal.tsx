@@ -254,7 +254,7 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
                             </div>
 
                             <div className="flex gap-2">
-                                <input name="link" value={formData.link} onChange={handleChange} placeholder="https://..." className={`flex-1 ${theme.inputBg} border ${theme.borderSubtle} p-2 ${theme.baseText} focus:${theme.border} outline-none transition-colors duration-700`} />
+                                <input id="quest-link" name="link" value={formData.link} onChange={handleChange} placeholder="https://..." autoComplete="url" className={`flex-1 ${theme.inputBg} border ${theme.borderSubtle} p-2 ${theme.baseText} focus:${theme.border} outline-none transition-colors duration-700`} />
                                 <button type="button" onClick={handleScan} disabled={!formData.link || isScanning} className={`px-3 border ${theme.borderSubtle} ${theme.highlightText} hover:bg-${theme.primary}-500/10 disabled:opacity-50 transition-colors flex items-center gap-2`}>
                                     {isScanning ? <Activity size={14} className="animate-pulse" /> : <Search size={14} />}
                                     <span className="hidden sm:inline">SCAN</span>

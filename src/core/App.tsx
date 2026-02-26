@@ -57,12 +57,20 @@ const App: React.FC = () => {
     const [isMobile, setIsMobile] = useState(false);
 
     useEffect(() => {
+        let timeoutId: ReturnType<typeof setTimeout>;
         const checkMobile = () => setIsMobile(window.innerWidth < 768);
+
+        const handleResize = () => {
+            clearTimeout(timeoutId);
+            timeoutId = setTimeout(checkMobile, 100);
+        };
+
         checkMobile();
-        window.addEventListener('resize', checkMobile);
+        window.addEventListener('resize', handleResize);
 
         return () => {
-            window.removeEventListener('resize', checkMobile);
+            window.removeEventListener('resize', handleResize);
+            clearTimeout(timeoutId);
         };
     }, []);
     const [currentTheme, setCurrentTheme] = useState<string>('DARK');

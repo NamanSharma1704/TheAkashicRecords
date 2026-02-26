@@ -20,9 +20,13 @@ const ScrambleText: React.FC<ScrambleTextProps> = ({
     const [display, setDisplay] = useState(text);
     const intervalRef = useRef<ReturnType<typeof setInterval>>();
     useEffect(() => {
+        if (display === text) return;
+
         const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()';
         let iterations = 0;
+
         if (intervalRef.current) clearInterval(intervalRef.current);
+
         intervalRef.current = setInterval(() => {
             setDisplay(text.split('').map((char, index) => {
                 if (char === ' ') return ' ';
@@ -31,12 +35,15 @@ const ScrambleText: React.FC<ScrambleTextProps> = ({
             }).join(''));
 
             if (iterations >= text.length) {
-                clearInterval(intervalRef.current);
+                if (intervalRef.current) clearInterval(intervalRef.current);
                 setDisplay(text);
             }
             iterations += revealSpeed;
         }, speed);
-        return () => clearInterval(intervalRef.current);
+
+        return () => {
+            if (intervalRef.current) clearInterval(intervalRef.current);
+        };
     }, [text, speed, revealSpeed]);
     const gradientClass = animatedGradient ? `bg-gradient-to-r ${gradientColors} bg-[200%_auto] animate-text-shimmer bg-clip-text text-transparent` : "";
     return (<span className={`${className} ${gradientClass} font-mono cursor-default inline break-words`}>{display}</span>);

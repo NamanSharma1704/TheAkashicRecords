@@ -1,4 +1,4 @@
-import { getStoredToken } from './auth';
+import { systemFetch } from './auth';
 
 export const cleanDescription = (desc: string): string => {
     if (!desc) return "No description available.";
@@ -12,9 +12,7 @@ const PROXY_URL = "/api/proxy/metadata";
 
 export const fetchAnilistCover = async (title: string) => {
     try {
-        const token = getStoredToken();
-        const headers: Record<string, string> = token ? { 'Authorization': `Bearer ${token}` } : {};
-        const response = await fetch(`${PROXY_URL}?title=${encodeURIComponent(title)}&source=ANILIST`, { headers });
+        const response = await systemFetch(`${PROXY_URL}?title=${encodeURIComponent(title)}&source=ANILIST`);
         if (!response.ok) return null;
         return await response.json();
     } catch (e) {
@@ -25,9 +23,7 @@ export const fetchAnilistCover = async (title: string) => {
 
 export const fetchJikanCover = async (title: string) => {
     try {
-        const token = getStoredToken();
-        const headers: Record<string, string> = token ? { 'Authorization': `Bearer ${token}` } : {};
-        const response = await fetch(`${PROXY_URL}?title=${encodeURIComponent(title)}&source=MAL`, { headers });
+        const response = await systemFetch(`${PROXY_URL}?title=${encodeURIComponent(title)}&source=MAL`);
         if (!response.ok) return null;
         return await response.json();
     } catch (e) {
@@ -38,9 +34,7 @@ export const fetchJikanCover = async (title: string) => {
 
 export const fetchMangadex = async (title: string) => {
     try {
-        const token = getStoredToken();
-        const headers: Record<string, string> = token ? { 'Authorization': `Bearer ${token}` } : {};
-        const response = await fetch(`${PROXY_URL}?title=${encodeURIComponent(title)}&source=MANGADEX`, { headers });
+        const response = await systemFetch(`${PROXY_URL}?title=${encodeURIComponent(title)}&source=MANGADEX`);
         if (!response.ok) return null;
         return await response.json();
     } catch (e) {
@@ -51,9 +45,7 @@ export const fetchMangadex = async (title: string) => {
 
 export const fetchAuto = async (title: string) => {
     try {
-        const token = getStoredToken();
-        const headers: Record<string, string> = token ? { 'Authorization': `Bearer ${token}` } : {};
-        const response = await fetch(`${PROXY_URL}?title=${encodeURIComponent(title)}&source=AUTO`, { headers });
+        const response = await systemFetch(`${PROXY_URL}?title=${encodeURIComponent(title)}&source=AUTO`);
         if (!response.ok) return null;
         return await response.json();
     } catch (e) {

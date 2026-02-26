@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Users, Share2, Zap, Edit2, Target, AlignLeft, Check } from 'lucide-react';
 import { getProxiedImageUrl } from '../../utils/api';
+import { systemFetch } from '../../utils/auth';
 
 import { Theme, Quest } from '../../core/types';
 import ScrambleText from '../system/ScrambleText';
@@ -127,7 +128,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
     // --- PROXY API FETCH ---
     const fetchFromProxy = async (title: string): Promise<AniListMedia | null> => {
         try {
-            const res = await fetch(`/api/proxy/metadata?title=${encodeURIComponent(title)}`);
+            const res = await systemFetch(`/api/proxy/metadata?title=${encodeURIComponent(title)}`);
             if (!res.ok) return null;
             return await res.json();
         } catch (e) {

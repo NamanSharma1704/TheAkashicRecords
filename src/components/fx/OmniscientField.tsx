@@ -44,7 +44,7 @@ const OmniscientField: React.FC<OmniscientFieldProps> = ({ isDivineMode, forceAm
             const glowColor = forceAmber || isDivineMode ? '245, 158, 11' : '139, 92, 246'; // Gold vs Violet
             const regColor = forceAmber ? '34, 211, 238' : (isDivineMode ? '245, 158, 11' : '139, 92, 246'); // More vibrant Cyan (#22d3ee)
 
-            stars.forEach((star, i) => {
+            stars.forEach((star) => {
                 const dx = mouseX - star.x;
                 const dy = mouseY - star.y;
 
@@ -55,26 +55,33 @@ const OmniscientField: React.FC<OmniscientFieldProps> = ({ isDivineMode, forceAm
                 ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
                 ctx.fillStyle = star.glow
                     ? `rgba(${glowColor}, 0.8)`
-                    : `rgba(${regColor}, ${Math.random() * 0.2 + 0.3})`; // Reduced random calls
+                    : `rgba(${regColor}, ${Math.random() * 0.2 + 0.3})`;
                 ctx.fill();
+            });
 
-                // Optimized Link Logic: Batch lines to reduce draw calls
-                ctx.beginPath();
-                ctx.lineWidth = 0.5;
+            // Optimized Link Logic: Batch all lines into ONE stroke call to prevent main-thread blockage
+            ctx.beginPath();
+            ctx.lineWidth = 0.5;
+            const maxDistSq = 6400; // 80 * 80
+
+            for (let i = 0; i < stars.length; i++) {
+                const s1 = stars[i];
                 for (let j = i + 1; j < stars.length; j++) {
                     const s2 = stars[j];
-                    const distSq = (star.x - s2.x) ** 2 + (star.y - s2.y) ** 2;
-                    if (distSq < 6400) { // 80 * 80
-                        const dist = Math.sqrt(distSq);
-                        ctx.moveTo(star.x, star.y);
+                    const dx = s1.x - s2.x;
+                    const dy = s1.y - s2.y;
+                    const distSq = dx * dx + dy * dy;
+
+                    if (distSq < maxDistSq) {
+                        const alpha = 1 - (distSq / maxDistSq);
+                        ctx.moveTo(s1.x, s1.y);
                         ctx.lineTo(s2.x, s2.y);
-                        ctx.strokeStyle = star.glow
-                            ? `rgba(${glowColor}, ${0.1 - dist / 800})`
-                            : `rgba(${regColor}, ${0.05 - dist / 1600})`;
+                        // Using a single stroke style for faster batching
+                        ctx.strokeStyle = `rgba(${regColor}, ${alpha * 0.05})`;
                     }
                 }
-                ctx.stroke();
-            });
+            }
+            ctx.stroke();
             requestRef.current = requestAnimationFrame(animate);
         };
         requestRef.current = requestAnimationFrame(animate);

@@ -143,21 +143,23 @@ const App: React.FC = () => {
 
             const { quests, userState: stats } = await res.json();
 
-            // 1. Hydrate Library
+            // Prepare all data first for a single batch update
             if (Array.isArray(quests)) {
                 const mappedData = quests.map(mapQuest);
-                setLibrary(mappedData);
 
-                // Set default active quest if none exists
+                // Determine active ID before setting states
+                let newActiveId = activeId;
                 if (!activeId && mappedData.length > 0) {
-                    const top = mappedData.filter((i: any) => i.status === 'ACTIVE').sort((a: any, b: any) => new Date(b.lastUpdated || 0).getTime() - new Date(a.lastUpdated || 0).getTime())[0];
-                    setActiveId(top ? top.id : (mappedData[0]?.id || null));
+                    const topActive = mappedData
+                        .filter(i => i.status === 'ACTIVE')
+                        .sort((a, b) => new Date(b.lastUpdated || 0).getTime() - new Date(a.lastUpdated || 0).getTime())[0];
+                    newActiveId = topActive ? topActive.id : mappedData[0].id;
                 }
-            }
 
-            // 2. Hydrate User Stats
-            if (stats) {
-                setUserState(stats);
+                // Batch the updates
+                setLibrary(mappedData);
+                if (newActiveId !== activeId) setActiveId(newActiveId);
+                if (stats) setUserState(stats);
             }
 
             console.log(`[SYSTEM] Sync Complete. Duration: ${Date.now() - start}ms`);

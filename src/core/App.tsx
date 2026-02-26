@@ -89,6 +89,42 @@ const App: React.FC = () => {
     const [selectedQuest, setSelectedQuest] = useState<Quest | null>(null);
     const [editingItem, setEditingItem] = useState<Quest | null>(null);
 
+    // --- MOBILE HUD SCROLL HIDING STATE ---
+    const [isHUDVisible, setIsHUDVisible] = useState(true);
+
+    useEffect(() => {
+        let timeout: ReturnType<typeof setTimeout>;
+        const mainScrollArea = document.getElementById('main-scroll-area');
+
+        const handleScroll = () => {
+            // Show HUD immediately on scroll
+            setIsHUDVisible(true);
+
+            // Clear existing timeout
+            clearTimeout(timeout);
+
+            // Set timeout to hide HUD after 2 seconds of no scrolling
+            timeout = setTimeout(() => {
+                setIsHUDVisible(false);
+            }, 2000);
+        };
+
+        if (mainScrollArea) {
+            mainScrollArea.addEventListener('scroll', handleScroll, { passive: true });
+        } else {
+            window.addEventListener('scroll', handleScroll, { passive: true }); // Fallback
+        }
+
+        return () => {
+            if (mainScrollArea) {
+                mainScrollArea.removeEventListener('scroll', handleScroll);
+            } else {
+                window.addEventListener('scroll', handleScroll);
+            }
+            clearTimeout(timeout);
+        };
+    }, []);
+
     // --- SYSTEM NOTIFICATION STATE ---
     const [sysNote, setSysNote] = useState<{
         isOpen: boolean;
@@ -418,10 +454,10 @@ const App: React.FC = () => {
     ), [theme, currentTheme]);
 
     const memoizedMain = useMemo(() => (
-        <main className="w-full pt-16 sm:pt-24 pb-24 lg:pb-0 px-4 max-w-[1400px] mx-auto flex-1 flex flex-col lg:flex-row gap-8 lg:gap-8 lg:h-full lg:overflow-hidden z-10">
+        <main className="w-full pt-16 sm:pt-24 pb-24 lg:pb-0 px-4 max-w-[1400px] mx-auto flex-1 flex flex-col lg:flex-row gap-8 lg:gap-8 lg:min-h-0 z-10">
             {/* LEFT COLUMN: ACTIVE CARD & STATS */}
-            <div className="flex-none lg:flex-1 flex flex-col gap-2 sm:gap-4 lg:gap-8 min-h-0 order-1 relative lg:pb-16">
-                <div className="w-full min-h-[380px] sm:h-[550px] lg:h-auto lg:flex-1 relative pb-4 lg:pb-0">
+            <div className="flex-none lg:flex-1 flex flex-col gap-2 sm:gap-4 lg:gap-8 lg:min-h-0 order-1 relative lg:pb-16">
+                <div className="w-full min-h-[380px] sm:h-[550px] lg:h-auto lg:flex-1 lg:min-h-[400px] relative pb-4 lg:pb-0">
                     <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[140%] aspect-square opacity-100 pointer-events-none z-0">
                         <div className={`absolute inset-0 border ${theme.isDark ? 'border-white/30' : 'border-black/30'} rounded-full animate-[spin_60s_linear_infinite] transition-colors duration-700`} />
                         <div className={`absolute inset-[5%] border border-dashed ${theme.isDark ? 'border-white/30' : 'border-black/30'} rounded-full animate-[spin_40s_linear_infinite_reverse] transition-colors duration-700`} />
@@ -478,7 +514,7 @@ const App: React.FC = () => {
             </div>
 
             {/* RIGHT COLUMN: SIDEBAR */}
-            <div className="w-full lg:w-96 flex flex-col gap-3 flex-none lg:h-[calc(100vh-6rem)] lg:overflow-hidden order-2 pb-8 lg:pb-[52px]">
+            <div className="w-full lg:w-96 flex flex-col gap-3 flex-none lg:min-h-0 order-2 pb-8 lg:pb-16">
                 {/* PLAYER CARD */}
                 <div className="w-full h-auto">
                     <SystemFrame variant="brackets" theme={theme}>
@@ -568,7 +604,7 @@ const App: React.FC = () => {
     if (!isAuth) return <LoginScreen onLoginSuccess={handleLoginSuccess} theme={theme} />;
 
     return (
-        <div className={`lg:h-screen min-h-screen ${theme.appBg} ${theme.baseText} font-sans selection:bg-amber-500/30 lg:overflow-hidden relative flex flex-col transition-colors duration-700 ease-in-out`}>
+        <div id="main-scroll-area" className={`min-h-[100dvh] w-full overflow-y-auto hide-scrollbar ${theme.appBg} ${theme.baseText} font-sans selection:bg-amber-500/30 relative flex flex-col transition-colors duration-700 ease-in-out`}>
             <BackgroundController theme={theme} isPaused={isModalOpen} isMobile={isMobile} />
             <div className="fixed inset-0 pointer-events-none z-0 bg-[radial-gradient(circle,transparent_50%,rgba(0,0,0,0.4)_100%)] opacity-50" />
 
@@ -644,32 +680,34 @@ const App: React.FC = () => {
 
 
             {/* HUD / SYSTEM OVERLAYS (HOLOGRAPHIC) */}
-            {!isSpireOpen && (
-                <div className="lg:hidden fixed bottom-10 left-0 w-full px-5 z-[80] flex items-end gap-3 pointer-events-none pb-[env(safe-area-inset-bottom)]">
+            {(!isSpireOpen && !isModalOpen && !isProfileOpen && !isDetailOpen) && (
+                <div className={`lg:hidden fixed bottom-10 left-0 w-full px-5 z-[80] flex items-end gap-3 pointer-events-none pb-[env(safe-area-inset-bottom)] transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] ${isHUDVisible ? 'translate-y-0 opacity-100' : 'translate-y-24 opacity-0'}`}>
                     {/* DIVINE SPIRE PANEL */}
                     <button
                         onClick={() => setIsSpireOpen(true)}
-                        className={`pointer-events-auto flex-1 h-14 holographic-panel rounded-sm border-${theme.primary}-500/30 flex items-center justify-center gap-3 transition-all active:scale-95 group`}
+                        className={`pointer-events-auto flex-1 h-14 holographic-panel border bg-amber-500/10 rounded-sm border-amber-500/50 flex items-center justify-center gap-3 transition-all active:scale-95 group shadow-[0_0_20px_rgba(245,158,11,0.15)] overflow-hidden`}
                     >
-                        <div className={`absolute top-0 left-0 w-2 h-2 border-t border-l border-${theme.primary}-500 bracket-glow opacity-80`} />
-                        <div className={`absolute top-0 right-0 w-2 h-2 border-t border-r border-${theme.primary}-500 bracket-glow opacity-80`} />
-                        <div className={`absolute bottom-0 right-0 w-2 h-2 border-b border-r border-${theme.primary}-500 bracket-glow opacity-80`} />
-                        <div className={`absolute bottom-0 left-0 w-2 h-2 border-b border-l border-${theme.primary}-500 bracket-glow opacity-80`} />
+                        <div className={`absolute top-0 left-0 w-2 h-2 border-t border-l border-amber-500 bracket-glow opacity-100`} />
+                        <div className={`absolute top-0 right-0 w-2 h-2 border-t border-r border-amber-500 bracket-glow opacity-100`} />
+                        <div className={`absolute bottom-0 right-0 w-2 h-2 border-b border-r border-amber-500 bracket-glow opacity-100`} />
+                        <div className={`absolute bottom-0 left-0 w-2 h-2 border-b border-l border-amber-500 bracket-glow opacity-100`} />
 
-                        <LayoutTemplate size={16} className={`${theme.highlightText} hud-pulse`} />
-                        <div className="flex flex-col items-start">
-                            <span className={`text-[7px] font-mono ${theme.mutedText} tracking-tighter leading-none mb-0.5`}>TERMINAL.EXECUTE</span>
-                            <span className={`text-[10px] font-black font-mono ${theme.headingText} tracking-[0.2em] uppercase leading-none`}>DIVINE_SPIRE</span>
+                        <div className="absolute inset-0 bg-amber-500/5 mix-blend-screen pointer-events-none" />
+
+                        <LayoutTemplate size={20} className={`text-amber-500 drop-shadow-[0_0_8px_rgba(245,158,11,0.8)]`} />
+                        <div className="flex flex-col items-start relative z-10">
+                            <span className={`text-[7px] font-mono text-amber-500/80 tracking-tighter leading-none mb-0.5`}>TERMINAL.EXECUTE</span>
+                            <span className={`text-[11px] font-black font-mono text-amber-500 drop-shadow-[0_0_5px_rgba(245,158,11,0.5)] tracking-[0.2em] uppercase leading-none`}>DIVINE_SPIRE</span>
                         </div>
                     </button>
 
                     {/* CREATE GATE PANEL */}
                     <button
                         onClick={() => { setEditingItem(null); setIsModalOpen(true); }}
-                        className={`pointer-events-auto w-14 h-14 holographic-panel rounded-sm border-${theme.primary}-500/50 flex items-center justify-center transition-all active:scale-90 shadow-[0_0_20px_rgba(var(--theme-primary),0.2)]`}
+                        className={`pointer-events-auto w-14 h-14 bg-amber-500/10 holographic-panel rounded-sm border border-amber-500/60 flex items-center justify-center transition-all active:scale-90 shadow-[0_0_20px_rgba(245,158,11,0.2)] group`}
                     >
-                        <div className={`absolute inset-0 bg-${theme.primary}-500/10 opacity-0 group-hover:opacity-100 transition-opacity`} />
-                        <Plus size={24} strokeWidth={2.5} className={`${theme.highlightText} drop-shadow-[0_0_8px_currentColor]`} />
+                        <div className={`absolute inset-0 bg-amber-500/10 opacity-0 group-hover:opacity-100 transition-opacity`} />
+                        <Plus size={24} strokeWidth={2.5} className={`text-amber-500 drop-shadow-[0_0_10px_rgba(245,158,11,0.8)]`} />
                     </button>
                 </div>
             )}

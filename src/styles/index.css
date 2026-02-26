@@ -16,14 +16,9 @@
         width: 100%;
     }
 
-    /* Desktop Viewport Locking */
+    /* Allow desktop/tablet native scrolling when app is too tall for viewport */
     @media (min-width: 1024px) {
-
-        html,
-        body {
-            overflow: hidden;
-            position: fixed;
-        }
+        /* Removed rigid overflow properties to allow scrolling */
     }
 
     #root {

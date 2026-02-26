@@ -229,7 +229,7 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
                                         </div>
                                     ) : (
                                         filteredItems.map((item, index) => {
-                                            const rawRank = getQuestRankObj(items.find(v => v.id === item.id) || item);
+                                            const rawRank = getQuestRankObj(item);
                                             return (
                                                 <div key={item.id} className="w-[240px] md:w-[280px] lg:w-[320px] shrink-0 snap-center transition-all duration-700 hover:-translate-y-8 hover:scale-105 group relative mt-2 md:mt-4">
                                                     {/* Floor Reflection Glow */}
@@ -247,7 +247,7 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
                                 floors.length > 0 && floors[selectedFloorIndex] ? (
                                     <div ref={carouselRef} onWheel={handleWheel} className="absolute inset-0 flex items-center overflow-x-auto hide-scrollbar snap-x snap-mandatory px-3 sm:px-6 md:px-12 pt-10 md:pt-12 pb-12 gap-8 md:gap-10">
                                         {floors[selectedFloorIndex].items.map((item, index) => {
-                                            const rawRank = getQuestRankObj(items.find(v => v.id === item.id) || item);
+                                            const rawRank = getQuestRankObj(item);
                                             return (
                                                 <div key={item.id} className="w-[260px] xs:w-[280px] sm:w-[300px] md:w-[320px] lg:w-[360px] shrink-0 snap-center transition-all duration-700 hover:-translate-y-8 hover:scale-[1.03] group relative mt-0 md:mt-2">
                                                     {/* Floor Reflection Glow */}

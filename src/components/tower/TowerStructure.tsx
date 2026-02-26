@@ -493,7 +493,12 @@ const TowerStructure: React.FC<TowerStructureProps> = ({ onSelectFloor, theme, o
                 }
             }
         };
+        let lastMoveTime = 0;
         const handleMove = (e: MouseEvent) => {
+            const now = performance.now();
+            if (now - lastMoveTime < 16) return; // Throttle to ~60fps for raycasting
+            lastMoveTime = now;
+
             const mount = mountRef.current;
             if (!mount) return;
             const rect = mount.getBoundingClientRect();

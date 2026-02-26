@@ -1,3 +1,4 @@
+import React from 'react';
 import { Quest } from '../../core/types';
 import SystemFrame from '../system/SystemFrame';
 import { getPlayerRank } from '../../utils/ranks';
@@ -14,40 +15,49 @@ interface TowerHUDProps {
 }
 
 const TowerHUD: React.FC<TowerHUDProps> = ({ items, theme, onActivate, isFocused = false, selectedFloorIndex = 0, itemsPerFloor = 5, streak = 0 }) => {
-    // 1. Calculate Stats
-    const floorStart = selectedFloorIndex * itemsPerFloor;
-    const floorItems = items.slice(floorStart, floorStart + itemsPerFloor);
+    // 1. Memoize Stats and Data Slicing
+    const { floorItems, displayItems, totalManhwa, displayChapters, completedManhwa, recents, classEntries } = React.useMemo(() => {
+        const floorStart = selectedFloorIndex * itemsPerFloor;
+        const _floorItems = items.slice(floorStart, floorStart + itemsPerFloor);
+        const _displayItems = isFocused ? _floorItems : items;
 
-    // Display values based on focus
-    const displayItems = isFocused ? floorItems : items;
-    const totalManhwa = displayItems.length;
-    // For calculating rank, we always use GLOBAL totalChapters, but for display (if focused) we use floor chapters
-    const displayChapters = displayItems.reduce((acc, item) => acc + (item.currentChapter || 0), 0);
+        const _totalManhwa = _displayItems.length;
+        const _displayChapters = _displayItems.reduce((acc, item) => acc + (item.currentChapter || 0), 0);
+        const _completedManhwa = _displayItems.filter(i => i.status === 'CONQUERED').length;
 
-    const completedManhwa = displayItems.filter(i => i.status === 'CONQUERED').length;
+        const _recents = items.filter(i => i.status === 'ACTIVE').sort((a, b) => {
+            const dateA = a.lastUpdated ? new Date(a.lastUpdated).getTime() : 0;
+            const dateB = b.lastUpdated ? new Date(b.lastUpdated).getTime() : 0;
+            return dateB - dateA;
+        }).slice(0, 3);
 
-    // Derived Rank (Always based on global titles)
-    const rawRank = getPlayerRank(items.length);
+        const allowedClasses = ['PLAYER', 'IRREGULAR', 'MAGE', 'CONSTELLATION', 'NECROMANCER'];
+        const classCounts: Record<string, number> = {
+            'PLAYER': 0, 'IRREGULAR': 0, 'MAGE': 0, 'CONSTELLATION': 0, 'NECROMANCER': 0
+        };
 
-    // 2. Recent Conquests (Top 3) - FILTER BY ACTIVE STATUS
-    const recents = items.filter(i => i.status === 'ACTIVE').sort((a, b) => {
-        const dateA = a.lastUpdated ? new Date(a.lastUpdated).getTime() : 0;
-        const dateB = b.lastUpdated ? new Date(b.lastUpdated).getTime() : 0;
-        return dateB - dateA;
-    }).slice(0, 3);
-    // Class distribution
-    const allowedClasses = ['PLAYER', 'IRREGULAR', 'MAGE', 'CONSTELLATION', 'NECROMANCER'];
-    const classCounts: Record<string, number> = {
-        'PLAYER': 0, 'IRREGULAR': 0, 'MAGE': 0, 'CONSTELLATION': 0, 'NECROMANCER': 0
-    };
-    displayItems.forEach(i => {
-        const c = i.classType || 'UNKNOWN';
-        if (allowedClasses.includes(c)) {
-            classCounts[c] += 1;
-        }
-    });
+        _displayItems.forEach(i => {
+            const c = i.classType || 'UNKNOWN';
+            if (allowedClasses.includes(c)) {
+                classCounts[c] += 1;
+            }
+        });
 
-    const classEntries = Object.entries(classCounts).sort((a, b) => b[1] - a[1]);
+        const _classEntries = Object.entries(classCounts).sort((a, b) => b[1] - a[1]);
+
+        return {
+            floorItems: _floorItems,
+            displayItems: _displayItems,
+            totalManhwa: _totalManhwa,
+            displayChapters: _displayChapters,
+            completedManhwa: _completedManhwa,
+            recents: _recents,
+            classEntries: _classEntries
+        };
+    }, [items, isFocused, selectedFloorIndex, itemsPerFloor]);
+
+    // Derived Rank (Always based on global titles) - Memoize separately for clarity
+    const rawRank = React.useMemo(() => getPlayerRank(items.length), [items.length]);
 
     return (
         <div className={`absolute inset-0 z-30 pointer-events-none pt-20 md:pt-28 px-2 md:px-6 lg:px-12 pb-[10rem] md:pb-12 flex flex-row items-end md:items-start justify-between overflow-hidden gap-1 md:gap-4 lg:gap-8`}>

@@ -151,7 +151,7 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
 
 
                         {/* Search Bar HUD */}
-                        <div className="relative z-20 shrink-0 w-full max-w-xl mx-auto mt-1 md:mt-2 px-4">
+                        <div className="relative z-20 shrink-0 w-full max-w-xl mx-auto px-4">
                             <div className="relative group">
                                 <div className={`absolute -inset-1 bg-gradient-to-r ${theme.gradient} opacity-20 blur-md group-focus-within:opacity-40 transition-all duration-500 rounded-full`} />
                                 <div className={`relative ${theme.isDark ? 'bg-black/60' : 'bg-white/60'} backdrop-blur-xl border border-white/10 rounded-full px-4 py-3 flex items-center shadow-2xl transition-all duration-700`}>
@@ -175,7 +175,7 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
 
                             {/* HUD HEADER: Floor / Sector info (Hidden when searching) */}
                             {!search && floors.length > 0 && floors[selectedFloorIndex] && (
-                                <div className="z-[60] flex flex-col items-center drop-shadow-2xl mt-0 md:mt-0 mb-1">
+                                <div className="z-[60] flex flex-col items-center drop-shadow-2xl mb-1">
                                     <div className={`font-mono text-[9px] md:text-[10px] tracking-[0.4em] ${theme.highlightText} font-bold uppercase mb-1 opacity-80 pointer-events-none`}>SYSTEM.SECTOR_INTERFACE</div>
                                     <div className="flex items-center gap-4 px-4 py-1.5 md:px-6 md:py-2 rounded-full border border-white/10 bg-black/40 backdrop-blur-md pointer-events-auto">
                                         <button disabled={selectedFloorIndex <= 0} onClick={() => setSelectedFloorIndex(i => i - 1)} className={`${theme.mutedText} hover:${theme.highlightText} disabled:opacity-30 transition-colors`}><ChevronLeft size={14} className="md:w-4 md:h-4" /></button>
@@ -208,9 +208,9 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
                                 </>
                             )}
 
-                            {/* THE CAROUSEL */}
+                            {/* THE CAROUSEL - Search results */}
                             {search.length > 0 ? (
-                                <div ref={carouselRef} onWheel={handleWheel} className="absolute inset-0 flex items-center overflow-x-auto hide-scrollbar snap-x snap-mandatory px-3 sm:px-6 md:px-12 pt-12 md:pt-14 pb-24 md:pb-12 gap-6 md:gap-10">
+                                <div ref={carouselRef} onWheel={handleWheel} className="absolute inset-0 flex items-center overflow-x-auto hide-scrollbar snap-x snap-mandatory px-3 sm:px-6 md:px-12 pt-4 pb-10 gap-6 md:gap-10">
                                     {filteredItems.length === 0 ? (
                                         <div className="w-full h-full flex flex-col items-center justify-center">
                                             <AlertCircle size={48} className={`${theme.mutedText} mb-4 opacity-50`} />
@@ -234,7 +234,7 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
                                 </div>
                             ) : (
                                 floors.length > 0 && floors[selectedFloorIndex] ? (
-                                    <div ref={carouselRef} onWheel={handleWheel} className="absolute inset-0 flex items-center overflow-x-auto hide-scrollbar snap-x snap-mandatory px-3 sm:px-6 md:px-12 pt-10 md:pt-12 pb-12 gap-8 md:gap-10">
+                                    <div ref={carouselRef} onWheel={handleWheel} className="absolute inset-0 flex items-center overflow-x-auto hide-scrollbar snap-x snap-mandatory px-3 sm:px-6 md:px-12 pt-4 pb-10 md:pb-6 gap-8 md:gap-10">
                                         {floors[selectedFloorIndex].items.map((item, index) => {
                                             const rawRank = getQuestRankObj(item);
                                             return (

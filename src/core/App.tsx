@@ -623,7 +623,7 @@ const App: React.FC = () => {
     if (!isAuth) return <LoginScreen onLoginSuccess={handleLoginSuccess} theme={theme} />;
 
     return (
-        <div id="main-scroll-area" className={`h-[100dvh] w-full overflow-y-auto overflow-x-hidden ${theme.appBg} ${theme.baseText} font-sans selection:bg-amber-500/30 relative flex flex-col transition-colors duration-700 ease-in-out`}>
+        <div id="main-scroll-area" className={`fixed inset-0 w-full overflow-y-auto overflow-x-hidden ${theme.appBg} ${theme.baseText} font-sans selection:bg-amber-500/30 flex flex-col transition-colors duration-700 ease-in-out`}>
             <BackgroundController theme={theme} isPaused={isModalOpen} isMobile={isMobile} />
             {/* BACKGROUND GRADIENT FIX */}
             <div className="fixed inset-0 pointer-events-none z-0 bg-[radial-gradient(circle,transparent_50%,rgba(0,0,0,0.4)_100%)] opacity-50" />

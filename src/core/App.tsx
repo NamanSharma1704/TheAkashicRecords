@@ -526,12 +526,20 @@ const App: React.FC = () => {
                             </SystemFrame>
                         </div>
                     </div>
-                    {/* Stat Boxes — perfectly square but constrained in size on desktop */}
-                    <div className="grid grid-cols-4 gap-2 h-auto shrink-0 mb-1 lg:mb-0 w-full max-w-sm sm:max-w-xl lg:max-w-[480px] xl:max-w-[560px]">
-                        <StatBox value={activeQuest.currentChapter} label="WISDOM" icon={Cpu} color="text-blue-500" theme={theme} />
-                        <StatBox value={Math.floor(activeQuest.totalChapters / 10)} label="MIGHT" icon={Sword} color="text-red-500" theme={theme} />
-                        <StatBox value={`${progressPercent}%`} label="SYNC" icon={Activity} color={theme.highlightText} theme={theme} />
-                        <StatBox value={activeQuest.status === 'CONQUERED' ? 'CLOSED' : 'OPEN'} label="GATE" icon={Target} color={activeQuest.status === 'CONQUERED' ? 'text-gray-400' : theme.highlightText} theme={theme} />
+                    {/* Stat Boxes — Scalable Flex Distribution */}
+                    <div className="flex w-full items-stretch justify-between gap-2 sm:gap-4 md:gap-6 shrink-0 mb-1 lg:mb-0">
+                        <div className="flex-1 min-w-0 md:max-w-[140px] lg:max-w-[150px] xl:max-w-[160px] 2xl:max-w-[180px]">
+                            <StatBox value={activeQuest.currentChapter} label="WISDOM" icon={Cpu} color="text-blue-500" theme={theme} />
+                        </div>
+                        <div className="flex-1 min-w-0 md:max-w-[140px] lg:max-w-[150px] xl:max-w-[160px] 2xl:max-w-[180px]">
+                            <StatBox value={Math.floor(activeQuest.totalChapters / 10)} label="MIGHT" icon={Sword} color="text-red-500" theme={theme} />
+                        </div>
+                        <div className="flex-1 min-w-0 md:max-w-[140px] lg:max-w-[150px] xl:max-w-[160px] 2xl:max-w-[180px]">
+                            <StatBox value={`${progressPercent}%`} label="SYNC" icon={Activity} color={theme.highlightText} theme={theme} />
+                        </div>
+                        <div className="flex-1 min-w-0 md:max-w-[140px] lg:max-w-[150px] xl:max-w-[160px] 2xl:max-w-[180px]">
+                            <StatBox value={activeQuest.status === 'CONQUERED' ? 'CLOSED' : 'OPEN'} label="GATE" icon={Target} color={activeQuest.status === 'CONQUERED' ? 'text-gray-400' : theme.highlightText} theme={theme} />
+                        </div>
                     </div>
                 </div>
 

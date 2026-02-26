@@ -120,35 +120,24 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
                 </div>
             )}
 
-            <div className="relative z-50 w-full h-16 md:h-20 flex items-center shrink-0">
-                {/* Header: Title & Info */}
-                <div className="w-full mx-auto px-6 md:px-8 flex items-center justify-between">
-                    <div className="flex items-center gap-3 group cursor-default">
-                        <div className="relative w-8 h-8 md:w-10 md:h-10 flex items-center justify-center shrink-0">
-                            {/* Decorative scanner line for logo */}
-                            <div className={`absolute inset-x-0 h-[1px] ${theme.id === 'LIGHT' ? 'bg-sky-400' : 'bg-amber-400'} opacity-20 animate-[scanning_4s_linear_infinite] z-20`} />
+            {/* HEADER — matches HunterProfile & Main Dashboard style */}
+            <div className="relative z-50 w-full h-16 flex items-center shrink-0">
+                <div className="w-full px-4 md:px-6 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <div className="relative w-10 h-10 flex items-center justify-center shrink-0">
                             <SystemLogo theme={theme} className="w-full h-full drop-shadow-[0_0_8px_rgba(251,191,36,0.2)]" />
                         </div>
-                        <div className="flex flex-col leading-none border-l border-white/10 pl-3">
-                            <div className="flex items-center gap-1.5 mb-0.5">
-                                <span className={`font-mono text-[8px] md:text-[9px] tracking-[0.4em] ${theme.headingText} opacity-60 transition-colors duration-700 uppercase`}>
-                                    SYSTEM.ACCESS // {playerRank.name}
-                                </span>
-                            </div>
-                            <span className={`font-orbitron text-sm md:text-base tracking-[0.2em] font-black italic drop-shadow-sm transition-colors duration-700 text-transparent bg-clip-text bg-gradient-to-r ${theme.id === 'LIGHT' ? "from-sky-400 via-cyan-500 to-sky-400" : "from-amber-400 via-yellow-200 to-amber-500"} animate-gradient-x`}>
-                                THE DIVINE SPIRE
-                            </span>
+                        <div className="flex flex-col leading-none">
+                            <span className={`font-mono text-[9px] tracking-[0.2em] ${theme.mutedText} uppercase transition-colors duration-700`}>SYSTEM.ACCESS // {playerRank.name}</span>
+                            <h2 className={`font-orbitron text-base tracking-[0.2em] font-bold bg-clip-text text-transparent bg-gradient-to-r ${theme.id === 'LIGHT' ? 'from-sky-600 via-cyan-400 to-indigo-200' : 'from-amber-600 via-yellow-400 to-white'} transition-colors duration-700`}>THE DIVINE SPIRE</h2>
                         </div>
                     </div>
-                    <div className="flex items-center">
-                        <button
-                            onClick={viewMode === 'FLOOR' ? handleBackToTower : onClose}
-                            className={`group relative p-1.5 md:p-2 ${theme.mutedText} hover:${theme.baseText} transition-all duration-300 rounded-md border border-transparent hover:border-white/10 hover:bg-white/5`}
-                        >
-                            <X size={22} className="relative z-10 transition-transform duration-500 group-hover:rotate-90" />
-                            <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
-                        </button>
-                    </div>
+                    <button
+                        onClick={viewMode === 'FLOOR' ? handleBackToTower : onClose}
+                        className={`group relative p-1.5 md:p-2 ${theme.mutedText} hover:${theme.baseText} transition-all duration-300 rounded-md border border-transparent hover:border-white/10 hover:bg-white/5`}
+                    >
+                        <X size={22} className="relative z-10 transition-transform duration-500 group-hover:rotate-90" />
+                    </button>
                 </div>
             </div>
 
@@ -231,7 +220,7 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
                                         filteredItems.map((item, index) => {
                                             const rawRank = getQuestRankObj(item);
                                             return (
-                                                <div key={item.id} className="w-[240px] sm:w-[280px] md:w-[340px] lg:w-[400px] shrink-0 snap-center transition-all duration-700 hover:-translate-y-8 hover:scale-105 group relative mt-2 md:mt-4">
+                                                <div key={item.id} className="w-[240px] sm:w-[280px] md:w-[300px] lg:w-[340px] shrink-0 snap-center transition-all duration-700 hover:-translate-y-8 hover:scale-105 group relative mt-2 md:mt-4">
                                                     {/* Floor Reflection Glow */}
                                                     <div className={`absolute -bottom-8 left-1/2 -translate-x-1/2 w-3/4 h-8 bg-gradient-to-t from-${theme.primary}-500/40 to-transparent blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-700`} />
                                                     {/* Backdrop Ambient Lighting */}
@@ -249,7 +238,7 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
                                         {floors[selectedFloorIndex].items.map((item, index) => {
                                             const rawRank = getQuestRankObj(item);
                                             return (
-                                                <div key={item.id} className="w-[260px] sm:w-[300px] md:w-[380px] lg:w-[440px] shrink-0 snap-center transition-all duration-700 hover:-translate-y-8 hover:scale-[1.03] group relative mt-0 md:mt-2">
+                                                <div key={item.id} className="w-[260px] sm:w-[280px] md:w-[300px] lg:w-[340px] shrink-0 snap-center transition-all duration-700 hover:-translate-y-8 hover:scale-[1.03] group relative mt-0 md:mt-2">
                                                     {/* Floor Reflection Glow */}
                                                     <div className={`absolute -bottom-8 left-1/2 -translate-x-1/2 w-3/4 h-8 bg-gradient-to-t ${theme.id === 'LIGHT' ? 'from-sky-500/40' : 'from-amber-500/40'} to-transparent blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-all duration-700`} />
                                                     {/* Backdrop Ambient Lighting */}

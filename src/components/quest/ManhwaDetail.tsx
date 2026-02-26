@@ -179,7 +179,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                 {(quest?.coverUrl || media?.bannerImage || finalCover) ? (
                     <img
                         src={getProxiedImageUrl(quest?.coverUrl || media?.bannerImage || finalCover)}
-                        className="w-full h-full object-cover blur-[100px] opacity-40 scale-125 transform-gpu"
+                        className="w-full h-full object-cover blur-2xl opacity-40 scale-125 transform-gpu"
                         referrerPolicy="no-referrer"
                         alt="Background Aura"
                     />
@@ -407,21 +407,23 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                         </div>
                     ) : null}
 
-                    {/* SIMILAR RECORDS (BY CLASS) */}
-                    {allQuests && allQuests.filter(q => q.classType === quest.classType && q.id !== quest.id).length > 0 && (
-                        <div className="mt-8">
-                            <div className="flex items-center justify-between mb-6 px-2 opacity-60">
-                                <div className="flex items-center gap-2">
-                                    <Share2 size={16} className="text-white" />
-                                    <span className="text-[10px] font-mono tracking-[0.3em] text-white font-bold uppercase">SIMILAR_RECORDS_FOUND</span>
+                    {/* SIMILAR RECORDS (BY CLASS) - MEMOIZED */}
+                    {React.useMemo(() => {
+                        if (!allQuests || !quest) return null;
+                        const similar = allQuests.filter(q => q.classType === quest.classType && q.id !== quest.id).slice(0, 5);
+                        if (similar.length === 0) return null;
+
+                        return (
+                            <div className="mt-8">
+                                <div className="flex items-center justify-between mb-6 px-2 opacity-60">
+                                    <div className="flex items-center gap-2">
+                                        <Share2 size={16} className="text-white" />
+                                        <span className="text-[10px] font-mono tracking-[0.3em] text-white font-bold uppercase">SIMILAR_RECORDS_FOUND</span>
+                                    </div>
+                                    <span className="text-[9px] font-mono tracking-widest uppercase border border-white/20 px-2 py-0.5 rounded text-white">CLASS: {quest.classType}</span>
                                 </div>
-                                <span className="text-[9px] font-mono tracking-widest uppercase border border-white/20 px-2 py-0.5 rounded text-white">CLASS: {quest.classType}</span>
-                            </div>
-                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                                {allQuests
-                                    .filter(q => q.classType === quest.classType && q.id !== quest.id)
-                                    .slice(0, 5)
-                                    .map((rec) => (
+                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                                    {similar.map((rec) => (
                                         <div key={rec.id} onClick={() => onSetActive && onSetActive(rec.id)} className="group relative aspect-[2/3] rounded-lg overflow-hidden cursor-pointer shadow-lg border border-white/5">
                                             <img src={getProxiedImageUrl(rec.coverUrl)} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" referrerPolicy="no-referrer" />
                                             <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-80 group-hover:opacity-100 transition-opacity duration-300" />
@@ -435,15 +437,14 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                             </div>
                                         </div>
                                     ))}
+                                </div>
                             </div>
-                        </div>
-                    )}
+                        );
+                    }, [allQuests, quest?.classType, quest?.id, theme.highlightText, onSetActive])}
                 </div>
             </div>
 
-            {/* NOISE & SCANLINES */}
-            <div className="absolute inset-0 pointer-events-none z-50 mix-blend-overlay opacity-20 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0IiBoZWlnaHQ9IjQiPgo8cmVjdCB3aWR0aD0iNCIgaGVpZ2h0PSI0IiBmaWxsPSIjZmZmIiBmaWxsLW9wYWNpdHk9IjAuMDUiLz4KPC9zdmc+')] animate-noise" />
-            <div className="absolute inset-0 pointer-events-none z-50 bg-[linear-gradient(rgba(0,0,0,0)_50%,rgba(0,0,0,0.1)_50%)] bg-[length:100%_4px]" />
+            {/* SHARED NOISE HANDLED BY BACKGROUND CONTROLLER */}
         </div>
     );
 };

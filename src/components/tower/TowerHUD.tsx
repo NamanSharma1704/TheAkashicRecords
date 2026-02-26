@@ -16,7 +16,7 @@ interface TowerHUDProps {
 
 const TowerHUD: React.FC<TowerHUDProps> = ({ items, theme, onActivate, isFocused = false, selectedFloorIndex = 0, itemsPerFloor = 5, streak = 0 }) => {
     // 1. Memoize Stats and Data Slicing
-    const { floorItems, displayItems, totalManhwa, displayChapters, completedManhwa, recents, classEntries } = React.useMemo(() => {
+    const { displayItems, totalManhwa, displayChapters, completedManhwa, recents, classEntries } = React.useMemo(() => {
         const floorStart = selectedFloorIndex * itemsPerFloor;
         const _floorItems = items.slice(floorStart, floorStart + itemsPerFloor);
         const _displayItems = isFocused ? _floorItems : items;
@@ -46,7 +46,6 @@ const TowerHUD: React.FC<TowerHUDProps> = ({ items, theme, onActivate, isFocused
         const _classEntries = Object.entries(classCounts).sort((a, b) => b[1] - a[1]);
 
         return {
-            floorItems: _floorItems,
             displayItems: _displayItems,
             totalManhwa: _totalManhwa,
             displayChapters: _displayChapters,

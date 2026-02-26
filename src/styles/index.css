@@ -9,14 +9,22 @@
 
     html,
     body {
-        @apply bg-[#020202] text-white overflow-hidden;
+        @apply bg-[#020202] text-white overflow-x-hidden;
         background-color: #020202;
         /* Force for Safari rubber-banding */
         height: 100%;
         width: 100%;
         contain: paint;
-        position: fixed;
-        /* Extra lock */
+    }
+
+    /* Desktop Viewport Locking */
+    @media (min-width: 1024px) {
+
+        html,
+        body {
+            overflow: hidden;
+            position: fixed;
+        }
     }
 
     #root {

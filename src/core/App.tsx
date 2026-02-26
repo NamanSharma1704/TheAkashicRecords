@@ -473,12 +473,12 @@ const App: React.FC = () => {
     ), [theme, currentTheme, isHeaderVisible]);
 
     const memoizedMain = useMemo(() => (
-        <main className="absolute inset-0 top-16 bottom-8 overflow-hidden px-4 z-10">
-            <div className="max-w-[1400px] mx-auto h-full flex flex-col lg:flex-row gap-4 lg:gap-6 py-3 lg:py-4 min-h-0">
+        <main className="absolute inset-0 top-16 bottom-8 overflow-y-auto lg:overflow-hidden overflow-x-hidden hide-scrollbar px-4 z-10">
+            <div className="max-w-[1400px] mx-auto h-full flex flex-col lg:flex-row gap-4 lg:gap-6 py-3 lg:py-4 lg:min-h-0">
                 {/* LEFT COLUMN: ACTIVE CARD & STATS */}
-                <div className="flex-1 flex flex-col gap-2 lg:gap-3 min-h-0 order-1">
-                    {/* Hero card — stretches to fill available space */}
-                    <div className="flex-1 min-h-0 relative">
+                <div className="flex-none lg:flex-1 flex flex-col gap-2 lg:gap-3 lg:min-h-0 order-1">
+                    {/* Hero card — fixed h on mobile, flex-1 on desktop */}
+                    <div className="h-[320px] sm:h-[400px] md:h-[450px] lg:h-auto lg:flex-1 lg:min-h-0 relative">
                         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[140%] aspect-square opacity-100 pointer-events-none z-0">
                             <div className={`absolute inset-0 border ${theme.isDark ? 'border-white/30' : 'border-black/30'} rounded-full animate-[spin_60s_linear_infinite] transition-colors duration-700`} />
                             <div className={`absolute inset-[5%] border border-dashed ${theme.isDark ? 'border-white/30' : 'border-black/30'} rounded-full animate-[spin_40s_linear_infinite_reverse] transition-colors duration-700`} />
@@ -492,7 +492,7 @@ const App: React.FC = () => {
                                     <div className={`absolute inset-0 bg-gradient-to-r ${theme.isDark ? 'from-[#020202]' : 'from-[#f8f5f2]/60'} via-transparent ${theme.isDark ? 'to-[#020202]/50' : 'to-transparent'} transition-colors duration-700`} />
                                     <div className={`absolute top-0 left-0 w-full h-[2px] bg-${theme.primary}-400/80 shadow-[0_0_15px_currentColor] z-20 animate-[scanning_4s_linear_infinite] opacity-50 pointer-events-none transition-colors duration-700`} />
                                 </div>
-                                <div className="relative z-10 p-8 flex flex-col h-full justify-between">
+                                <div className="relative z-10 p-4 md:p-6 lg:p-8 flex flex-col h-full justify-between">
                                     <div className="flex justify-between items-start">
                                         <div className="space-y-1">
                                             <div className="flex items-center gap-2"><div className={`w-1.5 h-1.5 bg-${theme.primary}-500 rounded-full transition-colors duration-700`} /><span className={`text-[9px] font-mono ${theme.highlightText} tracking-[0.2em] uppercase transition-colors duration-700`}>Divine Revelation</span></div>
@@ -505,7 +505,7 @@ const App: React.FC = () => {
                                     </div>
                                     <div className="space-y-8 w-full min-w-0">
                                         <div className={`min-h-[5rem] h-auto flex items-end relative pb-4 pr-6 border-b border-gradient-to-r ${theme.id === 'LIGHT' ? 'from-sky-500/30' : 'from-amber-500/50'} to-transparent transition-colors duration-700`} style={{ width: 0, minWidth: '100%' }}>
-                                            <h1 className={`text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-black font-orbitron italic tracking-tighter bg-gradient-to-r ${theme.id === 'LIGHT' ? 'from-cyan-600 via-cyan-400 to-cyan-600' : 'from-amber-200 via-yellow-400 to-amber-200'} text-transparent bg-clip-text animate-gradient-x text-bloom w-full break-words line-clamp-3 md:line-clamp-4 leading-[1.1] transition-all duration-700 pb-1 uppercase`}
+                                            <h1 className={`text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-black font-orbitron italic tracking-tighter bg-gradient-to-r ${theme.id === 'LIGHT' ? 'from-cyan-600 via-cyan-400 to-cyan-600' : 'from-amber-200 via-yellow-400 to-amber-200'} text-transparent bg-clip-text animate-gradient-x text-bloom w-full break-words line-clamp-2 lg:line-clamp-3 leading-[1.1] transition-all duration-700 pb-1 uppercase`}
                                                 style={{ textTransform: 'uppercase', '--bloom-color': theme.id === 'LIGHT' ? '#06b6d4' : '#f59e0b' } as React.CSSProperties}>
                                                 {activeQuest.title}
                                             </h1>
@@ -526,8 +526,8 @@ const App: React.FC = () => {
                             </SystemFrame>
                         </div>
                     </div>
-                    {/* Stat Boxes — fixed height, never grows */}
-                    <div className="grid grid-cols-4 gap-2 h-24 shrink-0">
+                    {/* Stat Boxes — fixed height on all screens */}
+                    <div className="grid grid-cols-4 gap-2 h-20 sm:h-24 shrink-0">
                         <StatBox value={activeQuest.currentChapter} label="WISDOM" icon={Cpu} color="text-blue-500" theme={theme} />
                         <StatBox value={Math.floor(activeQuest.totalChapters / 10)} label="MIGHT" icon={Sword} color="text-red-500" theme={theme} />
                         <StatBox value={`${progressPercent}%`} label="SYNC" icon={Activity} color={theme.highlightText} theme={theme} />
@@ -536,7 +536,7 @@ const App: React.FC = () => {
                 </div>
 
                 {/* RIGHT COLUMN: SIDEBAR */}
-                <div className="w-full lg:w-96 xl:w-96 flex-none flex flex-col gap-2 min-h-0 order-2 pb-10 lg:pb-0">
+                <div className="w-full lg:w-96 xl:w-96 flex-none flex flex-col gap-2 lg:min-h-0 order-2 pb-24 lg:pb-0">
                     {/* PLAYER CARD */}
                     <div className="w-full h-auto">
                         <SystemFrame variant="brackets" theme={theme}>

@@ -120,14 +120,8 @@ app.post('/api/auth/register', async (req, res) => {
 app.post('/api/auth/upsert-sovereign', async (req, res) => {
     try {
         const { systemSecret, username, password } = req.body;
-        const expected = JWT_SECRET;
-
-        if (systemSecret !== expected) {
-            console.error(`[AUTH] Upsert Denied. Received: ${systemSecret ? 'PRESENT' : 'MISSING'}`);
-            return res.status(403).json({
-                message: 'Forbidden: Secret Link Unauthorized.',
-                debug: process.env.NODE_ENV === 'development' ? { received: !!systemSecret, matches: false } : undefined
-            });
+        if (systemSecret !== JWT_SECRET) {
+            return res.status(403).json({ message: 'Forbidden: Secret Link Unauthorized.' });
         }
 
         await connectDB();

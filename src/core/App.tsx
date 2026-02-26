@@ -536,7 +536,7 @@ const App: React.FC = () => {
                 </div>
 
                 {/* RIGHT COLUMN: SIDEBAR */}
-                <div className="w-full lg:w-96 xl:w-96 flex-none flex flex-col gap-2 lg:min-h-0 order-2 mt-12 lg:mt-0 pb-24 lg:pb-0">
+                <div className="w-full lg:w-96 xl:w-96 flex-none flex flex-col gap-2 lg:min-h-0 order-2 pb-24 lg:pb-0">
                     {/* PLAYER CARD */}
                     <div className="w-full h-auto overflow-hidden">
                         <SystemFrame variant="brackets" theme={theme}>

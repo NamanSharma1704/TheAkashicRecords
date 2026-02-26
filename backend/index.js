@@ -1,11 +1,12 @@
 const express = require('express');
+const mongoose = require('mongoose');
 const cors = require('cors');
-const connectDB = require('./config/db');
+const { connectDB, getTenantDb } = require('./config/db');
 const { initDatabase } = require('./config/init');
-const Quest = require('./models/Quest');
-const UserSettings = require('./models/UserSettings');
-const DailyQuest = require('./models/DailyQuest');
+const { getModel } = require('./models/modelFactory');
 const { fetchAniList, fetchMangaDex, fetchJikan, fetchBest } = require('./utils/metadataProxy');
+const User = require('./models/User');
+const { hashPassword, comparePassword, generateToken, verifyToken } = require('./utils/auth');
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 
@@ -17,11 +18,54 @@ const getTodayStr = () => new Date().toISOString().split('T')[0];
 app.use(cors());
 app.use(express.json());
 
+// --- AUTH MIDDLEWARE ---
+const authenticate = async (req, res, next) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(401).json({ message: 'Authentication Protocol Terminated: No Token Provided.' });
+    }
+
+    const token = authHeader.split(' ')[1];
+    const decoded = verifyToken(token);
+
+    if (!decoded) {
+        return res.status(401).json({ message: 'Authentication Protocol Terminated: Invalid Token.' });
+    }
+
+    try {
+        let user;
+        // Check if this is a virtual guest identity
+        if (decoded.id && typeof decoded.id === 'string' && decoded.id.startsWith('guest_')) {
+            user = {
+                _id: decoded.id,
+                username: decoded.username,
+                role: 'GUEST'
+            };
+        } else {
+            user = await User.findById(decoded.id);
+        }
+
+        if (!user) return res.status(401).json({ message: 'Authentication Protocol Terminated: Subject Unknown.' });
+
+        req.user = user;
+
+        // --- MULTI-TENANCY LOGIC ---
+        // SOVEREIGN -> akashic_records, GUEST -> test_records
+        const dbName = user.role === 'SOVEREIGN' ? 'akashic_records' : 'test_records';
+        req.dbConn = await getTenantDb(dbName);
+
+        next();
+    } catch (err) {
+        console.error('[Auth Error]', err.message);
+        res.status(500).json({ message: 'Authentication System Fault: Internal Link Severed.' });
+    }
+};
+
 // --- DIAGNOSTICS ---
 app.get('/api/health', async (req, res) => {
     try {
-        const mongoose = require('mongoose');
-        const dbStatus = mongoose.connection.readyState;
+        const conn = await connectDB();
+        const dbStatus = conn.readyState;
         const statusMap = {
             0: 'disconnected',
             1: 'connected',
@@ -29,7 +73,7 @@ app.get('/api/health', async (req, res) => {
             3: 'disconnecting'
         };
 
-        await connectDB();
+        const Quest = getModel(conn, 'Quest');
         const questCount = await Quest.countDocuments();
 
         res.json({
@@ -44,14 +88,95 @@ app.get('/api/health', async (req, res) => {
     }
 });
 
+// --- AUTH ROUTES ---
+
+// POST /api/auth/register - Create a new hunter (Limited use recommended)
+app.post('/api/auth/register', async (req, res) => {
+    try {
+        await connectDB();
+        const { username, password, role } = req.body;
+
+        const existing = await User.findOne({ username });
+        if (existing) return res.status(409).json({ message: 'Archive Collision: Username already registered.' });
+
+        const passwordHash = await hashPassword(password);
+        const user = await User.create({
+            username,
+            passwordHash,
+            role: role || 'GUEST'
+        });
+
+        const token = generateToken(user);
+        res.status(201).json({
+            token,
+            user: { id: user._id, username: user.username, role: user.role }
+        });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+// POST /api/auth/login - Synchronize Hunter Identity
+app.post('/api/auth/login', async (req, res) => {
+    try {
+        await connectDB();
+        const { username, password } = req.body;
+        const dbName = mongoose.connection ? mongoose.connection.name : 'Unknown';
+        console.log(`[AUTH] Login attempt: "${username}" (DB: ${dbName})`);
+
+        const user = await User.findOne({ username: { $regex: new RegExp(`^${username}$`, 'i') } });
+        if (!user) {
+            console.log(`[AUTH] User not found: "${username}"`);
+            return res.status(401).json({ message: 'Access Denied: Subject Unknown.' });
+        }
+
+        const isMatch = await comparePassword(password, user.passwordHash);
+        if (!isMatch) return res.status(401).json({ message: 'Access Denied: Password Mismatch.' });
+
+        // Update last login
+        user.lastLogin = Date.now();
+        await user.save();
+
+        const token = generateToken(user);
+        res.json({
+            token,
+            user: { id: user._id, username: user.username, role: user.role }
+        });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+// POST /api/auth/guest - Access Sandbox Environment
+app.post('/api/auth/guest', async (req, res) => {
+    try {
+        const guestId = `guest_${Math.random().toString(36).substring(2, 9)}`;
+        const guestUser = {
+            _id: guestId,
+            username: `Guest_${guestId.slice(-4).toUpperCase()}`,
+            role: 'GUEST'
+        };
+
+        const token = generateToken(guestUser);
+        res.json({
+            token,
+            user: { id: guestUser._id, username: guestUser.username, role: guestUser.role }
+        });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
 // --- ROUTES ---
 
 // GET /api/user/state - Fetch streak and daily absorb
-app.get('/api/user/state', async (req, res) => {
+app.get('/api/user/state', authenticate, async (req, res) => {
     try {
-        await connectDB();
-        let settings = await UserSettings.findOne({ userId: 'default' });
-        if (!settings) settings = await UserSettings.create({ userId: 'default' });
+        const UserSettings = getModel(req.dbConn, 'UserSettings');
+        const DailyQuest = getModel(req.dbConn, 'DailyQuest');
+
+        let settings = await UserSettings.findOne({ userId: req.user._id });
+        if (!settings) settings = await UserSettings.create({ userId: req.user._id });
 
         const today = getTodayStr();
         let daily = await DailyQuest.findOne({ date: today });
@@ -69,17 +194,17 @@ app.get('/api/user/state', async (req, res) => {
 });
 
 // GET /api/quests - Fetch all quests
-app.get('/api/quests', async (req, res) => {
+app.get('/api/quests', authenticate, async (req, res) => {
     try {
-        await connectDB();
+        const Quest = getModel(req.dbConn, 'Quest');
         let quests = await Quest.find().sort({ lastRead: -1 });
 
-        console.log(`[API] Quests requested. Found: ${quests.length} documents.`);
+        console.log(`[API] Quests requested by ${req.user.username}. Found: ${quests.length} documents.`);
 
-        // Lazy-seed if DB is completely empty (common on first production run)
+        // Lazy-seed if DB is completely empty (common for Guest or new Sovereign)
         if (quests.length === 0) {
             console.log('[API] Database empty. Attempting lazy seeding...');
-            await initDatabase(connectDB);
+            await initDatabase(() => req.dbConn);
             quests = await Quest.find().sort({ lastRead: -1 });
             console.log(`[API] Seeding complete. New count: ${quests.length}`);
         }
@@ -91,9 +216,9 @@ app.get('/api/quests', async (req, res) => {
     }
 });
 
-app.post('/api/quests', async (req, res) => {
+app.post('/api/quests', authenticate, async (req, res) => {
     try {
-        await connectDB();
+        const Quest = getModel(req.dbConn, 'Quest');
         const { title } = req.body;
         if (!title) return res.status(400).json({ message: "Title required" });
 
@@ -120,17 +245,19 @@ app.post('/api/quests', async (req, res) => {
 });
 
 // PUT /api/quests/:id - Update a quest
-app.put('/api/quests/:id', async (req, res) => {
+app.put('/api/quests/:id', authenticate, async (req, res) => {
     try {
-        await connectDB();
+        const Quest = getModel(req.dbConn, 'Quest');
+        const UserSettings = getModel(req.dbConn, 'UserSettings');
+        const DailyQuest = getModel(req.dbConn, 'DailyQuest');
         const questId = req.params.id;
         const body = req.body;
 
         if (body.currentChapter !== undefined) {
             const today = getTodayStr();
 
-            let settings = await UserSettings.findOne({ userId: 'default' });
-            if (!settings) settings = await UserSettings.create({ userId: 'default' });
+            let settings = await UserSettings.findOne({ userId: req.user._id });
+            if (!settings) settings = await UserSettings.create({ userId: req.user._id });
 
             if (settings.lastReadDate !== today) {
                 const yesterday = new Date();
@@ -166,9 +293,9 @@ app.put('/api/quests/:id', async (req, res) => {
 });
 
 // DELETE /api/quests/:id - Delete a quest
-app.delete('/api/quests/:id', async (req, res) => {
+app.delete('/api/quests/:id', authenticate, async (req, res) => {
     try {
-        await connectDB();
+        const Quest = getModel(req.dbConn, 'Quest');
         await Quest.findByIdAndDelete(req.params.id);
         res.json({ message: 'Quest Purged.' });
     } catch (err) {
@@ -177,9 +304,9 @@ app.delete('/api/quests/:id', async (req, res) => {
 });
 
 // POST /api/admin/bulk-classify - Admin only migration
-app.post('/api/admin/bulk-classify', async (req, res) => {
+app.post('/api/admin/bulk-classify', authenticate, async (req, res) => {
     try {
-        await connectDB();
+        const Quest = getModel(req.dbConn, 'Quest');
         console.log("[Admin] Starting Bulk Classification...");
         const quests = await Quest.find({
             $or: [
@@ -208,9 +335,9 @@ app.post('/api/admin/bulk-classify', async (req, res) => {
 });
 
 // POST /api/admin/purge-duplicates - Deduplicate archives
-app.post('/api/admin/purge-duplicates', async (req, res) => {
+app.post('/api/admin/purge-duplicates', authenticate, async (req, res) => {
     try {
-        await connectDB();
+        const Quest = getModel(req.dbConn, 'Quest');
         console.log("[Admin] Initiating Duplicate Purge...");
 
         // 1. Group by title (Aggressive Normalization)
@@ -255,14 +382,13 @@ app.post('/api/admin/purge-duplicates', async (req, res) => {
         res.status(500).json({ error: "Deduplication Engine Failure" });
     }
 });
-app.get('/api/proxy/metadata', async (req, res) => {
+app.get('/api/proxy/metadata', authenticate, async (req, res) => {
     const { title, source } = req.query;
     if (!title) return res.status(400).json({ error: "Title required." });
 
     console.log(`[Proxy] Fetching metadata for: ${title} (Source: ${source || 'AUTO'})`);
 
     try {
-        await connectDB();
         let data = null;
 
         if (source === 'ANILIST') {

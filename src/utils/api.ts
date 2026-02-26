@@ -1,3 +1,5 @@
+import { getStoredToken } from './auth';
+
 export const cleanDescription = (desc: string): string => {
     if (!desc) return "No description available.";
     return desc
@@ -10,7 +12,9 @@ const PROXY_URL = "/api/proxy/metadata";
 
 export const fetchAnilistCover = async (title: string) => {
     try {
-        const response = await fetch(`${PROXY_URL}?title=${encodeURIComponent(title)}&source=ANILIST`);
+        const token = getStoredToken();
+        const headers: Record<string, string> = token ? { 'Authorization': `Bearer ${token}` } : {};
+        const response = await fetch(`${PROXY_URL}?title=${encodeURIComponent(title)}&source=ANILIST`, { headers });
         if (!response.ok) return null;
         return await response.json();
     } catch (e) {
@@ -21,7 +25,9 @@ export const fetchAnilistCover = async (title: string) => {
 
 export const fetchJikanCover = async (title: string) => {
     try {
-        const response = await fetch(`${PROXY_URL}?title=${encodeURIComponent(title)}&source=MAL`);
+        const token = getStoredToken();
+        const headers: Record<string, string> = token ? { 'Authorization': `Bearer ${token}` } : {};
+        const response = await fetch(`${PROXY_URL}?title=${encodeURIComponent(title)}&source=MAL`, { headers });
         if (!response.ok) return null;
         return await response.json();
     } catch (e) {
@@ -32,7 +38,9 @@ export const fetchJikanCover = async (title: string) => {
 
 export const fetchMangadex = async (title: string) => {
     try {
-        const response = await fetch(`${PROXY_URL}?title=${encodeURIComponent(title)}&source=MANGADEX`);
+        const token = getStoredToken();
+        const headers: Record<string, string> = token ? { 'Authorization': `Bearer ${token}` } : {};
+        const response = await fetch(`${PROXY_URL}?title=${encodeURIComponent(title)}&source=MANGADEX`, { headers });
         if (!response.ok) return null;
         return await response.json();
     } catch (e) {
@@ -43,7 +51,9 @@ export const fetchMangadex = async (title: string) => {
 
 export const fetchAuto = async (title: string) => {
     try {
-        const response = await fetch(`${PROXY_URL}?title=${encodeURIComponent(title)}&source=AUTO`);
+        const token = getStoredToken();
+        const headers: Record<string, string> = token ? { 'Authorization': `Bearer ${token}` } : {};
+        const response = await fetch(`${PROXY_URL}?title=${encodeURIComponent(title)}&source=AUTO`, { headers });
         if (!response.ok) return null;
         return await response.json();
     } catch (e) {

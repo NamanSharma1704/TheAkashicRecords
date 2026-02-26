@@ -47,3 +47,14 @@ export interface Quest {
 
 export type UserRank = Rank;
 export type ManhwaRank = Rank;
+
+export interface User {
+    id: string;
+    username: string;
+    role: 'SOVEREIGN' | 'GUEST';
+}
+
+export interface AuthResponse {
+    token: string;
+    user: User;
+}

@@ -1,4 +1,4 @@
-const Quest = require('../models/Quest');
+const { getModel } = require('../models/modelFactory');
 
 const BASE_QUESTS = [
     {
@@ -33,7 +33,7 @@ const BASE_QUESTS = [
     }
 ];
 
-const seedDB = async () => {
+const seedDB = async (Quest) => {
     const count = await Quest.countDocuments();
     if (count === 0) {
         console.log("Seeding Database with BASE_QUESTS...");
@@ -41,7 +41,7 @@ const seedDB = async () => {
     }
 };
 
-const deduplicateDB = async () => {
+const deduplicateDB = async (Quest) => {
     try {
         const allQuests = await Quest.find().sort({ lastRead: -1 });
         const seenTitles = new Set();
@@ -66,12 +66,15 @@ const deduplicateDB = async () => {
     }
 };
 
-const initDatabase = async (connectDB) => {
+const initDatabase = async (getConnection) => {
     try {
-        await connectDB();
-        await seedDB();
-        await deduplicateDB();
-        console.log("Database Layer Ready.");
+        // getConnection should be a function that returns the connection object
+        const conn = await getConnection();
+        const Quest = getModel(conn, 'Quest');
+
+        await seedDB(Quest);
+        await deduplicateDB(Quest);
+        console.log(`Database Layer Ready [${conn.name}].`);
     } catch (err) {
         console.error("Database initialization failed:", err);
     }

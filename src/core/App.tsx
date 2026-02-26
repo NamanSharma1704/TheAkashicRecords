@@ -15,6 +15,9 @@ import EntityAvatar from '../components/system/EntityAvatar';
 import SystemNotification from '../components/system/SystemNotification';
 
 import { getProxiedImageUrl } from '../utils/api';
+import { getStoredUser, saveAuthData, clearAuthData, systemFetch, isAuthenticated } from '../utils/auth';
+import LoginScreen from '../components/system/LoginScreen';
+import { AuthResponse, User } from './types';
 
 const API_URL = '/api/quests';
 
@@ -68,6 +71,8 @@ const App: React.FC = () => {
     const [library, setLibrary] = useState<Quest[]>([]);
     const [activeId, setActiveId] = useState<string | null>(null);
     const [userState, setUserState] = useState({ streak: 0, dailyAbsorbed: 0 });
+    const [currentUser, setCurrentUser] = useState<User | null>(getStoredUser());
+    const [isAuth, setIsAuth] = useState<boolean>(isAuthenticated());
 
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isSpireOpen, setIsSpireOpen] = useState(false);
@@ -97,33 +102,51 @@ const App: React.FC = () => {
         setSysNote(prev => ({ ...prev, isOpen: false }));
     };
 
-    // --- FETCH DATA FROM MONGODB ---
+    const handleLoginSuccess = (user: User, token: string) => {
+        saveAuthData({ user, token });
+        setCurrentUser(user);
+        setIsAuth(true);
+        // Data fetching will be triggered by useEffect
+    };
+
+    const handleLogout = async () => {
+        const confirmed = await showSystemNotification("TERMINATE_SESSION: Are you sure?", "WARNING", true);
+        if (confirmed) {
+            clearAuthData();
+            setCurrentUser(null);
+            setIsAuth(false);
+            setLibrary([]);
+        }
+    };
+
+    useEffect(() => {
+        if (isAuth) {
+            fetchQuests();
+            fetchUserState();
+        }
+    }, [isAuth]);
+
     const fetchQuests = async () => {
         try {
-            const res = await fetch(API_URL);
+            const res = await systemFetch(API_URL);
             const data = await res.json();
             if (res.ok && Array.isArray(data)) {
                 const mappedData = data.map(mapQuest);
-                console.log(`[Frontend] Normalized ${mappedData.length} items.`, mappedData[0]);
                 setLibrary(mappedData);
-
                 if (!activeId && mappedData.length > 0) {
                     const top = mappedData.filter((i: any) => i.status === 'ACTIVE').sort((a: any, b: any) => new Date(b.lastUpdated || 0).getTime() - new Date(a.lastUpdated || 0).getTime())[0];
                     setActiveId(top ? top.id : (mappedData[0]?.id || null));
                 }
-            } else {
-                console.error("[Frontend] API returned non-array data or error status:", data);
-                throw new Error((data && data.message) || 'Invalid API response');
             }
         } catch (e) {
             console.error("Database connection failure:", e);
-            // Fallback to empty if DB is unreachable or returns error
             setLibrary([]);
         }
     };
+
     const fetchUserState = async () => {
         try {
-            const res = await fetch('/api/user/state');
+            const res = await systemFetch('/api/user/state');
             if (res.ok) {
                 const data = await res.json();
                 if (data && typeof data === 'object' && !data.message) {
@@ -134,11 +157,6 @@ const App: React.FC = () => {
             console.error("User state fetch failed:", e);
         }
     };
-
-    useEffect(() => {
-        fetchQuests();
-        fetchUserState();
-    }, []);
 
     // Migration / Integrity Check removed since we use MongoDB now
 
@@ -190,9 +208,8 @@ const App: React.FC = () => {
         setLibrary(prev => prev.map(item => item.id === id ? { ...item, lastUpdated: now } : item));
 
         try {
-            const res = await fetch(`${API_URL}/${id}`, {
+            const res = await systemFetch(`${API_URL}/${id}`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ lastUpdated: now })
             });
             const updated = await res.json();
@@ -210,9 +227,8 @@ const App: React.FC = () => {
         setLibrary(prev => prev.map(item => item.id === id ? { ...item, status: 'ACTIVE', lastUpdated: new Date(now).toISOString() } : item));
 
         try {
-            const res = await fetch(`${API_URL}/${id}`, {
+            const res = await systemFetch(`${API_URL}/${id}`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ status: 'ACTIVE', lastRead: now })
             });
             const updated = await res.json();
@@ -248,9 +264,8 @@ const App: React.FC = () => {
         });
 
         try {
-            const res = await fetch(url, {
+            const res = await systemFetch(url, {
                 method,
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(body)
             });
 
@@ -326,9 +341,8 @@ const App: React.FC = () => {
         setLibrary(prev => prev.map(q => q.id === activeId ? { ...q, currentChapter: next } : q));
 
         try {
-            const res = await fetch(`${API_URL}/${activeId}`, {
+            const res = await systemFetch(`${API_URL}/${activeId}`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ currentChapter: next, lastUpdated: new Date().toISOString() })
             });
             const updated = await res.json();
@@ -345,7 +359,7 @@ const App: React.FC = () => {
             if (!confirmed) return;
 
             try {
-                await fetch(`${API_URL}/${editingItem.id}`, { method: 'DELETE' });
+                await systemFetch(`${API_URL}/${editingItem.id}`, { method: 'DELETE' });
                 setLibrary(prev => prev.filter(i => i.id !== editingItem.id));
                 setIsModalOpen(false);
             } catch (e) {
@@ -357,6 +371,8 @@ const App: React.FC = () => {
     const toggleTheme = () => { const newTheme = currentTheme === 'LIGHT' ? 'DARK' : 'LIGHT'; setCurrentTheme(newTheme); };
 
     if (booting) return <BootScreen onComplete={() => setBooting(false)} theme={theme} />;
+
+    if (!isAuth) return <LoginScreen onLoginSuccess={handleLoginSuccess} theme={theme} />;
 
     return (
         <div className={`min-h-screen ${theme.appBg} ${theme.baseText} font-sans selection:bg-amber-500/30 overflow-hidden relative flex flex-col transition-colors duration-700 ease-in-out`}>
@@ -536,6 +552,7 @@ const App: React.FC = () => {
                         items={library}
                         playerRank={playerRank}
                         onImport={handleImportQuests}
+                        onLogout={handleLogout}
                         showNotification={showSystemNotification}
                     />
                 )}

@@ -13,4 +13,7 @@ const dailyQuestSchema = new mongoose.Schema({
 // Auto-delete after 7 days (604800 seconds)
 dailyQuestSchema.index({ createdAt: 1 }, { expireAfterSeconds: 604800 });
 
-module.exports = mongoose.models.DailyQuest || mongoose.model('DailyQuest', dailyQuestSchema);
+module.exports = {
+    dailyQuestSchema,
+    DailyQuest: mongoose.models.DailyQuest || mongoose.model('DailyQuest', dailyQuestSchema)
+};

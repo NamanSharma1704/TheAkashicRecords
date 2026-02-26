@@ -23,12 +23,12 @@ const connectDB = async () => {
         };
 
         if (!process.env.MONGODB_URI) {
-            throw new Error('Please define the MONGODB_URI environment variable inside your Vercel Dashboard');
+            throw new Error('Please define the MONGODB_URI environment variable inside your .env file');
         }
 
         cached.promise = mongoose.connect(process.env.MONGODB_URI, opts).then((mongoose) => {
             console.log('MongoDB Synchronized.');
-            return mongoose;
+            return mongoose.connection; // Return the connection object
         });
     }
 
@@ -37,11 +37,19 @@ const connectDB = async () => {
     } catch (e) {
         cached.promise = null;
         console.error('Database Sync Failure:', e.message);
-        // Important: in serverless, we don't want to process.exit(1) as it kills the instance
         throw e;
     }
 
     return cached.conn;
 };
 
-module.exports = connectDB;
+/**
+ * Get a specific database connection from the base connection.
+ * @param {string} dbName 
+ */
+const getTenantDb = async (dbName) => {
+    const conn = await connectDB();
+    return conn.useDb(dbName, { useCache: true });
+};
+
+module.exports = { connectDB, getTenantDb };

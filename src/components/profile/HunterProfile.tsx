@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { Theme, Quest } from '../../core/types';
 import SystemLogo from '../system/SystemLogo';
 import EntityAvatar from '../system/EntityAvatar';
-import { X, Crown, Database, Layers, Target, ChevronRight, Download, Upload, RefreshCw } from 'lucide-react';
+import { X, Crown, Database, Layers, Target, ChevronRight, Download, Upload, RefreshCw, LogOut } from 'lucide-react';
 import { USER_RANKS } from '../../utils/ranks';
 import GalaxyNebula from '../fx/GalaxyNebula';
 import OmniscientField from '../fx/OmniscientField';
@@ -16,10 +16,11 @@ interface HunterProfileProps {
     items: Quest[];
     playerRank: any;
     onImport: (newItems: Quest[]) => void;
+    onLogout: () => void;
     showNotification: (message: string, type?: 'INFO' | 'SUCCESS' | 'WARNING' | 'ERROR', confirm?: boolean) => Promise<boolean>;
 }
 
-const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, items, playerRank, onImport, showNotification }) => {
+const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, items, playerRank, onImport, onLogout, showNotification }) => {
     const totalChapters = useMemo(() => items.reduce((acc, i) => acc + (i.currentChapter || 0), 0), [items]);
     const totalManhwa = items.length;
     const conquered = useMemo(() => items.filter(i => i.status === 'CONQUERED').length, [items]);
@@ -167,9 +168,15 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                         <h2 className={`font-orbitron text-base tracking-[0.2em] font-bold bg-clip-text text-transparent bg-gradient-to-r ${theme.id === 'LIGHT' ? 'from-sky-600 via-cyan-400 to-indigo-200' : 'from-amber-600 via-yellow-400 to-white'} transition-colors duration-700`}>HUNTER PROFILE</h2>
                     </div>
                 </div>
-                <button onClick={onClose} className={`w-9 h-9 flex items-center justify-center border ${theme.borderSubtle} ${theme.mutedText} hover:${theme.highlightText} hover:border-current transition-colors`}>
-                    <X size={16} />
-                </button>
+                <div className="flex items-center gap-3">
+                    <button onClick={onLogout} title="TERMINATE_SESSION" className={`h-9 px-4 flex items-center justify-center gap-2 border ${theme.borderSubtle} text-red-500/80 hover:text-red-500 hover:border-red-500 hover:bg-red-500/5 transition-all font-mono text-[10px] tracking-widest uppercase cursor-pointer group`}>
+                        <LogOut size={14} className="group-hover:-translate-x-1 transition-transform" />
+                        <span className="hidden sm:inline">Logout</span>
+                    </button>
+                    <button onClick={onClose} className={`w-9 h-9 flex items-center justify-center border ${theme.borderSubtle} ${theme.mutedText} hover:${theme.highlightText} hover:border-current transition-colors cursor-pointer`}>
+                        <X size={16} />
+                    </button>
+                </div>
             </div>
 
             {/* CONTENT - NON SCROLLABLE STRICT LAYOUT */}

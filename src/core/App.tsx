@@ -473,11 +473,12 @@ const App: React.FC = () => {
     ), [theme, currentTheme, isHeaderVisible]);
 
     const memoizedMain = useMemo(() => (
-        <main className="absolute inset-0 top-16 bottom-8 overflow-y-auto overflow-x-hidden hide-scrollbar px-4 z-10">
-            <div className="max-w-[1400px] mx-auto h-full flex flex-col lg:flex-row gap-4 lg:gap-8 py-4 lg:py-6">
+        <main className="absolute inset-0 top-16 bottom-8 overflow-hidden px-4 z-10">
+            <div className="max-w-[1400px] mx-auto h-full flex flex-col lg:flex-row gap-4 lg:gap-6 py-3 lg:py-4 min-h-0">
                 {/* LEFT COLUMN: ACTIVE CARD & STATS */}
-                <div className="flex-none lg:flex-1 flex flex-col gap-2 sm:gap-4 lg:gap-4 min-h-0 order-1 relative">
-                    <div className="w-full min-h-[340px] sm:h-auto sm:flex-1 lg:flex-1 lg:min-h-0 relative pb-4 lg:pb-0">
+                <div className="flex-1 flex flex-col gap-2 lg:gap-3 min-h-0 order-1">
+                    {/* Hero card — stretches to fill available space */}
+                    <div className="flex-1 min-h-0 relative">
                         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[140%] aspect-square opacity-100 pointer-events-none z-0">
                             <div className={`absolute inset-0 border ${theme.isDark ? 'border-white/30' : 'border-black/30'} rounded-full animate-[spin_60s_linear_infinite] transition-colors duration-700`} />
                             <div className={`absolute inset-[5%] border border-dashed ${theme.isDark ? 'border-white/30' : 'border-black/30'} rounded-full animate-[spin_40s_linear_infinite_reverse] transition-colors duration-700`} />
@@ -525,7 +526,8 @@ const App: React.FC = () => {
                             </SystemFrame>
                         </div>
                     </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 md:gap-4 h-auto sm:h-28 lg:h-28 shrink-0">
+                    {/* Stat Boxes — fixed height, never grows */}
+                    <div className="grid grid-cols-4 gap-2 h-24 shrink-0">
                         <StatBox value={activeQuest.currentChapter} label="WISDOM" icon={Cpu} color="text-blue-500" theme={theme} />
                         <StatBox value={Math.floor(activeQuest.totalChapters / 10)} label="MIGHT" icon={Sword} color="text-red-500" theme={theme} />
                         <StatBox value={`${progressPercent}%`} label="SYNC" icon={Activity} color={theme.highlightText} theme={theme} />
@@ -534,7 +536,7 @@ const App: React.FC = () => {
                 </div>
 
                 {/* RIGHT COLUMN: SIDEBAR */}
-                <div className="w-full lg:w-96 flex flex-col gap-2 lg:gap-2 flex-none lg:min-h-0 order-2 pb-6 lg:pb-0">
+                <div className="w-full lg:w-96 xl:w-96 flex-none flex flex-col gap-2 min-h-0 order-2 pb-10 lg:pb-0">
                     {/* PLAYER CARD */}
                     <div className="w-full h-auto">
                         <SystemFrame variant="brackets" theme={theme}>
@@ -587,10 +589,10 @@ const App: React.FC = () => {
                         </SystemFrame>
                     </div>
 
-                    {/* ACTIVE QUESTS LIST */}
-                    <div className="flex-1 flex flex-col min-h-0 gap-1 mt-4 lg:mt-6">
-                        <div className={`text-[10px] font-mono ${theme.headingText} uppercase tracking-widest border-b ${theme.borderSubtle} pb-1.5 mb-1 transition-colors duration-700`}>ACTIVE QUESTS</div>
-                        <div className="flex-1 min-h-[150px] lg:min-h-0 overflow-y-auto hide-scrollbar relative">
+                    {/* ACTIVE QUESTS LIST - only scrollable region allowed */}
+                    <div className="flex-1 flex flex-col min-h-0 gap-1 mt-2">
+                        <div className={`text-[10px] font-mono ${theme.headingText} uppercase tracking-widest border-b ${theme.borderSubtle} pb-1.5 mb-1 transition-colors duration-700 shrink-0`}>ACTIVE QUESTS</div>
+                        <div className="flex-1 min-h-0 overflow-y-auto hide-scrollbar">
                             <div className="flex flex-col gap-1 h-full">
                                 {activeQuests.map((item) => {
                                     const isHighlighted = activeId === item.id;

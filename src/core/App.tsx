@@ -473,7 +473,7 @@ const App: React.FC = () => {
     ), [theme, currentTheme, isHeaderVisible]);
 
     const memoizedMain = useMemo(() => (
-        <main className="absolute inset-0 top-16 bottom-8 overflow-y-auto lg:overflow-hidden overflow-x-hidden hide-scrollbar px-4 z-10">
+        <main className="absolute inset-0 top-16 bottom-10 overflow-y-auto lg:overflow-hidden overflow-x-hidden hide-scrollbar px-4 z-10">
             <div className="max-w-[1400px] mx-auto h-full flex flex-col lg:flex-row gap-4 lg:gap-6 py-3 lg:py-4 lg:min-h-0">
                 {/* LEFT COLUMN: ACTIVE CARD & STATS */}
                 <div className="flex-none lg:flex-1 flex flex-col gap-2 lg:gap-3 lg:min-h-0 order-1">
@@ -536,9 +536,9 @@ const App: React.FC = () => {
                 </div>
 
                 {/* RIGHT COLUMN: SIDEBAR */}
-                <div className="w-full lg:w-96 xl:w-96 flex-none flex flex-col gap-2 lg:min-h-0 order-2 pb-24 lg:pb-0">
+                <div className="w-full lg:w-96 xl:w-96 flex-none flex flex-col gap-2 lg:min-h-0 order-2 mt-3 lg:mt-0 pb-24 lg:pb-0">
                     {/* PLAYER CARD */}
-                    <div className="w-full h-auto">
+                    <div className="w-full h-auto overflow-hidden">
                         <SystemFrame variant="brackets" theme={theme}>
                             <div className="px-3 py-2 flex flex-col gap-2">
                                 <div className="flex flex-row items-center gap-4">

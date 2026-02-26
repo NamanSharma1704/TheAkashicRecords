@@ -627,23 +627,6 @@ const App: React.FC = () => {
                 )}
             </Suspense>
 
-            {/* MOBILE STICKY ACTION BAR */}
-            {!isSpireOpen && (
-                <div className={`lg:hidden fixed bottom-8 left-0 w-full px-4 z-40 flex gap-2 pointer-events-none transition-all duration-700`}>
-                    <button
-                        onClick={() => setIsSpireOpen(true)}
-                        className={`pointer-events-auto flex-1 py-3 ${theme.isDark ? 'bg-black/80' : 'bg-white/80'} backdrop-blur-md border ${theme.border} ${theme.highlightText} shadow-[0_0_15px_rgba(0,0,0,0.5)] font-mono font-bold tracking-widest uppercase transition-all flex items-center justify-center gap-2 text-xs`}
-                    >
-                        <LayoutTemplate size={16} /> SPIRE
-                    </button>
-                    <button
-                        onClick={() => { setEditingItem(null); setIsModalOpen(true); }}
-                        className={`pointer-events-auto w-14 h-[42px] ${theme.isDark ? 'bg-[#0a0a0c]' : 'bg-slate-50'} border ${theme.borderSubtle} ${theme.highlightText} flex items-center justify-center shadow-lg transition-colors duration-700`}
-                    >
-                        <Plus size={20} />
-                    </button>
-                </div>
-            )}
 
             <Suspense fallback={null}>
                 {isModalOpen && (
@@ -658,6 +641,25 @@ const App: React.FC = () => {
                     />
                 )}
             </Suspense>
+
+
+            {/* HUD / SYSTEM OVERLAYS */}
+            {!isSpireOpen && (
+                <div className="lg:hidden fixed bottom-[34px] left-0 w-full px-4 z-[60] flex gap-3 pointer-events-none pb-[env(safe-area-inset-bottom)]">
+                    <button
+                        onClick={() => setIsSpireOpen(true)}
+                        className={`pointer-events-auto flex-1 h-12 ${theme.isDark ? 'bg-black/90' : 'bg-white/95'} backdrop-blur-xl border-x border-t ${theme.border} ${theme.highlightText} shadow-[0_-4px_20px_rgba(0,0,0,0.4)] font-mono font-black tracking-[0.2em] uppercase transition-all flex items-center justify-center gap-3 text-[10px] active:scale-95`}
+                    >
+                        <LayoutTemplate size={14} className="animate-pulse" /> DIVINE_SPIRE
+                    </button>
+                    <button
+                        onClick={() => { setEditingItem(null); setIsModalOpen(true); }}
+                        className={`pointer-events-auto w-12 h-12 ${theme.id === 'LIGHT' ? 'bg-sky-500' : 'bg-amber-500'} text-black flex items-center justify-center shadow-[0_0_20px_rgba(var(--theme-primary),0.4)] active:scale-90 transition-all z-10`}
+                    >
+                        <Plus size={24} strokeWidth={3} />
+                    </button>
+                </div>
+            )}
 
             <SystemConsole theme={theme} />
 

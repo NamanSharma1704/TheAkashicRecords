@@ -527,7 +527,7 @@ const App: React.FC = () => {
                         </div>
                     </div>
                     {/* Stat Boxes — slightly smaller on tablet for better fit */}
-                    <div className="grid grid-cols-4 gap-2 h-20 lg:h-20 shrink-0 mb-1 lg:mb-0">
+                    <div className="grid grid-cols-4 gap-2 h-auto shrink-0 mb-1 lg:mb-0">
                         <StatBox value={activeQuest.currentChapter} label="WISDOM" icon={Cpu} color="text-blue-500" theme={theme} />
                         <StatBox value={Math.floor(activeQuest.totalChapters / 10)} label="MIGHT" icon={Sword} color="text-red-500" theme={theme} />
                         <StatBox value={`${progressPercent}%`} label="SYNC" icon={Activity} color={theme.highlightText} theme={theme} />

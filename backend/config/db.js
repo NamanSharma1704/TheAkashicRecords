@@ -20,6 +20,9 @@ const connectDB = async () => {
     if (!cached.promise) {
         const opts = {
             bufferCommands: false,
+            maxPoolSize: 10,
+            serverSelectionTimeoutMS: 5000,
+            socketTimeoutMS: 45000,
         };
 
         if (!process.env.MONGODB_URI) {
@@ -28,7 +31,7 @@ const connectDB = async () => {
 
         cached.promise = mongoose.connect(process.env.MONGODB_URI, opts).then((mongoose) => {
             console.log('MongoDB Synchronized.');
-            return mongoose.connection; // Return the connection object
+            return mongoose.connection;
         });
     }
 

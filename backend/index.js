@@ -61,6 +61,13 @@ const authenticate = async (req, res, next) => {
     }
 };
 
+const checkRole = (role) => (req, res, next) => {
+    if (req.user.role !== role) {
+        return res.status(403).json({ message: `Forbidden: ${role} authority required.` });
+    }
+    next();
+};
+
 // --- DIAGNOSTICS ---
 app.get('/api/health', async (req, res) => {
     try {
@@ -230,10 +237,12 @@ app.get('/api/quests', authenticate, async (req, res) => {
 
         // Lazy-seed if DB is completely empty (common for Guest or new Sovereign)
         if (quests.length === 0) {
-            console.log('[API] Database empty. Attempting lazy seeding...');
-            await initDatabase(() => req.dbConn);
-            quests = await Quest.find().sort({ lastRead: -1 });
-            console.log(`[API] Seeding complete. New count: ${quests.length}`);
+            console.log('[API] Database empty. Checking lazy seeding condition...');
+            // Only seed Guests, let Sovereigns migrate or add their own
+            if (req.user.role === 'GUEST') {
+                await initDatabase(() => req.dbConn);
+                quests = await Quest.find().sort({ lastRead: -1 });
+            }
         }
 
         res.json(quests);
@@ -331,7 +340,7 @@ app.delete('/api/quests/:id', authenticate, async (req, res) => {
 });
 
 // POST /api/admin/bulk-classify - Admin only migration
-app.post('/api/admin/bulk-classify', authenticate, async (req, res) => {
+app.post('/api/admin/bulk-classify', authenticate, checkRole('SOVEREIGN'), async (req, res) => {
     try {
         const Quest = getModel(req.dbConn, 'Quest');
         console.log("[Admin] Starting Bulk Classification...");
@@ -362,7 +371,7 @@ app.post('/api/admin/bulk-classify', authenticate, async (req, res) => {
 });
 
 // POST /api/admin/purge-duplicates - Deduplicate archives
-app.post('/api/admin/purge-duplicates', authenticate, async (req, res) => {
+app.post('/api/admin/purge-duplicates', authenticate, checkRole('SOVEREIGN'), async (req, res) => {
     try {
         const Quest = getModel(req.dbConn, 'Quest');
         console.log("[Admin] Initiating Duplicate Purge...");
@@ -448,15 +457,13 @@ app.get('/api/proxy/image', async (req, res) => {
     try {
         const fetchOptions = {
             headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
                 'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
                 'Accept-Language': 'en-US,en;q=0.9',
-                'Cache-Control': 'no-cache',
-                'Pragma': 'no-cache',
                 'Sec-Fetch-Dest': 'image',
                 'Sec-Fetch-Mode': 'no-cors',
-                'Sec-Fetch-Site': 'cross-site'
-                // Removed Referer as many sites block hotlinking if Referer is present but "wrong"
+                'Sec-Fetch-Site': 'cross-site',
+                'Referer': new URL(url).origin + '/'
             },
             redirect: 'follow'
         };

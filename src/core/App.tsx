@@ -473,8 +473,8 @@ const App: React.FC = () => {
     ), [theme, currentTheme, isHeaderVisible]);
 
     const memoizedMain = useMemo(() => (
-        <main className="absolute inset-0 top-16 bottom-16 overflow-y-auto lg:overflow-hidden overflow-x-hidden hide-scrollbar px-4 z-10 flex flex-col">
-            <div className="w-full max-w-[1400px] mx-auto flex-1 min-h-0 flex flex-col lg:flex-row gap-4 lg:gap-6 pt-3 lg:pt-4 pb-6 lg:pb-0 lg:h-full">
+        <main className="absolute inset-0 top-16 bottom-20 overflow-y-auto lg:overflow-hidden overflow-x-hidden hide-scrollbar px-4 z-10 flex flex-col">
+            <div className="w-full max-w-[1400px] mx-auto flex-1 min-h-0 flex flex-col lg:flex-row gap-4 lg:gap-6 pt-3 lg:pt-4 pb-6 lg:pb-6 lg:h-[calc(100%-1.5rem)]">
                 {/* LEFT COLUMN: ACTIVE CARD & STATS */}
                 <div className="flex-none lg:flex-1 flex flex-col gap-2 lg:gap-3 lg:min-h-0 order-1 lg:h-full">
                     {/* Hero card — fixed h on mobile, flex-1 on desktop */}
@@ -492,7 +492,7 @@ const App: React.FC = () => {
                                     <div className={`absolute inset-0 bg-gradient-to-r ${theme.isDark ? 'from-[#020202]' : 'from-[#f8f5f2]/60'} via-transparent ${theme.isDark ? 'to-[#020202]/50' : 'to-transparent'} transition-colors duration-700`} />
                                     <div className={`absolute top-0 left-0 w-full h-[2px] bg-${theme.primary}-400/80 shadow-[0_0_15px_currentColor] z-20 animate-[scanning_4s_linear_infinite] opacity-50 pointer-events-none transition-colors duration-700`} />
                                 </div>
-                                <div className="relative z-10 p-4 md:p-6 lg:p-8 flex flex-col h-full justify-between">
+                                <div className="relative z-10 p-4 md:p-6 lg:p-6 xl:p-8 flex flex-col h-full justify-between">
                                     <div className="flex justify-between items-start">
                                         <div className="space-y-1">
                                             <div className="flex items-center gap-2"><div className={`w-1.5 h-1.5 bg-${theme.primary}-500 rounded-full transition-colors duration-700`} /><span className={`text-[9px] font-mono ${theme.highlightText} tracking-[0.2em] uppercase transition-colors duration-700`}>Divine Revelation</span></div>
@@ -527,7 +527,7 @@ const App: React.FC = () => {
                         </div>
                     </div>
                     {/* Stat Boxes — slightly smaller on tablet for better fit */}
-                    <div className="grid grid-cols-4 gap-2 h-20 lg:h-24 shrink-0 mb-1 lg:mb-0">
+                    <div className="grid grid-cols-4 gap-2 h-20 lg:h-20 shrink-0 mb-1 lg:mb-0">
                         <StatBox value={activeQuest.currentChapter} label="WISDOM" icon={Cpu} color="text-blue-500" theme={theme} />
                         <StatBox value={Math.floor(activeQuest.totalChapters / 10)} label="MIGHT" icon={Sword} color="text-red-500" theme={theme} />
                         <StatBox value={`${progressPercent}%`} label="SYNC" icon={Activity} color={theme.highlightText} theme={theme} />

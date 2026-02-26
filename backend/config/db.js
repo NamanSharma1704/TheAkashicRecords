@@ -20,9 +20,9 @@ const connectDB = async () => {
     if (!cached.promise) {
         const opts = {
             bufferCommands: false,
-            maxPoolSize: 10,
+            maxPoolSize: 1, // Optimized for Serverless
             serverSelectionTimeoutMS: 5000,
-            socketTimeoutMS: 45000,
+            socketTimeoutMS: 30000, // Slightly reduced
         };
 
         if (!process.env.MONGODB_URI) {

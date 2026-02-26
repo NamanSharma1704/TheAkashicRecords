@@ -205,16 +205,33 @@ app.post('/api/auth/guest', async (req, res) => {
 
 // GET /api/user/state - Fetch streak and daily absorb
 app.get('/api/user/state', authenticate, async (req, res) => {
+    const start = Date.now();
     try {
+        console.log(`[PERF] User State Request Start: ${req.user.username}`);
         const UserSettings = getModel(req.dbConn, 'UserSettings');
         const DailyQuest = getModel(req.dbConn, 'DailyQuest');
-
-        let settings = await UserSettings.findOne({ userId: req.user._id });
-        if (!settings) settings = await UserSettings.create({ userId: req.user._id });
-
         const today = getTodayStr();
-        let daily = await DailyQuest.findOne({ date: today });
-        if (!daily) daily = await DailyQuest.create({ date: today });
+
+        // Parallel fetch for speed
+        const [settingsResult, dailyResult] = await Promise.all([
+            UserSettings.findOne({ userId: req.user._id }),
+            DailyQuest.findOne({ date: today })
+        ]);
+
+        console.log(`[PERF] Initial fetch complete: ${Date.now() - start}ms`);
+
+        let settings = settingsResult;
+        let daily = dailyResult;
+
+        // Handle missing documents in parallel if possible
+        const creations = [];
+        if (!settings) creations.push(UserSettings.create({ userId: req.user._id }).then(s => settings = s));
+        if (!daily) creations.push(DailyQuest.create({ date: today }).then(d => daily = d));
+
+        if (creations.length > 0) {
+            await Promise.all(creations);
+            console.log(`[PERF] Missing documents created: ${Date.now() - start}ms`);
+        }
 
         res.json({
             streak: settings.streak,
@@ -222,7 +239,9 @@ app.get('/api/user/state', authenticate, async (req, res) => {
             dailyAbsorbed: daily.absorbedIds.length,
             absorbedIds: daily.absorbedIds
         });
+        console.log(`[PERF] Total User State Duration: ${Date.now() - start}ms`);
     } catch (err) {
+        console.error(`[PERF] User State Failure (${Date.now() - start}ms):`, err.message);
         res.status(500).json({ message: err.message });
     }
 });

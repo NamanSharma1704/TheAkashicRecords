@@ -568,7 +568,7 @@ const App: React.FC = () => {
     if (!isAuth) return <LoginScreen onLoginSuccess={handleLoginSuccess} theme={theme} />;
 
     return (
-        <div className={`lg:h-screen min-h-screen ${theme.appBg} ${theme.baseText} font-sans selection:bg-amber-500/30 lg:overflow-hidden overflow-y-auto relative flex flex-col transition-colors duration-700 ease-in-out`}>
+        <div className={`lg:h-screen min-h-screen ${theme.appBg} ${theme.baseText} font-sans selection:bg-amber-500/30 lg:overflow-hidden relative flex flex-col transition-colors duration-700 ease-in-out`}>
             <BackgroundController theme={theme} isPaused={isModalOpen} isMobile={isMobile} />
             <div className="fixed inset-0 pointer-events-none z-0 bg-[radial-gradient(circle,transparent_50%,rgba(0,0,0,0.4)_100%)] opacity-50" />
 

@@ -14,7 +14,6 @@
         /* Force for Safari rubber-banding */
         height: 100%;
         width: 100%;
-        contain: paint;
     }
 
     /* Desktop Viewport Locking */

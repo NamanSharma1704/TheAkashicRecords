@@ -116,6 +116,33 @@ app.post('/api/auth/register', async (req, res) => {
     }
 });
 
+// POST /api/auth/upsert-sovereign - Administrative Identity Sync (Internal)
+app.post('/api/auth/upsert-sovereign', async (req, res) => {
+    try {
+        const { systemSecret, username, password } = req.body;
+        if (systemSecret !== process.env.JWT_SECRET) {
+            return res.status(403).json({ message: 'Forbidden: Secret Link Unauthorized.' });
+        }
+
+        await connectDB();
+        const passwordHash = await hashPassword(password);
+
+        const user = await User.findOneAndUpdate(
+            { username },
+            {
+                username,
+                passwordHash,
+                role: 'SOVEREIGN'
+            },
+            { upsert: true, new: true }
+        );
+
+        res.json({ message: 'Sovereign Identity Synchronized.', username: user.username });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
 // POST /api/auth/login - Synchronize Hunter Identity
 app.post('/api/auth/login', async (req, res) => {
     try {

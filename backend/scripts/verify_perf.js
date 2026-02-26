@@ -1,6 +1,9 @@
 const https = require('https');
 
 const PRODUCTION_URL = "the-akashic-records.vercel.app";
+const LOCAL_URL = "localhost";
+const PORT = process.argv.includes('--local') ? 5000 : 443;
+const HOST = process.argv.includes('--local') ? LOCAL_URL : PRODUCTION_URL;
 
 const loginData = JSON.stringify({
     username: "Naman",
@@ -8,8 +11,8 @@ const loginData = JSON.stringify({
 });
 
 const loginOptions = {
-    hostname: PRODUCTION_URL,
-    port: 443,
+    hostname: HOST,
+    port: PORT,
     path: '/api/auth/login',
     method: 'POST',
     headers: {
@@ -19,14 +22,15 @@ const loginOptions = {
 };
 
 async function verify() {
-    console.log("--- Production Performance Verification ---");
+    console.log(`--- Performance Verification (${HOST}:${PORT}) ---`);
     const globalStart = Date.now();
 
     try {
         // 1. Authenticate
         console.log("[1/2] Authenticating...");
         const token = await new Promise((resolve, reject) => {
-            const req = https.request(loginOptions, (res) => {
+            const options = { ...loginOptions };
+            const req = (PORT === 443 ? https : require('http')).request(options, (res) => {
                 let body = '';
                 res.on('data', d => body += d);
                 res.on('end', () => {
@@ -41,19 +45,20 @@ async function verify() {
         });
         console.log(`Authenticated in ${Date.now() - globalStart}ms`);
 
-        // 2. Fetch User State
+        // 2. Fetch Initial Data (BATCHED)
         const stateStart = Date.now();
-        console.log("[2/2] Fetching User State (Timing Database Heartbeat)...");
+        console.log("[2/2] Fetching Initial Data (Batched Heartbeat)...");
         const stateOptions = {
-            hostname: PRODUCTION_URL,
-            port: 443,
-            path: '/api/user/state',
+            hostname: HOST,
+            port: PORT,
+            path: '/api/boot/initial-data',
             method: 'GET',
             headers: { 'Authorization': `Bearer ${token}` }
         };
 
         const result = await new Promise((resolve, reject) => {
-            const req = https.get(stateOptions, (res) => {
+            const options = { ...stateOptions };
+            const req = (PORT === 443 ? https : require('http')).get(options, (res) => {
                 let body = '';
                 res.on('data', d => body += d);
                 res.on('end', () => {

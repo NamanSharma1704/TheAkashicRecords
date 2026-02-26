@@ -121,40 +121,42 @@ const App: React.FC = () => {
 
     useEffect(() => {
         if (isAuth) {
-            fetchQuests();
-            fetchUserState();
+            fetchInitialData();
         }
     }, [isAuth]);
 
-    const fetchQuests = async () => {
+    const fetchInitialData = async () => {
+        const start = Date.now();
         try {
-            const res = await systemFetch(API_URL);
-            const data = await res.json();
-            if (res.ok && Array.isArray(data)) {
-                const mappedData = data.map(mapQuest);
+            console.log("[SYSTEM] Initiating High-Performance Boot Sequence...");
+            const res = await systemFetch('/api/boot/initial-data');
+
+            if (!res.ok) throw new Error(`PROTOCOL_ERROR: ${res.status}`);
+
+            const { quests, userState: stats } = await res.json();
+
+            // 1. Hydrate Library
+            if (Array.isArray(quests)) {
+                const mappedData = quests.map(mapQuest);
                 setLibrary(mappedData);
+
+                // Set default active quest if none exists
                 if (!activeId && mappedData.length > 0) {
                     const top = mappedData.filter((i: any) => i.status === 'ACTIVE').sort((a: any, b: any) => new Date(b.lastUpdated || 0).getTime() - new Date(a.lastUpdated || 0).getTime())[0];
                     setActiveId(top ? top.id : (mappedData[0]?.id || null));
                 }
             }
-        } catch (e) {
-            console.error("Database connection failure:", e);
-            setLibrary([]);
-        }
-    };
 
-    const fetchUserState = async () => {
-        try {
-            const res = await systemFetch('/api/user/state');
-            if (res.ok) {
-                const data = await res.json();
-                if (data && typeof data === 'object' && !data.message) {
-                    setUserState(data);
-                }
+            // 2. Hydrate User Stats
+            if (stats) {
+                setUserState(stats);
             }
-        } catch (e) {
-            console.error("User state fetch failed:", e);
+
+            console.log(`[SYSTEM] Sync Complete. Duration: ${Date.now() - start}ms`);
+        } catch (e: any) {
+            console.error("BOOT_SYNC_FAILURE:", e.message);
+            // Fallback to empty state to prevent UI crash
+            setLibrary([]);
         }
     };
 
@@ -326,7 +328,7 @@ const App: React.FC = () => {
                 console.error(`[Import] Failed to process: ${item.title}`, e);
             }
         }
-        await fetchQuests();
+        await fetchInitialData();
         setBooting(false);
         showSystemNotification(`Archive Reputed. ${count} New Origins Formed. ${updatedCount} Records Enhanced. ${skippedCount} Outdated Clusters Ignored.`, 'SUCCESS');
     };
@@ -347,7 +349,7 @@ const App: React.FC = () => {
             });
             const updated = await res.json();
             setLibrary(prev => prev.map(q => q.id === activeId ? mapQuest(updated) : q));
-            fetchUserState(); // Refresh Divine Mandate UI
+            fetchInitialData(); // Refresh Divine Mandate UI
         } catch (e) {
             console.error("Progress update failed", e);
         }

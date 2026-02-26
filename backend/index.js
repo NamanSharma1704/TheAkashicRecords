@@ -33,25 +33,18 @@ const authenticate = async (req, res, next) => {
     }
 
     try {
-        let user;
-        // Check if this is a virtual guest identity
-        if (decoded.id && typeof decoded.id === 'string' && decoded.id.startsWith('guest_')) {
-            user = {
-                _id: decoded.id,
-                username: decoded.username,
-                role: 'GUEST'
-            };
-        } else {
-            user = await User.findById(decoded.id);
-        }
-
-        if (!user) return res.status(401).json({ message: 'Authentication Protocol Terminated: Subject Unknown.' });
-
-        req.user = user;
+        // --- ZERO-DB AUTHENTICATION ---
+        // Trust the token's payload for role-based routing and multi-tenancy.
+        // This eliminates one DB lookup per request.
+        req.user = {
+            _id: decoded.id,
+            username: decoded.username,
+            role: decoded.role
+        };
 
         // --- MULTI-TENANCY LOGIC ---
         // SOVEREIGN -> akashic_records, GUEST -> test_records
-        const dbName = user.role === 'SOVEREIGN' ? 'akashic_records' : 'test_records';
+        const dbName = req.user.role === 'SOVEREIGN' ? 'akashic_records' : 'test_records';
         req.dbConn = await getTenantDb(dbName);
 
         next();
@@ -197,6 +190,65 @@ app.post('/api/auth/guest', async (req, res) => {
             user: { id: guestUser._id, username: guestUser.username, role: guestUser.role }
         });
     } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+// --- BATCHED INITIALIZATION ---
+
+// GET /api/boot/initial-data - Batched fetch for instant loading
+app.get('/api/boot/initial-data', authenticate, async (req, res) => {
+    const start = Date.now();
+    try {
+        console.log(`[PERF] Initial Data Batch Request Start: ${req.user.username}`);
+
+        const Quest = getModel(req.dbConn, 'Quest');
+        const UserSettings = getModel(req.dbConn, 'UserSettings');
+        const DailyQuest = getModel(req.dbConn, 'DailyQuest');
+        const today = getTodayStr();
+
+        // parallel fetch for absolute speed
+        const [quests, settingsResult, dailyResult] = await Promise.all([
+            Quest.find().sort({ lastRead: -1 }),
+            UserSettings.findOne({ userId: req.user._id }),
+            DailyQuest.findOne({ date: today })
+        ]);
+
+        console.log(`[PERF] Initial parallel fetch complete: ${Date.now() - start}ms`);
+
+        let settings = settingsResult;
+        let daily = dailyResult;
+
+        // Lazy-seeding and creation handled as post-fetch cleanup to minimize latency
+        const followups = [];
+
+        // Quests seeding
+        if (quests.length === 0 && req.user.role === 'GUEST') {
+            followups.push(initDatabase(() => req.dbConn));
+        }
+
+        // Settings/Daily creation
+        if (!settings) followups.push(UserSettings.create({ userId: req.user._id }).then(s => settings = s));
+        if (!daily) followups.push(DailyQuest.create({ date: today }).then(d => daily = d));
+
+        if (followups.length > 0) {
+            await Promise.all(followups);
+            console.log(`[PERF] Followup completions in: ${Date.now() - start}ms`);
+        }
+
+        res.json({
+            quests,
+            userState: {
+                streak: settings?.streak || 0,
+                lastReadDate: settings?.lastReadDate || null,
+                dailyAbsorbed: daily?.absorbedIds.length || 0,
+                absorbedIds: daily?.absorbedIds || []
+            }
+        });
+
+        console.log(`[PERF] Total Initial Data Duration: ${Date.now() - start}ms`);
+    } catch (err) {
+        console.error(`[PERF] Initial Data Failure (${Date.now() - start}ms):`, err.message);
         res.status(500).json({ message: err.message });
     }
 });

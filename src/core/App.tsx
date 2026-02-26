@@ -473,10 +473,10 @@ const App: React.FC = () => {
     ), [theme, currentTheme, isHeaderVisible]);
 
     const memoizedMain = useMemo(() => (
-        <main className="w-full pt-16 sm:pt-24 pb-4 lg:pb-0 px-4 max-w-[1400px] mx-auto flex-1 flex flex-col lg:flex-row gap-4 lg:gap-8 min-h-0 z-10 relative">
+        <main className="w-full pt-20 lg:pt-20 pb-4 lg:pb-4 px-4 max-w-[1400px] mx-auto flex-1 flex flex-col lg:flex-row gap-4 lg:gap-8 min-h-0 z-10 relative">
             {/* LEFT COLUMN: ACTIVE CARD & STATS */}
-            <div className="flex-none lg:flex-1 flex flex-col gap-2 sm:gap-4 lg:gap-8 min-h-0 order-1 relative lg:pb-8">
-                <div className="w-full min-h-[380px] sm:h-[550px] lg:h-auto lg:flex-1 lg:min-h-[400px] relative pb-4 lg:pb-0">
+            <div className="flex-none lg:flex-1 flex flex-col gap-2 sm:gap-4 lg:gap-6 min-h-0 order-1 relative">
+                <div className="w-full min-h-[380px] sm:h-[450px] lg:h-auto lg:flex-1 lg:min-h-[300px] relative pb-4 lg:pb-0">
                     <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[140%] aspect-square opacity-100 pointer-events-none z-0">
                         <div className={`absolute inset-0 border ${theme.isDark ? 'border-white/30' : 'border-black/30'} rounded-full animate-[spin_60s_linear_infinite] transition-colors duration-700`} />
                         <div className={`absolute inset-[5%] border border-dashed ${theme.isDark ? 'border-white/30' : 'border-black/30'} rounded-full animate-[spin_40s_linear_infinite_reverse] transition-colors duration-700`} />
@@ -524,7 +524,7 @@ const App: React.FC = () => {
                         </SystemFrame>
                     </div>
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 md:gap-4 h-auto sm:h-28 lg:h-32 shrink-0">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 md:gap-4 h-auto sm:h-28 lg:h-28 shrink-0">
                     <StatBox value={activeQuest.currentChapter} label="WISDOM" icon={Cpu} color="text-blue-500" theme={theme} />
                     <StatBox value={Math.floor(activeQuest.totalChapters / 10)} label="MIGHT" icon={Sword} color="text-red-500" theme={theme} />
                     <StatBox value={`${progressPercent}%`} label="SYNC" icon={Activity} color={theme.highlightText} theme={theme} />
@@ -533,7 +533,7 @@ const App: React.FC = () => {
             </div>
 
             {/* RIGHT COLUMN: SIDEBAR */}
-            <div className="w-full lg:w-96 flex flex-col gap-2 lg:gap-3 flex-none lg:min-h-0 order-2 pb-8 lg:pb-8">
+            <div className="w-full lg:w-96 flex flex-col gap-2 lg:gap-3 flex-none lg:min-h-0 order-2">
                 {/* PLAYER CARD */}
                 <div className="w-full h-auto">
                     <SystemFrame variant="brackets" theme={theme}>
@@ -587,9 +587,9 @@ const App: React.FC = () => {
                 </div>
 
                 {/* ACTIVE QUESTS LIST */}
-                <div className="flex-1 flex flex-col min-h-0 gap-1 mt-8">
+                <div className="flex-1 flex flex-col min-h-0 gap-1 mt-4 lg:mt-6">
                     <div className={`text-[10px] font-mono ${theme.headingText} uppercase tracking-widest border-b ${theme.borderSubtle} pb-1.5 mb-1 transition-colors duration-700`}>ACTIVE QUESTS</div>
-                    <div className="flex-1 min-h-[200px] lg:min-h-0 overflow-hidden relative">
+                    <div className="flex-1 min-h-[150px] lg:min-h-0 overflow-y-auto hide-scrollbar relative">
                         <div className="flex flex-col gap-1 h-full">
                             {activeQuests.map((item) => {
                                 const isHighlighted = activeId === item.id;
@@ -613,7 +613,7 @@ const App: React.FC = () => {
                 </div>
 
                 {/* DIVINE SPIRE BUTTON */}
-                <button onClick={() => { setIsSpireOpen(true); }} className={`hidden lg:flex w-full py-4 ${theme.isDark ? 'bg-white/5' : 'bg-sky-500/10'} border ${theme.borderSubtle} ${theme.highlightText} hover:bg-${theme.primary}-500 ${theme.isDark ? 'hover:text-black' : 'hover:text-white'} font-mono font-bold tracking-widest uppercase transition-all items-center justify-center gap-2 text-xs shrink-0 shadow-sm cursor-pointer duration-700 mt-auto`}><LayoutTemplate size={16} /> DIVINE SPIRE</button>
+                <button onClick={() => { setIsSpireOpen(true); }} className={`hidden lg:flex w-full py-3 lg:py-4 ${theme.isDark ? 'bg-white/5' : 'bg-sky-500/10'} border ${theme.borderSubtle} ${theme.highlightText} hover:bg-${theme.primary}-500 ${theme.isDark ? 'hover:text-black' : 'hover:text-white'} font-mono font-bold tracking-widest uppercase transition-all items-center justify-center gap-2 text-xs shrink-0 shadow-sm cursor-pointer duration-700 mt-auto`}><LayoutTemplate size={16} /> DIVINE SPIRE</button>
             </div>
         </main>
     ), [theme, currentTheme, isSpireOpen, activeQuest, progressPercent, activeId, handleLogClick, activeQuests, totalChaptersRead, playerRank, userState, updateProgress]);

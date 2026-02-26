@@ -9,12 +9,14 @@
 
     html,
     body {
-        @apply bg-[#020202] text-white overflow-x-hidden;
+        @apply bg-[#020202] text-white overflow-hidden;
         background-color: #020202;
         /* Force for Safari rubber-banding */
         height: 100%;
         width: 100%;
         contain: paint;
+        position: fixed;
+        /* Extra lock */
     }
 
     #root {

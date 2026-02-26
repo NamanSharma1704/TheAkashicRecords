@@ -474,7 +474,7 @@ const App: React.FC = () => {
 
     const memoizedMain = useMemo(() => (
         <main className="absolute inset-0 top-16 bottom-16 overflow-y-auto lg:overflow-hidden overflow-x-hidden hide-scrollbar px-4 z-10 flex flex-col">
-            <div className="max-w-[1400px] mx-auto flex-1 min-h-0 flex flex-col lg:flex-row gap-4 lg:gap-6 pt-3 lg:pt-4 pb-6 lg:pb-0 lg:h-full">
+            <div className="w-full max-w-[1400px] mx-auto flex-1 min-h-0 flex flex-col lg:flex-row gap-4 lg:gap-6 pt-3 lg:pt-4 pb-6 lg:pb-0 lg:h-full">
                 {/* LEFT COLUMN: ACTIVE CARD & STATS */}
                 <div className="flex-none lg:flex-1 flex flex-col gap-2 lg:gap-3 lg:min-h-0 order-1 lg:h-full">
                     {/* Hero card — fixed h on mobile, flex-1 on desktop */}
@@ -505,7 +505,7 @@ const App: React.FC = () => {
                                     </div>
                                     <div className="space-y-8 w-full min-w-0">
                                         <div className={`min-h-[5rem] h-auto flex items-end relative pb-4 pr-6 border-b border-gradient-to-r ${theme.id === 'LIGHT' ? 'from-sky-500/30' : 'from-amber-500/50'} to-transparent transition-colors duration-700`} style={{ width: 0, minWidth: '100%' }}>
-                                            <h1 className={`text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-black font-orbitron italic tracking-tighter bg-gradient-to-r ${theme.id === 'LIGHT' ? 'from-cyan-600 via-cyan-400 to-cyan-600' : 'from-amber-200 via-yellow-400 to-amber-200'} text-transparent bg-clip-text animate-gradient-x text-bloom w-full break-words line-clamp-2 lg:line-clamp-3 leading-[1.1] transition-all duration-700 pb-1 uppercase`}
+                                            <h1 className={`text-2xl sm:text-3xl lg:text-4xl xl:text-5xl font-black font-orbitron italic tracking-tighter bg-gradient-to-r ${theme.id === 'LIGHT' ? 'from-cyan-600 via-cyan-400 to-cyan-600' : 'from-amber-200 via-yellow-400 to-amber-200'} text-transparent bg-clip-text animate-gradient-x text-bloom w-full line-clamp-2 leading-[1.1] transition-all duration-700 pb-1 uppercase`}
                                                 style={{ textTransform: 'uppercase', '--bloom-color': theme.id === 'LIGHT' ? '#06b6d4' : '#f59e0b' } as React.CSSProperties}>
                                                 {activeQuest.title}
                                             </h1>

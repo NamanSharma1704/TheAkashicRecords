@@ -39,7 +39,7 @@ const ScrambleText: React.FC<ScrambleTextProps> = ({
                 setDisplay(text);
             }
             iterations += revealSpeed;
-        }, speed);
+        }, 60); // Standardized to 60ms for smoother frame budget
 
         return () => {
             if (intervalRef.current) clearInterval(intervalRef.current);

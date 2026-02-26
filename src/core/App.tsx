@@ -473,147 +473,149 @@ const App: React.FC = () => {
     ), [theme, currentTheme, isHeaderVisible]);
 
     const memoizedMain = useMemo(() => (
-        <main className="w-full pt-20 lg:pt-20 pb-4 lg:pb-4 px-4 max-w-[1400px] mx-auto flex-1 flex flex-col lg:flex-row gap-4 lg:gap-8 min-h-0 z-10 relative">
-            {/* LEFT COLUMN: ACTIVE CARD & STATS */}
-            <div className="flex-none lg:flex-1 flex flex-col gap-2 sm:gap-4 lg:gap-6 min-h-0 order-1 relative">
-                <div className="w-full min-h-[380px] sm:h-[450px] lg:h-auto lg:flex-1 lg:min-h-[300px] relative pb-4 lg:pb-0">
-                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[140%] aspect-square opacity-100 pointer-events-none z-0">
-                        <div className={`absolute inset-0 border ${theme.isDark ? 'border-white/30' : 'border-black/30'} rounded-full animate-[spin_60s_linear_infinite] transition-colors duration-700`} />
-                        <div className={`absolute inset-[5%] border border-dashed ${theme.isDark ? 'border-white/30' : 'border-black/30'} rounded-full animate-[spin_40s_linear_infinite_reverse] transition-colors duration-700`} />
-                    </div>
+        <main className="absolute inset-0 top-16 bottom-8 overflow-y-auto overflow-x-hidden hide-scrollbar px-4 z-10">
+            <div className="max-w-[1400px] mx-auto h-full flex flex-col lg:flex-row gap-4 lg:gap-8 py-4 lg:py-6">
+                {/* LEFT COLUMN: ACTIVE CARD & STATS */}
+                <div className="flex-none lg:flex-1 flex flex-col gap-2 sm:gap-4 lg:gap-4 min-h-0 order-1 relative">
+                    <div className="w-full min-h-[340px] sm:h-auto sm:flex-1 lg:flex-1 lg:min-h-0 relative pb-4 lg:pb-0">
+                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[140%] aspect-square opacity-100 pointer-events-none z-0">
+                            <div className={`absolute inset-0 border ${theme.isDark ? 'border-white/30' : 'border-black/30'} rounded-full animate-[spin_60s_linear_infinite] transition-colors duration-700`} />
+                            <div className={`absolute inset-[5%] border border-dashed ${theme.isDark ? 'border-white/30' : 'border-black/30'} rounded-full animate-[spin_40s_linear_infinite_reverse] transition-colors duration-700`} />
+                        </div>
 
-                    <div className="w-full h-full">
-                        <SystemFrame variant="full" theme={theme} className={`shadow-2xl ${theme.shadow} transition-shadow duration-700`}>
-                            <div className="absolute inset-0 z-0 group">
-                                <img src={activeQuest.coverUrl} alt="Background" className={`w-full h-full object-cover object-[50%_5%] ${theme.isDark ? 'opacity-90 mix-blend-normal grayscale-0' : 'opacity-70 mix-blend-normal grayscale-0'} transition-all duration-700`} referrerPolicy="no-referrer" />
-                                <div className={`absolute inset-0 bg-gradient-to-t ${theme.isDark ? 'from-[#020202] via-[#020202]/80' : 'from-[#f8f5f2]/90 via-[#f8f5f2]/60'} to-transparent transition-colors duration-700`} />
-                                <div className={`absolute inset-0 bg-gradient-to-r ${theme.isDark ? 'from-[#020202]' : 'from-[#f8f5f2]/60'} via-transparent ${theme.isDark ? 'to-[#020202]/50' : 'to-transparent'} transition-colors duration-700`} />
-                                <div className={`absolute top-0 left-0 w-full h-[2px] bg-${theme.primary}-400/80 shadow-[0_0_15px_currentColor] z-20 animate-[scanning_4s_linear_infinite] opacity-50 pointer-events-none transition-colors duration-700`} />
-                            </div>
-                            <div className="relative z-10 p-8 flex flex-col h-full justify-between">
-                                <div className="flex justify-between items-start">
-                                    <div className="space-y-1">
-                                        <div className="flex items-center gap-2"><div className={`w-1.5 h-1.5 bg-${theme.primary}-500 rounded-full transition-colors duration-700`} /><span className={`text-[9px] font-mono ${theme.highlightText} tracking-[0.2em] uppercase transition-colors duration-700`}>Divine Revelation</span></div>
-                                        <div className={`border ${theme.borderSubtle} ${theme.isDark ? 'bg-black/90' : 'bg-white/90'} backdrop-blur-sm px-3 py-1 flex items-center gap-2 transition-colors duration-700`}><Crown size={12} className={`${theme.highlightText} transition-colors duration-700`} /><span className={`font-mono font-bold text-xs tracking-widest ${theme.headingText} transition-colors duration-700`}>RANK: {calculateQuestRank(activeQuest)}</span></div>
+                        <div className="w-full h-full">
+                            <SystemFrame variant="full" theme={theme} className={`shadow-2xl ${theme.shadow} transition-shadow duration-700`}>
+                                <div className="absolute inset-0 z-0 group">
+                                    <img src={activeQuest.coverUrl} alt="Background" className={`w-full h-full object-cover object-[50%_5%] ${theme.isDark ? 'opacity-90 mix-blend-normal grayscale-0' : 'opacity-70 mix-blend-normal grayscale-0'} transition-all duration-700`} referrerPolicy="no-referrer" />
+                                    <div className={`absolute inset-0 bg-gradient-to-t ${theme.isDark ? 'from-[#020202] via-[#020202]/80' : 'from-[#f8f5f2]/90 via-[#f8f5f2]/60'} to-transparent transition-colors duration-700`} />
+                                    <div className={`absolute inset-0 bg-gradient-to-r ${theme.isDark ? 'from-[#020202]' : 'from-[#f8f5f2]/60'} via-transparent ${theme.isDark ? 'to-[#020202]/50' : 'to-transparent'} transition-colors duration-700`} />
+                                    <div className={`absolute top-0 left-0 w-full h-[2px] bg-${theme.primary}-400/80 shadow-[0_0_15px_currentColor] z-20 animate-[scanning_4s_linear_infinite] opacity-50 pointer-events-none transition-colors duration-700`} />
+                                </div>
+                                <div className="relative z-10 p-8 flex flex-col h-full justify-between">
+                                    <div className="flex justify-between items-start">
+                                        <div className="space-y-1">
+                                            <div className="flex items-center gap-2"><div className={`w-1.5 h-1.5 bg-${theme.primary}-500 rounded-full transition-colors duration-700`} /><span className={`text-[9px] font-mono ${theme.highlightText} tracking-[0.2em] uppercase transition-colors duration-700`}>Divine Revelation</span></div>
+                                            <div className={`border ${theme.borderSubtle} ${theme.isDark ? 'bg-black/90' : 'bg-white/90'} backdrop-blur-sm px-3 py-1 flex items-center gap-2 transition-colors duration-700`}><Crown size={12} className={`${theme.highlightText} transition-colors duration-700`} /><span className={`font-mono font-bold text-xs tracking-widest ${theme.headingText} transition-colors duration-700`}>RANK: {calculateQuestRank(activeQuest)}</span></div>
+                                        </div>
+                                        <div className="text-right">
+                                            <div className={`text-[10px] ${theme.mutedText} font-mono tracking-widest flex items-center justify-end gap-2 transition-colors duration-700`}><Hash size={12} /> ID: <span className="max-w-[130px] sm:max-w-none truncate inline-block">#{activeQuest.id?.padStart(4, '0')}</span></div>
+                                            <div className={`text-xs ${theme.highlightText} font-mono mt-1 border-b ${theme.borderSubtle} pb-0.5 inline-block transition-colors duration-700`}>{activeQuest.classType}</div>
+                                        </div>
                                     </div>
-                                    <div className="text-right">
-                                        <div className={`text-[10px] ${theme.mutedText} font-mono tracking-widest flex items-center justify-end gap-2 transition-colors duration-700`}><Hash size={12} /> ID: <span className="max-w-[130px] sm:max-w-none truncate inline-block">#{activeQuest.id?.padStart(4, '0')}</span></div>
-                                        <div className={`text-xs ${theme.highlightText} font-mono mt-1 border-b ${theme.borderSubtle} pb-0.5 inline-block transition-colors duration-700`}>{activeQuest.classType}</div>
+                                    <div className="space-y-8 w-full min-w-0">
+                                        <div className={`min-h-[5rem] h-auto flex items-end relative pb-4 pr-6 border-b border-gradient-to-r ${theme.id === 'LIGHT' ? 'from-sky-500/30' : 'from-amber-500/50'} to-transparent transition-colors duration-700`} style={{ width: 0, minWidth: '100%' }}>
+                                            <h1 className={`text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-black font-orbitron italic tracking-tighter bg-gradient-to-r ${theme.id === 'LIGHT' ? 'from-cyan-600 via-cyan-400 to-cyan-600' : 'from-amber-200 via-yellow-400 to-amber-200'} text-transparent bg-clip-text animate-gradient-x text-bloom w-full break-words line-clamp-3 md:line-clamp-4 leading-[1.1] transition-all duration-700 pb-1 uppercase`}
+                                                style={{ textTransform: 'uppercase', '--bloom-color': theme.id === 'LIGHT' ? '#06b6d4' : '#f59e0b' } as React.CSSProperties}>
+                                                {activeQuest.title}
+                                            </h1>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <div className={`flex justify-between text-[10px] font-mono ${theme.mutedText} tracking-wider transition-colors duration-700`}><span className={`flex items-center gap-2 ${theme.headingText} transition-colors duration-700`}><Zap size={12} /> COMPLETION_RATE</span><span className={`font-bold ${theme.headingText} transition-colors duration-700`}>{progressPercent}%</span></div>
+                                            <div className={`h-1.5 ${theme.isDark ? 'bg-gray-800' : 'bg-gray-200'} w-full relative transition-colors duration-700 overflow-hidden`}><div className={`h-full bg-gradient-to-r ${theme.gradient} progress-bloom transition-transform duration-700 ease-out origin-left`} style={{ transform: `scaleX(${progressPercent / 100})`, color: theme.id === 'LIGHT' ? '#06b6d4' : '#f59e0b' }} /></div>
+                                            <div className={`flex justify-between text-[9px] font-mono ${theme.mutedText} uppercase tracking-widest transition-colors duration-700`}><span>Current: {activeQuest.currentChapter}</span><span>Terminal: {activeQuest.totalChapters}</span></div>
+                                        </div>
+                                        <div className="flex gap-4">
+                                            <button onClick={() => updateProgress(-1)} className={`w-12 h-12 border ${theme.borderSubtle} ${theme.isDark ? 'bg-black/85 hover:border-white hover:text-white' : 'bg-white/85 hover:border-black hover:text-black'} flex items-center justify-center transition-colors cursor-pointer duration-700`}><span className="text-xl font-bold">-</span></button>
+                                            <button onClick={() => updateProgress(1)} className={`h-12 flex-1 border ${theme.border} ${theme.isDark ? 'bg-amber-950/70 hover:bg-amber-500' : 'bg-sky-500/70 hover:bg-sky-500'} flex items-center justify-center gap-3 transition-all font-mono font-bold tracking-widest ${theme.isDark ? 'text-amber-100/80 hover:text-black' : 'text-sky-50 hover:text-white'} text-sm group cursor-pointer`}><Sword size={16} className="group-hover:rotate-45 transition-transform" /> CONQUER</button>
+                                            <a href={activeQuest.link} target="_blank" className={`w-12 h-12 border ${theme.borderSubtle} ${theme.highlightText} ${theme.isDark ? 'hover:border-white hover:text-white' : 'hover:border-black hover:text-black'} flex items-center justify-center transition-colors cursor-pointer duration-700`}><ExternalLink size={18} /></a>
+                                            <button onClick={() => { setEditingItem(activeQuest); setIsModalOpen(true); }} className={`w-12 h-12 border ${theme.borderSubtle} ${theme.isDark ? 'hover:border-white hover:text-white' : 'hover:border-black hover:text-black'} flex items-center justify-center transition-colors cursor-pointer duration-700`}><Terminal size={18} /></button>
+                                        </div>
                                     </div>
                                 </div>
-                                <div className="space-y-8 w-full min-w-0">
-                                    <div className={`min-h-[5rem] h-auto flex items-end relative pb-4 pr-6 border-b border-gradient-to-r ${theme.id === 'LIGHT' ? 'from-sky-500/30' : 'from-amber-500/50'} to-transparent transition-colors duration-700`} style={{ width: 0, minWidth: '100%' }}>
-                                        <h1 className={`text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-black font-orbitron italic tracking-tighter bg-gradient-to-r ${theme.id === 'LIGHT' ? 'from-cyan-600 via-cyan-400 to-cyan-600' : 'from-amber-200 via-yellow-400 to-amber-200'} text-transparent bg-clip-text animate-gradient-x text-bloom w-full break-words line-clamp-3 md:line-clamp-4 leading-[1.1] transition-all duration-700 pb-1 uppercase`}
-                                            style={{ textTransform: 'uppercase', '--bloom-color': theme.id === 'LIGHT' ? '#06b6d4' : '#f59e0b' } as React.CSSProperties}>
-                                            {activeQuest.title}
-                                        </h1>
+                            </SystemFrame>
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 md:gap-4 h-auto sm:h-28 lg:h-28 shrink-0">
+                        <StatBox value={activeQuest.currentChapter} label="WISDOM" icon={Cpu} color="text-blue-500" theme={theme} />
+                        <StatBox value={Math.floor(activeQuest.totalChapters / 10)} label="MIGHT" icon={Sword} color="text-red-500" theme={theme} />
+                        <StatBox value={`${progressPercent}%`} label="SYNC" icon={Activity} color={theme.highlightText} theme={theme} />
+                        <StatBox value={activeQuest.status === 'CONQUERED' ? 'CLOSED' : 'OPEN'} label="GATE" icon={Target} color={activeQuest.status === 'CONQUERED' ? 'text-gray-400' : theme.highlightText} theme={theme} />
+                    </div>
+                </div>
+
+                {/* RIGHT COLUMN: SIDEBAR */}
+                <div className="w-full lg:w-96 flex flex-col gap-2 lg:gap-2 flex-none lg:min-h-0 order-2 pb-6 lg:pb-0">
+                    {/* PLAYER CARD */}
+                    <div className="w-full h-auto">
+                        <SystemFrame variant="brackets" theme={theme}>
+                            <div className="px-3 py-2 flex flex-col gap-2">
+                                <div className="flex flex-row items-center gap-4">
+                                    <div className="relative flex-none">
+                                        {/* Technical Scanning Decoration */}
+                                        <div className="absolute inset-x-0 top-0 flex justify-between px-1 opacity-30">
+                                            <div className={`w-4 h-[1px] ${theme.id === 'LIGHT' ? 'bg-cyan-500' : 'bg-[#f59e0b]'}`} />
+                                            <div className={`w-4 h-[1px] ${theme.id === 'LIGHT' ? 'bg-cyan-500' : 'bg-[#f59e0b]'}`} />
+                                        </div>
+
+                                        <div className="relative p-0.5">
+                                            <EntityAvatar theme={theme} size={84} />
+                                            <button
+                                                onClick={() => setIsProfileOpen(true)}
+                                                className={`absolute -bottom-1 -right-2 px-1 py-0.5 ${theme.id === 'LIGHT' ? 'bg-cyan-500' : 'bg-[#f59e0b]'} text-black text-[7px] font-black font-mono tracking-tighter uppercase cursor-pointer hover:scale-110 active:scale-95 transition-transform duration-200 shadow-lg z-20`}
+                                            >
+                                                ACTIVE_PROFILE
+                                            </button>
+                                        </div>
+
+                                        {/* Vertical Scan Line decoration */}
+                                        <div className={`absolute -left-1 top-1/2 -translate-y-1/2 w-[1px] h-8 ${theme.id === 'LIGHT' ? 'bg-cyan-500' : 'bg-[#f59e0b]'} opacity-20`} />
                                     </div>
-                                    <div className="space-y-2">
-                                        <div className={`flex justify-between text-[10px] font-mono ${theme.mutedText} tracking-wider transition-colors duration-700`}><span className={`flex items-center gap-2 ${theme.headingText} transition-colors duration-700`}><Zap size={12} /> COMPLETION_RATE</span><span className={`font-bold ${theme.headingText} transition-colors duration-700`}>{progressPercent}%</span></div>
-                                        <div className={`h-1.5 ${theme.isDark ? 'bg-gray-800' : 'bg-gray-200'} w-full relative transition-colors duration-700 overflow-hidden`}><div className={`h-full bg-gradient-to-r ${theme.gradient} progress-bloom transition-transform duration-700 ease-out origin-left`} style={{ transform: `scaleX(${progressPercent / 100})`, color: theme.id === 'LIGHT' ? '#06b6d4' : '#f59e0b' }} /></div>
-                                        <div className={`flex justify-between text-[9px] font-mono ${theme.mutedText} uppercase tracking-widest transition-colors duration-700`}><span>Current: {activeQuest.currentChapter}</span><span>Terminal: {activeQuest.totalChapters}</span></div>
+
+                                    <div className="flex flex-col items-start text-left flex-1 min-w-0 -mt-6">
+                                        <div className={`text-[10px] ${theme.highlightText} font-black font-mono uppercase tracking-[0.2em] mb-1 mt-0.5 opacity-90 transition-colors duration-700 whitespace-nowrap`}>ENTITY CLASSIFICATION</div>
+                                        <div className="text-4xl font-black font-manifold italic tracking-tight drop-shadow-sm flex items-baseline leading-normal overflow-visible pr-12 -ml-6">
+                                            <span className={`inline-block px-6 text-transparent bg-clip-text bg-gradient-to-r ${theme.gradient} transition-colors duration-700 -ml-2`}>{playerRank.name}</span>
+                                        </div>
                                     </div>
-                                    <div className="flex gap-4">
-                                        <button onClick={() => updateProgress(-1)} className={`w-12 h-12 border ${theme.borderSubtle} ${theme.isDark ? 'bg-black/85 hover:border-white hover:text-white' : 'bg-white/85 hover:border-black hover:text-black'} flex items-center justify-center transition-colors cursor-pointer duration-700`}><span className="text-xl font-bold">-</span></button>
-                                        <button onClick={() => updateProgress(1)} className={`h-12 flex-1 border ${theme.border} ${theme.isDark ? 'bg-amber-950/70 hover:bg-amber-500' : 'bg-sky-500/70 hover:bg-sky-500'} flex items-center justify-center gap-3 transition-all font-mono font-bold tracking-widest ${theme.isDark ? 'text-amber-100/80 hover:text-black' : 'text-sky-50 hover:text-white'} text-sm group cursor-pointer`}><Sword size={16} className="group-hover:rotate-45 transition-transform" /> CONQUER</button>
-                                        <a href={activeQuest.link} target="_blank" className={`w-12 h-12 border ${theme.borderSubtle} ${theme.highlightText} ${theme.isDark ? 'hover:border-white hover:text-white' : 'hover:border-black hover:text-black'} flex items-center justify-center transition-colors cursor-pointer duration-700`}><ExternalLink size={18} /></a>
-                                        <button onClick={() => { setEditingItem(activeQuest); setIsModalOpen(true); }} className={`w-12 h-12 border ${theme.borderSubtle} ${theme.isDark ? 'hover:border-white hover:text-white' : 'hover:border-black hover:text-black'} flex items-center justify-center transition-colors cursor-pointer duration-700`}><Terminal size={18} /></button>
-                                    </div>
+                                </div>
+                                <div className="mt-3"><div className={`flex justify-between text-[8px] font-mono ${theme.highlightText} mb-0.5 transition-colors duration-700`}><span>EXP ACQUIRED</span><span>{totalChaptersRead} PTS</span></div><div className={`h-1 w-full ${theme.isDark ? 'bg-gray-800' : 'bg-gray-200'} transition-colors duration-700 overflow-hidden relative`}><div className={`h-full w-full bg-gradient-to-r ${theme.gradient} progress-bloom transition-transform duration-700 origin-left`} style={{ transform: `scaleX(0.6)`, color: theme.id === 'LIGHT' ? '#06b6d4' : '#f59e0b' }} /></div></div>
+                            </div>
+                        </SystemFrame>
+                    </div>
+
+                    {/* DIVINE MANDATE */}
+                    <div className="w-full h-auto">
+                        <SystemFrame variant="brackets" theme={theme}>
+                            <div className="p-4 relative overflow-hidden">
+                                <div className={`absolute inset-0 bg-[linear-gradient(rgba(${theme.starColor},0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(${theme.starColor},0.03)_1px,transparent_1px)] bg-[size:20px_20px] transition-colors duration-700`} />
+                                <div className="relative z-10">
+                                    <div className="flex justify-between items-center mb-6"><div className={`flex items-center gap-2 ${theme.highlightText} font-mono text-[10px] tracking-widest font-bold transition-colors duration-700`}><Flame size={12} /> DIVINE_MANDATE</div><span className={`text-[9px] font-mono tracking-widest opacity-70 ${theme.mutedText} transition-colors duration-700`}>{userState.dailyAbsorbed >= 5 ? 'CONQUERED' : 'PENDING'}</span></div>
+                                    <div className="space-y-1 mb-2"><div className={`text-[9px] ${theme.mutedText} font-mono tracking-widest transition-colors duration-700`}>OBJECTIVE</div><div className="flex justify-between items-end"><div className={`text-xl font-black italic ${theme.headingText} tracking-wide transition-colors duration-700`}>ABSORB 5 STORIES</div><div className={`${theme.highlightText} font-mono text-lg font-bold transition-colors duration-700`}>{Math.min(5, userState.dailyAbsorbed)}<span className={`${theme.mutedText} text-sm transition-colors duration-700`}>/5</span></div></div></div>
+                                    <div className={`h-1 w-full ${theme.isDark ? 'bg-gray-900 border-gray-800' : 'bg-gray-200 border-gray-300'} border mt-2 transition-colors duration-700 overflow-hidden relative`}><div className={`h-full w-full bg-gradient-to-r ${theme.gradient} progress-bloom transition-transform duration-700 origin-left`} style={{ transform: `scaleX(${Math.min(1, userState.dailyAbsorbed / 5)})`, color: theme.id === 'LIGHT' ? '#06b6d4' : '#f59e0b' }} /></div>
                                 </div>
                             </div>
                         </SystemFrame>
                     </div>
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 md:gap-4 h-auto sm:h-28 lg:h-28 shrink-0">
-                    <StatBox value={activeQuest.currentChapter} label="WISDOM" icon={Cpu} color="text-blue-500" theme={theme} />
-                    <StatBox value={Math.floor(activeQuest.totalChapters / 10)} label="MIGHT" icon={Sword} color="text-red-500" theme={theme} />
-                    <StatBox value={`${progressPercent}%`} label="SYNC" icon={Activity} color={theme.highlightText} theme={theme} />
-                    <StatBox value={activeQuest.status === 'CONQUERED' ? 'CLOSED' : 'OPEN'} label="GATE" icon={Target} color={activeQuest.status === 'CONQUERED' ? 'text-gray-400' : theme.highlightText} theme={theme} />
-                </div>
-            </div>
 
-            {/* RIGHT COLUMN: SIDEBAR */}
-            <div className="w-full lg:w-96 flex flex-col gap-2 lg:gap-3 flex-none lg:min-h-0 order-2">
-                {/* PLAYER CARD */}
-                <div className="w-full h-auto">
-                    <SystemFrame variant="brackets" theme={theme}>
-                        <div className="px-3 py-2 flex flex-col gap-2">
-                            <div className="flex flex-row items-center gap-4">
-                                <div className="relative flex-none">
-                                    {/* Technical Scanning Decoration */}
-                                    <div className="absolute inset-x-0 top-0 flex justify-between px-1 opacity-30">
-                                        <div className={`w-4 h-[1px] ${theme.id === 'LIGHT' ? 'bg-cyan-500' : 'bg-[#f59e0b]'}`} />
-                                        <div className={`w-4 h-[1px] ${theme.id === 'LIGHT' ? 'bg-cyan-500' : 'bg-[#f59e0b]'}`} />
-                                    </div>
-
-                                    <div className="relative p-0.5">
-                                        <EntityAvatar theme={theme} size={84} />
-                                        <button
-                                            onClick={() => setIsProfileOpen(true)}
-                                            className={`absolute -bottom-1 -right-2 px-1 py-0.5 ${theme.id === 'LIGHT' ? 'bg-cyan-500' : 'bg-[#f59e0b]'} text-black text-[7px] font-black font-mono tracking-tighter uppercase cursor-pointer hover:scale-110 active:scale-95 transition-transform duration-200 shadow-lg z-20`}
-                                        >
-                                            ACTIVE_PROFILE
-                                        </button>
-                                    </div>
-
-                                    {/* Vertical Scan Line decoration */}
-                                    <div className={`absolute -left-1 top-1/2 -translate-y-1/2 w-[1px] h-8 ${theme.id === 'LIGHT' ? 'bg-cyan-500' : 'bg-[#f59e0b]'} opacity-20`} />
-                                </div>
-
-                                <div className="flex flex-col items-start text-left flex-1 min-w-0 -mt-6">
-                                    <div className={`text-[10px] ${theme.highlightText} font-black font-mono uppercase tracking-[0.2em] mb-1 mt-0.5 opacity-90 transition-colors duration-700 whitespace-nowrap`}>ENTITY CLASSIFICATION</div>
-                                    <div className="text-4xl font-black font-manifold italic tracking-tight drop-shadow-sm flex items-baseline leading-normal overflow-visible pr-12 -ml-6">
-                                        <span className={`inline-block px-6 text-transparent bg-clip-text bg-gradient-to-r ${theme.gradient} transition-colors duration-700 -ml-2`}>{playerRank.name}</span>
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="mt-3"><div className={`flex justify-between text-[8px] font-mono ${theme.highlightText} mb-0.5 transition-colors duration-700`}><span>EXP ACQUIRED</span><span>{totalChaptersRead} PTS</span></div><div className={`h-1 w-full ${theme.isDark ? 'bg-gray-800' : 'bg-gray-200'} transition-colors duration-700 overflow-hidden relative`}><div className={`h-full w-full bg-gradient-to-r ${theme.gradient} progress-bloom transition-transform duration-700 origin-left`} style={{ transform: `scaleX(0.6)`, color: theme.id === 'LIGHT' ? '#06b6d4' : '#f59e0b' }} /></div></div>
-                        </div>
-                    </SystemFrame>
-                </div>
-
-                {/* DIVINE MANDATE */}
-                <div className="w-full h-auto">
-                    <SystemFrame variant="brackets" theme={theme}>
-                        <div className="p-4 relative overflow-hidden">
-                            <div className={`absolute inset-0 bg-[linear-gradient(rgba(${theme.starColor},0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(${theme.starColor},0.03)_1px,transparent_1px)] bg-[size:20px_20px] transition-colors duration-700`} />
-                            <div className="relative z-10">
-                                <div className="flex justify-between items-center mb-6"><div className={`flex items-center gap-2 ${theme.highlightText} font-mono text-[10px] tracking-widest font-bold transition-colors duration-700`}><Flame size={12} /> DIVINE_MANDATE</div><span className={`text-[9px] font-mono tracking-widest opacity-70 ${theme.mutedText} transition-colors duration-700`}>{userState.dailyAbsorbed >= 5 ? 'CONQUERED' : 'PENDING'}</span></div>
-                                <div className="space-y-1 mb-2"><div className={`text-[9px] ${theme.mutedText} font-mono tracking-widest transition-colors duration-700`}>OBJECTIVE</div><div className="flex justify-between items-end"><div className={`text-xl font-black italic ${theme.headingText} tracking-wide transition-colors duration-700`}>ABSORB 5 STORIES</div><div className={`${theme.highlightText} font-mono text-lg font-bold transition-colors duration-700`}>{Math.min(5, userState.dailyAbsorbed)}<span className={`${theme.mutedText} text-sm transition-colors duration-700`}>/5</span></div></div></div>
-                                <div className={`h-1 w-full ${theme.isDark ? 'bg-gray-900 border-gray-800' : 'bg-gray-200 border-gray-300'} border mt-2 transition-colors duration-700 overflow-hidden relative`}><div className={`h-full w-full bg-gradient-to-r ${theme.gradient} progress-bloom transition-transform duration-700 origin-left`} style={{ transform: `scaleX(${Math.min(1, userState.dailyAbsorbed / 5)})`, color: theme.id === 'LIGHT' ? '#06b6d4' : '#f59e0b' }} /></div>
-                            </div>
-                        </div>
-                    </SystemFrame>
-                </div>
-
-                {/* ACTIVE QUESTS LIST */}
-                <div className="flex-1 flex flex-col min-h-0 gap-1 mt-4 lg:mt-6">
-                    <div className={`text-[10px] font-mono ${theme.headingText} uppercase tracking-widest border-b ${theme.borderSubtle} pb-1.5 mb-1 transition-colors duration-700`}>ACTIVE QUESTS</div>
-                    <div className="flex-1 min-h-[150px] lg:min-h-0 overflow-y-auto hide-scrollbar relative">
-                        <div className="flex flex-col gap-1 h-full">
-                            {activeQuests.map((item) => {
-                                const isHighlighted = activeId === item.id;
-                                return (
-                                    <div key={item.id} onClick={() => handleLogClick(item.id)} className={`relative group cursor-pointer border py-1.5 px-3 transition-all duration-200 ${isHighlighted ? `${theme.border} ${theme.isDark ? 'bg-white/5' : 'bg-sky-500/5'}` : `border-transparent hover:${theme.borderSubtle} bg-transparent`}`}>
-                                        <div className="flex justify-between items-center">
-                                            <div className="flex flex-col">
-                                                <span className={`font-bold font-mono text-xs ${isHighlighted ? theme.highlightText : `${theme.mutedText} group-hover:${theme.headingText}`} transition-colors duration-700 uppercase`}>{item.title}</span>
-                                                <div className="flex items-center gap-2 mt-1">
-                                                    <div className={`w-1 h-1 rounded-full ${item.status === 'ACTIVE' ? (theme.isDark ? 'bg-amber-400' : 'bg-cyan-500') : 'bg-gray-400'}`} />
-                                                    <span className={`text-[9px] ${theme.mutedText} uppercase font-mono tracking-widest transition-colors duration-700`}>{item.status}</span>
+                    {/* ACTIVE QUESTS LIST */}
+                    <div className="flex-1 flex flex-col min-h-0 gap-1 mt-4 lg:mt-6">
+                        <div className={`text-[10px] font-mono ${theme.headingText} uppercase tracking-widest border-b ${theme.borderSubtle} pb-1.5 mb-1 transition-colors duration-700`}>ACTIVE QUESTS</div>
+                        <div className="flex-1 min-h-[150px] lg:min-h-0 overflow-y-auto hide-scrollbar relative">
+                            <div className="flex flex-col gap-1 h-full">
+                                {activeQuests.map((item) => {
+                                    const isHighlighted = activeId === item.id;
+                                    return (
+                                        <div key={item.id} onClick={() => handleLogClick(item.id)} className={`relative group cursor-pointer border py-1.5 px-3 transition-all duration-200 ${isHighlighted ? `${theme.border} ${theme.isDark ? 'bg-white/5' : 'bg-sky-500/5'}` : `border-transparent hover:${theme.borderSubtle} bg-transparent`}`}>
+                                            <div className="flex justify-between items-center">
+                                                <div className="flex flex-col">
+                                                    <span className={`font-bold font-mono text-xs ${isHighlighted ? theme.highlightText : `${theme.mutedText} group-hover:${theme.headingText}`} transition-colors duration-700 uppercase`}>{item.title}</span>
+                                                    <div className="flex items-center gap-2 mt-1">
+                                                        <div className={`w-1 h-1 rounded-full ${item.status === 'ACTIVE' ? (theme.isDark ? 'bg-amber-400' : 'bg-cyan-500') : 'bg-gray-400'}`} />
+                                                        <span className={`text-[9px] ${theme.mutedText} uppercase font-mono tracking-widest transition-colors duration-700`}>{item.status}</span>
+                                                    </div>
                                                 </div>
+                                                {isHighlighted && <Sun size={14} className={`${theme.highlightText} animate-spin-slow transition-colors duration-700`} />}
                                             </div>
-                                            {isHighlighted && <Sun size={14} className={`${theme.highlightText} animate-spin-slow transition-colors duration-700`} />}
                                         </div>
-                                    </div>
-                                );
-                            })}
+                                    );
+                                })}
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                {/* DIVINE SPIRE BUTTON */}
-                <button onClick={() => { setIsSpireOpen(true); }} className={`hidden lg:flex w-full py-3 lg:py-4 ${theme.isDark ? 'bg-white/5' : 'bg-sky-500/10'} border ${theme.borderSubtle} ${theme.highlightText} hover:bg-${theme.primary}-500 ${theme.isDark ? 'hover:text-black' : 'hover:text-white'} font-mono font-bold tracking-widest uppercase transition-all items-center justify-center gap-2 text-xs shrink-0 shadow-sm cursor-pointer duration-700 mt-auto`}><LayoutTemplate size={16} /> DIVINE SPIRE</button>
+                    {/* DIVINE SPIRE BUTTON */}
+                    <button onClick={() => { setIsSpireOpen(true); }} className={`hidden lg:flex w-full py-3 lg:py-4 ${theme.isDark ? 'bg-white/5' : 'bg-sky-500/10'} border ${theme.borderSubtle} ${theme.highlightText} hover:bg-${theme.primary}-500 ${theme.isDark ? 'hover:text-black' : 'hover:text-white'} font-mono font-bold tracking-widest uppercase transition-all items-center justify-center gap-2 text-xs shrink-0 shadow-sm cursor-pointer duration-700 mt-auto`}><LayoutTemplate size={16} /> DIVINE SPIRE</button>
+                </div>
             </div>
         </main>
     ), [theme, currentTheme, isSpireOpen, activeQuest, progressPercent, activeId, handleLogClick, activeQuests, totalChaptersRead, playerRank, userState, updateProgress]);
@@ -623,7 +625,7 @@ const App: React.FC = () => {
     if (!isAuth) return <LoginScreen onLoginSuccess={handleLoginSuccess} theme={theme} />;
 
     return (
-        <div id="main-scroll-area" className={`fixed inset-0 w-full overflow-y-auto overflow-x-hidden ${theme.appBg} ${theme.baseText} font-sans selection:bg-amber-500/30 flex flex-col transition-colors duration-700 ease-in-out`}>
+        <div id="main-scroll-area" className={`fixed inset-0 overflow-hidden ${theme.appBg} ${theme.baseText} font-sans selection:bg-amber-500/30 transition-colors duration-700 ease-in-out`}>
             <BackgroundController theme={theme} isPaused={isModalOpen} isMobile={isMobile} />
             {/* BACKGROUND GRADIENT FIX */}
             <div className="fixed inset-0 pointer-events-none z-0 bg-[radial-gradient(circle,transparent_50%,rgba(0,0,0,0.4)_100%)] opacity-50" />

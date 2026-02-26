@@ -89,14 +89,33 @@ const App: React.FC = () => {
     const [selectedQuest, setSelectedQuest] = useState<Quest | null>(null);
     const [editingItem, setEditingItem] = useState<Quest | null>(null);
 
-    // --- MOBILE HUD SCROLL HIDING STATE ---
+    // --- SCROLL HANDLING STATE ---
     const [isHUDVisible, setIsHUDVisible] = useState(true);
+    const [isHeaderVisible, setIsHeaderVisible] = useState(true);
 
     useEffect(() => {
+        if (booting || !isAuth) return;
+
         let timeout: ReturnType<typeof setTimeout>;
+        let lastScrollY = 0;
         const mainScrollArea = document.getElementById('main-scroll-area');
 
+        // Start initial timeout to hide HUD
+        timeout = setTimeout(() => {
+            setIsHUDVisible(false);
+        }, 2000);
+
         const handleScroll = () => {
+            const currentScrollY = mainScrollArea ? mainScrollArea.scrollTop : window.scrollY;
+
+            // Handle Header Visibility (hide on scroll down, show on scroll up)
+            if (currentScrollY > lastScrollY && currentScrollY > 50) {
+                setIsHeaderVisible(false);
+            } else if (currentScrollY < lastScrollY) {
+                setIsHeaderVisible(true);
+            }
+            lastScrollY = currentScrollY;
+
             // Show HUD immediately on scroll
             setIsHUDVisible(true);
 
@@ -123,7 +142,7 @@ const App: React.FC = () => {
             }
             clearTimeout(timeout);
         };
-    }, []);
+    }, [booting, isAuth]);
 
     // --- SYSTEM NOTIFICATION STATE ---
     const [sysNote, setSysNote] = useState<{
@@ -425,7 +444,7 @@ const App: React.FC = () => {
     const toggleTheme = () => { const newTheme = currentTheme === 'LIGHT' ? 'DARK' : 'LIGHT'; setCurrentTheme(newTheme); };
 
     const memoizedHeader = useMemo(() => (
-        <header className="fixed top-0 w-full z-40 bg-transparent h-16 px-6 flex items-center justify-between transition-colors duration-700 ease-in-out">
+        <header className={`fixed top-0 w-full z-40 bg-transparent h-16 px-6 flex items-center justify-between transition-all duration-700 ease-in-out ${isHeaderVisible ? 'translate-y-0' : '-translate-y-full'}`}>
             <div className="flex items-center gap-4">
                 <div className="relative w-12 h-12 flex items-center justify-center">
                     <SystemLogo theme={theme} className="w-full h-full" />
@@ -451,7 +470,7 @@ const App: React.FC = () => {
                 </button>
             </div>
         </header>
-    ), [theme, currentTheme]);
+    ), [theme, currentTheme, isHeaderVisible]);
 
     const memoizedMain = useMemo(() => (
         <main className="w-full pt-16 sm:pt-24 pb-24 lg:pb-0 px-4 max-w-[1400px] mx-auto flex-1 flex flex-col lg:flex-row gap-8 lg:gap-8 lg:min-h-0 z-10">

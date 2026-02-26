@@ -473,10 +473,10 @@ const App: React.FC = () => {
     ), [theme, currentTheme, isHeaderVisible]);
 
     const memoizedMain = useMemo(() => (
-        <main className="absolute inset-0 top-16 bottom-16 overflow-y-auto lg:overflow-y-auto overflow-x-hidden hide-scrollbar px-4 z-10 flex flex-col">
-            <div className="max-w-[1400px] mx-auto flex-1 min-h-0 flex flex-col lg:flex-row gap-4 lg:gap-6 pt-3 lg:pt-4 pb-6 lg:pb-4 lg:min-h-0">
+        <main className="absolute inset-0 top-16 bottom-16 overflow-y-auto lg:overflow-hidden overflow-x-hidden hide-scrollbar px-4 z-10 flex flex-col">
+            <div className="max-w-[1400px] mx-auto flex-1 min-h-0 flex flex-col lg:flex-row gap-4 lg:gap-6 pt-3 lg:pt-4 pb-6 lg:pb-0 lg:h-full">
                 {/* LEFT COLUMN: ACTIVE CARD & STATS */}
-                <div className="flex-none lg:flex-1 flex flex-col gap-2 lg:gap-3 lg:min-h-0 order-1">
+                <div className="flex-none lg:flex-1 flex flex-col gap-2 lg:gap-3 lg:min-h-0 order-1 lg:h-full">
                     {/* Hero card — fixed h on mobile, flex-1 on desktop */}
                     <div className="h-[320px] sm:h-[400px] md:h-[450px] lg:h-auto lg:flex-1 lg:min-h-0 relative">
                         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[140%] aspect-square opacity-100 pointer-events-none z-0">
@@ -536,7 +536,7 @@ const App: React.FC = () => {
                 </div>
 
                 {/* RIGHT COLUMN: SIDEBAR */}
-                <div className="w-full lg:w-96 xl:w-96 flex-none flex flex-col gap-2 lg:min-h-0 order-2 mt-12 lg:mt-0 pb-24 lg:pb-0">
+                <div className="w-full lg:w-96 xl:w-96 flex-none flex flex-col gap-2 lg:min-h-0 order-2 mt-12 lg:mt-0 pb-24 lg:pb-0 lg:h-full">
                     {/* PLAYER CARD */}
                     <div className="w-full h-auto overflow-hidden">
                         <SystemFrame variant="brackets" theme={theme}>

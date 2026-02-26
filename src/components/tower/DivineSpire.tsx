@@ -220,7 +220,7 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
                                         filteredItems.map((item, index) => {
                                             const rawRank = getQuestRankObj(item);
                                             return (
-                                                <div key={item.id} className="w-[240px] sm:w-[280px] md:w-[220px] lg:w-[260px] xl:w-[320px] shrink-0 snap-center transition-all duration-700 hover:-translate-y-8 hover:scale-105 group relative mt-2 md:mt-4">
+                                                <div key={item.id} className="w-[240px] sm:w-[280px] md:w-[280px] lg:w-[320px] xl:w-[360px] aspect-[3/4] shrink-0 snap-center transition-all duration-700 hover:-translate-y-8 hover:scale-105 group relative mt-2 md:mt-4">
                                                     {/* Floor Reflection Glow */}
                                                     <div className={`absolute -bottom-8 left-1/2 -translate-x-1/2 w-3/4 h-8 bg-gradient-to-t from-${theme.primary}-500/40 to-transparent blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-700`} />
                                                     {/* Backdrop Ambient Lighting */}
@@ -238,7 +238,7 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
                                         {floors[selectedFloorIndex].items.map((item, index) => {
                                             const rawRank = getQuestRankObj(item);
                                             return (
-                                                <div key={item.id} className="w-[260px] sm:w-[280px] md:w-[220px] lg:w-[260px] xl:w-[320px] shrink-0 snap-center transition-all duration-700 hover:-translate-y-8 hover:scale-[1.03] group relative mt-0 md:mt-2">
+                                                <div key={item.id} className="w-[260px] sm:w-[280px] md:w-[280px] lg:w-[320px] xl:w-[360px] aspect-[3/4] shrink-0 snap-center transition-all duration-700 hover:-translate-y-8 hover:scale-[1.03] group relative mt-0 md:mt-2">
                                                     {/* Floor Reflection Glow */}
                                                     <div className={`absolute -bottom-8 left-1/2 -translate-x-1/2 w-3/4 h-8 bg-gradient-to-t ${theme.id === 'LIGHT' ? 'from-sky-500/40' : 'from-amber-500/40'} to-transparent blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-all duration-700`} />
                                                     {/* Backdrop Ambient Lighting */}

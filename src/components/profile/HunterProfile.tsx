@@ -181,13 +181,13 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
             </div>
 
             {/* CONTENT - NON SCROLLABLE STRICT LAYOUT */}
-            <div className="relative z-10 flex-1 px-4 lg:px-8 py-4 lg:py-6 overflow-y-auto hide-scrollbar max-w-[1600px] mx-auto w-full flex flex-col gap-6">
+            <div className="relative z-10 flex-1 px-4 lg:px-8 py-3 lg:py-6 overflow-y-auto hide-scrollbar max-w-[1600px] mx-auto w-full flex flex-col gap-3 lg:gap-6 pb-12">
 
                 {/* TOP HERO: RANK BADGE + IDENTITY */}
-                <div className={`${theme.isDark ? 'bg-black/50' : 'bg-white/50'} backdrop-blur-md border ${theme.borderSubtle} p-4 lg:p-6 flex flex-col sm:flex-row items-center sm:items-start gap-4 lg:gap-8 relative overflow-hidden shrink-0`}>
+                <div className={`${theme.isDark ? 'bg-black/50' : 'bg-white/50'} backdrop-blur-md border ${theme.borderSubtle} p-3 lg:p-6 flex flex-col sm:flex-row items-center sm:items-start gap-4 lg:gap-8 relative overflow-hidden shrink-0`}>
                     <div className={`absolute inset-0 bg-gradient-to-r ${theme.gradient} opacity-5`} />
-                    <EntityAvatar theme={theme} size={96} className="shrink-0 scale-90 lg:scale-100" />
-                    <div className="flex-1 min-w-0 relative z-10 w-full flex flex-col sm:flex-row items-center sm:items-end justify-between gap-6">
+                    <EntityAvatar theme={theme} size={96} className="shrink-0 scale-75 lg:scale-100" />
+                    <div className="flex-1 min-w-0 relative z-10 w-full flex flex-col sm:flex-row items-center sm:items-end justify-between gap-3 lg:gap-6">
                         <div className="text-center sm:text-left flex-1">
                             <div className={`text-[10px] font-mono ${theme.highlightText} tracking-[0.3em] uppercase mb-1`}>HUNTER DESIGNATION</div>
                             <div className="text-2xl lg:text-4xl font-black italic tracking-wide flex items-baseline gap-1 mb-2 justify-center sm:justify-start">
@@ -209,8 +209,8 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                 </div>
 
                 {/* RANK HISTORY */}
-                <div className={`border ${theme.borderSubtle} ${theme.isDark ? 'bg-black/40' : 'bg-white/40'} backdrop-blur-md p-4 w-full shrink-0`}>
-                    <div className={`flex items-center gap-2 mb-4 md:mb-6 ${theme.highlightText}`}>
+                <div className={`border ${theme.borderSubtle} ${theme.isDark ? 'bg-black/40' : 'bg-white/40'} backdrop-blur-md p-3 lg:p-4 w-full shrink-0`}>
+                    <div className={`flex items-center gap-2 mb-2 lg:mb-4 ${theme.highlightText}`}>
                         <Crown size={14} />
                         <span className="text-[10px] font-mono font-bold tracking-[0.3em] uppercase">Rank History</span>
                     </div>
@@ -324,7 +324,7 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                 </div>
 
                 {/* BOTTOM ROW: CLASS DISTRIBUTION + TOP SERIES + ACTIVE PROGRESS */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 lg:gap-6">
 
                     {/* CLASS DISTRIBUTION */}
                     <div className="flex flex-col">

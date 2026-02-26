@@ -473,7 +473,7 @@ const App: React.FC = () => {
     ), [theme, currentTheme, isHeaderVisible]);
 
     const memoizedMain = useMemo(() => (
-        <main className="w-full pt-16 sm:pt-24 pb-24 lg:pb-0 px-4 max-w-[1400px] mx-auto flex-1 flex flex-col lg:flex-row gap-8 lg:gap-8 lg:min-h-0 z-10">
+        <main className="w-full pt-16 sm:pt-24 pb-24 lg:pb-0 px-4 max-w-[1400px] mx-auto flex-1 flex flex-col lg:flex-row gap-8 lg:gap-8 min-h-0 z-10 relative">
             {/* LEFT COLUMN: ACTIVE CARD & STATS */}
             <div className="flex-none lg:flex-1 flex flex-col gap-2 sm:gap-4 lg:gap-8 lg:min-h-0 order-1 relative lg:pb-16">
                 <div className="w-full min-h-[380px] sm:h-[550px] lg:h-auto lg:flex-1 lg:min-h-[400px] relative pb-4 lg:pb-0">
@@ -623,8 +623,9 @@ const App: React.FC = () => {
     if (!isAuth) return <LoginScreen onLoginSuccess={handleLoginSuccess} theme={theme} />;
 
     return (
-        <div id="main-scroll-area" className={`min-h-[100dvh] w-full overflow-y-auto hide-scrollbar ${theme.appBg} ${theme.baseText} font-sans selection:bg-amber-500/30 relative flex flex-col transition-colors duration-700 ease-in-out`}>
+        <div id="main-scroll-area" className={`h-[100dvh] w-full overflow-y-auto overflow-x-hidden hide-scrollbar ${theme.appBg} ${theme.baseText} font-sans selection:bg-amber-500/30 relative flex flex-col transition-colors duration-700 ease-in-out`}>
             <BackgroundController theme={theme} isPaused={isModalOpen} isMobile={isMobile} />
+            {/* BACKGROUND GRADIENT FIX */}
             <div className="fixed inset-0 pointer-events-none z-0 bg-[radial-gradient(circle,transparent_50%,rgba(0,0,0,0.4)_100%)] opacity-50" />
 
             {/* HEADER */}

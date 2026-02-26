@@ -643,20 +643,33 @@ const App: React.FC = () => {
             </Suspense>
 
 
-            {/* HUD / SYSTEM OVERLAYS */}
+            {/* HUD / SYSTEM OVERLAYS (HOLOGRAPHIC) */}
             {!isSpireOpen && (
-                <div className="lg:hidden fixed bottom-[34px] left-0 w-full px-4 z-[60] flex gap-3 pointer-events-none pb-[env(safe-area-inset-bottom)]">
+                <div className="lg:hidden fixed bottom-10 left-0 w-full px-5 z-[80] flex items-end gap-3 pointer-events-none pb-[env(safe-area-inset-bottom)]">
+                    {/* DIVINE SPIRE PANEL */}
                     <button
                         onClick={() => setIsSpireOpen(true)}
-                        className={`pointer-events-auto flex-1 h-12 ${theme.isDark ? 'bg-black/90' : 'bg-white/95'} backdrop-blur-xl border-x border-t ${theme.border} ${theme.highlightText} shadow-[0_-4px_20px_rgba(0,0,0,0.4)] font-mono font-black tracking-[0.2em] uppercase transition-all flex items-center justify-center gap-3 text-[10px] active:scale-95`}
+                        className={`pointer-events-auto flex-1 h-14 holographic-panel rounded-sm border-${theme.primary}-500/30 flex items-center justify-center gap-3 transition-all active:scale-95 group`}
                     >
-                        <LayoutTemplate size={14} className="animate-pulse" /> DIVINE_SPIRE
+                        <div className={`absolute top-0 left-0 w-2 h-2 border-t border-l border-${theme.primary}-500 bracket-glow opacity-80`} />
+                        <div className={`absolute top-0 right-0 w-2 h-2 border-t border-r border-${theme.primary}-500 bracket-glow opacity-80`} />
+                        <div className={`absolute bottom-0 right-0 w-2 h-2 border-b border-r border-${theme.primary}-500 bracket-glow opacity-80`} />
+                        <div className={`absolute bottom-0 left-0 w-2 h-2 border-b border-l border-${theme.primary}-500 bracket-glow opacity-80`} />
+
+                        <LayoutTemplate size={16} className={`${theme.highlightText} hud-pulse`} />
+                        <div className="flex flex-col items-start">
+                            <span className={`text-[7px] font-mono ${theme.mutedText} tracking-tighter leading-none mb-0.5`}>TERMINAL.EXECUTE</span>
+                            <span className={`text-[10px] font-black font-mono ${theme.headingText} tracking-[0.2em] uppercase leading-none`}>DIVINE_SPIRE</span>
+                        </div>
                     </button>
+
+                    {/* CREATE GATE PANEL */}
                     <button
                         onClick={() => { setEditingItem(null); setIsModalOpen(true); }}
-                        className={`pointer-events-auto w-12 h-12 ${theme.id === 'LIGHT' ? 'bg-sky-500' : 'bg-amber-500'} text-black flex items-center justify-center shadow-[0_0_20px_rgba(var(--theme-primary),0.4)] active:scale-90 transition-all z-10`}
+                        className={`pointer-events-auto w-14 h-14 holographic-panel rounded-sm border-${theme.primary}-500/50 flex items-center justify-center transition-all active:scale-90 shadow-[0_0_20px_rgba(var(--theme-primary),0.2)]`}
                     >
-                        <Plus size={24} strokeWidth={3} />
+                        <div className={`absolute inset-0 bg-${theme.primary}-500/10 opacity-0 group-hover:opacity-100 transition-opacity`} />
+                        <Plus size={24} strokeWidth={2.5} className={`${theme.highlightText} drop-shadow-[0_0_8px_currentColor]`} />
                     </button>
                 </div>
             )}

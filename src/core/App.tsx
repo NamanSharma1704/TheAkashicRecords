@@ -98,48 +98,46 @@ const App: React.FC = () => {
 
         let timeout: ReturnType<typeof setTimeout>;
         let lastScrollY = 0;
-        const mainScrollArea = document.getElementById('main-scroll-area');
 
-        // Start initial timeout to hide HUD
-        timeout = setTimeout(() => {
-            setIsHUDVisible(false);
-        }, 2000);
+        const scrollContainer = document.getElementById('content-scroll');
+        if (!scrollContainer) return;
 
-        const handleScroll = () => {
-            const currentScrollY = mainScrollArea ? mainScrollArea.scrollTop : window.scrollY;
-
-            // Handle Header Visibility (hide on scroll down, show on scroll up)
-            if (currentScrollY > lastScrollY && currentScrollY > 50) {
-                setIsHeaderVisible(false);
-            } else if (currentScrollY < lastScrollY) {
-                setIsHeaderVisible(true);
-            }
-            lastScrollY = currentScrollY;
-
-            // Show HUD immediately on scroll
+        const resetHUDTimer = () => {
             setIsHUDVisible(true);
-
-            // Clear existing timeout
             clearTimeout(timeout);
-
-            // Set timeout to hide HUD after 2 seconds of no scrolling
             timeout = setTimeout(() => {
                 setIsHUDVisible(false);
             }, 2000);
         };
 
-        if (mainScrollArea) {
-            mainScrollArea.addEventListener('scroll', handleScroll, { passive: true });
-        } else {
-            window.addEventListener('scroll', handleScroll, { passive: true }); // Fallback
-        }
+        const handleScroll = () => {
+            const currentScrollY = scrollContainer.scrollTop;
+
+            // Header logic
+            if (currentScrollY > lastScrollY && currentScrollY > 50) {
+                setIsHeaderVisible(false);
+            } else if (currentScrollY < lastScrollY) {
+                setIsHeaderVisible(true);
+            }
+
+            lastScrollY = currentScrollY;
+
+            resetHUDTimer();
+        };
+
+        // Initial auto-hide
+        timeout = setTimeout(() => {
+            setIsHUDVisible(false);
+        }, 2000);
+
+        scrollContainer.addEventListener('scroll', handleScroll, { passive: true });
+        scrollContainer.addEventListener('touchstart', resetHUDTimer, { passive: true });
+        scrollContainer.addEventListener('pointerdown', resetHUDTimer);
 
         return () => {
-            if (mainScrollArea) {
-                mainScrollArea.removeEventListener('scroll', handleScroll);
-            } else {
-                window.addEventListener('scroll', handleScroll);
-            }
+            scrollContainer.removeEventListener('scroll', handleScroll);
+            scrollContainer.removeEventListener('touchstart', resetHUDTimer);
+            scrollContainer.removeEventListener('pointerdown', resetHUDTimer);
             clearTimeout(timeout);
         };
     }, [booting, isAuth]);
@@ -473,10 +471,11 @@ const App: React.FC = () => {
     ), [theme, currentTheme, isHeaderVisible]);
 
     const memoizedMain = useMemo(() => (
-        <main className="absolute inset-0 top-16 bottom-0 overflow-y-auto lg:overflow-hidden overflow-x-hidden hide-scrollbar px-4 z-10 flex flex-col pb-12 xl:pb-16">
+        <main id="content-scroll"
+            className="absolute inset-0 top-16 bottom-0 overflow-y-auto lg:overflow-hidden overflow-x-hidden hide-scrollbar px-4 z-10 flex flex-col pb-10 xl:pb-6">
             <div className="w-full max-w-[1400px] mx-auto flex-1 min-h-0 flex flex-col lg:flex-row gap-4 lg:gap-6 pt-3 lg:pt-4 pb-0">
                 {/* LEFT COLUMN: ACTIVE CARD & STATS */}
-                <div className="flex-none lg:flex-1 flex flex-col lg:h-full order-1 pb-2">
+                <div className="flex-none lg:flex-1 flex flex-col lg:h-full order-1 pb-6">
                     {/* Hero card — fixed h on mobile, flex-1 on desktop */}
                     <div className="h-[320px] sm:h-[400px] md:h-[450px] lg:flex-1 relative">
                         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[140%] aspect-square opacity-100 pointer-events-none z-0">
@@ -544,7 +543,7 @@ const App: React.FC = () => {
                 </div>
 
                 {/* RIGHT COLUMN: SIDEBAR */}
-                <div className="w-full lg:w-96 xl:w-96 flex flex-col gap-2 lg:min-h-0 lg:h-full order-2 pb-20 lg:pb-0">
+                <div className="w-full lg:w-96 xl:w-96 flex flex-col gap-2 lg:min-h-0 lg:h-full order-2 pb-24 lg:pb-0">
                     {/* PLAYER CARD */}
                     <div className="w-full h-auto overflow-hidden">
                         <SystemFrame variant="brackets" theme={theme}>
@@ -624,7 +623,7 @@ const App: React.FC = () => {
                     </div>
 
                     {/* DIVINE SPIRE BUTTON */}
-                    <button onClick={() => { setIsSpireOpen(true); }} className={`hidden lg:flex w-full py-3 lg:py-4 ${theme.isDark ? 'bg-white/5' : 'bg-sky-500/10'} border ${theme.borderSubtle} ${theme.highlightText} hover:bg-${theme.primary}-500 ${theme.isDark ? 'hover:text-black' : 'hover:text-white'} font-mono font-bold tracking-widest uppercase transition-all items-center justify-center gap-2 text-xs shrink-0 shadow-sm cursor-pointer duration-700 mt-auto mb-1.5`}><LayoutTemplate size={16} /> DIVINE SPIRE</button>
+                    <button aria-label="Open Divine Spire" onClick={() => { setIsSpireOpen(true); }} className={`hidden lg:flex w-full py-3 lg:py-4 ${theme.isDark ? 'bg-white/5' : 'bg-sky-500/10'} border ${theme.borderSubtle} ${theme.highlightText} hover:bg-${theme.primary}-500 ${theme.isDark ? 'hover:text-black' : 'hover:text-white'} font-mono font-bold tracking-widest uppercase transition-all items-center justify-center gap-2 text-xs shrink-0 shadow-sm cursor-pointer duration-700 lg:mb-6`}><LayoutTemplate size={16} /> DIVINE SPIRE</button>
                 </div>
             </div>
         </main>
@@ -713,9 +712,10 @@ const App: React.FC = () => {
 
             {/* HUD / SYSTEM OVERLAYS (HOLOGRAPHIC) */}
             {(!isSpireOpen && !isModalOpen && !isProfileOpen && !isDetailOpen) && (
-                <div className={`lg:hidden fixed bottom-10 left-0 w-full px-5 z-[80] flex items-end gap-3 pointer-events-none pb-[env(safe-area-inset-bottom)] transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] ${isHUDVisible ? 'translate-y-0 opacity-100' : 'translate-y-24 opacity-0'}`}>
+                <div className={`lg:hidden fixed bottom-6 left-0 w-full px-5 z-[80] flex items-end gap-3 pointer-events-none pb-[env(safe-area-inset-bottom)] transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] ${isHUDVisible ? 'translate-y-0 opacity-100' : 'translate-y-24 opacity-0'}`}>
                     {/* DIVINE SPIRE PANEL */}
                     <button
+                        aria-label="Open Divine Spire"
                         onClick={() => setIsSpireOpen(true)}
                         className={`pointer-events-auto flex-1 h-14 holographic-panel border bg-amber-500/10 rounded-sm border-amber-500/50 flex items-center justify-center gap-3 transition-all active:scale-95 group shadow-[0_0_20px_rgba(245,158,11,0.15)] overflow-hidden`}
                     >
@@ -726,8 +726,11 @@ const App: React.FC = () => {
 
                         <div className="absolute inset-0 bg-amber-500/5 mix-blend-screen pointer-events-none" />
 
-                        <LayoutTemplate size={20} className={`text-amber-500 drop-shadow-[0_0_8px_rgba(245,158,11,0.8)]`} />
-                        <div className="flex flex-col items-start relative z-10">
+                        <LayoutTemplate
+                            size={22}
+                            className="text-amber-500 drop-shadow-[0_0_8px_rgba(245,158,11,0.8)] animate-[pulse_3s_ease-in-out_infinite]"
+                        />
+                        <div className="flex flex-col items-start leading-[1] relative z-10">
                             <span className={`text-[7px] font-mono text-amber-500/80 tracking-tighter leading-none mb-0.5`}>TERMINAL.EXECUTE</span>
                             <span className={`text-[11px] font-black font-mono text-amber-500 drop-shadow-[0_0_5px_rgba(245,158,11,0.5)] tracking-[0.2em] uppercase leading-none`}>DIVINE_SPIRE</span>
                         </div>

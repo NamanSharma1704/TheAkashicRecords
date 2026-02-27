@@ -25,6 +25,17 @@ const TowerStructure: React.FC<TowerStructureProps> = ({ onSelectFloor, theme, o
     useEffect(() => {
         const mount = mountRef.current;
         if (!mount) return;
+        // ---- VERTICAL SCALE SYSTEM (Responsive Tower Spacing) ----
+        const h = mount.clientHeight;
+
+        // Vertical density based on actual screen height
+        const FLOOR_SPACING =
+            h < 700 ? 11 :
+                h < 900 ? 12 :
+                    13;
+
+        const TOWER_HEIGHT = FLOOR_SPACING * 7;
+        const TOWER_OFFSET = FLOOR_SPACING * 3;
         const disposables: (THREE.Material | THREE.BufferGeometry | THREE.Texture | { dispose: () => void })[] = [];
         const mouse = new THREE.Vector2();
         const raycaster = new THREE.Raycaster();
@@ -65,8 +76,12 @@ const TowerStructure: React.FC<TowerStructureProps> = ({ onSelectFloor, theme, o
 
         // --- CAMERA ---
         const camera = new THREE.PerspectiveCamera(60, mount.clientWidth / mount.clientHeight, 0.1, 1000);
-        camera.position.set(0, 5, 100); // Initial position matches new defaults (Centered, Zoomed in)
-        camera.lookAt(0, 5, 0);
+        // Center camera to tower middle
+        const INITIAL_CENTER = -2; // Because floors are offset using TOWER_OFFSET
+
+        camera.position.set(0, INITIAL_CENTER, 100);
+        camera.lookAt(0, INITIAL_CENTER, 0);
+
 
         const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
         renderer.setSize(mount.clientWidth, mount.clientHeight);
@@ -75,6 +90,8 @@ const TowerStructure: React.FC<TowerStructureProps> = ({ onSelectFloor, theme, o
 
         const group = new THREE.Group();
         scene.add(group);
+        // Re-center tower vertically
+        group.position.y = (TOWER_OFFSET - (TOWER_HEIGHT / 2)) - 7;
 
         // --- TEXTURES ---
         const generateGradientTexture = (dark: boolean) => {
@@ -209,14 +226,26 @@ const TowerStructure: React.FC<TowerStructureProps> = ({ onSelectFloor, theme, o
         disposables.push(wireMat, solidMat, capMat, panelMatInner, panelMatOuter, activeWireMat, pillarMat);
 
         // --- 1. SPINE (Central Column) ---
-        const spineGeo = new THREE.CylinderGeometry(2, 2, 100, 64, 1, false); // Smoother Spine // Reduced height from 120
+        const spineGeo = new THREE.CylinderGeometry(
+            2,
+            2,
+            TOWER_HEIGHT,
+            64,
+            1,
+            false
+        ); // Smoother Spine // Reduced height from 120
         const spine = new THREE.Mesh(spineGeo, pillarMat);
         const spineWireMat = new THREE.MeshBasicMaterial({ color: PRIMARY_COLOR, wireframe: true, transparent: true, opacity: 0.1 });
         const spineWire = new THREE.Mesh(spineGeo, spineWireMat);
         spine.add(spineWire);
         group.add(spine);
 
-        const coreGeo = new THREE.CylinderGeometry(0.5, 0.5, 100, 16); // Smoother Core // Reduced height from 120
+        const coreGeo = new THREE.CylinderGeometry(
+            0.5,
+            0.5,
+            TOWER_HEIGHT,
+            16
+        ); // Smoother Core // Reduced height from 120
         const core = new THREE.Mesh(coreGeo, new THREE.MeshBasicMaterial({ color: PRIMARY_COLOR, opacity: 0.5, transparent: true }));
         group.add(core);
 
@@ -235,7 +264,7 @@ const TowerStructure: React.FC<TowerStructureProps> = ({ onSelectFloor, theme, o
 
         for (let i = 0; i < 8; i++) {
             const floorGroup = new THREE.Group();
-            const yPos = (i * 12) - 42;
+            const yPos = (i * FLOOR_SPACING) - TOWER_OFFSET;
             floorGroup.position.y = yPos;
 
             const baseRadius = 8;
@@ -422,7 +451,7 @@ const TowerStructure: React.FC<TowerStructureProps> = ({ onSelectFloor, theme, o
         const rodMat = new THREE.MeshBasicMaterial({ color: SECONDARY_COLOR });
 
         for (let i = 0; i < 7; i++) { // Between 8 floors -> 7 gaps
-            const yPos = (i * 12) - 36; // Midpoint
+            const yPos = (i * FLOOR_SPACING) - (TOWER_OFFSET - FLOOR_SPACING / 2); // Midpoint
             for (let p = 0; p < 4; p++) { // Only 4 rods, not 8, to keep it clean
                 const angle = (p / 4) * Math.PI * 2;
                 const rod = new THREE.Mesh(rodGeo, rodMat);
@@ -433,15 +462,15 @@ const TowerStructure: React.FC<TowerStructureProps> = ({ onSelectFloor, theme, o
         disposables.push(rodGeo, rodMat);
 
         // --- SCROLL / CAMERA LOGIC ---
-        let scrollY = 5; // Center the camera vertically
+        let scrollY = -3; // Center the camera vertically (-3 for better focus)
         const minScroll = -50;
         const maxScroll = 50;
-        let targetScrollY = 5;
+        let targetScrollY = -3;
 
-        let zPos = 100; // Tighter zoom because pillar is shorter
-        let targetZ = 100;
-        const ZOOM_CLOSE = 40; // Zoom level when focused
-        const ZOOM_FAR = 100;   // Zoom level when viewing whole tower (tighter zoom)
+        let zPos = 110; // Finer zoom balance for 1080p
+        let targetZ = 110;
+        const ZOOM_CLOSE = 50; // Focused zoom
+        const ZOOM_FAR = 110;   // Base zoom (optimal distance)
 
         let focusedFloorIndex = -1; // Track focused floor
 
@@ -471,7 +500,7 @@ const TowerStructure: React.FC<TowerStructureProps> = ({ onSelectFloor, theme, o
                 if (hoveredFloor) {
                     // FOCUS LOGIC: Scroll camera to align with the selected floor's Y position
                     const floorIndex = hoveredFloor.userData.index;
-                    const floorY = (floorIndex * 12) - 42;
+                    const floorY = (floorIndex * FLOOR_SPACING) - TOWER_OFFSET;
 
                     if (focusedFloorIndex === floorIndex) {
                         // ALREADY FOCUSED -> OPEN
@@ -560,17 +589,17 @@ const TowerStructure: React.FC<TowerStructureProps> = ({ onSelectFloor, theme, o
                 // Tablet / Small Laptop
                 if (aspect < 1) {
                     // Tablet Portrait
-                    camera.fov = 70;
-                    targetZ = 140;
+                    camera.fov = 72;
+                    targetZ = 150;
                 } else {
                     // Tablet Landscape
-                    camera.fov = 60;
-                    targetZ = 100;
+                    camera.fov = 66;
+                    targetZ = 115;
                 }
             } else {
                 // Desktop
-                camera.fov = 60;
-                targetZ = 100;
+                camera.fov = 65;
+                targetZ = 110;
             }
             camera.updateProjectionMatrix();
         };

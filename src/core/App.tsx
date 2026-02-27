@@ -473,10 +473,10 @@ const App: React.FC = () => {
     ), [theme, currentTheme, isHeaderVisible]);
 
     const memoizedMain = useMemo(() => (
-        <main className="absolute inset-0 top-16 bottom-0 overflow-y-auto lg:overflow-hidden overflow-x-hidden hide-scrollbar px-4 z-10 flex flex-col pb-10 xl:pb-6">
+        <main className="absolute inset-0 top-16 bottom-0 overflow-y-auto lg:overflow-hidden overflow-x-hidden hide-scrollbar px-4 z-10 flex flex-col pb-12 xl:pb-16">
             <div className="w-full max-w-[1400px] mx-auto flex-1 min-h-0 flex flex-col lg:flex-row gap-4 lg:gap-6 pt-3 lg:pt-4 pb-0">
                 {/* LEFT COLUMN: ACTIVE CARD & STATS */}
-                <div className="flex-none lg:flex-1 flex flex-col lg:h-full order-1 pb-6">
+                <div className="flex-none lg:flex-1 flex flex-col lg:h-full order-1 pb-2">
                     {/* Hero card — fixed h on mobile, flex-1 on desktop */}
                     <div className="h-[320px] sm:h-[400px] md:h-[450px] lg:flex-1 relative">
                         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[140%] aspect-square opacity-100 pointer-events-none z-0">
@@ -544,7 +544,7 @@ const App: React.FC = () => {
                 </div>
 
                 {/* RIGHT COLUMN: SIDEBAR */}
-                <div className="w-full lg:w-96 xl:w-96 flex-none flex flex-col gap-2 lg:min-h-0 order-2 pb-24 lg:pb-0">
+                <div className="w-full lg:w-96 xl:w-96 flex flex-col gap-2 lg:min-h-0 lg:h-full order-2 pb-20 lg:pb-0">
                     {/* PLAYER CARD */}
                     <div className="w-full h-auto overflow-hidden">
                         <SystemFrame variant="brackets" theme={theme}>
@@ -598,7 +598,7 @@ const App: React.FC = () => {
                     </div>
 
                     {/* ACTIVE QUESTS LIST - only scrollable region allowed */}
-                    <div className="flex-1 flex flex-col min-h-0 gap-1 mt-2">
+                    <div className="flex-1 flex flex-col min-h-0 gap-1 mt-2 overflow-hidden">
                         <div className={`text-[10px] font-mono ${theme.headingText} uppercase tracking-widest border-b ${theme.borderSubtle} pb-1.5 mb-1 transition-colors duration-700 shrink-0`}>ACTIVE QUESTS</div>
                         <div className="flex-1 min-h-0 overflow-y-auto hide-scrollbar">
                             <div className="flex flex-col gap-1 h-full">
@@ -624,7 +624,7 @@ const App: React.FC = () => {
                     </div>
 
                     {/* DIVINE SPIRE BUTTON */}
-                    <button onClick={() => { setIsSpireOpen(true); }} className={`hidden lg:flex w-full py-3 lg:py-4 ${theme.isDark ? 'bg-white/5' : 'bg-sky-500/10'} border ${theme.borderSubtle} ${theme.highlightText} hover:bg-${theme.primary}-500 ${theme.isDark ? 'hover:text-black' : 'hover:text-white'} font-mono font-bold tracking-widest uppercase transition-all items-center justify-center gap-2 text-xs shrink-0 shadow-sm cursor-pointer duration-700`}><LayoutTemplate size={16} /> DIVINE SPIRE</button>
+                    <button onClick={() => { setIsSpireOpen(true); }} className={`hidden lg:flex w-full py-3 lg:py-4 ${theme.isDark ? 'bg-white/5' : 'bg-sky-500/10'} border ${theme.borderSubtle} ${theme.highlightText} hover:bg-${theme.primary}-500 ${theme.isDark ? 'hover:text-black' : 'hover:text-white'} font-mono font-bold tracking-widest uppercase transition-all items-center justify-center gap-2 text-xs shrink-0 shadow-sm cursor-pointer duration-700 mt-auto mb-1.5`}><LayoutTemplate size={16} /> DIVINE SPIRE</button>
                 </div>
             </div>
         </main>

@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Quest } from '../../core/types';
 import SystemFrame from '../system/SystemFrame';
 import { getPlayerRank } from '../../utils/ranks';
-import { Activity, Target, Layers, Crown, Database, Sword } from 'lucide-react';
+import EntityAvatar from '../system/EntityAvatar';
+import { Activity, Target, Layers, Database, Sword } from 'lucide-react';
 
 interface TowerHUDProps {
     items: Quest[];
@@ -16,7 +17,7 @@ interface TowerHUDProps {
 
 const TowerHUD: React.FC<TowerHUDProps> = ({ items, theme, onActivate, isFocused = false, selectedFloorIndex = 0, itemsPerFloor = 5, streak = 0 }) => {
     // 1. Memoize Stats and Data Slicing
-    const { displayItems, totalManhwa, displayChapters, completedManhwa, recents, classEntries } = React.useMemo(() => {
+    const { displayItems, totalManhwa, displayChapters, completedManhwa, recents, classEntries } = useMemo(() => {
         const floorStart = selectedFloorIndex * itemsPerFloor;
         const _floorItems = items.slice(floorStart, floorStart + itemsPerFloor);
         const _displayItems = isFocused ? _floorItems : items;
@@ -56,229 +57,186 @@ const TowerHUD: React.FC<TowerHUDProps> = ({ items, theme, onActivate, isFocused
     }, [items, isFocused, selectedFloorIndex, itemsPerFloor]);
 
     // Derived Rank (Always based on global titles) - Memoize separately for clarity
-    const rawRank = React.useMemo(() => getPlayerRank(items.length), [items.length]);
+    const rawRank = useMemo(() => getPlayerRank(items.length), [items.length]);
 
     return (
-        <div className={`absolute inset-0 z-30 pointer-events-none pt-20 md:pt-28 px-2 md:px-6 lg:px-12 pb-[10rem] md:pb-12 flex flex-row items-end md:items-start justify-between overflow-hidden gap-1 md:gap-4 lg:gap-8`}>
-            {/* MOBILE COMPACT HUD (BOTTOM STRIP) */}
-            <div className="md:hidden absolute bottom-6 left-1/2 -translate-x-1/2 w-[95%] pointer-events-auto">
-                <SystemFrame variant="brackets" theme={theme} className="bg-black/60 backdrop-blur-md">
-                    <div className="p-2 flex items-center justify-between gap-1 overflow-x-auto hide-scrollbar">
-                        <div className="flex flex-col items-center px-2 shrink-0 border-r border-white/10">
-                            <span className={`text-[7px] ${theme.mutedText} font-mono uppercase`}>Rank</span>
-                            <span className={`text-[10px] font-black tracking-tight ${theme.highlightText} truncate max-w-[60px]`}>{rawRank.label}</span>
-                        </div>
-                        <div className="flex flex-col items-center px-2 shrink-0 border-r border-white/10">
-                            <span className={`text-[7px] ${theme.mutedText} font-mono uppercase`}>Read</span>
-                            <span className={`text-[11px] font-bold ${theme.isDark ? 'text-amber-300' : 'text-cyan-600'}`}>{totalManhwa}</span>
-                        </div>
-                        <div className="flex flex-col items-center px-2 shrink-0 border-r border-white/10">
-                            <span className={`text-[7px] ${theme.mutedText} font-mono uppercase`}>Chapters</span>
-                            <span className={`text-[11px] font-bold ${theme.isDark ? 'text-amber-300' : 'text-cyan-600'}`}>{displayChapters.toLocaleString()}</span>
-                        </div>
-                        <div className="flex flex-col items-center px-2 shrink-0 border-r border-white/10">
-                            <span className={`text-[7px] ${theme.mutedText} font-mono uppercase`}>Conq.</span>
-                            <span className={`text-[11px] font-bold ${theme.isDark ? 'text-amber-400' : 'text-cyan-600'}`}>{completedManhwa}</span>
-                        </div>
-                        <div className="flex flex-col items-center px-2 shrink-0">
-                            <span className={`text-[7px] ${theme.mutedText} font-mono uppercase`}>Streak</span>
-                            <div className="flex items-center gap-1">
-                                <span className={`text-[11px] font-bold ${theme.isDark ? 'text-amber-400' : 'text-cyan-600'}`}>{streak}</span>
-                                <Activity size={8} className={theme.highlightText} />
-                            </div>
-                        </div>
-                    </div>
-                </SystemFrame>
-            </div>
+        <div className="absolute inset-0 z-30 pointer-events-none flex flex-col overflow-hidden">
+            {/* 1. Global Header Safe Area (Empty space to prevent header overlap) */}
+            <div className="h-20 sm:h-24 shrink-0 transition-all duration-700" />
 
-            {/* LEFT: STATS PANEL (DESKTOP/TABLET) */}
-            <div className={`hidden md:flex flex-col gap-2 md:gap-4 lg:gap-6 pointer-events-auto w-[28%] md:w-[32%] lg:w-[45%] max-w-[220px] md:max-w-[280px] lg:max-w-xs transition-transform duration-700 ease-in-out ${isFocused ? 'translate-y-0' : 'translate-y-0'}`}>
-                <SystemFrame variant="brackets" theme={theme} className="bg-transparent shadow-none w-full">
-                    <div className="p-1 md:p-4 space-y-2 md:space-y-4">
-                        <div className="flex flex-col border-b border-gray-500/30 pb-2 gap-1 md:gap-2 w-full">
-                            <div className="flex items-center gap-2 md:gap-3">
-                                <Activity size={12} className={`${theme.highlightText} md:w-[14px] md:h-[14px]`} />
-                                <span className={`text-[8px] md:text-xs font-bold tracking-tighter sm:tracking-widest ${theme.headingText} font-orbitron`}>PLAYER_METRICS</span>
-                            </div>
-                            {isFocused && (
-                                <span className={`text-[10px] md:text-lg font-black tracking-widest ${theme.highlightText} drop-shadow-[0_0_8px_rgba(255, 255, 255, 0.5)] font-orbitron italic`}>
-                                    SECTOR {selectedFloorIndex + 1}
-                                </span>
-                            )}
-                        </div>
+            {/* 2. Master HUD Content Container */}
+            <div className="flex-1 w-full max-w-[1920px] mx-auto px-2 sm:px-4 md:px-6 lg:px-8 flex justify-between items-start gap-4 md:gap-8 lg:gap-12 pb-6 md:pb-10 transition-all duration-700">
 
-                        <div className="grid grid-cols-2 gap-y-2 md:gap-y-4 gap-x-2">
-                            <div className="flex flex-col items-start">
-                                <div className={`text-[8px] md:text-xs ${theme.mutedText} font-rajdhani font-medium tracking-wide uppercase`}>Read</div>
-                                <div className={`text-sm md:text-2xl font-bold font-rajdhani tabular-nums ${theme.isDark ? 'text-amber-300' : 'text-cyan-600'} `}>{totalManhwa}</div>
-                            </div>
-                            <div className="flex flex-col items-start">
-                                <div className={`text-[8px] md:text-xs ${theme.mutedText} font-rajdhani font-medium tracking-wide uppercase`}>Chapters</div>
-                                <div className={`text-sm md:text-2xl font-bold font-rajdhani tabular-nums ${theme.isDark ? 'text-amber-300' : 'text-cyan-600'} `}>{displayChapters.toLocaleString()}</div>
-                            </div>
-                            <div className="flex flex-col items-start">
-                                <div className={`text-[8px] md:text-xs ${theme.mutedText} font-rajdhani font-medium tracking-wide uppercase`}>Conq.</div>
-                                <div className={`text-sm md:text-2xl font-bold font-rajdhani tabular-nums ${theme.isDark ? 'text-amber-400' : 'text-cyan-600'} `}>{completedManhwa}</div>
-                            </div>
-                            <div className="flex flex-col items-start">
-                                <div className={`text-[8px] md:text-xs ${theme.mutedText} font-rajdhani font-medium tracking-wide uppercase`}>Streak</div>
-                                <div className={`text-sm md:text-2xl font-bold font-rajdhani tabular-nums ${theme.isDark ? 'text-amber-400' : 'text-cyan-600'} `}>{streak}</div>
-                            </div>
-                        </div>
-                    </div>
-                </SystemFrame>
-
-
-
-                {/* RANK DISPLAY - ALWAYS VISIBLE SIDE PANEL STYLE */}
-                {!isFocused && (
-                    <div className="flex flex-col gap-4 md:gap-6">
-                        <div className="relative overflow-hidden group">
-                            <div className={`absolute inset-0 bg-gradient-to-r ${theme.gradient} opacity-20 group-hover:opacity-30 transition-opacity`} />
-                            <div className={`p-1.5 md:p-3 flex flex-row items-center gap-4 md:gap-6 bg-transparent`}>
-                                <div className="flex flex-col min-w-0 flex-1">
-                                    <span className={`text-[7px] md:text-[9px] ${theme.highlightText} font-bold font-mono uppercase tracking-tighter md:tracking-widest mb-1 opacity-100`}>Current Rank</span>
-                                    <div className="text-xl md:text-2xl lg:text-3xl font-black font-manifold italic tracking-tight drop-shadow-sm flex items-baseline leading-normal min-w-0">
-                                        <span className={`inline-block text-transparent bg-clip-text bg-gradient-to-r ${theme.gradient} truncate w-full`}>{rawRank.label}</span>
-                                    </div>
+                {/* LEFT WING: PLAYER METRICS & RANK */}
+                <aside className={`hidden md:flex flex-col gap-4 md:gap-8 pointer-events-auto w-[40%] lg:w-[30%] xl:w-[22%] min-w-[320px] max-w-[440px] transition-all duration-1000 ease-in-out ${isFocused ? 'translate-x-0' : 'translate-x-0 opacity-100'}`}>
+                    <SystemFrame variant="brackets" theme={theme} className="bg-transparent shadow-none w-full">
+                        <div className="p-1 md:p-3 lg:p-4 space-y-3 lg:space-y-4">
+                            <div className="flex flex-col border-b border-gray-500/20 pb-2 gap-1 lg:gap-2 w-full">
+                                <div className="flex items-center gap-2">
+                                    <Activity size={14} className={`${theme.highlightText} animate-spin`} />
+                                    <span className={`text-[clamp(9px,1vw,12px)] font-bold tracking-[0.2em] ${theme.headingText} font-orbitron`}>PLAYER_METRICS</span>
                                 </div>
-                                <Crown size={isFocused ? 12 : 24} className={`shrink-0 ${theme.highlightText} drop-shadow-lg opacity-80 md:w-10 md:h-10`} />
+                                {isFocused && (
+                                    <span className={`text-[clamp(16px,2.5vw,28px)] font-black tracking-widest ${theme.highlightText} drop-shadow-[0_0_8px_rgba(255,255,255,0.3)] font-orbitron italic animate-pulse`}>
+                                        SECTOR {selectedFloorIndex + 1}
+                                    </span>
+                                )}
                             </div>
-                        </div>
 
-                        {/* EXP BAR */}
-                        <div className={`p-3 bg-transparent`}>
-                            <div className={`flex justify-between text-[8px] md:text-xs font-mono font-bold ${theme.highlightText} mb-2`}>
-                                <span className="truncate">TITLES DISCOVERED</span>
-                                <span className="whitespace-nowrap">{totalManhwa} TITLES</span>
-                            </div>
-                            <div className={`h-1.5 w-full ${theme.isDark ? 'bg-gray-800' : 'bg-gray-200'} `}>
-                                <div className={`h-full bg-gradient-to-r ${theme.gradient} progress-bloom transition-all duration-700`} style={{ width: `${Math.min(100, (totalManhwa % 50) / 0.5)}%`, color: theme.id === 'LIGHT' ? '#0ea5e9' : '#fbbf24' }} />
-                            </div>
-                            <div className={`flex justify-between text-[10px] font-mono ${theme.mutedText} mt-1.5`}>
-                            </div>
-                        </div>
-                    </div>
-                )}
-            </div>
-
-            {/* RIGHT: TOWER LOG & DETAILS (DESKTOP/TABLET) */}
-            <div className={`hidden md:flex pointer-events-auto flex flex-col items-end gap-2 md:gap-3 w-[28%] md:w-[30%] lg:w-72 max-w-[220px] md:max-w-[280px] lg:max-w-xs transition-transform duration-700 ease-in-out ${isFocused ? 'translate-y-[0]' : 'translate-y-0'}`}>
-
-                {/* ACTIVE QUESTS / RECENT CONQUESTS */}
-                <div className="w-full">
-                    <div className={`flex items-center gap-2 mb-2 ${theme.highlightText} w-full`}>
-                        <div className={`h-[2px] w-12 md:w-20 bg-gradient-to-r from-transparent ${theme.isDark ? 'to-amber-400' : 'to-cyan-600'} opacity-50`} />
-                        <span className="text-[8px] md:text-[10px] font-bold tracking-tighter md:tracking-widest text-right font-orbitron uppercase">ACTIVE QUESTS</span>
-                        <Sword size={12} className="md:w-[14px] md:h-[14px]" />
-                    </div>
-                    <div className="flex flex-col gap-2 w-full">
-                        {recents.map(item => (
-                            <div
-                                key={item.id}
-                                onClick={() => onActivate(item.id)}
-                                className={`group relative h-8 md:h-14 bg-transparent transition-all overflow-hidden flex items-center justify-start pl-1 md:pl-3 pr-1 md:pr-2 cursor-pointer hover:border-${theme.primary}-500/50`}
-                            >
-                                <div className="w-5 md:w-10 h-full shrink-0 relative mr-1.5 md:mr-3">
-                                    <img src={item.coverUrl} className="w-full h-full object-cover grayscale opacity-70 group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-300" referrerPolicy="no-referrer" />
+                            <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                                <div className="flex flex-col">
+                                    <div className={`text-[clamp(8px,0.8vw,10px)] ${theme.mutedText} font-mono uppercase tracking-widest`}>Read</div>
+                                    <div className={`text-[clamp(18px,2vw,32px)] font-bold font-mono tabular-nums leading-tight ${theme.isDark ? 'text-amber-300' : 'text-cyan-600'}`}>{totalManhwa}</div>
                                 </div>
-                                <div className="flex-1 min-w-0 flex flex-col justify-center text-left">
-                                    <span className={`text-sm font-semibold truncate ${theme.headingText} group-hover:${theme.highlightText} transition-colors font-rajdhani`}>{item.title}</span>
-                                    <div className="flex items-center gap-2 text-[10px] font-mono text-gray-400 justify-start">
-                                        <span className={`font-rajdhani font-bold tabular-nums ${theme.isDark ? 'text-amber-300' : 'text-cyan-600'} text-xs`}>CH: {item.currentChapter}</span>
+                                <div className="flex flex-col">
+                                    <div className={`text-[clamp(8px,0.8vw,10px)] ${theme.mutedText} font-mono uppercase tracking-widest`}>Chapters</div>
+                                    <div className={`text-[clamp(18px,2vw,32px)] font-bold font-mono tabular-nums leading-tight ${theme.isDark ? 'text-amber-300' : 'text-cyan-600'}`}>{displayChapters.toLocaleString()}</div>
+                                </div>
+                                <div className="flex flex-col">
+                                    <div className={`text-[clamp(8px,0.8vw,10px)] ${theme.mutedText} font-mono uppercase tracking-widest`}>Conquired</div>
+                                    <div className={`text-[clamp(18px,2vw,32px)] font-bold font-mono tabular-nums leading-tight ${theme.isDark ? 'text-amber-400' : 'text-cyan-600'}`}>{completedManhwa}</div>
+                                </div>
+                                <div className="flex flex-col">
+                                    <div className={`text-[clamp(8px,0.8vw,10px)] ${theme.mutedText} font-mono uppercase tracking-widest`}>Streak</div>
+                                    <div className="flex items-center gap-1.5">
+                                        <div className={`text-[clamp(18px,2vw,32px)] font-bold font-mono tabular-nums leading-tight ${theme.isDark ? 'text-amber-400' : 'text-cyan-600'}`}>{streak}</div>
+                                        <Activity size={12} className={theme.highlightText} />
                                     </div>
                                 </div>
                             </div>
-                        ))}
-                    </div>
-                </div>
+                        </div>
+                    </SystemFrame>
 
-                {/* CLASS DISTRIBUTION */}
-                <div className="w-full">
-                    <div className={`flex items-center gap-2 mb-2 ${theme.highlightText} w-full`}>
-                        <div className={`h-[2px] w-12 md:w-20 bg-gradient-to-r from-transparent ${theme.isDark ? 'to-amber-400' : 'to-cyan-600'} opacity-50`} />
-                        <span className="text-[10px] font-bold tracking-widest text-right font-orbitron uppercase">CLASS_DISTRIBUTION</span>
-                        <Database size={14} />
-                    </div>
-                    {displayItems.length > 0 && (
-                        <div className={`bg-transparent p-1.5 md:p-3 flex flex-col gap-1 md:gap-3`}>
-                            {(() => {
-                                return classEntries.slice(0, 5).map(([cls, count]) => {
-                                    const pct = totalManhwa > 0 ? Math.round((count / totalManhwa) * 100) : 0;
-                                    return (
-                                        <div key={cls}>
-                                            <div className="flex justify-between mb-1">
-                                                <span className={`text-[10px] font-bold ${theme.headingText} uppercase tracking-wider font-rajdhani`}>{cls}</span>
-                                                <span className={`text-[10px] font-bold font-mono tabular-nums ${theme.isDark ? 'text-amber-300' : 'text-cyan-600'} `}>{count}</span>
-                                            </div>
-                                            <div className={`h-1 w-full ${theme.isDark ? 'bg-gray-800' : 'bg-gray-200'} `}>
-                                                <div className={`h-full transition-all duration-700 bg-gradient-to-r ${theme.gradient} progress-bloom `} style={{ width: `${pct}% `, color: theme.id === 'LIGHT' ? '#0ea5e9' : '#fbbf24' }} />
-                                            </div>
+                    {/* RANK CARD */}
+                    {!isFocused && (
+                        <div className="flex flex-col gap-4">
+                            <div className="relative group min-h-[140px] flex flex-col justify-center">
+                                <div className={`absolute inset-0 bg-gradient-to-r ${theme.gradient} opacity-10 group-hover:opacity-20 transition-opacity`} />
+                                <div className="p-4 md:px-10 md:py-6 flex flex-row items-center gap-4 bg-transparent transition-all overflow-visible relative z-10">
+                                    <EntityAvatar theme={theme} size={70} className="shrink-0 opacity-100 drop-shadow-2xl" />
+                                    <div className="flex flex-col min-w-0 flex-1">
+                                        <span className={`text-[clamp(8px,1vw,10px)] ${theme.highlightText} font-bold font-mono uppercase tracking-[0.3em] mb-1`}>Status: Active</span>
+                                        <div className="text-[clamp(18px,2vw,30px)] font-black font-orbitron italic tracking-tighter flex items-baseline leading-none overflow-visible">
+                                            <span className={`inline-block text-transparent bg-clip-text bg-gradient-to-r ${theme.gradient} py-2 pr-10 whitespace-nowrap`}>{rawRank.label}</span>
                                         </div>
-                                    );
-                                });
-                            })()}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* PROGRESS TRACKER */}
+                            <div className="px-1 space-y-2">
+                                <div className={`flex justify-between text-[clamp(9px,1vw,11px)] font-mono font-bold ${theme.highlightText}`}>
+                                    <span className="tracking-widest">TITLES DISCOVERED</span>
+                                    <span>{totalManhwa} / 1000</span>
+                                </div>
+                                <div className={`h-1.5 w-full ${theme.isDark ? 'bg-white/10' : 'bg-black/10'} relative overflow-hidden`}>
+                                    <div className={`h-full bg-gradient-to-r ${theme.gradient} progress-bloom transition-all duration-1000 ease-out`} style={{ width: `${Math.min(100, (totalManhwa / 10))}%`, color: theme.id === 'LIGHT' ? '#0ea5e9' : '#fbbf24' }} />
+                                </div>
+                            </div>
                         </div>
                     )}
-                </div>
+                </aside>
 
+                {/* CENTER: HERO ZONE (TOWER CLEARANCE) */}
+                <div className="flex-1 min-w-0" />
 
-                {/* TOP MONOLITHS */}
-                <div className="w-full">
-                    <div className={`flex items-center gap-2 mb-2 ${theme.highlightText} w-full`}>
-                        <div className={`h-[2px] w-12 md:w-20 bg-gradient-to-r from-transparent ${theme.isDark ? 'to-amber-400' : 'to-cyan-600'} opacity-50`} />
-                        <span className="text-[8px] md:text-[10px] font-bold tracking-tighter md:tracking-widest text-right font-orbitron uppercase">TOP_MONOLITHS</span>
-                        <Layers size={12} className="md:w-[14px] md:h-[14px]" />
-                    </div>
-                    {displayItems.length > 0 && (
-                        <div className={`bg-transparent p-3 flex flex-col gap-3`}>
+                {/* RIGHT WING: ACTIVE LOG & DISTRIBUTION */}
+                <aside className={`hidden md:flex flex-col gap-4 md:gap-8 items-end pointer-events-auto w-[40%] lg:w-[30%] xl:w-[22%] min-w-[320px] max-w-[440px] text-right transition-all duration-1000 ease-in-out ${isFocused ? 'translate-x-0' : 'translate-x-0 opacity-100'}`}>
+
+                    {/* TOP MONOLITHS */}
+                    <div className="w-full">
+                        <div className={`flex items-center gap-2 mb-3 ${theme.highlightText} w-full justify-end`}>
+                            <span className="text-[clamp(10px,1vw,12px)] font-bold tracking-[0.2em] font-orbitron uppercase">TOP_REVELATIONS</span>
+                            <Layers size={14} />
+                        </div>
+                        <div className="flex flex-col gap-3">
                             {[...displayItems].sort((a, b) => (b.totalChapters || 0) - (a.totalChapters || 0)).slice(0, 3).map((item, i) => (
-                                <div key={item.id} className="flex items-center gap-3">
-                                    <span className={`text-base font-black font-mono ${i === 0 ? theme.highlightText : theme.mutedText} `}>#{i + 1}</span>
+                                <div key={item.id} className="flex flex-row-reverse items-center gap-3 group cursor-pointer" onClick={() => onActivate(item.id)}>
+                                    <span className={`text-[clamp(18px,2vw,32px)] font-black font-mono ${i === 0 ? theme.highlightText : 'text-gray-500'} group-hover:scale-110 transition-transform`}>0{i + 1}</span>
                                     <div className="flex-1 min-w-0">
-                                        <div className={`text-xs font-semibold truncate ${theme.headingText} font-rajdhani`}>{item.title}</div>
-                                        <div className={`text-xs font-bold font-rajdhani tabular-nums ${theme.isDark ? 'text-amber-300' : 'text-cyan-600'} `}>{item.totalChapters} CH</div>
+                                        <div className={`text-[clamp(10px,1vw,12px)] font-bold truncate ${theme.headingText} group-hover:${theme.highlightText} transition-colors font-orbitron uppercase`}>{item.title}</div>
+                                        <div className={`text-[clamp(9px,0.9vw,11px)] font-bold font-mono tabular-nums ${theme.isDark ? 'text-amber-400' : 'text-cyan-600'}`}>{item.totalChapters} CHAPTERS</div>
                                     </div>
                                 </div>
                             ))}
                         </div>
-                    )}
-                </div>
-
-                {/* COMPLETION RATE */}
-                <div className="w-full">
-                    <div className={`flex items-center gap-2 mb-2 ${theme.highlightText} w-full`}>
-                        <div className={`h-[2px] flex-1 bg-gradient-to-r from-transparent ${theme.isDark ? 'to-amber-400' : 'to-cyan-600'} opacity-50`} />
-                        <span className="text-[8px] md:text-[10px] font-bold tracking-tighter md:tracking-widest text-right font-orbitron uppercase">COMPLETION_RATE</span>
-                        <Target size={12} className="md:w-[14px] md:h-[14px]" />
                     </div>
-                    {displayItems.filter(i => i.status === 'ACTIVE' && i.totalChapters > 0).length > 0 && (
-                        <div className={`bg-transparent p-3 flex flex-col gap-3`}>
-                            {[...displayItems]
-                                .filter(i => i.status === 'ACTIVE' && i.totalChapters > 0)
-                                .slice(0, 3)
-                                .map(item => {
-                                    const pct = Math.min(100, Math.round((item.currentChapter / item.totalChapters) * 100));
-                                    return (
-                                        <div key={item.id}>
-                                            <div className="flex justify-between mb-1">
-                                                <span className={`text-xs font-semibold ${theme.headingText} truncate max-w-[140px] font-rajdhani`}>{item.title}</span>
-                                                <span className={`text-xs font-bold font-rajdhani tabular-nums ${theme.isDark ? 'text-amber-300' : 'text-cyan-600'} `}>{pct}%</span>
-                                            </div>
-                                            <div className={`h-1.5 w-full ${theme.isDark ? 'bg-gray-800' : 'bg-gray-200'} `}>
-                                                <div className={`h-full transition-all duration-700 ${pct >= 80 ? `bg-gradient-to-r ${theme.gradient}` : `bg-gradient-to-r ${theme.gradient}`} progress-bloom `} style={{ width: `${pct}%`, color: theme.id === 'LIGHT' ? '#0ea5e9' : '#fbbf24' }} />
-                                            </div>
-                                        </div>
-                                    );
-                                })
-                            }
+
+                    {/* CLASS DISTRIBUTION */}
+                    <div className="w-full">
+                        <div className={`flex items-center gap-2 mb-3 mt-4 ${theme.highlightText} w-full justify-end`}>
+                            <span className="text-[clamp(10px,1vw,12px)] font-bold tracking-[0.2em] font-orbitron uppercase">SYNERGY_INDEX</span>
+                            <Database size={14} />
                         </div>
-                    )}
+                        <div className="space-y-4">
+                            {classEntries.slice(0, 4).map(([cls, count]) => {
+                                const pct = totalManhwa > 0 ? Math.round((count / totalManhwa) * 100) : 0;
+                                return (
+                                    <div key={cls} className="space-y-1.5">
+                                        <div className="flex justify-between items-end">
+                                            <span className={`text-[clamp(9px,1vw,11px)] font-mono tabular-nums ${theme.isDark ? 'text-amber-400' : 'text-cyan-600'}`}>{count}</span>
+                                            <span className={`text-[clamp(8px,0.8vw,10px)] font-bold ${theme.headingText} uppercase tracking-[0.2em] font-orbitron`}>{cls}</span>
+                                        </div>
+                                        <div className={`h-1 w-full ${theme.isDark ? 'bg-white/10' : 'bg-black/10'} flex justify-end`}>
+                                            <div className={`h-full transition-all duration-1000 bg-gradient-to-l ${theme.gradient} progress-bloom`} style={{ width: `${pct}%`, color: theme.id === 'LIGHT' ? '#0ea5e9' : '#fbbf24' }} />
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+
+                    {/* ACTIVE QUESTS QUICK-NAV */}
+                    <div className="w-full mt-auto">
+                        <div className={`flex items-center gap-2 mb-3 ${theme.highlightText} w-full justify-end`}>
+                            <span className="text-[clamp(10px,1vw,12px)] font-bold tracking-[0.2em] font-orbitron uppercase">RECENT_DATA</span>
+                            <Sword size={14} />
+                        </div>
+                        <div className="flex flex-col gap-2">
+                            {recents.map(item => (
+                                <div key={item.id} onClick={() => onActivate(item.id)} className="group flex flex-row-reverse items-center gap-3 cursor-pointer p-1 transition-all">
+                                    <div className="w-8 h-8 lg:w-10 lg:h-10 shrink-0 overflow-hidden border border-white/5 grayscale group-hover:grayscale-0 transition-all duration-500">
+                                        <img src={item.coverUrl} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <div className={`text-[clamp(9px,0.9vw,11px)] font-bold truncate ${theme.headingText} group-hover:${theme.highlightText} transition-colors uppercase font-orbitron`}>{item.title}</div>
+                                        <div className={`text-[clamp(8px,0.8vw,10px)] font-mono ${theme.mutedText}`}>CH. {item.currentChapter}</div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </aside>
+
+                {/* 3. MOBILE ONLY DOCK (BOTTOM FLOATING BAR) */}
+                <div className="md:hidden flex absolute bottom-4 inset-x-2 sm:inset-x-4 pointer-events-auto justify-center z-50">
+                    <SystemFrame variant="brackets" theme={theme} className="bg-black/80 backdrop-blur-xl w-full max-w-sm">
+                        <div className="p-3 flex items-center justify-around gap-2">
+                            <div className="flex flex-col items-center">
+                                <span className={`text-[clamp(7px,1.5vw,9px)] ${theme.mutedText} font-mono uppercase tracking-tighter`}>Rank</span>
+                                <span className={`text-[clamp(10px,2vw,12px)] font-black tracking-tight ${theme.highlightText} truncate max-w-[80px]`}>{rawRank.label}</span>
+                            </div>
+                            <div className="w-px h-6 bg-white/10" />
+                            <div className="flex flex-col items-center">
+                                <span className={`text-[clamp(7px,1.5vw,9px)] ${theme.mutedText} font-mono uppercase tracking-tighter`}>Titles</span>
+                                <span className={`text-[clamp(11px,2.5vw,14px)] font-bold ${theme.isDark ? 'text-amber-300' : 'text-cyan-600'}`}>{totalManhwa}</span>
+                            </div>
+                            <div className="flex flex-col items-center">
+                                <span className={`text-[clamp(7px,1.5vw,9px)] ${theme.mutedText} font-mono uppercase tracking-tighter`}>Chapters</span>
+                                <span className={`text-[clamp(11px,2.5vw,14px)] font-bold ${theme.isDark ? 'text-amber-300' : 'text-cyan-600'}`}>{displayChapters}</span>
+                            </div>
+                            <div className="flex flex-col items-center">
+                                <span className={`text-[clamp(7px,1.5vw,9px)] ${theme.mutedText} font-mono uppercase tracking-tighter`}>Streak</span>
+                                <div className="flex items-center gap-1">
+                                    <span className={`text-[clamp(11px,2.5vw,14px)] font-bold ${theme.isDark ? 'text-amber-400' : 'text-cyan-600'}`}>{streak}</span>
+                                    <Activity size={10} className={theme.highlightText} />
+                                </div>
+                            </div>
+                        </div>
+                    </SystemFrame>
                 </div>
-
             </div>
-
-        </div >
+        </div>
     );
 };
 

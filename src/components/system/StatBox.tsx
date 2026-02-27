@@ -12,7 +12,7 @@ interface StatBoxProps {
 }
 
 const StatBox: React.FC<StatBoxProps> = ({ value, label, icon: Icon, color, theme, className = "" }) => (
-    <SystemFrame variant="brackets" theme={theme} className={`w-full aspect-square lg:aspect-[5/3] xl:aspect-[16/9] ${theme.isDark ? 'bg-black/40' : 'bg-white/40'} ${className} transition-colors duration-700`}>
+    <SystemFrame variant="brackets" theme={theme} className={`w-full aspect-square lg:aspect-[2/1] xl:aspect-[16/9] ${theme.isDark ? 'bg-black/40' : 'bg-white/40'} ${className} transition-colors duration-700`}>
         <div className="flex flex-col items-center justify-center w-full h-full gap-1 p-2 overflow-hidden">
             <div className="relative w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 flex items-center justify-center shrink-0">
                 <div className={`absolute inset-0 border border-dashed ${theme.borderSubtle} rounded-full animate-spin-slow transition-colors duration-700`} />

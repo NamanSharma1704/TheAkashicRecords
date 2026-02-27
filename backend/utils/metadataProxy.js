@@ -263,9 +263,29 @@ const fetchBest = async (title) => {
     // 3. Sort by score and pick the best
     scoredResults.sort((a, b) => b.score - a.score);
 
+    const winner = scoredResults[0].data;
     console.log(`[Proxy] AUTO Selection scores:`, scoredResults.map(r => `${r.source}: ${Math.round(r.score)}`));
 
-    return scoredResults[0].data;
+    // 4. Enrich Winner: If winner is missing characters or recommendations, steal from others
+    scoredResults.forEach(res => {
+        if (res.data === winner) return;
+
+        // Merge Characters if winner has none
+        if ((!winner.characters || !winner.characters.nodes || winner.characters.nodes.length === 0) &&
+            (res.data.characters && res.data.characters.nodes && res.data.characters.nodes.length > 0)) {
+            console.log(`[Proxy] Enriching ${winner.title.english} with characters from ${res.source}`);
+            winner.characters = res.data.characters;
+        }
+
+        // Merge Recommendations if winner has none
+        if ((!winner.recommendations || !winner.recommendations.nodes || winner.recommendations.nodes.length === 0) &&
+            (res.data.recommendations && res.data.recommendations.nodes && res.data.recommendations.nodes.length > 0)) {
+            console.log(`[Proxy] Enriching ${winner.title.english} with recommendations from ${res.source}`);
+            winner.recommendations = res.data.recommendations;
+        }
+    });
+
+    return winner;
 };
 
 module.exports = { fetchAniList, fetchMangaDex, fetchJikan, fetchBest };

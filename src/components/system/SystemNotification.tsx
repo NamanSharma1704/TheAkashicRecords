@@ -32,7 +32,7 @@ const SystemNotification: React.FC<SystemNotificationProps> = ({
     };
 
     return (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
             <div className={`w-full max-w-md ${theme.id === 'LIGHT' ? 'shadow-2xl' : 'shadow-[0_0_30px_rgba(0,0,0,0.5)]'}`}>
                 <SystemFrame theme={theme} variant="full">
                     <div className="p-6">

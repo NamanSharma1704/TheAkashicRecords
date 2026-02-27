@@ -578,8 +578,8 @@ const App: React.FC = () => {
 
                                     <div className="flex flex-col items-start text-left flex-1 min-w-0 sm:-mt-6">
                                         <div className={`text-[10px] ${theme.highlightText} font-black font-mono uppercase tracking-[0.2em] mb-1 mt-0.5 opacity-90 transition-colors duration-700 whitespace-nowrap`}>ENTITY CLASSIFICATION</div>
-                                        <div className="text-4xl font-black font-manifold italic tracking-tight drop-shadow-sm flex items-baseline leading-normal overflow-hidden sm:overflow-visible pr-12 sm:-ml-6">
-                                            <span className={`inline-block px-6 text-transparent bg-clip-text bg-gradient-to-r ${theme.gradient} transition-colors duration-700 -ml-2`}>{playerRank.name}</span>
+                                        <div className="text-3xl sm:text-4xl font-black font-manifold italic tracking-tight drop-shadow-sm flex items-baseline leading-normal overflow-hidden sm:overflow-visible pr-12 sm:ml-0">
+                                            <span className={`inline-block -ml-2 sm:-ml-4 px-2 sm:px-6 text-transparent bg-clip-text bg-gradient-to-r ${theme.gradient} transition-colors duration-700`}>{playerRank.name}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -687,7 +687,7 @@ const App: React.FC = () => {
                         onEdit={(q) => {
                             setEditingItem(q);
                             setIsModalOpen(true);
-                            setIsDetailOpen(false);
+                            // Keep detail open to maintain context
                         }}
                     />
                 )}

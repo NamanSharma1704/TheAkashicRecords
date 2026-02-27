@@ -150,7 +150,7 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
     if (!isOpen) return null;
 
     return (
-        <div className={`fixed inset-0 z-50 ${theme.isDark ? 'bg-[#020202]' : 'bg-slate-50'} flex flex-col overflow-hidden transition-colors duration-700`}>
+        <div className={`fixed inset-0 z-[300] ${theme.isDark ? 'bg-[#020202]' : 'bg-slate-50'} flex flex-col overflow-hidden transition-colors duration-700`}>
             {/* Background layers */}
             <GalaxyNebula theme={theme} />
             <OmniscientField isDivineMode={theme.id === 'LIGHT'} />

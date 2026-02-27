@@ -217,7 +217,7 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
     };
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 transition-colors duration-700 animate-in fade-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-[500] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 transition-colors duration-700 animate-in fade-in zoom-in-95 duration-200">
             <SystemFrame variant="full" theme={theme} className="w-full max-w-md max-h-[90dvh] flex flex-col transition-all">
                 <div className="p-6 flex-1 flex flex-col overflow-hidden">
                     <div className={`flex justify-between items-center mb-6 pb-4 transition-colors duration-700 shrink-0`}>
@@ -227,7 +227,7 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
                         </span>
                         <button onClick={onClose}><X className={`${theme.mutedText} hover:${theme.headingText} transition-colors duration-700`} /></button>
                     </div>
-                    <form onSubmit={handleSubmit} className="space-y-4 font-mono text-xs flex-1 overflow-y-auto pr-2 hide-scrollbar">
+                    <div className="space-y-4 font-mono text-xs flex-1 overflow-y-auto pr-2 custom-scrollbar">
                         {error && (
                             <div className="bg-red-500/10 border border-red-500/30 text-red-500 p-2 text-[10px] tracking-widest flex items-center gap-2 animate-pulse">
                                 <AlertCircle size={12} />
@@ -313,13 +313,34 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
                             <label className={`block ${theme.mutedText} mb-1 uppercase text-[9px] tracking-widest transition-colors duration-700`}>Synopsis</label>
                             <textarea name="synopsis" value={formData.synopsis} onChange={(e) => setFormData(prev => ({ ...prev, synopsis: e.target.value }))} className={`w-full h-24 ${theme.inputBg} border ${theme.borderSubtle} p-2 ${theme.baseText} focus:${theme.border} outline-none transition-colors duration-700 font-sans text-[10px] resize-none overflow-y-auto block`} />
                         </div>
-                        <div className="flex gap-4 pt-4">
-                            {initialData && <button type="button" onClick={onDelete} className="px-4 py-2 border border-red-500/50 text-red-500 hover:bg-red-500/10 transition-colors duration-700"><Trash2 size={14} /></button>}
-                            <button type="submit" disabled={isScanning} className={`flex-1 ${theme.isDark ? 'bg-white/10' : 'bg-sky-500/10'} border ${theme.border} ${theme.highlightText} py-2 hover:bg-${theme.primary}-500 ${theme.isDark ? 'hover:text-black' : 'hover:text-white'} font-bold uppercase tracking-widest transition-colors duration-700 disabled:opacity-50`}>
-                                {isScanning ? "PROCESSING..." : "CONFIRM"}
+                    </div>
+                    {/* STICKY FOOTER */}
+                    <div className={`pt-4 mt-auto border-t ${theme.borderSubtle} bg-inherit flex gap-4 shrink-0`}>
+                        {initialData && (
+                            <button
+                                type="button"
+                                onClick={onDelete}
+                                className="px-4 py-2 border border-red-500/50 text-red-500 hover:bg-red-500/10 transition-all duration-300 flex items-center justify-center shrink-0"
+                                title="PURGE ARTIFACT"
+                            >
+                                <Trash2 size={16} />
                             </button>
-                        </div>
-                    </form>
+                        )}
+                        <button
+                            onClick={handleSubmit}
+                            disabled={isScanning}
+                            className={`flex-1 ${theme.isDark ? 'bg-white/10' : 'bg-sky-500/10'} border ${theme.border} ${theme.highlightText} py-3 hover:bg-${theme.primary}-500 ${theme.isDark ? 'hover:text-black' : 'hover:text-white'} font-bold uppercase tracking-[0.2em] text-xs transition-all duration-300 disabled:opacity-50 flex items-center justify-center gap-2`}
+                        >
+                            {isScanning ? (
+                                <>
+                                    <RefreshCw size={14} className="animate-spin" />
+                                    PROCESSING...
+                                </>
+                            ) : (
+                                "CONFIRM_RESTORE"
+                            )}
+                        </button>
+                    </div>
                 </div>
             </SystemFrame>
         </div>

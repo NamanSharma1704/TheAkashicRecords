@@ -7,7 +7,7 @@ const BASE_QUESTS = [
         currentChapter: 580,
         totalChapters: 600,
         lastRead: Date.now(),
-        classType: 'S-RANK',
+        classType: 'IRREGULAR',
         cover: 'https://images2.alphacoders.com/107/1079366.jpg',
         readLink: 'https://www.webtoons.com/en/fantasy/tower-of-god/list?title_no=95'
     },
@@ -17,19 +17,39 @@ const BASE_QUESTS = [
         currentChapter: 179,
         totalChapters: 179,
         lastRead: Date.now() - 86400000,
-        classType: 'NATIONAL',
+        classType: 'PLAYER',
         cover: 'https://wallpaperaccess.com/full/2405389.jpg',
         readLink: 'https://sololevelingmanhwa.com/'
     },
     {
         title: 'THE BEGINNING AFTER THE END',
-        status: 'IN_PROGRESS',
+        status: 'ACTIVE',
         currentChapter: 175,
         totalChapters: 175,
         lastRead: Date.now() - 172800000,
         classType: 'MAGE',
         cover: 'https://wallpapercave.com/wp/wp8922416.jpg',
         readLink: 'https://tapas.io/series/tbate-comic/info'
+    },
+    {
+        title: 'ORVM: OMNISCIENT READER',
+        status: 'ACTIVE',
+        currentChapter: 180,
+        totalChapters: 200,
+        lastRead: Date.now(),
+        classType: 'CONSTELLATION',
+        cover: 'https://wallpapercave.com/wp/wp8862413.jpg',
+        readLink: 'https://www.webtoons.com/en/action/omniscient-reader/list?title_no=2154'
+    },
+    {
+        title: 'SECOND LIFE RANKER',
+        status: 'ACTIVE',
+        currentChapter: 150,
+        totalChapters: 160,
+        lastRead: Date.now() - 3600000,
+        classType: 'PLAYER',
+        cover: 'https://wallpapercave.com/wp/wp8691500.jpg',
+        readLink: 'https://www.webtoons.com/en/action/second-life-ranker/list?title_no=3555'
     }
 ];
 

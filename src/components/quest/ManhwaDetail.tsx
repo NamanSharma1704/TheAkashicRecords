@@ -172,7 +172,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
     };
 
     return (
-        <div className={`fixed inset-0 z-[300] ${theme.appBg} flex animate-in fade-in duration-500`}>
+        <div className={`fixed inset-0 z-[400] ${theme.appBg} flex animate-in fade-in duration-500`}>
             {/* FULL-BLEED CINEMATIC BACKDROP */}
             <div className="absolute inset-0 z-0 overflow-hidden bg-black">
                 <div className={`absolute inset-0 ${theme.isDark ? 'bg-[#020202]/90' : 'bg-slate-900/90'} z-10`} />
@@ -407,23 +407,47 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                         </div>
                     ) : null}
 
-                    {/* SIMILAR RECORDS (BY CLASS) - MEMOIZED */}
+                    {/* SIMILAR RECORDS (BY CLASS OR SYSTEM RECOMMENDATION) */}
                     {React.useMemo(() => {
-                        if (!allQuests || !quest) return null;
-                        const similar = allQuests.filter(q => q.classType === quest.classType && q.id !== quest.id).slice(0, 5);
-                        if (similar.length === 0) return null;
+                        if (!quest) return null;
+
+                        // 1. Try internal library similarity first
+                        const similarQuests = (allQuests || []).filter(q => q.classType === quest.classType && q.id !== quest.id).slice(0, 5);
+
+                        // 2. Filter System Recommendations to only include what's in the Database
+                        const externalRecs = media?.recommendations?.nodes || [];
+                        const databaseRecommendations = externalRecs.map(rec => {
+                            const recTitleEn = rec.mediaRecommendation?.title?.english?.toLowerCase() || "";
+                            const recTitleRo = rec.mediaRecommendation?.title?.romaji?.toLowerCase() || "";
+
+                            // Find matching quest in library by title
+                            return (allQuests || []).find(q => {
+                                const qTitle = q.title.toLowerCase();
+                                return qTitle === recTitleEn || qTitle === recTitleRo || recTitleEn.includes(qTitle) || qTitle.includes(recTitleEn);
+                            });
+                        }).filter((q): q is Quest => !!q && q.id !== quest.id);
+
+                        if (similarQuests.length === 0 && databaseRecommendations.length === 0) return null;
+
+                        const hasLibraryMatches = similarQuests.length > 0;
+                        const finalRecs = hasLibraryMatches ? similarQuests : databaseRecommendations;
 
                         return (
                             <div className="mt-8">
                                 <div className="flex items-center justify-between mb-6 px-2 opacity-60">
                                     <div className="flex items-center gap-2">
                                         <Share2 size={16} className="text-white" />
-                                        <span className="text-[10px] font-mono tracking-[0.3em] text-white font-bold uppercase">SIMILAR_RECORDS_FOUND</span>
+                                        <span className="text-[10px] font-mono tracking-[0.3em] text-white font-bold uppercase">
+                                            {hasLibraryMatches ? "SIMILAR_RECORDS_FOUND" : "SYSTEM_RECOMMENDATIONS"}
+                                        </span>
                                     </div>
-                                    <span className="text-[9px] font-mono tracking-widest uppercase border border-white/20 px-2 py-0.5 rounded text-white">CLASS: {quest.classType}</span>
+                                    <span className="text-[9px] font-mono tracking-widest uppercase border border-white/20 px-2 py-0.5 rounded text-white">
+                                        {hasLibraryMatches ? `CLASS: ${quest.classType}` : "DATABASE_LINK"}
+                                    </span>
                                 </div>
+
                                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                                    {similar.map((rec) => (
+                                    {finalRecs.map((rec) => (
                                         <div key={rec.id} onClick={() => onSetActive && onSetActive(rec.id)} className="group relative aspect-[2/3] rounded-lg overflow-hidden cursor-pointer shadow-lg border border-white/5">
                                             <img src={getProxiedImageUrl(rec.coverUrl)} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" referrerPolicy="no-referrer" />
                                             <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-80 group-hover:opacity-100 transition-opacity duration-300" />
@@ -440,7 +464,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                 </div>
                             </div>
                         );
-                    }, [allQuests, quest?.classType, quest?.id, theme.highlightText, onSetActive])}
+                    }, [allQuests, quest?.classType, quest?.id, theme.highlightText, onSetActive, media?.recommendations])}
                 </div>
             </div>
 

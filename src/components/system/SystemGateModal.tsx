@@ -212,40 +212,51 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
                 return;
             }
         }
-
         onSave(formData);
     };
 
     return (
-        <div className="fixed inset-0 z-[500] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 transition-colors duration-700 animate-in fade-in zoom-in-95 duration-200">
-            <SystemFrame variant="full" theme={theme} className="w-full max-w-md max-h-[90dvh] flex flex-col transition-all">
-                <div className="p-6 flex-1 flex flex-col overflow-hidden">
-                    <div className={`flex justify-between items-center mb-6 pb-4 transition-colors duration-700 shrink-0`}>
-                        <span className={`${theme.highlightText} font-mono tracking-widest text-sm flex items-center gap-2 transition-colors duration-700`}>
-                            <RefreshCw size={14} className={isScanning ? "animate-spin" : ""} />
-                            {isScanning ? "ANALYZING COORDINATES..." : "SYSTEM_OVERWRITE"}
+        <div className="fixed inset-0 z-[500] flex items-center justify-center bg-black/60 backdrop-blur-sm p-3 sm:p-4 transition-colors duration-700 animate-in fade-in zoom-in-95 duration-200">
+            <SystemFrame variant="full" theme={theme} className="w-full max-w-lg max-h-[92dvh] transition-all">
+                <div className="flex flex-col h-full overflow-hidden">
+
+                    {/* ── HEADER ── */}
+                    <div className={`flex justify-between items-center px-5 py-3.5 border-b ${theme.borderSubtle} shrink-0 bg-black/30`}>
+                        <span className={`${theme.highlightText} font-mono tracking-widest text-[11px] sm:text-sm flex items-center gap-2.5`}>
+                            <span className={`w-1.5 h-1.5 rounded-full ${isScanning ? 'bg-amber-500 animate-ping' : 'bg-amber-500/50'}`} />
+                            <RefreshCw size={12} className={isScanning ? 'animate-spin' : ''} />
+                            {isScanning ? 'ANALYZING_COORDINATES...' : 'SYSTEM_OVERWRITE'}
                         </span>
-                        <button onClick={onClose}><X className={`${theme.mutedText} hover:${theme.headingText} transition-colors duration-700`} /></button>
+                        <button
+                            onClick={onClose}
+                            className={`w-7 h-7 flex items-center justify-center border ${theme.borderSubtle} ${theme.mutedText} hover:${theme.headingText} hover:border-white/30 transition-all duration-300 rounded-sm active:scale-90`}
+                        >
+                            <X size={14} />
+                        </button>
                     </div>
-                    <div className="space-y-4 font-mono text-xs flex-1 overflow-y-auto pr-2 custom-scrollbar">
+
+                    {/* ── SCROLLABLE BODY ── */}
+                    <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar px-5 py-4 space-y-4">
+
+                        {/* VALIDATION ERROR */}
                         {error && (
-                            <div className="bg-red-500/10 border border-red-500/30 text-red-500 p-2 text-[10px] tracking-widest flex items-center gap-2 animate-pulse">
-                                <AlertCircle size={12} />
-                                {error}
+                            <div className="bg-red-500/10 border-l-2 border-red-500 text-red-400 px-3 py-2 text-[9px] tracking-[0.2em] font-orbitron flex items-center gap-2.5">
+                                <AlertCircle size={12} className="shrink-0" />
+                                <span className="uppercase">{error}</span>
                             </div>
                         )}
-                        <div>
-                            <div className="flex justify-between items-center mb-1">
-                                <label className={`block ${theme.mutedText} uppercase text-[9px] tracking-widest transition-colors duration-700`}>Link (Coordinates)</label>
 
-                                {/* SOURCE SELECTOR */}
-                                <div className="flex gap-2">
+                        {/* ── LINK COORDINATES ── */}
+                        <div className="space-y-2">
+                            <div className={`flex justify-between items-center pb-1.5 border-b ${theme.borderSubtle}`}>
+                                <label className={`${theme.mutedText} uppercase text-[8px] tracking-[0.3em] font-orbitron`}>Link_Coordinates</label>
+                                <div className="flex gap-0.5">
                                     {['AUTO', 'ANILIST', 'MAL', 'MANGADEX'].map(src => (
                                         <button
                                             key={src}
                                             type="button"
                                             onClick={() => setSearchSource(src)}
-                                            className={`text-[8px] uppercase tracking-wider px-1.5 py-0.5 border ${searchSource === src ? `${theme.border} ${theme.highlightText}` : `border-transparent ${theme.mutedText}`} transition-colors`}
+                                            className={`text-[7px] font-orbitron font-bold tracking-widest px-2 py-0.5 transition-all duration-300 ${searchSource === src ? `${theme.highlightText} border-b border-amber-500` : `${theme.mutedText} hover:text-white`}`}
                                         >
                                             {src}
                                         </button>
@@ -253,94 +264,246 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
                                 </div>
                             </div>
 
-                            <div className="flex gap-2">
-                                <input id="quest-link" name="link" value={formData.link} onChange={handleChange} placeholder="https://..." autoComplete="url" className={`flex-1 ${theme.inputBg} border ${theme.borderSubtle} p-2 ${theme.baseText} focus:${theme.border} outline-none transition-colors duration-700`} />
-                                <button type="button" onClick={handleScan} disabled={!formData.link || isScanning} className={`px-3 border ${theme.borderSubtle} ${theme.highlightText} hover:bg-${theme.primary}-500/10 disabled:opacity-50 transition-colors flex items-center gap-2`}>
-                                    {isScanning ? <Activity size={14} className="animate-pulse" /> : <Search size={14} />}
-                                    <span className="hidden sm:inline">SCAN</span>
+                            <div className="relative group">
+                                <input
+                                    id="quest-link"
+                                    name="link"
+                                    value={formData.link}
+                                    onChange={handleChange}
+                                    placeholder="ENTER_PROTOCOL_URL"
+                                    className={`w-full bg-black/30 border-b-2 ${theme.borderSubtle} focus:border-amber-500/80 pr-28 pl-3 py-2.5 ${theme.baseText} outline-none transition-all duration-500 font-mono text-[10px] placeholder:opacity-25`}
+                                />
+                                <div className={`absolute bottom-0 left-0 h-[2px] w-0 bg-gradient-to-r ${theme.gradient} group-focus-within:w-[calc(100%-7rem)] transition-all duration-700`} />
+                                <button
+                                    type="button"
+                                    onClick={handleScan}
+                                    disabled={!formData.link || isScanning}
+                                    className={`absolute right-0 top-0 h-full px-4 font-orbitron text-[8px] font-bold tracking-wider border-l ${theme.borderSubtle} ${theme.highlightText} hover:bg-amber-500 hover:text-black disabled:opacity-25 transition-all duration-300 flex items-center gap-1.5 bg-black/40 active:scale-95 overflow-hidden group/btn`}
+                                >
+                                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover/btn:translate-x-full transition-transform duration-700" />
+                                    {isScanning ? <Activity size={10} className="animate-pulse" /> : <Search size={10} />}
+                                    SCAN_CORE
                                 </button>
                             </div>
-                            {scanStatus === "ENCRYPTED" && <div className="text-amber-500 text-[9px] mt-1 tracking-widest flex items-center gap-1"><AlertCircle size={10} /> COORDINATES ENCRYPTED. INPUT TRUE NAME.</div>}
-                            {scanStatus === "ERROR" && <div className="text-red-500 text-[9px] mt-1 tracking-widest flex items-center gap-1"><AlertCircle size={10} /> SCAN FAILED. NO MATCH FOUND.</div>}
-                            {scanStatus === "SUCCESS" && <div className={`${theme.id === 'LIGHT' ? 'text-sky-500' : 'text-amber-500'} text-[9px] mt-1 tracking-widest flex items-center gap-1`}><CheckCircle size={10} /> SCAN COMPLETE. ARTIFACT ACQUIRED.</div>}
+
+                            {/* SCAN STATUS */}
+                            {scanStatus && scanStatus !== 'IDLE' && (
+                                <div className="pt-0.5">
+                                    {scanStatus === 'ENCRYPTED' && <div className={`${theme.highlightText} text-[8px] tracking-[0.2em] font-orbitron flex items-center gap-2 animate-pulse`}><AlertCircle size={9} /> COORDINATES ENCRYPTED. INPUT TRUE NAME.</div>}
+                                    {scanStatus === 'ERROR' && <div className="text-red-500 text-[8px] tracking-[0.2em] font-orbitron flex items-center gap-2"><AlertCircle size={9} /> SCAN FAILED. NO MATCH FOUND.</div>}
+                                    {scanStatus === 'SUCCESS' && <div className={`${theme.highlightText} text-[8px] tracking-[0.2em] font-orbitron flex items-center gap-2`}><CheckCircle size={9} /> SCAN COMPLETE. ARTIFACT ACQUIRED.</div>}
+                                </div>
+                            )}
                         </div>
-                        <div>
-                            <label className={`block ${theme.mutedText} mb-1 uppercase text-[9px] tracking-widest transition-colors duration-700`}>Title</label>
-                            <div className="flex gap-2">
-                                <input name="title" value={formData.title} onChange={handleChange} className={`flex-1 ${theme.inputBg} border ${theme.borderSubtle} p-2 ${theme.baseText} focus:${theme.border} outline-none transition-colors duration-700 font-bold`} />
-                                <button type="button" onClick={handleTitleSearch} disabled={!formData.title || isScanning} className={`px-3 border ${theme.borderSubtle} ${theme.highlightText} hover:bg-${theme.primary}-500/10 disabled:opacity-50 transition-colors flex items-center gap-2`} title="Search Archives for Cover Art">
-                                    <Database size={14} />
+
+                        {/* ── ARTIFACT NOMENCLATURE ── */}
+                        <div className="space-y-2">
+                            <label className={`block ${theme.mutedText} uppercase text-[8px] tracking-[0.3em] font-orbitron`}>Artifact_Nomenclature</label>
+                            <div className="relative group">
+                                <input
+                                    name="title"
+                                    value={formData.title}
+                                    onChange={handleChange}
+                                    placeholder="DESCRIPTOR_REQUIRED"
+                                    className={`w-full bg-black/30 border-b-2 ${theme.borderSubtle} focus:border-amber-500/80 pr-12 pl-3 py-2.5 ${theme.headingText} outline-none transition-all duration-500 font-orbitron font-bold text-base sm:text-lg italic tracking-tight placeholder:opacity-20`}
+                                />
+                                <div className={`absolute bottom-0 left-0 h-[2px] w-0 bg-gradient-to-r ${theme.gradient} group-focus-within:w-[calc(100%-3rem)] transition-all duration-700`} />
+                                <button
+                                    type="button"
+                                    onClick={handleTitleSearch}
+                                    disabled={!formData.title || isScanning}
+                                    className={`absolute right-0 top-0 h-full px-3 border-l ${theme.borderSubtle} ${theme.highlightText} hover:bg-amber-500/20 disabled:opacity-25 transition-all duration-300 flex items-center justify-center bg-black/40 active:scale-90 group/archive`}
+                                    title="Search Archives for Cover Art"
+                                >
+                                    <Database size={14} className="group-hover/archive:scale-110 transition-transform" />
                                 </button>
                             </div>
                         </div>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div><label className={`block ${theme.mutedText} mb-1 uppercase text-[9px] tracking-widest transition-colors duration-700`}>Current Ch</label><input name="currentChapter" type="number" value={formData.currentChapter} onFocus={(e) => e.target.select()} onChange={handleChange} className={`w-full ${theme.inputBg} border ${theme.borderSubtle} p-2 ${theme.baseText} focus:${theme.border} outline-none transition-colors duration-700 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`} /></div>
-                            <div>
-                                <label className={`block ${theme.mutedText} mb-1 uppercase text-[9px] tracking-widest transition-colors duration-700`}>
-                                    Max Ch {formData.totalChapters === 0 && <span className="text-red-400 opacity-80 ml-1">(REQUIRED)</span>}
-                                </label>
-                                <input name="totalChapters" type="number" value={formData.totalChapters} onFocus={(e) => e.target.select()} onChange={handleChange} className={`w-full ${theme.inputBg} border ${theme.borderSubtle} p-2 ${theme.baseText} focus:${theme.border} outline-none transition-colors duration-700 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`} />
+
+                        {/* ── CHAPTER METRICS ── */}
+                        <div className={`grid grid-cols-2 gap-3 p-3 border ${theme.borderSubtle} bg-white/[0.03] rounded-sm relative`}>
+                            <div className={`absolute top-0 left-0 w-3 h-3 border-t border-l ${theme.border} opacity-50`} />
+                            <div className={`absolute bottom-0 right-0 w-3 h-3 border-b border-r ${theme.border} opacity-50`} />
+
+                            {/* WISDOM FLOOR */}
+                            <div className="space-y-1.5">
+                                <label className={`block ${theme.mutedText} uppercase text-[8px] font-orbitron tracking-[0.2em] truncate`}>Wisdom_Floor</label>
+                                <div className="relative">
+                                    <input
+                                        name="currentChapter"
+                                        type="number"
+                                        value={formData.currentChapter}
+                                        onFocus={(e) => e.target.select()}
+                                        onChange={handleChange}
+                                        className={`w-full bg-black/50 border ${theme.borderSubtle} hover:border-amber-500/40 focus:${theme.border} py-2 px-3 ${theme.baseText} outline-none transition-all font-mono text-center text-sm font-bold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`}
+                                    />
+                                    <div className="absolute top-0 right-0 w-0.5 h-full bg-gradient-to-b from-amber-500/30 to-transparent" />
+                                </div>
+                                <p className={`text-[7px] font-orbitron ${theme.mutedText} tracking-widest opacity-50`}>CURRENT CH.</p>
+                            </div>
+
+                            {/* TERMINAL STATE */}
+                            <div className="space-y-1.5">
+                                <label className={`block ${theme.mutedText} uppercase text-[8px] font-orbitron tracking-[0.2em] truncate`}>Terminal_State</label>
+                                <div className="relative">
+                                    <input
+                                        name="totalChapters"
+                                        type="number"
+                                        value={formData.totalChapters}
+                                        onFocus={(e) => e.target.select()}
+                                        onChange={handleChange}
+                                        className={`w-full bg-black/50 py-2 px-3 ${theme.baseText} outline-none transition-all font-mono text-center text-sm font-bold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${formData.totalChapters === 0
+                                            ? 'border border-red-500/50 shadow-[0_0_8px_rgba(239,68,68,0.2)]'
+                                            : `border ${theme.borderSubtle} hover:border-amber-500/40 focus:${theme.border}`
+                                            }`}
+                                    />
+                                    <div className="absolute top-0 left-0 w-0.5 h-full bg-gradient-to-b from-amber-500/30 to-transparent" />
+                                </div>
+                                {formData.totalChapters === 0 ? (
+                                    <p className="text-[7px] font-orbitron text-red-400/80 tracking-widest flex items-center gap-1">
+                                        <span className="w-1 h-1 bg-red-500 rounded-full animate-pulse shrink-0" />
+                                        REQUIRED
+                                    </p>
+                                ) : (
+                                    <p className={`text-[7px] font-orbitron ${theme.mutedText} tracking-widest opacity-50`}>TOTAL CH.</p>
+                                )}
                             </div>
                         </div>
-                        <div>
-                            <label className={`block ${theme.mutedText} mb-1 uppercase text-[9px] tracking-widest transition-colors duration-700`}>Cover URL</label>
-                            <div className="flex gap-2 items-center">
-                                <input name="coverUrl" value={formData.coverUrl} onChange={handleChange} className={`flex-1 ${theme.inputBg} border ${theme.borderSubtle} p-2 ${theme.baseText} focus:${theme.border} outline-none transition-colors duration-700`} />
-                                {formData.coverUrl && <img src={getProxiedImageUrl(formData.coverUrl)} alt="Preview" className="w-8 h-8 object-cover border border-slate-500 rounded" referrerPolicy="no-referrer" />}
+
+                        {/* ── VISUAL MANIFEST ── */}
+                        <div className="space-y-2">
+                            <label className={`block ${theme.mutedText} uppercase text-[8px] tracking-[0.3em] font-orbitron`}>Visual_Manifest</label>
+                            <div className="flex flex-col sm:flex-row gap-3">
+                                <div className="group relative shrink-0 self-start">
+                                    <div className={`absolute inset-0 bg-gradient-to-b ${theme.gradient} opacity-0 group-hover:opacity-20 blur transition-opacity`} />
+                                    {formData.coverUrl ? (
+                                        <img
+                                            src={getProxiedImageUrl(formData.coverUrl)}
+                                            alt="Preview"
+                                            className={`w-16 h-24 sm:w-20 sm:h-28 object-cover border ${theme.borderSubtle} group-hover:${theme.border} transition-colors rounded-sm relative z-10`}
+                                            referrerPolicy="no-referrer"
+                                        />
+                                    ) : (
+                                        <div className={`w-16 h-24 sm:w-20 sm:h-28 border border-dashed ${theme.borderSubtle} flex flex-col items-center justify-center relative z-10 bg-black/20 gap-2`}>
+                                            <AlertCircle size={16} className="text-white/10" />
+                                            <span className={`text-[6px] font-orbitron ${theme.mutedText} opacity-40 tracking-widest`}>NO DATA</span>
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="flex-1 space-y-2 min-w-0">
+                                    <label className={`block ${theme.mutedText} uppercase text-[7px] tracking-[0.3em] font-orbitron opacity-60`}>Image URL Encoding</label>
+                                    <input
+                                        name="coverUrl"
+                                        value={formData.coverUrl}
+                                        onChange={handleChange}
+                                        placeholder="IMAGE_LINK_ENCODING"
+                                        className={`w-full bg-black/30 border-b ${theme.borderSubtle} focus:border-amber-500/60 px-2 py-2 ${theme.baseText} outline-none transition-all font-mono text-[9px] truncate`}
+                                    />
+                                    <p className={`text-[8px] font-mono ${theme.mutedText} opacity-30 italic truncate`}>
+                                        {formData.coverUrl || 'WAITING_FOR_DATA...'}
+                                    </p>
+                                </div>
                             </div>
                         </div>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <label className={`block ${theme.mutedText} mb-1 uppercase text-[9px] tracking-widest transition-colors duration-700`}>Status</label>
-                                <select name="status" value={formData.status} onChange={handleChange} className={`w-full ${theme.inputBg} border ${theme.borderSubtle} p-2 ${theme.baseText} focus:${theme.border} outline-none transition-colors duration-700`}>
-                                    <option value="ACTIVE">ACTIVE</option>
-                                    <option value="CONQUERED">CONQUERED</option>
-                                    <option value="SEVERED">SEVERED</option>
-                                </select>
+
+                        {/* ── CLASSIFICATION GRID ── */}
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-1.5">
+                                <label className={`block ${theme.mutedText} uppercase text-[8px] font-orbitron tracking-[0.2em]`}>Protocol_Status</label>
+                                <div className="relative">
+                                    <select
+                                        name="status"
+                                        value={formData.status}
+                                        onChange={handleChange}
+                                        className={`w-full appearance-none bg-black/50 border-b-2 ${theme.borderSubtle} focus:border-amber-500/80 px-3 py-2.5 ${theme.headingText} hover:bg-white/5 outline-none transition-all font-orbitron font-bold text-[9px] tracking-widest cursor-pointer`}
+                                    >
+                                        <option value="ACTIVE" className="bg-black text-amber-500">_ACTIVE</option>
+                                        <option value="CONQUERED" className="bg-black text-blue-500">_CONQUERED</option>
+                                        <option value="SEVERED" className="bg-black text-red-500">_SEVERED</option>
+                                    </select>
+                                    <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none opacity-40">
+                                        <div className="w-0 h-0 border-l-[4px] border-l-transparent border-r-[4px] border-r-transparent border-t-[5px] border-t-white" />
+                                    </div>
+                                    <div className={`absolute bottom-0 left-0 h-[2px] w-full bg-gradient-to-r ${theme.gradient} opacity-20`} />
+                                </div>
                             </div>
-                            <div>
-                                <label className={`block ${theme.mutedText} mb-1 uppercase text-[9px] tracking-widest transition-colors duration-700`}>Class</label>
-                                <select name="classType" value={formData.classType} onChange={handleChange} className={`w-full ${theme.inputBg} border ${theme.borderSubtle} p-2 ${theme.baseText} focus:${theme.border} outline-none transition-colors duration-700`}>
-                                    <option value="PLAYER">PLAYER</option>
-                                    <option value="IRREGULAR">IRREGULAR</option>
-                                    <option value="MAGE">MAGE</option>
-                                    <option value="CONSTELLATION">CONSTELLATION</option>
-                                    <option value="NECROMANCER">NECROMANCER</option>
-                                </select>
+                            <div className="space-y-1.5">
+                                <label className={`block ${theme.mutedText} uppercase text-[8px] font-orbitron tracking-[0.2em]`}>Entity_Class</label>
+                                <div className="relative">
+                                    <select
+                                        name="classType"
+                                        value={formData.classType}
+                                        onChange={handleChange}
+                                        className={`w-full appearance-none bg-black/50 border-b-2 ${theme.borderSubtle} focus:border-amber-500/80 px-3 py-2.5 ${theme.headingText} hover:bg-white/5 outline-none transition-all font-orbitron font-bold text-[9px] tracking-widest cursor-pointer`}
+                                    >
+                                        <option value="PLAYER" className="bg-black">_PLAYER</option>
+                                        <option value="IRREGULAR" className="bg-black">_IRREGULAR</option>
+                                        <option value="MAGE" className="bg-black">_MAGE</option>
+                                        <option value="CONSTELLATION" className="bg-black">_CONSTELLATION</option>
+                                        <option value="NECROMANCER" className="bg-black">_NECROMANCER</option>
+                                    </select>
+                                    <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none opacity-40">
+                                        <div className="w-0 h-0 border-l-[4px] border-l-transparent border-r-[4px] border-r-transparent border-t-[5px] border-t-white" />
+                                    </div>
+                                    <div className={`absolute bottom-0 left-0 h-[2px] w-full bg-gradient-to-r ${theme.gradient} opacity-20`} />
+                                </div>
                             </div>
                         </div>
-                        <div>
-                            <label className={`block ${theme.mutedText} mb-1 uppercase text-[9px] tracking-widest transition-colors duration-700`}>Synopsis</label>
-                            <textarea name="synopsis" value={formData.synopsis} onChange={(e) => setFormData(prev => ({ ...prev, synopsis: e.target.value }))} className={`w-full h-24 ${theme.inputBg} border ${theme.borderSubtle} p-2 ${theme.baseText} focus:${theme.border} outline-none transition-colors duration-700 font-sans text-[10px] resize-none overflow-y-auto block`} />
+
+                        {/* ── SYNOPSIS ── */}
+                        <div className="space-y-1.5">
+                            <label className={`block ${theme.mutedText} uppercase text-[8px] font-orbitron tracking-[0.3em]`}>Memetic_Imprint</label>
+                            <div className="relative group">
+                                <div className={`absolute top-0 right-0 w-3 h-3 border-t border-r ${theme.border} opacity-30`} />
+                                <div className={`absolute bottom-0 left-0 w-3 h-3 border-b border-l ${theme.border} opacity-30`} />
+                                <textarea
+                                    name="synopsis"
+                                    value={formData.synopsis}
+                                    onChange={(e) => setFormData(prev => ({ ...prev, synopsis: e.target.value }))}
+                                    placeholder="COLLECTING_RESONANCE_DATA..."
+                                    className={`w-full h-20 bg-black/30 border ${theme.borderSubtle} focus:${theme.border} px-3 py-2.5 ${theme.baseText} outline-none transition-all duration-500 font-rajdhani italic text-[11px] resize-none custom-scrollbar group-hover:bg-white/5`}
+                                />
+                            </div>
                         </div>
+
                     </div>
-                    {/* STICKY FOOTER */}
-                    <div className={`pt-4 mt-auto border-t ${theme.borderSubtle} bg-inherit flex gap-4 shrink-0`}>
+
+                    {/* ── STICKY FOOTER ── */}
+                    <div className={`px-5 py-3.5 bg-black/70 backdrop-blur-md border-t ${theme.borderSubtle} flex gap-3 shrink-0 relative overflow-hidden`}>
+                        <div className={`absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-amber-500/40 to-transparent`} />
+
                         {initialData && (
                             <button
                                 type="button"
                                 onClick={onDelete}
-                                className="px-4 py-2 border border-red-500/50 text-red-500 hover:bg-red-500/10 transition-all duration-300 flex items-center justify-center shrink-0"
-                                title="PURGE ARTIFACT"
+                                className="w-12 h-12 border border-red-900/40 text-red-500/70 hover:bg-red-500 hover:text-white hover:border-red-500 transition-all duration-500 flex items-center justify-center shrink-0 group relative overflow-hidden rounded-sm"
+                                title="PURGE_ARTIFACT"
                             >
-                                <Trash2 size={16} />
+                                <div className="absolute inset-0 bg-red-500/5 group-hover:bg-red-500/20 transition-all" />
+                                <Trash2 size={16} className="relative z-10 group-active:scale-75 transition-transform" />
                             </button>
                         )}
+
                         <button
                             onClick={handleSubmit}
                             disabled={isScanning}
-                            className={`flex-1 ${theme.isDark ? 'bg-white/10' : 'bg-sky-500/10'} border ${theme.border} ${theme.highlightText} py-3 hover:bg-${theme.primary}-500 ${theme.isDark ? 'hover:text-black' : 'hover:text-white'} font-bold uppercase tracking-[0.2em] text-xs transition-all duration-300 disabled:opacity-50 flex items-center justify-center gap-2`}
+                            className={`flex-1 relative border ${theme.border} ${theme.highlightText} hover:bg-amber-500 hover:text-black font-orbitron font-black uppercase tracking-[0.25em] text-[11px] sm:text-sm transition-all duration-500 disabled:opacity-30 flex items-center justify-center gap-2.5 active:scale-[0.98] overflow-hidden group/confirm py-3.5 rounded-sm`}
                         >
+                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover/confirm:translate-x-full transition-transform duration-700" />
                             {isScanning ? (
                                 <>
-                                    <RefreshCw size={14} className="animate-spin" />
-                                    PROCESSING...
+                                    <RefreshCw size={16} className="animate-spin" />
+                                    SYNC_IN_PROGRESS...
                                 </>
                             ) : (
-                                "CONFIRM_RESTORE"
+                                <>
+                                    <CheckCircle size={16} className="group-hover/confirm:scale-110 transition-transform" />
+                                    {initialData ? 'RESTORE_ARTIFACT' : 'CREATE_REALM_GATE'}
+                                </>
                             )}
                         </button>
                     </div>
+
                 </div>
             </SystemFrame>
         </div>

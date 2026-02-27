@@ -24,7 +24,7 @@ const fetchAniList = async (title) => {
         seasonYear
         chapters
         siteUrl
-        characters(sort: ROLE, perPage: 10) {
+        characters(sort: ROLE, perPage: 12) {
           edges {
             role
             node {
@@ -48,26 +48,47 @@ const fetchAniList = async (title) => {
     }
     `;
 
-    try {
-        const response = await fetch('https://graphql.anilist.co', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-            body: JSON.stringify({ query, variables: { search: title } })
-        });
-        const data = await response.json();
-        if (data.data && data.data.Media) {
-            const media = data.data.Media;
-            media.description = cleanDescription(media.description);
-            if (media.characters && media.characters.edges) {
-                media.characters.nodes = media.characters.edges.map(e => ({ ...e.node, role: e.role }));
-            }
-            return media;
+    const tryFetch = async (searchTitle) => {
+        try {
+            console.log(`[AniList] Probing Archives for: "${searchTitle}"`);
+            const response = await fetch('https://graphql.anilist.co', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                body: JSON.stringify({ query, variables: { search: searchTitle } })
+            });
+            const data = await response.json();
+            return data?.data?.Media || null;
+        } catch (e) {
+            console.error(`[AniList] Probe Failed for "${searchTitle}":`, e.message);
+            return null;
         }
-        return null;
-    } catch (e) {
-        console.error("[Proxy] AniList Error:", e.message);
-        return null;
+    };
+
+    // 1. Try exact title
+    let media = await tryFetch(title);
+
+    // 2. Try cleaned title if failed (removes common suffixes that confuse search)
+    if (!media) {
+        const cleanedTitle = title
+            .replace(/\s*(?:Manhwa|Webtoon|Manga|Scan|Official).*$/gi, '')
+            .trim();
+        if (cleanedTitle !== title) {
+            console.log(`[AniList] Fallback: Searching for base nomenclature: "${cleanedTitle}"`);
+            media = await tryFetch(cleanedTitle);
+        }
     }
+
+    if (media) {
+        media.description = cleanDescription(media.description);
+        if (media.characters && media.characters.edges) {
+            media.characters.nodes = media.characters.edges.map(e => ({ ...e.node, role: e.role }));
+            console.log(`[AniList] Success: ${media.characters.nodes.length} entities detected for "${media.title.english || title}"`);
+        }
+        return media;
+    }
+
+    console.warn(`[AniList] No artifact match found for: "${title}"`);
+    return null;
 };
 
 const fetchMangaDex = async (title) => {

@@ -59,6 +59,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
     const [media, setMedia] = useState<AniListMedia | null>(null);
     const [isEditingSynopsis, setIsEditingSynopsis] = useState(false);
     const [draftSynopsis, setDraftSynopsis] = useState("");
+    const [isLoadingMedia, setIsLoadingMedia] = useState(false);
 
     const isCustomCover = !!(quest?.coverUrl && quest.coverUrl !== "");
     const finalCover = isCustomCover ? quest.coverUrl : (media?.coverImage?.extraLarge || media?.coverImage?.large || quest?.coverUrl || "");
@@ -138,9 +139,11 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
     };
 
     const fetchDetails = async (title: string) => {
+        setIsLoadingMedia(true);
         // 1. Check Manual Metadata First
         if (MANUAL_METADATA[title]) {
             setMedia(MANUAL_METADATA[title]);
+            setIsLoadingMedia(false);
             return;
         }
 
@@ -159,6 +162,8 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
             }
         } catch (e) {
             console.error("Proxy Fetch Failed", e);
+        } finally {
+            setIsLoadingMedia(false);
         }
     };
 
@@ -384,53 +389,59 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                         </div>
                     </div>
 
-                    {/* CHARACTERS ROW */}
-                    {media?.characters?.nodes?.length ? (
+                    {/* CHARACTERS ROW (API DRIVEN) */}
+                    {(isLoadingMedia || media?.characters?.nodes?.length) ? (
                         <div className="mt-8">
-                            <div className="flex items-center gap-2 mb-6 opacity-60 px-2">
-                                <Users size={16} className="text-white" />
-                                <span className="text-[10px] font-mono tracking-[0.3em] text-white font-bold uppercase">ENTITIES_DETECTED</span>
-                            </div>
-                            <div className="flex overflow-x-auto gap-4 pb-4 custom-scrollbar snap-x">
-                                {media.characters.nodes.map(char => (
-                                    <div key={char.id} className="w-[100px] shrink-0 snap-start flex flex-col items-center gap-3 group cursor-pointer p-4 bg-black/20 backdrop-blur-md rounded-lg border border-white/5 hover:bg-white/5 transition-colors">
-                                        <div className="w-[60px] h-[60px] rounded-full overflow-hidden border border-white/20 group-hover:border-white/50 transition-colors">
-                                            <img src={getProxiedImageUrl(char.image.medium || char.image.large)} alt={char.name.full} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" referrerPolicy="no-referrer" />
-                                        </div>
-                                        <div className="text-center w-full">
-                                            <div className="text-[10px] font-bold text-white truncate w-full">{char.name.full}</div>
-                                            <div className="text-[8px] text-white/40 uppercase truncate w-full mt-1">{char.role}</div>
-                                        </div>
+                            <div className="flex items-center justify-between mb-6 opacity-60 px-2">
+                                <div className="flex items-center gap-2">
+                                    <Users size={16} className="text-white" />
+                                    <span className="text-[10px] font-mono tracking-[0.3em] text-white font-bold uppercase">ENTITIES_DETECTED</span>
+                                </div>
+                                {isLoadingMedia && (
+                                    <div className="flex items-center gap-2">
+                                        <div className={`w-2 h-2 rounded-full ${theme.id === 'LIGHT' ? 'bg-sky-500' : 'bg-amber-500'} animate-ping`} />
+                                        <span className="text-[8px] font-mono tracking-widest text-white/40">SCANNING_ARCHIVES...</span>
                                     </div>
-                                ))}
+                                )}
+                            </div>
+
+                            <div className="flex overflow-x-auto gap-4 pb-4 custom-scrollbar snap-x min-h-[140px]">
+                                {isLoadingMedia ? (
+                                    // SKELETON LOADERS
+                                    Array(6).fill(0).map((_, i) => (
+                                        <div key={i} className="w-[100px] shrink-0 animate-pulse flex flex-col items-center gap-3 p-4 bg-white/5 rounded-lg border border-white/5">
+                                            <div className="w-[60px] h-[60px] rounded-full bg-white/10" />
+                                            <div className="h-2 w-12 bg-white/10 rounded" />
+                                            <div className="h-1.5 w-8 bg-white/5 rounded" />
+                                        </div>
+                                    ))
+                                ) : (
+                                    media?.characters?.nodes?.map(char => (
+                                        <div key={char.id} className="w-[100px] shrink-0 snap-start flex flex-col items-center gap-3 group cursor-pointer p-4 bg-black/20 backdrop-blur-md rounded-lg border border-white/5 hover:bg-white/5 transition-colors">
+                                            <div className="w-[60px] h-[60px] rounded-full overflow-hidden border border-white/20 group-hover:border-white/50 transition-colors">
+                                                <img src={getProxiedImageUrl(char.image.medium || char.image.large)} alt={char.name.full} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" referrerPolicy="no-referrer" />
+                                            </div>
+                                            <div className="text-center w-full">
+                                                <div className="text-[10px] font-bold text-white truncate w-full">{char.name.full}</div>
+                                                <div className="text-[8px] text-white/40 uppercase truncate w-full mt-1">{char.role}</div>
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
                             </div>
                         </div>
                     ) : null}
 
-                    {/* SIMILAR RECORDS (BY CLASS OR SYSTEM RECOMMENDATION) */}
+                    {/* SIMILAR RECORDS (PURELY DATABASE DRIVEN) */}
                     {React.useMemo(() => {
                         if (!quest) return null;
 
-                        // 1. Try internal library similarity first
-                        const similarQuests = (allQuests || []).filter(q => q.classType === quest.classType && q.id !== quest.id).slice(0, 5);
+                        // 1. Strictly internal library similarity
+                        const similarQuests = (allQuests || [])
+                            .filter(q => q.classType === quest.classType && q.id !== quest.id)
+                            .slice(0, 10); // Increased limit since it's the main discovery row now
 
-                        // 2. Filter System Recommendations to only include what's in the Database
-                        const externalRecs = media?.recommendations?.nodes || [];
-                        const databaseRecommendations = externalRecs.map(rec => {
-                            const recTitleEn = rec.mediaRecommendation?.title?.english?.toLowerCase() || "";
-                            const recTitleRo = rec.mediaRecommendation?.title?.romaji?.toLowerCase() || "";
-
-                            // Find matching quest in library by title
-                            return (allQuests || []).find(q => {
-                                const qTitle = q.title.toLowerCase();
-                                return qTitle === recTitleEn || qTitle === recTitleRo || recTitleEn.includes(qTitle) || qTitle.includes(recTitleEn);
-                            });
-                        }).filter((q): q is Quest => !!q && q.id !== quest.id);
-
-                        if (similarQuests.length === 0 && databaseRecommendations.length === 0) return null;
-
-                        const hasLibraryMatches = similarQuests.length > 0;
-                        const finalRecs = hasLibraryMatches ? similarQuests : databaseRecommendations;
+                        if (similarQuests.length === 0) return null;
 
                         return (
                             <div className="mt-8">
@@ -438,19 +449,19 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                     <div className="flex items-center gap-2">
                                         <Share2 size={16} className="text-white" />
                                         <span className="text-[10px] font-mono tracking-[0.3em] text-white font-bold uppercase">
-                                            {hasLibraryMatches ? "SIMILAR_RECORDS_FOUND" : "SYSTEM_RECOMMENDATIONS"}
+                                            SIMILAR_RECORDS_FOUND
                                         </span>
                                     </div>
                                     <span className="text-[9px] font-mono tracking-widest uppercase border border-white/20 px-2 py-0.5 rounded text-white">
-                                        {hasLibraryMatches ? `CLASS: ${quest.classType}` : "DATABASE_LINK"}
+                                        DATABASE_SYNC: {quest.classType}
                                     </span>
                                 </div>
 
-                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                                    {finalRecs.map((rec) => (
-                                        <div key={rec.id} onClick={() => onSetActive && onSetActive(rec.id)} className="group relative aspect-[2/3] rounded-lg overflow-hidden cursor-pointer shadow-lg border border-white/5">
+                                <div className="flex overflow-x-auto gap-4 pb-4 custom-scrollbar snap-x">
+                                    {similarQuests.map((rec) => (
+                                        <div key={rec.id} onClick={() => onSetActive && onSetActive(rec.id)} className="w-[160px] shrink-0 snap-start group relative aspect-[2/3] rounded-lg overflow-hidden cursor-pointer shadow-lg border border-white/5">
                                             <img src={getProxiedImageUrl(rec.coverUrl)} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" referrerPolicy="no-referrer" />
-                                            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-80 group-hover:opacity-100 transition-opacity duration-300" />
+                                            <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/20 to-transparent opacity-80 group-hover:opacity-100 transition-opacity duration-300" />
                                             <div className="absolute bottom-0 w-full p-4 transform translate-y-2 group-hover:translate-y-0 transition-transform duration-300">
                                                 <div className="text-[10px] font-bold truncate text-white uppercase group-hover:textShadow-glow">
                                                     {rec.title}
@@ -464,7 +475,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                 </div>
                             </div>
                         );
-                    }, [allQuests, quest?.classType, quest?.id, theme.highlightText, onSetActive, media?.recommendations])}
+                    }, [allQuests, quest?.classType, quest?.id, theme.highlightText, onSetActive])}
                 </div>
             </div>
 

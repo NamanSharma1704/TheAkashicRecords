@@ -476,9 +476,9 @@ const App: React.FC = () => {
         <main className="absolute inset-0 top-16 bottom-0 overflow-y-auto lg:overflow-hidden overflow-x-hidden hide-scrollbar px-4 z-10 flex flex-col pb-10 xl:pb-6">
             <div className="w-full max-w-[1400px] mx-auto flex-1 min-h-0 flex flex-col lg:flex-row gap-4 lg:gap-6 pt-3 lg:pt-4 pb-0">
                 {/* LEFT COLUMN: ACTIVE CARD & STATS */}
-                <div className="flex-none lg:flex-1 flex flex-col lg:h-full order-1">
+                <div className="flex-none xl:flex-1 flex flex-col xl:h-full order-1 pb-4 xl:pb-4">
                     {/* Hero card — fixed h on mobile, flex-1 on desktop */}
-                    <div className="h-[320px] sm:h-[400px] md:h-[450px] lg:flex-1 relative">
+                    <div className="h-[320px] sm:h-[400px] md:h-[450px] xl:flex-1 relative">
                         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[140%] aspect-square opacity-100 pointer-events-none z-0">
                             <div className={`absolute inset-0 border ${theme.isDark ? 'border-white/30' : 'border-black/30'} rounded-full animate-[spin_60s_linear_infinite] transition-colors duration-700`} />
                             <div className={`absolute inset-[5%] border border-dashed ${theme.isDark ? 'border-white/30' : 'border-black/30'} rounded-full animate-[spin_40s_linear_infinite_reverse] transition-colors duration-700`} />

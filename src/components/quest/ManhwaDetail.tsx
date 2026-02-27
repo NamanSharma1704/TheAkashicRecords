@@ -172,7 +172,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
     };
 
     return (
-        <div className={`fixed inset-0 z-[70] ${theme.appBg} flex animate-in fade-in duration-500`}>
+        <div className={`fixed inset-0 z-[300] ${theme.appBg} flex animate-in fade-in duration-500`}>
             {/* FULL-BLEED CINEMATIC BACKDROP */}
             <div className="absolute inset-0 z-0 overflow-hidden bg-black">
                 <div className={`absolute inset-0 ${theme.isDark ? 'bg-[#020202]/90' : 'bg-slate-900/90'} z-10`} />

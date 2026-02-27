@@ -473,12 +473,12 @@ const App: React.FC = () => {
     ), [theme, currentTheme, isHeaderVisible]);
 
     const memoizedMain = useMemo(() => (
-        <main className="absolute inset-0 top-16 bottom-20 overflow-y-auto lg:overflow-hidden overflow-x-hidden hide-scrollbar px-4 z-10 flex flex-col">
-            <div className="w-full max-w-[1400px] mx-auto flex-1 min-h-0 flex flex-col lg:flex-row gap-4 lg:gap-6 pt-3 lg:pt-4 pb-6 lg:pb-6">
+        <main className="absolute inset-0 top-16 bottom-0 overflow-y-auto lg:overflow-hidden overflow-x-hidden hide-scrollbar px-4 z-10 flex flex-col pb-10 xl:pb-6">
+            <div className="w-full max-w-[1400px] mx-auto flex-1 min-h-0 flex flex-col lg:flex-row gap-4 lg:gap-6 pt-3 lg:pt-4 pb-0">
                 {/* LEFT COLUMN: ACTIVE CARD & STATS */}
-                <div className="flex-none lg:flex-1 flex flex-col gap-2 lg:gap-3 lg:min-h-0 order-1">
+                <div className="flex-none lg:flex-1 flex flex-col lg:h-full order-1">
                     {/* Hero card — fixed h on mobile, flex-1 on desktop */}
-                    <div className="h-[320px] sm:h-[400px] md:h-[450px] lg:h-auto lg:flex-1 lg:min-h-0 relative">
+                    <div className="h-[320px] sm:h-[400px] md:h-[450px] lg:flex-1 relative">
                         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[140%] aspect-square opacity-100 pointer-events-none z-0">
                             <div className={`absolute inset-0 border ${theme.isDark ? 'border-white/30' : 'border-black/30'} rounded-full animate-[spin_60s_linear_infinite] transition-colors duration-700`} />
                             <div className={`absolute inset-[5%] border border-dashed ${theme.isDark ? 'border-white/30' : 'border-black/30'} rounded-full animate-[spin_40s_linear_infinite_reverse] transition-colors duration-700`} />
@@ -526,18 +526,18 @@ const App: React.FC = () => {
                             </SystemFrame>
                         </div>
                     </div>
-                    {/* Stat Boxes — Scalable Flex Distribution */}
-                    <div className="flex w-full items-stretch justify-between gap-2 sm:gap-4 md:gap-6 shrink-0 mb-1 lg:mb-0">
-                        <div className="flex-1 min-w-0 md:max-w-[140px] lg:max-w-[150px] xl:max-w-[160px] 2xl:max-w-[180px]">
+                    {/* Stat Boxes — Structural Grid Alignment with Proportional Desktop Aspect */}
+                    <div className="grid grid-cols-4 w-full gap-2 sm:gap-3 md:gap-4 mt-auto pt-3">
+                        <div className="w-full h-full">
                             <StatBox value={activeQuest.currentChapter} label="WISDOM" icon={Cpu} color="text-blue-500" theme={theme} />
                         </div>
-                        <div className="flex-1 min-w-0 md:max-w-[140px] lg:max-w-[150px] xl:max-w-[160px] 2xl:max-w-[180px]">
+                        <div className="w-full h-full">
                             <StatBox value={Math.floor(activeQuest.totalChapters / 10)} label="MIGHT" icon={Sword} color="text-red-500" theme={theme} />
                         </div>
-                        <div className="flex-1 min-w-0 md:max-w-[140px] lg:max-w-[150px] xl:max-w-[160px] 2xl:max-w-[180px]">
+                        <div className="w-full h-full">
                             <StatBox value={`${progressPercent}%`} label="SYNC" icon={Activity} color={theme.highlightText} theme={theme} />
                         </div>
-                        <div className="flex-1 min-w-0 md:max-w-[140px] lg:max-w-[150px] xl:max-w-[160px] 2xl:max-w-[180px]">
+                        <div className="w-full h-full">
                             <StatBox value={activeQuest.status === 'CONQUERED' ? 'CLOSED' : 'OPEN'} label="GATE" icon={Target} color={activeQuest.status === 'CONQUERED' ? 'text-gray-400' : theme.highlightText} theme={theme} />
                         </div>
                     </div>

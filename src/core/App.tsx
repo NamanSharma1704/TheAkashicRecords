@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, Suspense, lazy } from 'react';
+import React, { useState, useEffect, useMemo, Suspense, lazy, useRef } from 'react';
 import { Quest } from './types';
 import SystemFrame from '../components/system/SystemFrame';
 import StatBox from '../components/system/StatBox';
@@ -92,23 +92,26 @@ const App: React.FC = () => {
     // --- SCROLL HANDLING STATE ---
     const [isHUDVisible, setIsHUDVisible] = useState(true);
     const [isHeaderVisible, setIsHeaderVisible] = useState(true);
+    const hudTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const triggerHUD = () => {
+        setIsHUDVisible(true);
+
+        if (hudTimeoutRef.current) {
+            clearTimeout(hudTimeoutRef.current);
+        }
+
+        hudTimeoutRef.current = setTimeout(() => {
+            setIsHUDVisible(false);
+        }, 2000);
+    };
 
     useEffect(() => {
         if (booting || !isAuth) return;
 
-        let timeout: ReturnType<typeof setTimeout>;
         let lastScrollY = 0;
 
         const scrollContainer = document.getElementById('content-scroll');
         if (!scrollContainer) return;
-
-        const resetHUDTimer = () => {
-            setIsHUDVisible(true);
-            clearTimeout(timeout);
-            timeout = setTimeout(() => {
-                setIsHUDVisible(false);
-            }, 2000);
-        };
 
         const handleScroll = () => {
             const currentScrollY = scrollContainer.scrollTop;
@@ -122,25 +125,33 @@ const App: React.FC = () => {
 
             lastScrollY = currentScrollY;
 
-            resetHUDTimer();
+            triggerHUD();
         };
 
         // Initial auto-hide
-        timeout = setTimeout(() => {
+        hudTimeoutRef.current = setTimeout(() => {
             setIsHUDVisible(false);
         }, 2000);
 
         scrollContainer.addEventListener('scroll', handleScroll, { passive: true });
-        scrollContainer.addEventListener('touchstart', resetHUDTimer, { passive: true });
-        scrollContainer.addEventListener('pointerdown', resetHUDTimer);
+        scrollContainer.addEventListener('touchstart', triggerHUD, { passive: true });
+        scrollContainer.addEventListener('pointerdown', triggerHUD);
 
         return () => {
             scrollContainer.removeEventListener('scroll', handleScroll);
-            scrollContainer.removeEventListener('touchstart', resetHUDTimer);
-            scrollContainer.removeEventListener('pointerdown', resetHUDTimer);
-            clearTimeout(timeout);
+            scrollContainer.removeEventListener('touchstart', triggerHUD);
+            scrollContainer.removeEventListener('pointerdown', triggerHUD);
+            if (hudTimeoutRef.current) {
+                clearTimeout(hudTimeoutRef.current);
+            }
         };
-    }, [booting, isAuth]);
+    }, [booting, isAuth, isSpireOpen]);
+
+    useEffect(() => {
+        if (!isSpireOpen && !isDetailOpen && !isModalOpen && !isProfileOpen) {
+            triggerHUD();
+        }
+    }, [isSpireOpen, isDetailOpen, isModalOpen, isProfileOpen]);
 
     // --- SYSTEM NOTIFICATION STATE ---
     const [sysNote, setSysNote] = useState<{
@@ -463,7 +474,7 @@ const App: React.FC = () => {
                 <button onClick={toggleTheme} className={`w-8 h-8 flex items-center justify-center border ${theme.borderSubtle} ${theme.isDark ? 'bg-white/5 hover:bg-white/10' : 'bg-black/5 hover:bg-black/10'} rounded transition-colors duration-700`}>
                     {currentTheme === 'LIGHT' ? <Sun size={14} className="text-sky-600 transition-colors duration-700" /> : <Moon size={14} className="text-amber-400 transition-colors duration-700" />}
                 </button>
-                <button onClick={() => { setEditingItem(null); setIsModalOpen(true); }} className={`hidden lg:flex px-4 py-1.5 border ${theme.borderSubtle} ${theme.highlightText} ${theme.isDark ? 'hover:bg-white/5' : 'hover:bg-black/5'} transition-colors duration-700 font-mono text-[10px] tracking-widest items-center gap-2 cursor-pointer`}>
+                <button onClick={() => { setEditingItem(null); setIsModalOpen(true); }} className={`hidden xl:flex px-4 py-1.5 border ${theme.borderSubtle} ${theme.highlightText} ${theme.isDark ? 'hover:bg-white/5' : 'hover:bg-black/5'} transition-colors duration-700 font-mono text-[10px] tracking-widest items-center gap-2 cursor-pointer`}>
                     <Plus size={12} /> CREATE_GATE
                 </button>
             </div>
@@ -472,10 +483,10 @@ const App: React.FC = () => {
 
     const memoizedMain = useMemo(() => (
         <main id="content-scroll"
-            className="absolute inset-0 top-16 bottom-0 overflow-y-auto lg:overflow-hidden overflow-x-hidden hide-scrollbar px-4 z-10 flex flex-col pb-10 xl:pb-6">
-            <div className="w-full max-w-[1400px] mx-auto flex-1 min-h-0 flex flex-col lg:flex-row gap-4 lg:gap-6 pt-3 lg:pt-4 pb-0">
+            className="relative mt-16 h-[calc(100vh-4rem)] overflow-y-auto xl:overflow-hidden overflow-x-hidden hide-scrollbar px-4 z-10 flex flex-col pb-[40px]">
+            <div className="w-full max-w-[1400px] mx-auto flex-1 min-h-0 flex flex-col xl:flex-row gap-4 lg:gap-6 pt-3 lg:pt-4 pb-0">
                 {/* LEFT COLUMN: ACTIVE CARD & STATS */}
-                <div className="flex-none lg:flex-1 flex flex-col lg:h-full order-1 pb-6">
+                <div className="flex-none lg:flex-1 flex flex-col xl:h-full order-1 pb-6">
                     {/* Hero card — fixed h on mobile, flex-1 on desktop */}
                     <div className="h-[320px] sm:h-[400px] md:h-[450px] lg:flex-1 relative">
                         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[140%] aspect-square opacity-100 pointer-events-none z-0">
@@ -543,7 +554,7 @@ const App: React.FC = () => {
                 </div>
 
                 {/* RIGHT COLUMN: SIDEBAR */}
-                <div className="w-full lg:w-96 xl:w-96 flex flex-col gap-2 lg:min-h-0 lg:h-full order-2 pb-24 lg:pb-0">
+                <div className="w-full xl:w-96 xl:w-96 flex flex-col gap-2 xl:min-h-0 xl:h-full order-2 pb-24 xl:pb-0">
                     {/* PLAYER CARD */}
                     <div className="w-full h-auto overflow-hidden">
                         <SystemFrame variant="brackets" theme={theme}>
@@ -623,7 +634,7 @@ const App: React.FC = () => {
                     </div>
 
                     {/* DIVINE SPIRE BUTTON */}
-                    <button aria-label="Open Divine Spire" onClick={() => { setIsSpireOpen(true); }} className={`hidden lg:flex w-full py-3 lg:py-4 ${theme.isDark ? 'bg-white/5' : 'bg-sky-500/10'} border ${theme.borderSubtle} ${theme.highlightText} hover:bg-${theme.primary}-500 ${theme.isDark ? 'hover:text-black' : 'hover:text-white'} font-mono font-bold tracking-widest uppercase transition-all items-center justify-center gap-2 text-xs shrink-0 shadow-sm cursor-pointer duration-700 lg:mb-6`}><LayoutTemplate size={16} /> DIVINE SPIRE</button>
+                    <button aria-label="Open Divine Spire" onClick={() => { setIsSpireOpen(true); }} className={`hidden xl:flex w-full py-3 lg:py-4 ${theme.isDark ? 'bg-white/5' : 'bg-sky-500/10'} border ${theme.borderSubtle} ${theme.highlightText} hover:bg-${theme.primary}-500 ${theme.isDark ? 'hover:text-black' : 'hover:text-white'} font-mono font-bold tracking-widest uppercase transition-all items-center justify-center gap-2 text-xs shrink-0 shadow-sm cursor-pointer duration-700 lg:mb-6`}><LayoutTemplate size={16} /> DIVINE SPIRE</button>
                 </div>
             </div>
         </main>
@@ -634,16 +645,24 @@ const App: React.FC = () => {
     if (!isAuth) return <LoginScreen onLoginSuccess={handleLoginSuccess} theme={theme} />;
 
     return (
-        <div id="main-scroll-area" className={`fixed inset-0 overflow-hidden ${theme.appBg} ${theme.baseText} font-sans selection:bg-amber-500/30 transition-colors duration-700 ease-in-out`}>
+        <div id="main-scroll-area" className={`relative min-h-screen ${theme.appBg} ${theme.baseText} font-sans selection:bg-amber-500/30 transition-colors duration-700 ease-in-out`}>
             <BackgroundController theme={theme} isPaused={isModalOpen} isMobile={isMobile} />
             {/* BACKGROUND GRADIENT FIX */}
-            <div className="fixed inset-0 pointer-events-none z-0 bg-[radial-gradient(circle,transparent_50%,rgba(0,0,0,0.4)_100%)] opacity-50" />
+            <div className="absolute inset-0 pointer-events-none z-0 bg-[radial-gradient(circle,transparent_50%,rgba(0,0,0,0.4)_100%)] opacity-50" />
 
             {/* HEADER */}
             {!isSpireOpen && memoizedHeader}
 
             {/* MAIN GRID */}
             {!isSpireOpen && memoizedMain}
+
+            {/* DASHBOARD CONSOLE */}
+            {!isSpireOpen &&
+                !isModalOpen &&
+                !isProfileOpen &&
+                !isDetailOpen && (
+                    <SystemConsole theme={theme} />
+                )}
 
             <Suspense fallback={<HeavyLoader theme={theme} />}>
                 {isProfileOpen && (
@@ -681,16 +700,18 @@ const App: React.FC = () => {
 
             <Suspense fallback={<HeavyLoader theme={theme} />}>
                 {isSpireOpen && (
-                    <DivineSpire
-                        isOpen={isSpireOpen}
-                        onClose={() => setIsSpireOpen(false)}
-                        theme={theme}
-                        items={spireItems}
-                        onActivate={handleActivate}
-                        itemsPerFloor={ITEMS_PER_FLOOR}
-                        playerRank={playerRank}
-                        streak={userState.streak}
-                    />
+                    <div className="fixed inset-0 z-[200]">
+                        <DivineSpire
+                            isOpen={isSpireOpen}
+                            onClose={() => setIsSpireOpen(false)}
+                            theme={theme}
+                            items={spireItems}
+                            onActivate={handleActivate}
+                            itemsPerFloor={ITEMS_PER_FLOOR}
+                            playerRank={playerRank}
+                            streak={userState.streak}
+                        />
+                    </div>
                 )}
             </Suspense>
 
@@ -711,43 +732,66 @@ const App: React.FC = () => {
 
 
             {/* HUD / SYSTEM OVERLAYS (HOLOGRAPHIC) */}
-            {(!isSpireOpen && !isModalOpen && !isProfileOpen && !isDetailOpen) && (
-                <div className={`lg:hidden fixed bottom-6 left-0 w-full px-5 z-[80] flex items-end gap-3 pointer-events-none pb-[env(safe-area-inset-bottom)] transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] ${isHUDVisible ? 'translate-y-0 opacity-100' : 'translate-y-24 opacity-0'}`}>
-                    {/* DIVINE SPIRE PANEL */}
-                    <button
-                        aria-label="Open Divine Spire"
-                        onClick={() => setIsSpireOpen(true)}
-                        className={`pointer-events-auto flex-1 h-14 holographic-panel border bg-amber-500/10 rounded-sm border-amber-500/50 flex items-center justify-center gap-3 transition-all active:scale-95 group shadow-[0_0_20px_rgba(245,158,11,0.15)] overflow-hidden`}
+            {!isSpireOpen &&
+                !isModalOpen &&
+                !isProfileOpen &&
+                !isDetailOpen && (
+                    <div
+                        className={`xl:hidden fixed bottom-6 left-0 w-full px-5 z-[80] isolate
+    grid grid-cols-[minmax(0,1fr)_56px] items-end gap-3
+    pb-[env(safe-area-inset-bottom)]
+    transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)]
+    ${isHUDVisible
+                                ? 'translate-y-0 opacity-100'
+                                : 'translate-y-24 opacity-0 pointer-events-none'}
+    `}
                     >
-                        <div className={`absolute top-0 left-0 w-2 h-2 border-t border-l border-amber-500 bracket-glow opacity-100`} />
-                        <div className={`absolute top-0 right-0 w-2 h-2 border-t border-r border-amber-500 bracket-glow opacity-100`} />
-                        <div className={`absolute bottom-0 right-0 w-2 h-2 border-b border-r border-amber-500 bracket-glow opacity-100`} />
-                        <div className={`absolute bottom-0 left-0 w-2 h-2 border-b border-l border-amber-500 bracket-glow opacity-100`} />
+                        {/* DIVINE SPIRE PANEL */}
+                        <button
+                            aria-label="Open Divine Spire"
+                            onClick={() => setIsSpireOpen(true)}
+                            className="relative z-10 pointer-events-auto h-14 w-full
+                            holographic-panel border bg-amber-500/10
+                            rounded-sm border-amber-500/50
+                            flex items-center justify-center gap-3
+                            transition-all active:scale-95
+                            shadow-[0_0_20px_rgba(245,158,11,0.15)] overflow-hidden"
+                        >
+                            <div className="absolute inset-0 bg-amber-500/5 mix-blend-screen pointer-events-none" />
 
-                        <div className="absolute inset-0 bg-amber-500/5 mix-blend-screen pointer-events-none" />
+                            <LayoutTemplate
+                                size={22}
+                                className="text-amber-500 drop-shadow-[0_0_8px_rgba(245,158,11,0.8)]"
+                            />
 
-                        <LayoutTemplate
-                            size={22}
-                            className="text-amber-500 drop-shadow-[0_0_8px_rgba(245,158,11,0.8)] animate-[pulse_3s_ease-in-out_infinite]"
-                        />
-                        <div className="flex flex-col items-start leading-[1] relative z-10">
-                            <span className={`text-[7px] font-mono text-amber-500/80 tracking-tighter leading-none mb-0.5`}>TERMINAL.EXECUTE</span>
-                            <span className={`text-[11px] font-black font-mono text-amber-500 drop-shadow-[0_0_5px_rgba(245,158,11,0.5)] tracking-[0.2em] uppercase leading-none`}>DIVINE_SPIRE</span>
-                        </div>
-                    </button>
+                            <div className="flex flex-col items-start leading-[1] relative z-10">
+                                <span className="text-[7px] font-mono text-amber-500/80 mb-0.5">
+                                    TERMINAL.EXECUTE
+                                </span>
+                                <span className="text-[11px] font-black font-mono text-amber-500 tracking-[0.2em] uppercase">
+                                    DIVINE_SPIRE
+                                </span>
+                            </div>
+                        </button>
 
-                    {/* CREATE GATE PANEL */}
-                    <button
-                        onClick={() => { setEditingItem(null); setIsModalOpen(true); }}
-                        className={`pointer-events-auto w-14 h-14 bg-amber-500/10 holographic-panel rounded-sm border border-amber-500/60 flex items-center justify-center transition-all active:scale-90 shadow-[0_0_20px_rgba(245,158,11,0.2)] group`}
-                    >
-                        <div className={`absolute inset-0 bg-amber-500/10 opacity-0 group-hover:opacity-100 transition-opacity`} />
-                        <Plus size={24} strokeWidth={2.5} className={`text-amber-500 drop-shadow-[0_0_10px_rgba(245,158,11,0.8)]`} />
-                    </button>
-                </div>
-            )}
-
-            <SystemConsole theme={theme} />
+                        {/* CREATE GATE PANEL */}
+                        <button
+                            onClick={() => { setEditingItem(null); setIsModalOpen(true); }}
+                            className="relative pointer-events-auto w-14 h-14
+                            bg-amber-500/10 holographic-panel rounded-sm
+                            border border-amber-500/60
+                            flex items-center justify-center
+                            transition-all active:scale-90
+                            shadow-[0_0_20px_rgba(245,158,11,0.2)]"
+                        >
+                            <Plus
+                                size={24}
+                                strokeWidth={2.5}
+                                className="text-amber-500 drop-shadow-[0_0_10px_rgba(245,158,11,0.8)]"
+                            />
+                        </button>
+                    </div>
+                )}
 
             <SystemNotification
                 isOpen={sysNote.isOpen}

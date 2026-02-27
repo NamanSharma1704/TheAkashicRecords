@@ -83,7 +83,7 @@ const TowerStructure: React.FC<TowerStructureProps> = ({ onSelectFloor, theme, o
         camera.lookAt(0, INITIAL_CENTER, 0);
 
 
-        const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+        const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, powerPreference: "high-performance" });
         renderer.setSize(mount.clientWidth, mount.clientHeight);
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5)); // Performance Cap
         mount.appendChild(renderer.domElement);
@@ -711,23 +711,35 @@ const TowerStructure: React.FC<TowerStructureProps> = ({ onSelectFloor, theme, o
 
         return () => {
             cancelAnimationFrame(frameId);
+
             window.removeEventListener('mouseup', handleUp);
             window.removeEventListener('mousemove', handleMove);
             window.removeEventListener('resize', handleResize);
-            // Ensure canvasEl is captured or re-accessed
+
             if (renderer && renderer.domElement) {
                 renderer.domElement.removeEventListener('mousedown', handleDown);
                 renderer.domElement.removeEventListener('wheel', handleWheel);
                 renderer.domElement.removeEventListener('touchstart', handleTouchStart);
-                renderer.domElement.removeEventListener('touchend', handleTouchEnd); // Also remove touchend from canvasEl
+                renderer.domElement.removeEventListener('touchend', handleTouchEnd);
             }
-            if (mount && renderer.domElement) {
+
+            if (mount && renderer.domElement && mount.contains(renderer.domElement)) {
                 mount.removeChild(renderer.domElement);
             }
+
             disposables.forEach(d => {
-                if (d.dispose) d.dispose();
+                if ('dispose' in d && typeof d.dispose === 'function') {
+                    d.dispose();
+                }
             });
+
+            // 🔥 CRITICAL: Force WebGL Context Release
+            renderer.forceContextLoss();
             renderer.dispose();
+
+            // Extra safety
+            // @ts-ignore
+            renderer.domElement = null;
         };
     }, [theme]);
 

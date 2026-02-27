@@ -18,7 +18,16 @@ const SystemConsole: React.FC<SystemConsoleProps> = ({ theme }) => {
     }, []);
 
     return (
-        <div className={`fixed bottom-0 left-0 w-full min-h-[32px] sm:min-h-[24px] py-1 bg-transparent flex items-center px-4 font-mono text-[9px] ${theme.mutedText} z-[70] transition-colors duration-700 pb-[calc(0.25rem+env(safe-area-inset-bottom))]`}>
+        <div
+            className={`fixed bottom-0 left-0 w-full
+  h-[28px]
+  backdrop-blur-[2px]
+  bg-gradient-to-t from-black/40 via-black/10 to-transparent
+  flex items-center px-4 font-mono text-[9px]
+  ${theme.mutedText}
+  z-[70] transition-colors duration-700
+  pb-[env(safe-area-inset-bottom)]`}
+        >
             <div className="flex items-center gap-3 w-full max-w-[1920px] mx-auto">
                 <Activity size={10} className={`${theme.highlightText} animate-pulse transition-colors duration-700`} />
                 <span className={`${theme.highlightText} font-bold opacity-100 transition-colors duration-700`}>OMNI_LOG //</span>

@@ -500,10 +500,34 @@ app.get('/api/proxy/metadata', authenticate, async (req, res) => {
 
         if (source === 'ANILIST') {
             data = await fetchAniList(title);
-        } else if (source === 'MANGADEX') {
-            data = await fetchMangaDex(title);
+            if (!data) {
+                console.log(`[Proxy] AniList miss — falling back to MangaDex for: ${title}`);
+                data = await fetchMangaDex(title);
+            }
+            if (!data) {
+                console.log(`[Proxy] MangaDex miss — falling back to MAL for: ${title}`);
+                data = await fetchJikan(title);
+            }
         } else if (source === 'MAL') {
             data = await fetchJikan(title);
+            if (!data) {
+                console.log(`[Proxy] MAL miss — falling back to MangaDex for: ${title}`);
+                data = await fetchMangaDex(title);
+            }
+            if (!data) {
+                console.log(`[Proxy] MangaDex miss — falling back to AniList for: ${title}`);
+                data = await fetchAniList(title);
+            }
+        } else if (source === 'MANGADEX') {
+            data = await fetchMangaDex(title);
+            if (!data) {
+                console.log(`[Proxy] MangaDex miss — falling back to AniList for: ${title}`);
+                data = await fetchAniList(title);
+            }
+            if (!data) {
+                console.log(`[Proxy] AniList miss — falling back to MAL for: ${title}`);
+                data = await fetchJikan(title);
+            }
         } else {
             // AUTO Logic: Parallel scoring competition
             data = await fetchBest(title);

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Theme, Quest } from '../../core/types';
 import SystemFrame from './SystemFrame';
 import { X, RefreshCw, AlertCircle, CheckCircle, Database, Search, Activity, Trash2 } from 'lucide-react';
@@ -27,9 +27,21 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
         synopsis: ''
     });
     const [isScanning, setIsScanning] = useState(false);
-    const [scanStatus, setScanStatus] = useState("IDLE"); // IDLE, SCANNING, SUCCESS, ERROR, ENCRYPTED
-    const [searchSource, setSearchSource] = useState("AUTO"); // AUTO, ANILIST, MAL, MANGADEX
+    const [scanStatus, setScanStatus] = useState("IDLE");
+    const [searchSource, setSearchSource] = useState("AUTO");
     const [error, setError] = useState<string | null>(null);
+    // Debounced cover URL — only update image preview 600ms after user stops typing
+    const [debouncedCoverUrl, setDebouncedCoverUrl] = useState(formData.coverUrl || '');
+    const coverDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    // Sync debounced URL whenever coverUrl changes
+    useEffect(() => {
+        if (coverDebounceRef.current) clearTimeout(coverDebounceRef.current);
+        coverDebounceRef.current = setTimeout(() => {
+            setDebouncedCoverUrl(formData.coverUrl || '');
+        }, 600);
+        return () => { if (coverDebounceRef.current) clearTimeout(coverDebounceRef.current); };
+    }, [formData.coverUrl]);
 
     useEffect(() => {
         if (initialData) {
@@ -169,15 +181,15 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
         }
 
         if (!isEncrypted) {
-            // Use fetched data if available, otherwise rely on inferred title
-            const finalTitle = fetchedData?.title?.english || fetchedData?.title?.romaji || inferredTitle;
-
+            // Title always comes from the URL slug — never from the API
+            // API is only used for cover, chapters, and synopsis
             setFormData(prev => ({
                 ...prev,
-                title: prev.title && prev.title.trim() !== "" ? prev.title : (finalTitle !== "UNKNOWN ARTIFACT" ? finalTitle : prev.title),
-                classType: prev.classType && prev.classType !== 'UNKNOWN' ? prev.classType : inferClassFromTitle(finalTitle),
+                title: prev.title && prev.title.trim() !== "" ? prev.title : (inferredTitle !== "UNKNOWN ARTIFACT" ? inferredTitle : prev.title),
+                classType: prev.classType && prev.classType !== 'UNKNOWN' ? prev.classType : inferClassFromTitle(inferredTitle),
                 coverUrl: fetchedData?.coverImage?.extraLarge || prev.coverUrl,
                 totalChapters: fetchedData?.chapters || prev.totalChapters,
+                synopsis: fetchedData?.description || prev.synopsis,
                 currentChapter: prev.currentChapter === 0 ? 1 : prev.currentChapter
             }));
             setScanStatus("SUCCESS");
@@ -271,9 +283,9 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
                                     value={formData.link}
                                     onChange={handleChange}
                                     placeholder="ENTER_PROTOCOL_URL"
-                                    className={`w-full bg-black/30 border-b-2 ${theme.borderSubtle} focus:border-amber-500/80 pr-28 pl-3 py-2.5 ${theme.baseText} outline-none transition-all duration-500 font-mono text-[10px] placeholder:opacity-25`}
+                                    className={`w-full bg-black/30 border-b-2 ${theme.borderSubtle} focus:border-amber-500/80 pr-28 pl-3 py-2.5 ${theme.baseText} outline-none transition-colors duration-150 font-mono text-[10px] placeholder:opacity-25`}
                                 />
-                                <div className={`absolute bottom-0 left-0 h-[2px] w-0 bg-gradient-to-r ${theme.gradient} group-focus-within:w-[calc(100%-7rem)] transition-all duration-700`} />
+                                <div className={`absolute bottom-0 left-0 h-[2px] w-0 bg-gradient-to-r ${theme.gradient} group-focus-within:w-[calc(100%-7rem)] transition-all duration-150`} />
                                 <button
                                     type="button"
                                     onClick={handleScan}
@@ -305,9 +317,9 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
                                     value={formData.title}
                                     onChange={handleChange}
                                     placeholder="DESCRIPTOR_REQUIRED"
-                                    className={`w-full bg-black/30 border-b-2 ${theme.borderSubtle} focus:border-amber-500/80 pr-12 pl-3 py-2.5 ${theme.headingText} outline-none transition-all duration-500 font-orbitron font-bold text-base sm:text-lg italic tracking-tight placeholder:opacity-20`}
+                                    className={`w-full bg-black/30 border-b-2 ${theme.borderSubtle} focus:border-amber-500/80 pr-12 pl-3 py-2.5 ${theme.headingText} outline-none transition-colors duration-150 font-orbitron font-bold text-base sm:text-lg italic tracking-tight placeholder:opacity-20`}
                                 />
-                                <div className={`absolute bottom-0 left-0 h-[2px] w-0 bg-gradient-to-r ${theme.gradient} group-focus-within:w-[calc(100%-3rem)] transition-all duration-700`} />
+                                <div className={`absolute bottom-0 left-0 h-[2px] w-0 bg-gradient-to-r ${theme.gradient} group-focus-within:w-[calc(100%-3rem)] transition-all duration-150`} />
                                 <button
                                     type="button"
                                     onClick={handleTitleSearch}
@@ -335,7 +347,7 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
                                         value={formData.currentChapter}
                                         onFocus={(e) => e.target.select()}
                                         onChange={handleChange}
-                                        className={`w-full bg-black/50 border ${theme.borderSubtle} hover:border-amber-500/40 focus:${theme.border} py-2 px-3 ${theme.baseText} outline-none transition-all font-mono text-center text-sm font-bold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`}
+                                        className={`w-full bg-black/50 border ${theme.borderSubtle} hover:border-amber-500/40 focus:${theme.border} py-2 px-3 ${theme.baseText} outline-none transition-colors duration-150 font-mono text-center text-sm font-bold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`}
                                     />
                                     <div className="absolute top-0 right-0 w-0.5 h-full bg-gradient-to-b from-amber-500/30 to-transparent" />
                                 </div>
@@ -352,7 +364,7 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
                                         value={formData.totalChapters}
                                         onFocus={(e) => e.target.select()}
                                         onChange={handleChange}
-                                        className={`w-full bg-black/50 py-2 px-3 ${theme.baseText} outline-none transition-all font-mono text-center text-sm font-bold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${formData.totalChapters === 0
+                                        className={`w-full bg-black/50 py-2 px-3 ${theme.baseText} outline-none transition-colors duration-150 font-mono text-center text-sm font-bold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${formData.totalChapters === 0
                                             ? 'border border-red-500/50 shadow-[0_0_8px_rgba(239,68,68,0.2)]'
                                             : `border ${theme.borderSubtle} hover:border-amber-500/40 focus:${theme.border}`
                                             }`}
@@ -378,7 +390,7 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
                                     <div className={`absolute inset-0 bg-gradient-to-b ${theme.gradient} opacity-0 group-hover:opacity-20 blur transition-opacity`} />
                                     {formData.coverUrl ? (
                                         <img
-                                            src={getProxiedImageUrl(formData.coverUrl)}
+                                            src={getProxiedImageUrl(debouncedCoverUrl)}
                                             alt="Preview"
                                             className={`w-16 h-24 sm:w-20 sm:h-28 object-cover border ${theme.borderSubtle} group-hover:${theme.border} transition-colors rounded-sm relative z-10`}
                                             referrerPolicy="no-referrer"
@@ -397,7 +409,7 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
                                         value={formData.coverUrl}
                                         onChange={handleChange}
                                         placeholder="IMAGE_LINK_ENCODING"
-                                        className={`w-full bg-black/30 border-b ${theme.borderSubtle} focus:border-amber-500/60 px-2 py-2 ${theme.baseText} outline-none transition-all font-mono text-[9px] truncate`}
+                                        className={`w-full bg-black/30 border-b ${theme.borderSubtle} focus:border-amber-500/60 px-2 py-2 ${theme.baseText} outline-none transition-colors duration-150 font-mono text-[9px] truncate`}
                                     />
                                     <p className={`text-[8px] font-mono ${theme.mutedText} opacity-30 italic truncate`}>
                                         {formData.coverUrl || 'WAITING_FOR_DATA...'}

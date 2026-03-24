@@ -321,51 +321,60 @@ const App: React.FC = () => {
 
         // 1. CLEAN BODY: Remove internal fields and map to backend schema
         const body: any = {};
-
-        // Map all fields in data to body, using special mapping for schema mismatches
         Object.entries(data).forEach(([key, value]) => {
             if (['id', '_id', '__v', 'lastRead', 'lastUpdated', 'cover', 'readLink'].includes(key)) return;
-
             if (key === 'coverUrl') body.cover = value;
             else if (key === 'link') body.readLink = value;
             else if (['currentChapter', 'totalChapters'].includes(key)) body[key] = Number(value) || 0;
             else body[key] = value;
         });
 
-        console.log(`[handleSave] ${method} to ${url}`, {
-            originalData: data,
-            mappedBody: body
-        });
+        // 2. OPTIMISTIC UPDATE — close modal & update UI instantly, sync in background
+        const tempId = `optimistic-${Date.now()}`;
+        const optimisticItem: Quest = {
+            ...(data as Quest),
+            id: isEditing ? targetId! : tempId,
+            lastUpdated: new Date().toISOString(),
+        };
 
+        if (isEditing) {
+            setLibrary(prev => prev.map(q => q.id === targetId ? optimisticItem : q));
+            if (selectedQuest?.id === targetId) setSelectedQuest(optimisticItem);
+        } else {
+            setLibrary(prev => [optimisticItem, ...prev]);
+            handleActivate(optimisticItem.id);
+        }
+
+        // Close modal immediately — no waiting
+        setIsModalOpen(false);
+        setEditingItem(null);
+
+        // 3. BACKGROUND SYNC to Atlas
         try {
-            const res = await systemFetch(url, {
-                method,
-                body: JSON.stringify(body)
-            });
-
+            const res = await systemFetch(url, { method, body: JSON.stringify(body) });
             if (!res.ok) {
                 const errData = await res.json();
                 throw new Error(errData.message || 'Save failure');
             }
-
             const saved = await res.json();
             const mappedSaved = mapQuest(saved);
 
+            // Replace optimistic item with real server data
             if (isEditing) {
-                setLibrary(prev => prev.map(q => q.id === mappedSaved.id ? mappedSaved : q));
-                // Update selectedQuest if it's the one we just edited
-                if (selectedQuest?.id === mappedSaved.id) {
-                    setSelectedQuest(mappedSaved);
-                }
+                setLibrary(prev => prev.map(q => q.id === targetId ? mappedSaved : q));
+                if (selectedQuest?.id === targetId) setSelectedQuest(mappedSaved);
             } else {
-                setLibrary(prev => [mappedSaved, ...prev]);
-                handleActivate(mappedSaved.id);
+                setLibrary(prev => prev.map(q => q.id === tempId ? mappedSaved : q));
             }
-            setIsModalOpen(false);
-            setEditingItem(null);
         } catch (e: any) {
-            console.error("Save failure:", e);
-            showSystemNotification(`SAVE_PROTOCOL_FAILED: ${e.message}`, 'ERROR');
+            console.error("Save failure — rolling back:", e);
+            // Rollback optimistic update on failure
+            if (isEditing) {
+                setLibrary(prev => prev.map(q => q.id === targetId ? (editingItem || q) : q));
+            } else {
+                setLibrary(prev => prev.filter(q => q.id !== tempId));
+            }
+            showSystemNotification(`SYNC_FAILED: ${e.message}`, 'ERROR');
         }
     };
 
@@ -469,7 +478,7 @@ const App: React.FC = () => {
                 <button onClick={toggleTheme} className={`w-8 h-8 flex items-center justify-center border ${theme.borderSubtle} ${theme.isDark ? 'bg-white/5 hover:bg-white/10' : 'bg-black/5 hover:bg-black/10'} rounded transition-colors duration-700`}>
                     {currentTheme === 'LIGHT' ? <Sun size={14} className="text-sky-600 transition-colors duration-700" /> : <Moon size={14} className="text-amber-400 transition-colors duration-700" />}
                 </button>
-                <button onClick={() => { setEditingItem(null); setIsModalOpen(true); }} className={`hidden xl:flex px-4 py-1.5 border ${theme.borderSubtle} ${theme.highlightText} ${theme.isDark ? 'hover:bg-white/5' : 'hover:bg-black/5'} transition-colors duration-700 font-mono text-[10px] tracking-widest items-center gap-2 cursor-pointer`}>
+                <button onClick={() => { setEditingItem(null); setIsModalOpen(true); }} className={`hidden lg:flex px-4 py-1.5 border ${theme.borderSubtle} ${theme.highlightText} ${theme.isDark ? 'hover:bg-white/5' : 'hover:bg-black/5'} transition-colors duration-700 font-mono text-[10px] tracking-widest items-center gap-2 cursor-pointer`}>
                     <Plus size={12} /> CREATE_GATE
                 </button>
             </div>
@@ -478,10 +487,10 @@ const App: React.FC = () => {
 
     const memoizedMain = useMemo(() => (
         <main id="content-scroll"
-            className="relative mt-16 h-[calc(100vh-4rem)] overflow-y-auto xl:overflow-hidden overflow-x-hidden hide-scrollbar px-4 z-10 flex flex-col">
-            <div className="w-full max-w-[1400px] mx-auto flex-1 min-h-0 flex flex-col xl:flex-row gap-4 lg:gap-6 pt-3 lg:pt-4 pb-0 pb-[20px]">
+            className="relative mt-16 h-[calc(100vh-4rem)] overflow-y-auto lg:overflow-hidden overflow-x-hidden hide-scrollbar px-4 z-10 flex flex-col">
+            <div className="w-full max-w-[1400px] mx-auto flex-1 min-h-0 flex flex-col lg:flex-row gap-4 lg:gap-6 pt-3 lg:pt-4 pb-0 pb-[20px]">
                 {/* LEFT COLUMN: ACTIVE CARD & STATS */}
-                <div className="flex-none lg:flex-1 flex flex-col xl:h-full order-1 pb-6">
+                <div className="flex-none lg:flex-1 flex flex-col lg:h-full order-1 pb-6">
                     {/* Hero card — fixed h on mobile, flex-1 on desktop */}
                     <div className="h-[320px] sm:h-[400px] md:h-[450px] lg:flex-1 relative">
                         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[140%] aspect-square opacity-100 pointer-events-none z-0">
@@ -549,7 +558,7 @@ const App: React.FC = () => {
                 </div>
 
                 {/* RIGHT COLUMN: SIDEBAR */}
-                <div className="w-full xl:w-96 flex flex-col gap-2 xl:min-h-0 xl:h-full order-2">
+                <div className="w-full lg:w-96 flex flex-col gap-2 lg:min-h-0 lg:h-full order-2">
                     {/* PLAYER CARD */}
                     <div className="w-full h-auto">
                         <SystemFrame variant="brackets" theme={theme}>
@@ -629,7 +638,7 @@ const App: React.FC = () => {
                     </div>
 
                     {/* DIVINE SPIRE BUTTON */}
-                    <button aria-label="Open Divine Spire" onClick={() => { setIsSpireOpen(true); }} className={`hidden xl:flex w-full py-3 lg:py-4 ${theme.isDark ? 'bg-white/5' : 'bg-sky-500/10'} border ${theme.borderSubtle} ${theme.highlightText} hover:bg-${theme.primary}-500 ${theme.isDark ? 'hover:text-black' : 'hover:text-white'} font-mono font-bold tracking-widest uppercase transition-all items-center justify-center gap-2 text-xs shrink-0 shadow-sm cursor-pointer duration-700 lg:mb-6`}><LayoutTemplate size={16} /> DIVINE SPIRE</button>
+                    <button aria-label="Open Divine Spire" onClick={() => { setIsSpireOpen(true); }} className={`hidden lg:flex w-full py-3 lg:py-4 ${theme.isDark ? 'bg-white/5' : 'bg-sky-500/10'} border ${theme.borderSubtle} ${theme.highlightText} hover:bg-${theme.primary}-500 ${theme.isDark ? 'hover:text-black' : 'hover:text-white'} font-mono font-bold tracking-widest uppercase transition-all items-center justify-center gap-2 text-xs shrink-0 shadow-sm cursor-pointer duration-700 lg:mb-6`}><LayoutTemplate size={16} /> DIVINE SPIRE</button>
                 </div>
             </div>
         </main>
@@ -732,7 +741,7 @@ const App: React.FC = () => {
                 !isProfileOpen &&
                 !isDetailOpen && (
                     <div
-                        className={`xl:hidden fixed bottom-6 left-0 w-full px-5 z-[80] isolate
+                        className={`lg:hidden fixed bottom-6 left-0 w-full px-5 z-[80] isolate
     grid grid-cols-[minmax(0,1fr)_56px] items-end gap-3
     pb-[env(safe-area-inset-bottom)]
     transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)]

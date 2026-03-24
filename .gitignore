@@ -7,6 +7,16 @@ dist/
 dist-ssr/
 *.local
 
+# Temp / debug / test scripts
+tmp/
+check*.js
+debug*.js
+scan*.js
+test-*.js
+test_*.js
+verify_*.js
+update*.js
+
 # Logs
 npm-debug.log*
 yarn-debug.log*

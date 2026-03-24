@@ -588,9 +588,9 @@ const TowerStructure: React.FC<TowerStructureProps> = ({ onSelectFloor, theme, o
             } else if (w < 1280) {
                 // Tablet / Small Laptop
                 if (aspect < 1) {
-                    // Tablet Portrait
-                    camera.fov = 72;
-                    targetZ = 150;
+                    // Tablet Portrait — wide FOV so full tower fits
+                    camera.fov = 80;
+                    targetZ = 165;
                 } else {
                     // Tablet Landscape
                     camera.fov = 66;

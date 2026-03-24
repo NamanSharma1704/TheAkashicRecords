@@ -222,9 +222,9 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                 <div className="max-w-6xl mx-auto flex flex-col gap-6 md:gap-12">
 
                     {/* HERO SECTION: COVER + TITLE + STATS */}
-                    <div className="flex flex-col md:flex-row gap-8 md:gap-16 items-start md:items-center">
+                    <div className="flex flex-col md:flex-row gap-8 md:gap-12 items-start md:items-start">
                         {/* COVER ART */}
-                        <div className="shrink-0 w-[200px] md:w-[280px] aspect-[2/3] rounded-lg overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.5)] border border-white/10 relative group mx-auto md:mx-0">
+                        <div className="shrink-0 w-[180px] md:w-[240px] lg:w-[280px] aspect-[2/3] rounded-lg overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.5)] border border-white/10 relative group mx-auto md:mx-0">
                             <img
                                 src={getProxiedImageUrl(finalCover)}
                                 alt={quest.title}
@@ -235,7 +235,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                         </div>
 
                         {/* TITLE & METADATA */}
-                        <div className="flex-1 flex flex-col items-center md:items-start text-center md:text-left">
+                        <div className="flex-1 min-w-0 flex flex-col items-center md:items-start text-center md:text-left">
                             <div className="flex flex-wrap gap-2 justify-center md:justify-start mb-4">
                                 {media?.status && (
                                     <span className={`px-2 py-0.5 border text-[9px] font-bold tracking-widest uppercase ${getStatusColor(media.status)}`}>
@@ -247,7 +247,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                 </span>
                             </div>
 
-                            <h1 className="text-3xl md:text-6xl font-black text-white mb-2 leading-tight tracking-tighter drop-shadow-xl uppercase">
+                            <h1 className="text-3xl md:text-4xl lg:text-6xl font-black text-white mb-2 leading-tight tracking-tighter drop-shadow-xl uppercase break-words">
                                 {quest.title || media?.title?.english || media?.title?.romaji}
                             </h1>
                             {media?.title?.native && (
@@ -257,7 +257,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                             )}
 
                             {/* PROTOCOL BUTTONS ROW */}
-                            <div className="flex flex-wrap gap-3 w-full justify-center md:justify-start mt-auto">
+                            <div className="flex flex-wrap gap-3 w-full justify-center md:justify-start mt-4">
                                 {quest?.link && (
                                     <a
                                         href={quest.link}

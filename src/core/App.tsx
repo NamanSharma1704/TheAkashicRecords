@@ -492,7 +492,7 @@ const App: React.FC = () => {
                 {/* LEFT COLUMN: ACTIVE CARD & STATS */}
                 <div className="flex-none lg:flex-1 flex flex-col lg:h-full order-1 pb-4 lg:pb-0">
                     {/* Hero card — fixed h on mobile, flex-1 on desktop */}
-                    <div className="h-[280px] sm:h-[360px] lg:flex-1 relative">
+                    <div className="h-[280px] sm:h-[360px] md:h-[520px] lg:flex-1 relative">
                         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[140%] aspect-square opacity-100 pointer-events-none z-0">
                             <div className={`absolute inset-0 border ${theme.isDark ? 'border-white/30' : 'border-black/30'} rounded-full animate-[spin_60s_linear_infinite] transition-colors duration-700`} />
                             <div className={`absolute inset-[5%] border border-dashed ${theme.isDark ? 'border-white/30' : 'border-black/30'} rounded-full animate-[spin_40s_linear_infinite_reverse] transition-colors duration-700`} />

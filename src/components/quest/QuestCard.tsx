@@ -24,7 +24,7 @@ const QuestCard = React.memo<DivineMonolithProps>(({ item, onClick, index, id, t
                     <div className={`mt-4 text-[10px] font-mono ${theme.mutedText} tracking-[0.3em] uppercase transition-colors duration-700`}>Stasis Locked</div>
                 </div>
                 <div className="absolute inset-0 z-10 opacity-40 group-hover:opacity-100 transition-opacity duration-700 grayscale group-hover:grayscale-0">
-                    <img src={item.coverUrl} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                    <img src={item.coverUrl} alt={`Cover art for ${item.title}`} className="w-full h-full object-cover" referrerPolicy="no-referrer" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
                     <div className={`absolute inset-0 bg-gradient-to-t ${theme.isDark ? 'from-black via-black/20' : 'from-white via-white/20'} to-transparent transition-colors duration-700`} />
                 </div>
                 <div className={`absolute inset-0 border-2 ${rankStyle.border} opacity-0 group-hover:opacity-100 transition-opacity duration-500 shadow-[inset_0_0_30px_currentColor]`} />

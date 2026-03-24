@@ -501,7 +501,7 @@ const App: React.FC = () => {
                         <div className="w-full h-full">
                             <SystemFrame variant="full" theme={theme} className={`shadow-2xl ${theme.shadow} transition-shadow duration-700`}>
                                 <div className="absolute inset-0 z-0 group">
-                                    <img src={activeQuest.coverUrl} alt="Background" className={`w-full h-full object-cover object-[50%_5%] ${theme.isDark ? 'opacity-90 mix-blend-normal grayscale-0' : 'opacity-70 mix-blend-normal grayscale-0'} transition-all duration-700`} referrerPolicy="no-referrer" />
+                                    <img src={activeQuest.coverUrl} alt={`Cover art for ${activeQuest.title}`} className={`w-full h-full object-cover object-[50%_5%] ${theme.isDark ? 'opacity-90 mix-blend-normal grayscale-0' : 'opacity-70 mix-blend-normal grayscale-0'} transition-all duration-700`} referrerPolicy="no-referrer" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
                                     <div className={`absolute inset-0 bg-gradient-to-t ${theme.isDark ? 'from-[#020202] via-[#020202]/80' : 'from-[#f8f5f2]/90 via-[#f8f5f2]/60'} to-transparent transition-colors duration-700`} />
                                     <div className={`absolute inset-0 bg-gradient-to-r ${theme.isDark ? 'from-[#020202]' : 'from-[#f8f5f2]/60'} via-transparent ${theme.isDark ? 'to-[#020202]/50' : 'to-transparent'} transition-colors duration-700`} />
                                     <div className={`absolute top-0 left-0 w-full h-[2px] bg-${theme.primary}-400/80 shadow-[0_0_15px_currentColor] z-20 animate-[scanning_4s_linear_infinite] opacity-50 pointer-events-none transition-colors duration-700`} />

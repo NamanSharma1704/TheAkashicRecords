@@ -26,7 +26,7 @@ const GlitchOverlay: React.FC<GlitchOverlayProps> = ({ isActive, duration = 300,
         <div className="fixed inset-0 z-[200] pointer-events-none overflow-hidden bg-white/5">
             <div className="absolute inset-0 animate-glitch mix-blend-overlay opacity-30 bg-[#00ffff]" />
             <div className="absolute inset-0 animate-glitch mix-blend-overlay opacity-30 bg-[#ff00ff] [animation-delay:-0.1s]" />
-            <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.05]" />
+            <div className="absolute inset-0 bg-[url('/noise.svg')] opacity-[0.05]" />
         </div>
     );
 };

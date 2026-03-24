@@ -487,12 +487,12 @@ const App: React.FC = () => {
 
     const memoizedMain = useMemo(() => (
         <main id="content-scroll"
-            className="relative mt-16 h-[calc(100dvh-4rem)] lg:h-[calc(100dvh-4rem-3.5rem)] overflow-y-auto lg:overflow-hidden overflow-x-hidden hide-scrollbar px-4 pb-6 lg:pb-0 z-10 flex flex-col">
+            className="relative mt-16 h-[calc(100dvh-4rem)] lg:h-[calc(100dvh-4rem-2rem)] overflow-y-auto lg:overflow-hidden overflow-x-hidden hide-scrollbar px-4 pb-6 lg:pb-0 z-10 flex flex-col">
             <div className="w-full max-w-[1400px] mx-auto flex-1 min-h-0 flex flex-col lg:flex-row gap-3 lg:gap-4 pt-2 lg:pt-2 pb-0">
                 {/* LEFT COLUMN: ACTIVE CARD & STATS */}
-                <div className="flex-none lg:flex-1 flex flex-col lg:h-full lg:overflow-hidden order-1 pb-4 lg:pb-0">
+                <div className="flex-none lg:flex-1 flex flex-col lg:h-full order-1 pb-4 lg:pb-0">
                     {/* Hero card — fixed h on mobile, flex-1 on desktop */}
-                    <div className="h-[280px] sm:h-[360px] md:h-[520px] lg:flex-1 relative">
+                    <div className="h-[280px] sm:h-[360px] md:h-[520px] lg:h-auto lg:flex-1 relative">
                         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[140%] aspect-square opacity-100 pointer-events-none z-0">
                             <div className={`absolute inset-0 border ${theme.isDark ? 'border-white/30' : 'border-black/30'} rounded-full animate-[spin_60s_linear_infinite] transition-colors duration-700`} />
                             <div className={`absolute inset-[5%] border border-dashed ${theme.isDark ? 'border-white/30' : 'border-black/30'} rounded-full animate-[spin_40s_linear_infinite_reverse] transition-colors duration-700`} />

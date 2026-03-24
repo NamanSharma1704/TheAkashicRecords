@@ -487,7 +487,7 @@ const App: React.FC = () => {
 
     const memoizedMain = useMemo(() => (
         <main id="content-scroll"
-            className="relative mt-16 h-[calc(100vh-4rem)] overflow-y-auto lg:overflow-hidden overflow-x-hidden hide-scrollbar px-4 pb-7 z-10 flex flex-col">
+            className="relative mt-16 h-[calc(100dvh-4rem)] overflow-y-auto lg:overflow-hidden overflow-x-hidden hide-scrollbar px-4 pb-7 z-10 flex flex-col">
             <div className="w-full max-w-[1400px] mx-auto flex-1 min-h-0 flex flex-col lg:flex-row gap-3 lg:gap-4 pt-2 lg:pt-2 pb-0">
                 {/* LEFT COLUMN: ACTIVE CARD & STATS */}
                 <div className="flex-none lg:flex-1 flex flex-col lg:h-full order-1 pb-4 lg:pb-0">
@@ -649,7 +649,7 @@ const App: React.FC = () => {
     if (!isAuth) return <LoginScreen onLoginSuccess={handleLoginSuccess} theme={theme} />;
 
     return (
-        <div id="main-scroll-area" className={`relative h-screen overflow-hidden ${theme.appBg} ${theme.baseText} font-sans selection:bg-amber-500/30 transition-colors duration-700 ease-in-out`}>
+        <div id="main-scroll-area" className={`relative h-[100dvh] overflow-hidden ${theme.appBg} ${theme.baseText} font-sans selection:bg-amber-500/30 transition-colors duration-700 ease-in-out`}>
             <BackgroundController theme={theme} isPaused={isModalOpen} isMobile={isMobile} />
             {/* BACKGROUND GRADIENT FIX */}
             <div className="absolute inset-0 pointer-events-none z-0 bg-[radial-gradient(circle,transparent_50%,rgba(0,0,0,0.4)_100%)] opacity-50" />

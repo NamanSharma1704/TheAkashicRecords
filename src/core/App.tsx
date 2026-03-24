@@ -638,7 +638,7 @@ const App: React.FC = () => {
                     </div>
 
                     {/* DIVINE SPIRE BUTTON */}
-                    <button aria-label="Open Divine Spire" onClick={() => { setIsSpireOpen(true); }} className={`hidden lg:flex w-full py-2 lg:py-3 xl:py-4 ${theme.isDark ? 'bg-white/5' : 'bg-sky-500/10'} border ${theme.borderSubtle} ${theme.highlightText} hover:bg-${theme.primary}-500 ${theme.isDark ? 'hover:text-black' : 'hover:text-white'} font-mono font-bold tracking-widest uppercase transition-all items-center justify-center gap-2 text-xs shrink-0 shadow-sm cursor-pointer duration-700 lg:mb-2 xl:mb-6`}><LayoutTemplate size={16} /> DIVINE SPIRE</button>
+                    <button aria-label="Open Divine Spire" onClick={() => { setIsSpireOpen(true); }} className={`mt-auto hidden lg:flex w-full py-2 lg:py-3 xl:py-4 ${theme.isDark ? 'bg-white/5' : 'bg-sky-500/10'} border ${theme.borderSubtle} ${theme.highlightText} hover:bg-${theme.primary}-500 ${theme.isDark ? 'hover:text-black' : 'hover:text-white'} font-mono font-bold tracking-widest uppercase transition-all items-center justify-center gap-2 text-xs shrink-0 shadow-sm cursor-pointer duration-700`}><LayoutTemplate size={16} /> DIVINE SPIRE</button>
                 </div>
             </div>
         </main>

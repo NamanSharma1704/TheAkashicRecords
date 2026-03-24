@@ -487,7 +487,7 @@ const App: React.FC = () => {
 
     const memoizedMain = useMemo(() => (
         <main id="content-scroll"
-            className="relative mt-16 h-[calc(100dvh-4rem)] overflow-y-auto lg:overflow-hidden overflow-x-hidden hide-scrollbar px-4 pb-10 z-10 flex flex-col">
+            className="relative mt-16 h-[calc(100dvh-4rem)] lg:h-[calc(100dvh-4rem-1.75rem)] overflow-y-auto lg:overflow-hidden overflow-x-hidden hide-scrollbar px-4 pb-6 lg:pb-0 z-10 flex flex-col">
             <div className="w-full max-w-[1400px] mx-auto flex-1 min-h-0 flex flex-col lg:flex-row gap-3 lg:gap-4 pt-2 lg:pt-2 pb-0">
                 {/* LEFT COLUMN: ACTIVE CARD & STATS */}
                 <div className="flex-none lg:flex-1 flex flex-col lg:h-full order-1 pb-4 lg:pb-0">

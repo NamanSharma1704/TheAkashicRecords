@@ -159,12 +159,13 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
                                     <input
                                         type="text"
                                         placeholder="SEARCH ARCHIVES..."
-                                        className={`w-full bg-transparent text-sm md:text-base font-mono ${theme.baseText} placeholder:${theme.mutedText} placeholder:opacity-50 outline-none uppercase tracking-widest transition-colors duration-700 select-all`}
+                                        className={`w-full bg-transparent text-sm md:text-base font-mono ${theme.baseText} placeholder:${theme.mutedText} placeholder:opacity-50 outline-none uppercase tracking-widest transition-colors duration-700`}
                                         value={search}
-                                        onChange={(e) => setSearch(e.target.value)}
+                                        onChange={(e) => setSearch(e.target.value.toUpperCase())}
+                                        onInput={(e) => setSearch((e.target as HTMLInputElement).value.toUpperCase())}
                                         autoComplete="on"
                                         autoCorrect="on"
-                                        autoCapitalize="words"
+                                        autoCapitalize="characters"
                                         spellCheck={false}
                                         autoFocus
                                     />

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { motion } from 'motion/react';
 import { X, Users, Share2, Zap, Edit2, Target, AlignLeft, Check } from 'lucide-react';
 import { getProxiedImageUrl } from '../../utils/api';
 import { systemFetch } from '../../utils/auth';
@@ -121,7 +122,10 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
     const cleanDescription = (desc: string): string => {
         if (!desc) return "No description available.";
         return desc
-            .replace(/(?:---|\*\*\*)\s*(?:\*\*|\[b\])?(?:Original Webcomic|Official Translations|Links)(?:\*\*|\[\/b\])?[\s\S]*$/i, '')
+            // Remove the block starting with --- and containing Original/Official Translation links
+            .replace(/\s*---[\s\S]*?(?:Original|Official|Translations|Links|Webtoon)[\s\S]*$/i, '')
+            // Replace legacy formatted chunks just in case
+            .replace(/(?:\n|<br\s*\/?>)\s*(?:\*\*|\[b\])?(?:Original Webcomic|Original Webtoon|Official Translations|Links)(?:\*\*|\[\/b\])?[\s\S]*$/i, '')
             .split(/\s*-{3,}\s*$/)[0] // Remove trailing horizontal rules
             .trim();
     };
@@ -176,7 +180,18 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
         return `bg-${theme.accent}-500/10 text-${theme.accent}-500 border-${theme.accent}-500/20`;
     };
 
+    const containerVariants = {
+        hidden: { opacity: 0 },
+        visible: { opacity: 1, transition: { staggerChildren: 0.1 } }
+    };
+
+    const itemVariants = {
+        hidden: { opacity: 0, y: 30 },
+        visible: { opacity: 1, y: 0, transition: { duration: 0.6 } }
+    };
+
     return (
+
         <div className={`fixed inset-0 z-[400] ${theme.appBg} flex animate-in fade-in duration-500`}>
             {/* FULL-BLEED CINEMATIC BACKDROP */}
             <div className="absolute inset-0 z-0 overflow-hidden bg-black">
@@ -219,13 +234,14 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                     '--scrollbar-thumb-hover': theme.id === 'LIGHT' ? '#0284c7' : '#d97706'
                 } as React.CSSProperties}
             >
-                <div className="max-w-6xl mx-auto flex flex-col gap-6 md:gap-12">
+                <motion.div variants={containerVariants} initial="hidden" animate="visible" className="max-w-6xl mx-auto flex flex-col gap-6 md:gap-12">
 
                     {/* HERO SECTION: COVER + TITLE + STATS */}
-                    <div className="flex flex-col md:flex-row gap-8 md:gap-12 items-start md:items-start">
+                    <motion.div variants={itemVariants} className="flex flex-col md:flex-row gap-8 md:gap-12 items-start md:items-start">
                         {/* COVER ART */}
                         <div className="shrink-0 w-[180px] md:w-[240px] lg:w-[280px] aspect-[2/3] rounded-lg overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.5)] border border-white/10 relative group mx-auto md:mx-0">
-                            <img
+                            <motion.img
+                                layoutId={`cover-${quest.id}`}
                                 src={getProxiedImageUrl(finalCover)}
                                 alt={quest.title}
                                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
@@ -290,10 +306,10 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                 </button>
                             </div>
                         </div>
-                    </div>
+                    </motion.div>
 
                     {/* PROGRESS HUD: THE RUNIC THREAD */}
-                    <div className="w-full relative group mt-4">
+                    <motion.div variants={itemVariants} className="w-full relative group mt-4">
                         <div className="relative rounded-xl p-4 md:p-8 bg-black/40 backdrop-blur-2xl border border-white/10 shadow-2xl overflow-hidden">
                             {/* Ambient internal glow */}
                             <div className={`absolute inset-0 bg-gradient-to-r ${theme.gradient} opacity-5 blur-xl pointer-events-none`} />
@@ -333,10 +349,10 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                 </div>
                             </div>
                         </div>
-                    </div>
+                    </motion.div>
 
                     {/* TWO COLUMN DATA: SYNOPSIS & METADATA */}
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-4">
+                    <motion.div variants={itemVariants} className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-4">
                         {/* LEFT: Synopsis */}
                         <div className="lg:col-span-2 relative p-4 md:p-8 bg-black/30 backdrop-blur-xl border border-white/5 rounded-xl group/synopsis">
                             <div className="flex items-center justify-between mb-6">
@@ -387,11 +403,11 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                 </div>
                             </div>
                         </div>
-                    </div>
+                    </motion.div>
 
                     {/* CHARACTERS ROW (API DRIVEN) */}
                     {(isLoadingMedia || media?.characters?.nodes?.length) ? (
-                        <div className="mt-8">
+                        <motion.div variants={itemVariants} className="mt-8">
                             <div className="flex items-center justify-between mb-6 opacity-60 px-2">
                                 <div className="flex items-center gap-2">
                                     <Users size={16} className="text-white" />
@@ -429,7 +445,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                     ))
                                 )}
                             </div>
-                        </div>
+                        </motion.div>
                     ) : null}
 
                     {/* SIMILAR RECORDS (PURELY DATABASE DRIVEN) */}
@@ -444,7 +460,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                         if (similarQuests.length === 0) return null;
 
                         return (
-                            <div className="mt-8">
+                            <motion.div variants={itemVariants} className="mt-8">
                                 <div className="flex items-center justify-between mb-6 px-2 opacity-60">
                                     <div className="flex items-center gap-2">
                                         <Share2 size={16} className="text-white" />
@@ -473,10 +489,10 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                         </div>
                                     ))}
                                 </div>
-                            </div>
+                            </motion.div>
                         );
                     }, [allQuests, quest?.classType, quest?.id, theme.highlightText, onSetActive])}
-                </div>
+                </motion.div>
             </div>
 
             {/* SHARED NOISE HANDLED BY BACKGROUND CONTROLLER */}

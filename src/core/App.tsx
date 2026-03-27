@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useMemo, Suspense, lazy, useRef } from 'react';
+import { motion, AnimatePresence, Reorder } from 'motion/react';
 import { Quest } from './types';
 import SystemFrame from '../components/system/SystemFrame';
 import StatBox from '../components/system/StatBox';
 import SystemLogo from '../components/system/SystemLogo';
 import ScrambleText from '../components/system/ScrambleText';
-import { Cpu, Sword, Activity, Target, Hash, ExternalLink, Terminal, Sun, Moon, Plus, Flame, LayoutTemplate, Zap, Crown } from 'lucide-react';
+import { Cpu, Sword, Activity, Target, Hash, ExternalLink, Terminal, Sun, Moon, Plus, Flame, LayoutTemplate, Zap, Crown, Compass, X } from 'lucide-react';
 import { getPlayerRank, getThemedRankStyle, calculateQuestRank } from '../utils/ranks';
 import { THEMES, ITEMS_PER_FLOOR } from './constants';
 
@@ -88,8 +89,26 @@ const App: React.FC = () => {
     const [selectedQuest, setSelectedQuest] = useState<Quest | null>(null);
     const [editingItem, setEditingItem] = useState<Quest | null>(null);
 
+    const [customSortOrder, setCustomSortOrder] = useState<string[]>(() => {
+        try {
+            const saved = localStorage.getItem('activeQuestOrder');
+            return saved ? JSON.parse(saved) : [];
+        } catch (e) {
+            return [];
+        }
+    });
+
+    const [orderedActiveQuests, setOrderedActiveQuests] = useState<Quest[]>([]);
+
     // --- SCROLL HANDLING STATE ---
     const [isHUDVisible, setIsHUDVisible] = useState(true);
+    const [isMobileHudExpanded, setIsMobileHudExpanded] = useState(false);
+    
+    const isMobileHudExpandedRef = useRef(false);
+    useEffect(() => {
+        isMobileHudExpandedRef.current = isMobileHudExpanded;
+    }, [isMobileHudExpanded]);
+
     const [isHeaderVisible, setIsHeaderVisible] = useState(true);
     const hudTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const triggerHUD = () => {
@@ -98,6 +117,8 @@ const App: React.FC = () => {
         if (hudTimeoutRef.current) {
             clearTimeout(hudTimeoutRef.current);
         }
+
+        if (isMobileHudExpandedRef.current) return;
 
         hudTimeoutRef.current = setTimeout(() => {
             setIsHUDVisible(false);
@@ -255,9 +276,27 @@ const App: React.FC = () => {
     }, [library.length, currentTheme]);
 
     const activeQuests = useMemo(() => {
-        const filtered = library.filter(item => item.status === 'ACTIVE').sort((a, b) => new Date(b.lastUpdated || 0).getTime() - new Date(a.lastUpdated || 0).getTime()).slice(0, 5);
-        return filtered;
+        return library.filter(item => item.status === 'ACTIVE');
     }, [library]);
+
+    useEffect(() => {
+        const sorted = [...activeQuests].sort((a, b) => {
+            const indexA = customSortOrder.indexOf(a.id);
+            const indexB = customSortOrder.indexOf(b.id);
+            if (indexA !== -1 && indexB !== -1) return indexA - indexB;
+            if (indexA !== -1) return -1;
+            if (indexB !== -1) return 1;
+            return new Date(b.lastUpdated || 0).getTime() - new Date(a.lastUpdated || 0).getTime();
+        });
+        setOrderedActiveQuests(sorted);
+    }, [activeQuests, customSortOrder]);
+
+    const handleReorderActiveQuests = (newOrder: Quest[]) => {
+        setOrderedActiveQuests(newOrder); // Optimistic UI update
+        const newIds = newOrder.map(q => q.id);
+        setCustomSortOrder(newIds);
+        localStorage.setItem('activeQuestOrder', JSON.stringify(newIds));
+    };
     const spireItems = useMemo(() => {
         return [...library].sort((a, b) => {
             const idA = a.id || '';
@@ -457,7 +496,15 @@ const App: React.FC = () => {
     const toggleTheme = () => { const newTheme = currentTheme === 'LIGHT' ? 'DARK' : 'LIGHT'; setCurrentTheme(newTheme); };
 
     const memoizedHeader = useMemo(() => (
-        <header className={`fixed top-0 w-full z-40 bg-transparent h-16 px-6 flex items-center justify-between transition-all duration-700 ease-in-out ${isHeaderVisible ? 'translate-y-0' : '-translate-y-full'}`}>
+        <AnimatePresence>
+            {isHeaderVisible && (
+                <motion.header 
+                    initial={{ y: -100, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    exit={{ y: -100, opacity: 0 }}
+                    transition={{ type: 'spring', damping: 20, stiffness: 100 }}
+                    className="fixed top-0 w-full z-40 bg-transparent h-16 px-6 flex items-center justify-between"
+                >
             <div className="flex items-center gap-4">
                 <div className="relative w-12 h-12 flex items-center justify-center">
                     <SystemLogo theme={theme} className="w-full h-full" />
@@ -482,7 +529,9 @@ const App: React.FC = () => {
                     <Plus size={12} /> CREATE_GATE
                 </button>
             </div>
-        </header>
+                </motion.header>
+            )}
+        </AnimatePresence>
     ), [theme, currentTheme, isHeaderVisible]);
 
     const memoizedMain = useMemo(() => (
@@ -530,10 +579,10 @@ const App: React.FC = () => {
                                             <div className={`flex justify-between text-[9px] font-mono ${theme.mutedText} uppercase tracking-widest transition-colors duration-700`}><span>Current: {activeQuest.currentChapter}</span><span>Terminal: {activeQuest.totalChapters}</span></div>
                                         </div>
                                         <div className="flex gap-3 xl:gap-4">
-                                            <button onClick={() => updateProgress(-1)} className={`w-10 xl:w-12 h-10 xl:h-12 border ${theme.borderSubtle} ${theme.isDark ? 'bg-black/85 hover:border-white hover:text-white' : 'bg-white/85 hover:border-black hover:text-black'} flex items-center justify-center transition-colors cursor-pointer duration-700`}><span className="text-xl font-bold">-</span></button>
-                                            <button onClick={() => updateProgress(1)} className={`h-10 xl:h-12 flex-1 border ${theme.border} ${theme.isDark ? 'bg-amber-950/70 hover:bg-amber-500' : 'bg-sky-500/70 hover:bg-sky-500'} flex items-center justify-center gap-2 xl:gap-3 transition-all font-mono font-bold tracking-widest ${theme.isDark ? 'text-amber-100/80 hover:text-black' : 'text-sky-50 hover:text-white'} text-sm group cursor-pointer`}><Sword size={16} className="group-hover:rotate-45 transition-transform" /> CONQUER</button>
-                                            <a href={activeQuest.link} target="_blank" className={`w-10 xl:w-12 h-10 xl:h-12 border ${theme.borderSubtle} ${theme.highlightText} ${theme.isDark ? 'hover:border-white hover:text-white' : 'hover:border-black hover:text-black'} flex items-center justify-center transition-colors cursor-pointer duration-700`}><ExternalLink size={16} className="xl:h-[18px] xl:w-[18px]" /></a>
-                                            <button onClick={() => { setEditingItem(activeQuest); setIsModalOpen(true); }} className={`w-10 xl:w-12 h-10 xl:h-12 border ${theme.borderSubtle} ${theme.isDark ? 'hover:border-white hover:text-white' : 'hover:border-black hover:text-black'} flex items-center justify-center transition-colors cursor-pointer duration-700`}><Terminal size={16} className="xl:h-[18px] xl:w-[18px]" /></button>
+                                            <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => updateProgress(-1)} className={`w-10 xl:w-12 h-10 xl:h-12 border ${theme.borderSubtle} ${theme.isDark ? 'bg-black/85 hover:border-white hover:text-white' : 'bg-white/85 hover:border-black hover:text-black'} flex items-center justify-center transition-colors cursor-pointer duration-700`}><span className="text-xl font-bold">-</span></motion.button>
+                                            <motion.a whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} href={activeQuest.link || '#'} target="_blank" className={`h-10 xl:h-12 flex-1 border ${theme.border} ${theme.isDark ? 'bg-amber-950/70 hover:bg-amber-500' : 'bg-sky-500/70 hover:bg-sky-500'} flex items-center justify-center gap-2 xl:gap-3 transition-all font-mono font-bold tracking-widest ${theme.isDark ? 'text-amber-100/80 hover:text-black' : 'text-sky-50 hover:text-white'} text-sm group cursor-pointer`}><ExternalLink size={16} className="group-hover:rotate-12 transition-transform" /> ENTER PORTAL</motion.a>
+                                            <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => updateProgress(1)} className={`w-10 xl:w-12 h-10 xl:h-12 border ${theme.borderSubtle} ${theme.highlightText} ${theme.isDark ? 'hover:border-white hover:text-white' : 'hover:border-black hover:text-black'} flex items-center justify-center transition-colors cursor-pointer duration-700`}><Sword size={16} className="xl:h-[18px] xl:w-[18px]" /></motion.button>
+                                            <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => { setEditingItem(activeQuest); setIsModalOpen(true); }} className={`w-10 xl:w-12 h-10 xl:h-12 border ${theme.borderSubtle} ${theme.isDark ? 'hover:border-white hover:text-white' : 'hover:border-black hover:text-black'} flex items-center justify-center transition-colors cursor-pointer duration-700`}><Terminal size={16} className="xl:h-[18px] xl:w-[18px]" /></motion.button>
                                         </div>
                                     </div>
                                 </div>
@@ -543,16 +592,16 @@ const App: React.FC = () => {
                     {/* Stat Boxes — Structural Grid Alignment with Proportional Desktop Aspect */}
                     <div className="grid grid-cols-4 w-full gap-1.5 lg:gap-2 mt-auto pt-1.5">
                         <div className="w-full h-full">
-                            <StatBox value={activeQuest.currentChapter} label="WISDOM" icon={Cpu} color="text-blue-500" theme={theme} />
+                            <StatBox index={0} value={activeQuest.currentChapter} label="WISDOM" icon={Cpu} color="text-blue-500" theme={theme} />
                         </div>
                         <div className="w-full h-full">
-                            <StatBox value={Math.floor(activeQuest.totalChapters / 10)} label="MIGHT" icon={Sword} color="text-red-500" theme={theme} />
+                            <StatBox index={1} value={Math.floor(activeQuest.totalChapters / 10)} label="MIGHT" icon={Sword} color="text-red-500" theme={theme} />
                         </div>
                         <div className="w-full h-full">
-                            <StatBox value={`${progressPercent}%`} label="SYNC" icon={Activity} color={theme.highlightText} theme={theme} />
+                            <StatBox index={2} value={`${progressPercent}%`} label="SYNC" icon={Activity} color={theme.highlightText} theme={theme} />
                         </div>
                         <div className="w-full h-full">
-                            <StatBox value={activeQuest.status === 'CONQUERED' ? 'CLOSED' : 'OPEN'} label="GATE" icon={Target} color={activeQuest.status === 'CONQUERED' ? 'text-gray-400' : theme.highlightText} theme={theme} />
+                            <StatBox index={3} value={activeQuest.status === 'CONQUERED' ? 'CLOSED' : 'OPEN'} label="GATE" icon={Target} color={activeQuest.status === 'CONQUERED' ? 'text-gray-400' : theme.highlightText} theme={theme} />
                         </div>
                     </div>
                 </div>
@@ -615,25 +664,40 @@ const App: React.FC = () => {
                     <div className="flex-1 flex flex-col min-h-0 gap-1 mt-2 overflow-hidden">
                         <div className={`text-[10px] font-mono ${theme.headingText} uppercase tracking-widest border-b ${theme.borderSubtle} pb-1.5 mb-1 transition-colors duration-700 shrink-0`}>ACTIVE QUESTS</div>
                         <div className="flex-1 min-h-0 overflow-y-auto hide-scrollbar">
-                            <div className="flex flex-col gap-1 h-full">
-                                {activeQuests.map((item) => {
+                            <Reorder.Group 
+                                axis="y"
+                                values={orderedActiveQuests}
+                                onReorder={handleReorderActiveQuests}
+                                className="flex flex-col gap-1 h-full pb-4"
+                            >
+                                <AnimatePresence initial={false}>
+                                {orderedActiveQuests.map((item) => {
                                     const isHighlighted = activeId === item.id;
                                     return (
-                                        <div key={item.id} onClick={() => handleLogClick(item.id)} className={`relative group cursor-pointer border py-1.5 px-3 transition-all duration-200 ${isHighlighted ? `${theme.border} ${theme.isDark ? 'bg-white/5' : 'bg-sky-500/5'}` : `border-transparent hover:${theme.borderSubtle} bg-transparent`}`}>
-                                            <div className="flex justify-between items-center">
-                                                <div className="flex flex-col">
-                                                    <span className={`font-bold font-mono text-xs ${isHighlighted ? theme.highlightText : `${theme.mutedText} group-hover:${theme.headingText}`} transition-colors duration-700 uppercase`}>{item.title}</span>
+                                        <Reorder.Item 
+                                            key={item.id}
+                                            value={item}
+                                            initial={{ opacity: 0 }}
+                                            animate={{ opacity: 1 }}
+                                            exit={{ opacity: 0 }}
+                                            onClick={() => handleLogClick(item.id)} 
+                                            className={`relative group cursor-pointer border py-1.5 px-3 transition-colors duration-200 ${isHighlighted ? `${theme.border} ${theme.isDark ? 'bg-white/5' : 'bg-sky-500/5'}` : `border-transparent hover:${theme.borderSubtle} bg-transparent`}`}
+                                        >
+                                            <div className="flex justify-between items-center pointer-events-none">
+                                                <div className="flex flex-col w-full pr-4">
+                                                    <span className={`font-bold font-mono text-xs ${isHighlighted ? theme.highlightText : `${theme.mutedText} group-hover:${theme.headingText}`} transition-colors duration-700 uppercase truncate`}>{item.title}</span>
                                                     <div className="flex items-center gap-2 mt-1">
                                                         <div className={`w-1 h-1 rounded-full ${item.status === 'ACTIVE' ? (theme.isDark ? 'bg-amber-400' : 'bg-cyan-500') : 'bg-gray-400'}`} />
                                                         <span className={`text-[9px] ${theme.mutedText} uppercase font-mono tracking-widest transition-colors duration-700`}>{item.status}</span>
                                                     </div>
                                                 </div>
-                                                {isHighlighted && <Sun size={14} className={`${theme.highlightText} animate-spin-slow transition-colors duration-700`} />}
+                                                {isHighlighted && <Sun size={14} className={`${theme.highlightText} animate-spin-slow transition-colors duration-700 shrink-0`} />}
                                             </div>
-                                        </div>
+                                        </Reorder.Item>
                                     );
                                 })}
-                            </div>
+                                </AnimatePresence>
+                            </Reorder.Group>
                         </div>
                     </div>
 
@@ -721,17 +785,19 @@ const App: React.FC = () => {
 
 
             <Suspense fallback={null}>
-                {isModalOpen && (
-                    <SystemGateModal
-                        isOpen={isModalOpen}
-                        onClose={() => setIsModalOpen(false)}
-                        onSave={handleSave}
-                        onDelete={deleteQuest}
-                        initialData={editingItem}
-                        theme={theme}
-                        existingQuests={library}
-                    />
-                )}
+                <AnimatePresence>
+                    {isModalOpen && (
+                        <SystemGateModal
+                            isOpen={isModalOpen}
+                            onClose={() => setIsModalOpen(false)}
+                            onSave={handleSave}
+                            onDelete={deleteQuest}
+                            initialData={editingItem}
+                            theme={theme}
+                            existingQuests={library}
+                        />
+                    )}
+                </AnimatePresence>
             </Suspense>
 
 
@@ -740,61 +806,62 @@ const App: React.FC = () => {
                 !isModalOpen &&
                 !isProfileOpen &&
                 !isDetailOpen && (
-                    <div
-                        className={`lg:hidden fixed bottom-6 left-0 w-full px-5 z-[80] isolate
-    grid grid-cols-[minmax(0,1fr)_56px] items-end gap-3
-    pb-[env(safe-area-inset-bottom)]
-    transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)]
-    ${isHUDVisible
-                                ? 'translate-y-0 opacity-100'
-                                : 'translate-y-24 opacity-0 pointer-events-none'}
-    `}
-                    >
-                        {/* DIVINE SPIRE PANEL */}
-                        <button
-                            aria-label="Open Divine Spire"
-                            onClick={() => setIsSpireOpen(true)}
-                            className="relative z-10 pointer-events-auto h-14 w-full
-                            holographic-panel border bg-amber-500/10
-                            rounded-sm border-amber-500/50
-                            flex items-center justify-center gap-3
-                            transition-all active:scale-95
-                            shadow-[0_0_20px_rgba(245,158,11,0.15)] overflow-hidden"
-                        >
-                            <div className="absolute inset-0 bg-amber-500/5 mix-blend-screen pointer-events-none" />
+                    <AnimatePresence>
+                        {isHUDVisible && (
+                            <div className="lg:hidden fixed bottom-6 left-0 w-full px-5 z-[80] pointer-events-none pb-[env(safe-area-inset-bottom)] flex justify-end">
+                                {!isMobileHudExpanded ? (
+                                    <motion.button
+                                        key="fab-button"
+                                        layoutId="mobile-hud-wrapper"
+                                        initial={{ scale: 0, opacity: 0 }}
+                                        animate={{ scale: 1, opacity: 1 }}
+                                        exit={{ scale: 0, opacity: 0 }}
+                                        whileTap={{ scale: 0.9 }}
+                                        onClick={() => setIsMobileHudExpanded(true)}
+                                        className="relative pointer-events-auto w-14 h-14 bg-amber-500/10 holographic-panel rounded-full border border-amber-500/60 flex items-center justify-center shadow-[0_0_20px_rgba(245,158,11,0.25)] backdrop-blur-md"
+                                    >
+                                        <Compass size={24} className="text-amber-500 drop-shadow-[0_0_10px_rgba(245,158,11,0.8)]" />
+                                    </motion.button>
+                                ) : (
+                                    <motion.div
+                                        key="hud-grid"
+                                        layoutId="mobile-hud-wrapper"
+                                        className="pointer-events-auto w-full isolate grid grid-cols-[minmax(0,1fr)_56px_56px] items-end gap-2"
+                                    >
+                                        {/* DIVINE SPIRE PANEL */}
+                                        <button
+                                            aria-label="Open Divine Spire"
+                                            onClick={() => setIsSpireOpen(true)}
+                                            className="relative z-10 h-14 w-full holographic-panel border bg-amber-500/10 rounded-sm border-amber-500/50 flex items-center justify-center gap-2 transition-all active:scale-95 shadow-[0_0_20px_rgba(245,158,11,0.15)] overflow-hidden"
+                                        >
+                                            <div className="absolute inset-0 bg-amber-500/5 mix-blend-screen pointer-events-none" />
+                                            <LayoutTemplate size={22} className="text-amber-500 drop-shadow-[0_0_8px_rgba(245,158,11,0.8)] shrink-0" />
+                                            <div className="flex flex-col items-start leading-[1] relative z-10 min-w-0 pr-1 truncate">
+                                                <span className="text-[7px] font-mono text-amber-500/80 mb-0.5 shrink-0 block truncate w-full text-left">TERMINAL.EXECUTE</span>
+                                                <span className="text-[10px] xs:text-[11px] font-black font-mono text-amber-500 tracking-[0.2em] uppercase truncate block w-full text-left">DIVINE_SPIRE</span>
+                                            </div>
+                                        </button>
 
-                            <LayoutTemplate
-                                size={22}
-                                className="text-amber-500 drop-shadow-[0_0_8px_rgba(245,158,11,0.8)]"
-                            />
+                                        {/* CREATE GATE PANEL */}
+                                        <button
+                                            onClick={() => { setEditingItem(null); setIsModalOpen(true); setIsMobileHudExpanded(false); }}
+                                            className="relative w-14 h-14 bg-amber-500/10 holographic-panel rounded-sm border border-amber-500/60 flex items-center justify-center transition-all active:scale-90 shadow-[0_0_20px_rgba(245,158,11,0.2)]"
+                                        >
+                                            <Plus size={24} strokeWidth={2.5} className="text-amber-500 drop-shadow-[0_0_10px_rgba(245,158,11,0.8)]" />
+                                        </button>
 
-                            <div className="flex flex-col items-start leading-[1] relative z-10">
-                                <span className="text-[7px] font-mono text-amber-500/80 mb-0.5">
-                                    TERMINAL.EXECUTE
-                                </span>
-                                <span className="text-[11px] font-black font-mono text-amber-500 tracking-[0.2em] uppercase">
-                                    DIVINE_SPIRE
-                                </span>
+                                        {/* CLOSE PANEL */}
+                                        <button
+                                            onClick={() => setIsMobileHudExpanded(false)}
+                                            className="relative w-14 h-14 bg-red-500/10 holographic-panel rounded-sm border border-red-500/40 flex items-center justify-center transition-all active:scale-90 shadow-[0_0_20px_rgba(239,68,68,0.2)] backdrop-blur-md"
+                                        >
+                                            <X size={24} strokeWidth={2.5} className="text-red-500 drop-shadow-[0_0_10px_rgba(239,68,68,0.8)]" />
+                                        </button>
+                                    </motion.div>
+                                )}
                             </div>
-                        </button>
-
-                        {/* CREATE GATE PANEL */}
-                        <button
-                            onClick={() => { setEditingItem(null); setIsModalOpen(true); }}
-                            className="relative pointer-events-auto w-14 h-14
-                            bg-amber-500/10 holographic-panel rounded-sm
-                            border border-amber-500/60
-                            flex items-center justify-center
-                            transition-all active:scale-90
-                            shadow-[0_0_20px_rgba(245,158,11,0.2)]"
-                        >
-                            <Plus
-                                size={24}
-                                strokeWidth={2.5}
-                                className="text-amber-500 drop-shadow-[0_0_10px_rgba(245,158,11,0.8)]"
-                            />
-                        </button>
-                    </div>
+                        )}
+                    </AnimatePresence>
                 )}
 
             <SystemNotification

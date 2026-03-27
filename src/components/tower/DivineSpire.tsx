@@ -5,7 +5,7 @@ import TowerStructure from './TowerStructure';
 import QuestCard from '../quest/QuestCard';
 import SystemLogo from '../system/SystemLogo';
 import { getQuestRankObj } from '../../utils/ranks';
-import { ChevronLeft, ChevronRight, X, Search, AlertCircle } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X, Search, AlertCircle, ChevronDown, Filter, Check } from 'lucide-react';
 
 interface DivineSpireProps {
     isOpen: boolean;
@@ -24,6 +24,12 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
     const [selectedFloorIndex, setSelectedFloorIndex] = useState(0);
     const [isFocused, setIsFocused] = useState(false); // New state for camera focus
     const [search, setSearch] = useState('');
+    const [isFilterOpen, setIsFilterOpen] = useState(false);
+    const [filterClass, setFilterClass] = useState<string>('ALL');
+    const [filterStatus, setFilterStatus] = useState<string>('ALL');
+
+    const availableClasses = useMemo(() => Array.from(new Set(items.map(i => i.classType))).sort(), [items]);
+    const availableStatuses = useMemo(() => Array.from(new Set(items.map(i => i.status))).sort(), [items]);
 
     const carouselRef = useRef<HTMLDivElement>(null);
 
@@ -44,14 +50,30 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
         }
     };
 
+    // Active Library before chunking into floors
+    const activeLibrary = useMemo(() => {
+        return items.filter(item => {
+            if (filterClass !== "ALL" && item.classType !== filterClass) return false;
+            if (filterStatus !== "ALL" && item.status !== filterStatus) return false;
+            return true;
+        });
+    }, [items, filterClass, filterStatus]);
+
     // Calculate floors for data
     const floors = useMemo(() => {
         const _floors: { index: number; items: Quest[]; range: string }[] = [];
-        for (let i = 0; i < items.length; i += itemsPerFloor) {
-            _floors.push({ index: _floors.length, items: items.slice(i, i + itemsPerFloor), range: `${i + 1}-${Math.min(i + itemsPerFloor, items.length)}` });
+        for (let i = 0; i < activeLibrary.length; i += itemsPerFloor) {
+            _floors.push({ index: _floors.length, items: activeLibrary.slice(i, i + itemsPerFloor), range: `${i + 1}-${Math.min(i + itemsPerFloor, activeLibrary.length)}` });
         }
         return _floors;
-    }, [items, itemsPerFloor]);
+    }, [activeLibrary, itemsPerFloor]);
+
+    // Fallback to ensure selected floor is valid if list shrinks
+    useEffect(() => {
+        if (floors.length > 0 && selectedFloorIndex >= floors.length) {
+            setSelectedFloorIndex(floors.length - 1);
+        }
+    }, [floors.length, selectedFloorIndex]);
 
     // Handle Floor Selection from Tower
     const handleSelectFloor = (index: number) => {
@@ -176,18 +198,58 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
                             </div>
                         </div>
 
-                        <div className="shrink-0 flex flex-col relative w-full z-10 group/carousel">
+                        <div className="shrink-0 flex flex-col relative w-full z-[60] group/carousel">
 
                             {/* HUD HEADER: Floor / Sector info (Hidden when searching) */}
                             {!search && floors.length > 0 && floors[selectedFloorIndex] && (
                                 <div className="z-[60] flex flex-col items-center drop-shadow-2xl mb-1">
                                     <div className={`font-mono text-[9px] md:text-[10px] tracking-[0.4em] ${theme.highlightText} font-bold uppercase mb-1 opacity-80 pointer-events-none`}>SYSTEM.SECTOR_INTERFACE</div>
-                                    <div className="flex items-center gap-4 px-4 py-1.5 md:px-6 md:py-2 rounded-full border border-white/10 bg-black/40 backdrop-blur-md pointer-events-auto">
+                                    <div className="relative flex items-center gap-4 px-4 py-1.5 md:px-6 md:py-2 rounded-full border border-white/10 bg-black/40 backdrop-blur-md pointer-events-auto">
                                         <button disabled={selectedFloorIndex <= 0} onClick={() => setSelectedFloorIndex(i => i - 1)} className={`${theme.mutedText} hover:${theme.highlightText} disabled:opacity-30 transition-colors`}><ChevronLeft size={14} className="md:w-4 md:h-4" /></button>
-                                        <span className={`font-black text-xl md:text-2xl font-orbitron tracking-widest ${theme.headingText}`}>LAYER {selectedFloorIndex + 1}</span>
+                                        <button onClick={() => setIsFilterOpen(!isFilterOpen)} className={`font-black text-xl md:text-2xl font-orbitron tracking-widest ${theme.headingText} hover:text-white transition-colors flex items-center gap-2 group outline-none`}>
+                                            LAYER {selectedFloorIndex + 1}
+                                            <ChevronDown size={18} className={`transition-transform duration-300 ${isFilterOpen ? 'rotate-180 text-white' : 'group-hover:translate-y-0.5'}`} />
+                                        </button>
                                         <div className="w-1.5 h-1.5 rounded-full bg-white/30" />
                                         <span className={`font-mono text-[10px] md:text-xs ${theme.mutedText} tracking-widest`}>SECTOR {floors[selectedFloorIndex].range}</span>
                                         <button disabled={selectedFloorIndex >= floors.length - 1} onClick={() => setSelectedFloorIndex(i => i + 1)} className={`${theme.mutedText} hover:${theme.highlightText} disabled:opacity-30 transition-colors`}><ChevronRight size={14} className="md:w-4 md:h-4" /></button>
+                                        
+                                        {/* Dropdown Filter Menu */}
+                                        {isFilterOpen && (
+                                            <div className={`absolute top-full left-1/2 -translate-x-1/2 mt-4 p-5 rounded-xl border border-white/10 ${theme.isDark ? 'bg-black/95' : 'bg-black/90'} backdrop-blur-3xl min-w-[320px] shadow-2xl flex flex-col gap-5 animate-in fade-in zoom-in-95 duration-200 z-[70]`}>
+                                                {/* Class Filter */}
+                                                <div>
+                                                    <div className={`text-[10px] font-mono ${theme.mutedText} tracking-widest mb-2 uppercase flex items-center gap-1.5`}><Filter size={10} /> Classification Protocol</div>
+                                                    <div className="flex flex-wrap gap-2">
+                                                        <button onClick={() => setFilterClass('ALL')} className={`px-3 py-1 text-xs font-mono rounded border ${filterClass === 'ALL' ? `border-${theme.primary}-500 bg-${theme.primary}-500/20 text-white` : `border-white/10 text-white/50 hover:border-white/30 hover:text-white/80`} transition-all`}>ALL</button>
+                                                        {availableClasses.map(c => (
+                                                            <button key={c} onClick={() => setFilterClass(c)} className={`px-3 py-1 text-xs font-mono rounded border ${filterClass === c ? `border-${theme.primary}-500 bg-${theme.primary}-500/20 text-white` : `border-white/10 text-white/50 hover:border-white/30 hover:text-white/80`} transition-all uppercase`}>{c}</button>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                                {/* Status Filter */}
+                                                <div>
+                                                    <div className={`text-[10px] font-mono ${theme.mutedText} tracking-widest mb-2 uppercase flex items-center gap-1.5`}><Filter size={10} /> Operational Status</div>
+                                                    <div className="flex flex-wrap gap-2">
+                                                        <button onClick={() => setFilterStatus('ALL')} className={`px-3 py-1 text-xs font-mono rounded border ${filterStatus === 'ALL' ? `border-${theme.primary}-500 bg-${theme.primary}-500/20 text-white` : `border-white/10 text-white/50 hover:border-white/30 hover:text-white/80`} transition-all`}>ALL</button>
+                                                        {availableStatuses.map(s => (
+                                                            <button key={s} onClick={() => setFilterStatus(s)} className={`px-3 py-1 text-xs font-mono rounded border ${filterStatus === s ? `border-${theme.primary}-500 bg-${theme.primary}-500/20 text-white` : `border-white/10 text-white/50 hover:border-white/30 hover:text-white/80`} transition-all uppercase`}>{s}</button>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                                {/* Floor Jump */}
+                                                <div>
+                                                    <div className={`text-[10px] font-mono ${theme.mutedText} tracking-widest mb-2 uppercase border-t border-white/5 pt-3 mt-1`}>Direct Access Layer</div>
+                                                    <div className="grid grid-cols-5 gap-2 max-h-[140px] overflow-y-auto hide-scrollbar">
+                                                        {floors.map((f, i) => (
+                                                            <button key={f.index} onClick={() => { setSelectedFloorIndex(i); setIsFilterOpen(false); }} className={`p-2 text-xs font-black font-orbitron rounded border ${selectedFloorIndex === i ? `border-white text-white bg-white/10` : `border-white/5 text-white/40 hover:border-white/30 hover:text-white/80 bg-white/5`} transition-all flex items-center justify-center`}>
+                                                                {i + 1}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             )}
@@ -225,7 +287,7 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
                                         filteredItems.map((item, index) => {
                                             const rawRank = getQuestRankObj(item);
                                             return (
-                                                <div key={item.id} className="w-[240px] sm:w-[280px] md:w-[280px] lg:w-[320px] xl:w-[360px] aspect-[3/4] shrink-0 snap-center transition-all duration-700 hover:-translate-y-8 hover:scale-105 group relative mt-2 md:mt-4">
+                                                <div key={item.id} className="w-[240px] sm:w-[280px] md:w-[280px] lg:w-[320px] xl:w-[360px] aspect-[3/4] shrink-0 snap-center transition-all duration-700 hover:scale-105 group relative mt-2 md:mt-4">
                                                     {/* Floor Reflection Glow */}
                                                     <div className={`absolute -bottom-8 left-1/2 -translate-x-1/2 w-3/4 h-8 bg-gradient-to-t from-${theme.primary}-500/40 to-transparent blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-700`} />
                                                     {/* Backdrop Ambient Lighting */}
@@ -243,13 +305,13 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
                                         {floors[selectedFloorIndex].items.map((item, index) => {
                                             const rawRank = getQuestRankObj(item);
                                             return (
-                                                <div key={item.id} className="w-[260px] sm:w-[280px] md:w-[280px] lg:w-[320px] xl:w-[360px] aspect-[3/4] shrink-0 snap-center transition-all duration-700 hover:-translate-y-8 hover:scale-[1.03] group relative mt-0 md:mt-2">
+                                                <div key={item.id} className="w-[260px] sm:w-[280px] md:w-[280px] lg:w-[320px] xl:w-[360px] aspect-[3/4] shrink-0 snap-center transition-all duration-700 hover:scale-[1.03] group relative mt-0 md:mt-2">
                                                     {/* Floor Reflection Glow */}
                                                     <div className={`absolute -bottom-8 left-1/2 -translate-x-1/2 w-3/4 h-8 bg-gradient-to-t ${theme.id === 'LIGHT' ? 'from-sky-500/40' : 'from-amber-500/40'} to-transparent blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-all duration-700`} />
                                                     {/* Backdrop Ambient Lighting */}
                                                     <div className={`absolute -inset-8 ${theme.id === 'LIGHT' ? 'bg-sky-500/10' : 'bg-amber-500/10'} blur-[50px] rounded-full opacity-0 group-hover:opacity-100 transition-all duration-700 pointer-events-none`} />
 
-                                                    <div className="relative z-10 shadow-[0_20px_50px_rgba(0,0,0,0.5)] group-hover:shadow-[0_40px_80px_rgba(0,0,0,0.8)] transition-shadow duration-700 rounded-lg overflow-hidden border border-white/5 group-hover:border-white/20">
+                                                    <div className="relative z-10">
                                                         <QuestCard id={`item-${item.id}`} item={item} onClick={onActivate} index={index} theme={theme} rankStyle={rawRank} />
                                                     </div>
                                                 </div>

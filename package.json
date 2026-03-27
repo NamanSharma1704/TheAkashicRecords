@@ -3,8 +3,10 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
+    "dev": "concurrently \"npm run dev-backend\" \"npm run dev-frontend\"",
+    "dev-backend": "nodemon backend/server.js",
+    "dev-frontend": "cd system && vite",
     "build": "cd system && npm run build",
-    "dev-backend": "node backend/server.js",
     "postinstall": "echo 'Root dependencies installed. Sub-modules will use root packages when possible.'"
   },
   "dependencies": {
@@ -15,6 +17,7 @@
     "jsonwebtoken": "^9.0.3",
     "lucide-react": "^0.294.0",
     "mongoose": "^9.2.1",
+    "motion": "^12.38.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "three": "^0.182.0",
@@ -29,6 +32,7 @@
     "@typescript-eslint/parser": "^8.56.0",
     "@vitejs/plugin-react": "^4.2.1",
     "autoprefixer": "^10.4.16",
+    "concurrently": "^9.2.1",
     "eslint": "^8.55.0",
     "eslint-plugin-react": "^7.33.2",
     "eslint-plugin-react-hooks": "^4.6.0",

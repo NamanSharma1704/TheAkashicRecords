@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { Theme, Quest } from '../../core/types';
 import SystemFrame from './SystemFrame';
 import { X, RefreshCw, AlertCircle, CheckCircle, Database, Search, Activity, Trash2 } from 'lucide-react';
@@ -15,7 +16,7 @@ interface SystemGateModalProps {
 }
 
 // --- SYSTEM GATE MODAL (Controlled Form with Scan Logic) ---
-const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDelete, initialData, theme, existingQuests }) => {
+const SystemGateModal: React.FC<SystemGateModalProps> = ({ isOpen, onClose, onSave, onDelete, initialData, theme, existingQuests }) => {
     const [formData, setFormData] = useState<Partial<Quest>>({
         title: '',
         currentChapter: 0,
@@ -228,8 +229,28 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
     };
 
     return (
-        <div className="fixed inset-0 z-[500] flex items-center justify-center bg-black/60 backdrop-blur-sm p-3 sm:p-4 transition-colors duration-700 animate-in fade-in zoom-in-95 duration-200">
-            <SystemFrame variant="full" theme={theme} className="w-full max-w-lg max-h-[92dvh] transition-all">
+        <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[500] flex items-center justify-center bg-black/60 backdrop-blur-sm p-3 sm:p-4"
+        >
+            <SystemFrame 
+                variant="full" 
+                theme={theme} 
+                className="w-full max-w-lg max-h-[92dvh] relative"
+                initial={{ scaleX: 0, opacity: 0, filter: 'brightness(2) blur(10px)' }}
+                animate={{ scaleX: 1, opacity: 1, filter: 'brightness(1) blur(0px)' }}
+                exit={{ scaleX: 0, opacity: 0, filter: 'brightness(2) blur(10px)' }}
+                transition={{ type: 'spring', damping: 20, stiffness: 120 }}
+            >
+                {/* Scanline Effect Overlay */}
+                <motion.div 
+                    initial={{ top: '-100%' }}
+                    animate={{ top: '100%' }}
+                    transition={{ repeat: Infinity, duration: 4, ease: "linear" }}
+                    className={`absolute left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-${theme.primary}-500/50 to-transparent z-40 pointer-events-none`}
+                />
                 <div className="flex flex-col h-full overflow-hidden">
 
                     {/* ── HEADER ── */}
@@ -518,7 +539,7 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
 
                 </div>
             </SystemFrame>
-        </div>
+        </motion.div>
     );
 };
 

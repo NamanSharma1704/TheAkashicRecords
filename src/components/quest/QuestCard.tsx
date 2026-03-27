@@ -1,4 +1,5 @@
 import React from 'react';
+import { motion } from 'motion/react';
 import { Theme, Quest, Rank } from '../../core/types';
 import { Fingerprint, BookOpen } from 'lucide-react';
 
@@ -12,19 +13,43 @@ interface DivineMonolithProps {
 }
 
 const QuestCard = React.memo<DivineMonolithProps>(({ item, onClick, index, id, theme, rankStyle }) => {
-    // Randomize duration slightly for visual variety
-    const animationDuration = `${5 + (index % 3)}s`;
-
     return (
-        <div id={id} onClick={() => onClick(item.id)} className="group relative cursor-pointer perspective-1000 w-full h-full" style={{ animationName: 'float-item', animationDuration: animationDuration, animationTimingFunction: 'ease-in-out', animationIterationCount: 'infinite', animationDelay: `${index * 150}ms` }}>
-            <div className={`relative w-full h-full min-h-[400px] md:min-h-[500px] aspect-[9/13] ${theme.panelBg} border ${theme.borderSubtle} group-hover:border-opacity-0 transition-all duration-700 ease-out overflow-hidden transform group-hover:scale-[1.02] shadow-2xl`}>
+        <motion.div 
+            id={id} 
+            onClick={() => onClick(item.id)}
+            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+            animate={{ 
+                opacity: 1, 
+                scale: 1, 
+                y: [0, -10, 0],
+                transition: {
+                    y: {
+                        duration: 4 + (index % 3),
+                        repeat: Infinity,
+                        ease: "easeInOut",
+                        delay: index * 0.2
+                    },
+                    opacity: { duration: 0.5, delay: index * 0.1 },
+                    scale: { duration: 0.5, delay: index * 0.1 }
+                }
+            }}
+            whileHover={{ 
+                scale: 1.05, 
+                rotateY: 5, 
+                rotateX: -5,
+                transition: { duration: 0.3 } 
+            }}
+            whileTap={{ scale: 0.95 }}
+            className="group relative cursor-pointer perspective-1000 w-full h-full shadow-[0_20px_50px_rgba(0,0,0,0.5)] hover:shadow-[0_40px_80px_rgba(0,0,0,0.8)] transition-shadow duration-700 rounded-lg border border-white/5 hover:border-white/20"
+        >
+            <div className={`relative w-full h-full min-h-[400px] md:min-h-[500px] aspect-[9/13] ${theme.panelBg} border ${theme.borderSubtle} group-hover:border-opacity-0 transition-all duration-700 ease-out overflow-hidden rounded-lg shadow-2xl`}>
                 <div className={`absolute inset-0 z-20 ${theme.overlay} group-hover:opacity-0 transition-opacity duration-700 flex flex-col items-center justify-center bg-black/40 backdrop-blur-[2px]`}>
                     <div className={`w-[1px] h-16 ${rankStyle.bg} opacity-50 mb-4 shadow-[0_0_15px_currentColor]`} />
                     <Fingerprint size={32} className={`${rankStyle.color} opacity-30 animate-pulse`} />
                     <div className={`mt-4 text-[10px] font-mono ${theme.mutedText} tracking-[0.3em] uppercase transition-colors duration-700`}>Stasis Locked</div>
                 </div>
                 <div className="absolute inset-0 z-10 opacity-40 group-hover:opacity-100 transition-opacity duration-700 grayscale group-hover:grayscale-0">
-                    <img src={item.coverUrl} alt={`Cover art for ${item.title}`} className="w-full h-full object-cover" referrerPolicy="no-referrer" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                    <motion.img layoutId={`cover-${item.id}`} src={item.coverUrl} alt={`Cover art for ${item.title}`} className="w-full h-full object-cover" referrerPolicy="no-referrer" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
                     <div className={`absolute inset-0 bg-gradient-to-t ${theme.isDark ? 'from-black via-black/20' : 'from-white via-white/20'} to-transparent transition-colors duration-700`} />
                 </div>
                 <div className={`absolute inset-0 border-2 ${rankStyle.border} opacity-0 group-hover:opacity-100 transition-opacity duration-500 shadow-[inset_0_0_30px_currentColor]`} />
@@ -49,9 +74,7 @@ const QuestCard = React.memo<DivineMonolithProps>(({ item, onClick, index, id, t
                     <div className="space-y-3 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
                         <div className={`text-[9px] font-mono ${rankStyle.color} tracking-[0.2em] uppercase border-l-2 ${rankStyle.border} pl-2`}>{item.classType}</div>
 
-                        <h3
-                            className={`text-2xl font-black italic bg-clip-text text-transparent bg-gradient-to-b ${theme.isDark ? 'from-white via-gray-200 to-gray-400' : 'from-black via-gray-700 to-gray-500'} leading-none line-clamp-3 md:line-clamp-4 drop-shadow-sm transition-all duration-700 tracking-tighter uppercase`}
-                        >
+                        <h3 className={`text-2xl font-black italic bg-clip-text text-transparent bg-gradient-to-b ${theme.isDark ? 'from-white via-gray-200 to-gray-400' : 'from-black via-gray-700 to-gray-500'} leading-none line-clamp-3 md:line-clamp-4 drop-shadow-sm transition-all duration-700 tracking-tighter uppercase`}>
                             {item.title}
                         </h3>
 
@@ -64,7 +87,7 @@ const QuestCard = React.memo<DivineMonolithProps>(({ item, onClick, index, id, t
                 </div>
             </div>
             {/* REFLECTION REMOVED PER USER REQUEST */}
-        </div>
+        </motion.div>
     );
 });
 

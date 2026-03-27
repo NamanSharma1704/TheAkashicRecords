@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { motion } from 'motion/react';
 import { Theme, Quest } from '../../core/types';
 import SystemLogo from '../system/SystemLogo';
 import EntityAvatar from '../system/EntityAvatar';
@@ -149,6 +150,18 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
 
     if (!isOpen) return null;
 
+    const containerVariants = {
+        hidden: { opacity: 0 },
+        visible: { opacity: 1, transition: { staggerChildren: 0.1 } }
+    };
+
+    const itemVariants = {
+        hidden: { opacity: 0, y: 20 },
+        visible: { opacity: 1, y: 0, transition: { duration: 0.5 } }
+    };
+
+    const springConfig = { type: "spring" as const, stiffness: 60, damping: 15 };
+
     return (
         <div className={`fixed inset-0 z-[300] ${theme.isDark ? 'bg-[#020202]' : 'bg-slate-50'} flex flex-col overflow-hidden transition-colors duration-700`}>
             {/* Background layers */}
@@ -181,10 +194,10 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
             </div>
 
             {/* CONTENT - NON SCROLLABLE STRICT LAYOUT */}
-            <div className="relative z-10 flex-1 px-4 lg:px-8 py-3 lg:py-6 overflow-y-auto hide-scrollbar max-w-[1600px] mx-auto w-full flex flex-col gap-3 lg:gap-6 pb-12">
+            <motion.div variants={containerVariants} initial="hidden" animate="visible" className="relative z-10 flex-1 px-4 lg:px-8 py-3 lg:py-6 overflow-y-auto hide-scrollbar max-w-[1600px] mx-auto w-full flex flex-col gap-3 lg:gap-6 pb-12">
 
                 {/* TOP HERO: RANK BADGE + IDENTITY */}
-                <div className={`${theme.isDark ? 'bg-black/50' : 'bg-white/50'} backdrop-blur-md border ${theme.borderSubtle} p-3 lg:p-6 flex flex-col sm:flex-row items-center sm:items-start gap-4 lg:gap-8 relative overflow-hidden shrink-0`}>
+                <motion.div variants={itemVariants} className={`${theme.isDark ? 'bg-black/50' : 'bg-white/50'} backdrop-blur-md border ${theme.borderSubtle} p-3 lg:p-6 flex flex-col sm:flex-row items-center sm:items-start gap-4 lg:gap-8 relative overflow-hidden shrink-0`}>
                     <div className={`absolute inset-0 bg-gradient-to-r ${theme.gradient} opacity-5`} />
                     <EntityAvatar theme={theme} size={96} className="shrink-0 scale-75 lg:scale-100" />
                     <div className="flex-1 min-w-0 relative z-10 w-full flex flex-col sm:flex-row items-center sm:items-end justify-between gap-3 lg:gap-6">
@@ -202,14 +215,14 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                             <div className={`text-[8px] lg:text-[10px] font-mono ${theme.mutedText} tracking-widest uppercase`}>OVERALL COMPLETION</div>
                             <div className={`text-2xl lg:text-3xl font-black italic ${theme.highlightText} leading-none`}>{overallPct}<span className="text-sm lg:text-lg">%</span></div>
                             <div className={`h-1 lg:h-1.5 w-32 md:w-48 ${theme.isDark ? 'bg-gray-800' : 'bg-gray-200'} rounded-full overflow-hidden mt-1`}>
-                                <div className={`h-full bg-gradient-to-r ${theme.gradient} progress-bloom transition-all duration-700`} style={{ width: `${overallPct}%`, color: theme.id === 'LIGHT' ? '#0ea5e9' : '#fbbf24' }} />
+                                <motion.div className={`h-full bg-gradient-to-r ${theme.gradient} progress-bloom`} initial={{ width: 0 }} animate={{ width: `${overallPct}%` }} transition={springConfig} style={{ color: theme.id === 'LIGHT' ? '#0ea5e9' : '#fbbf24' }} />
                             </div>
                         </div>
                     </div>
-                </div>
+                </motion.div>
 
                 {/* RANK HISTORY */}
-                <div className={`border ${theme.borderSubtle} ${theme.isDark ? 'bg-black/40' : 'bg-white/40'} backdrop-blur-md p-3 lg:p-4 w-full shrink-0`}>
+                <motion.div variants={itemVariants} className={`border ${theme.borderSubtle} ${theme.isDark ? 'bg-black/40' : 'bg-white/40'} backdrop-blur-md p-3 lg:p-4 w-full shrink-0`}>
                     <div className={`flex items-center gap-2 mb-2 lg:mb-4 ${theme.highlightText}`}>
                         <Crown size={14} />
                         <span className="text-[10px] font-mono font-bold tracking-[0.3em] uppercase">Rank History</span>
@@ -243,15 +256,14 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                                 <span className="uppercase">NEXT: {USER_RANKS[currentRankIdx + 1].label} @ {USER_RANKS[currentRankIdx + 1].minTitles.toLocaleString()} CH</span>
                             </div>
                             <div className={`h-1.5 w-full ${theme.isDark ? 'bg-gray-800' : 'bg-gray-200'} rounded-full`}>
-                                <div className={`h-full rounded-full bg-gradient-to-r ${theme.gradient} progress-bloom transition-all duration-700`}
-                                    style={{ width: `${Math.min(100, ((totalManhwa - USER_RANKS[currentRankIdx].minTitles) / (USER_RANKS[currentRankIdx + 1].minTitles - USER_RANKS[currentRankIdx].minTitles)) * 100)}%`, color: theme.id === 'LIGHT' ? '#0ea5e9' : '#fbbf24' }} />
+                                <motion.div className={`h-full rounded-full bg-gradient-to-r ${theme.gradient} progress-bloom`} initial={{ width: 0 }} animate={{ width: `${Math.min(100, ((totalManhwa - USER_RANKS[currentRankIdx].minTitles) / (USER_RANKS[currentRankIdx + 1].minTitles - USER_RANKS[currentRankIdx].minTitles)) * 100)}%` }} transition={springConfig} style={{ color: theme.id === 'LIGHT' ? '#0ea5e9' : '#fbbf24' }} />
                             </div>
                         </div>
                     )}
-                </div>
+                </motion.div>
 
                 {/* DATA LIFECYCLE */}
-                <div className="w-full flex justify-center">
+                <motion.div variants={itemVariants} className="w-full flex justify-center">
                     <div className="w-full">
                         <div className={`flex items-center gap-2 mb-3 lg:mb-4 ${theme.highlightText}`}>
                             <Database size={13} />
@@ -321,10 +333,10 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                             ))}
                         </div>
                     </div>
-                </div>
+                </motion.div>
 
                 {/* BOTTOM ROW: CLASS DISTRIBUTION + TOP SERIES + ACTIVE PROGRESS */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 lg:gap-6">
+                <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-3 gap-3 lg:gap-6">
 
                     {/* CLASS DISTRIBUTION */}
                     <div className="flex flex-col">
@@ -340,7 +352,7 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                                         <span className={`text-xs font-mono font-bold ${theme.highlightText}`}>{count}</span>
                                     </div>
                                     <div className={`h-1.5 rounded-full w-full ${theme.isDark ? 'bg-gray-800' : 'bg-gray-200'}`}>
-                                        <div className={`h-full rounded-full bg-gradient-to-r ${theme.gradient} progress-bloom`} style={{ width: `${(count / totalManhwa) * 100}%`, color: theme.id === 'LIGHT' ? '#0ea5e9' : '#fbbf24' }} />
+                                        <motion.div className={`h-full rounded-full bg-gradient-to-r ${theme.gradient} progress-bloom`} initial={{ width: 0 }} animate={{ width: `${(count / totalManhwa) * 100}%` }} transition={springConfig} style={{ color: theme.id === 'LIGHT' ? '#0ea5e9' : '#fbbf24' }} />
                                     </div>
                                 </div>
                             ))}
@@ -381,14 +393,14 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                                         <span className={`text-[10px] font-mono font-bold ${item.pct >= 50 ? theme.highlightText : theme.mutedText}`}>{item.pct}%</span>
                                     </div>
                                     <div className={`h-1.5 rounded-full w-full ${theme.isDark ? 'bg-gray-800' : 'bg-gray-200'}`}>
-                                        <div className={`h-full rounded-full transition-all duration-700 bg-gradient-to-r ${theme.gradient} progress-bloom`} style={{ width: `${item.pct}%`, color: theme.id === 'LIGHT' ? '#0ea5e9' : '#fbbf24' }} />
+                                        <motion.div className={`h-full rounded-full bg-gradient-to-r ${theme.gradient} progress-bloom`} initial={{ width: 0 }} animate={{ width: `${item.pct}%` }} transition={springConfig} style={{ color: theme.id === 'LIGHT' ? '#0ea5e9' : '#fbbf24' }} />
                                     </div>
                                 </div>
                             ))}
                         </div>
                     </div>
-                </div>
-            </div>
+                </motion.div>
+            </motion.div>
         </div>
     );
 };

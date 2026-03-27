@@ -167,6 +167,20 @@ const App: React.FC = () => {
         };
     }, [booting, isAuth, isSpireOpen]);
 
+    // Force scroll reset on responsive mode shift to prevent ghost scroll gaps
+    useEffect(() => {
+        const handleResize = () => {
+            if (window.innerWidth >= 1024) {
+                const scroller = document.getElementById('content-scroll');
+                if (scroller && scroller.scrollTop > 0) {
+                    scroller.scrollTop = 0;
+                }
+            }
+        };
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
+
     useEffect(() => {
         if (!isSpireOpen && !isDetailOpen && !isModalOpen && !isProfileOpen) {
             triggerHUD();

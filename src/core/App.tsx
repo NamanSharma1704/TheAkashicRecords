@@ -14,6 +14,7 @@ import BootScreen from '../components/system/BootScreen';
 import BackgroundController from '../components/fx/BackgroundController';
 import EntityAvatar from '../components/system/EntityAvatar';
 import SystemNotification from '../components/system/SystemNotification';
+import SystemCompass from '../components/system/SystemCompass';
 
 import { getProxiedImageUrl } from '../utils/api';
 import { saveAuthData, clearAuthData, systemFetch, isAuthenticated } from '../utils/auth';
@@ -124,6 +125,25 @@ const App: React.FC = () => {
             setIsHUDVisible(false);
         }, 2000);
     };
+
+    // Keep the HUD permanently visible while it is expanded;
+    // restart the auto-hide countdown when it collapses.
+    useEffect(() => {
+        if (isMobileHudExpanded) {
+            // Cancel any in-flight hide timer and lock HUD on.
+            if (hudTimeoutRef.current) {
+                clearTimeout(hudTimeoutRef.current);
+                hudTimeoutRef.current = null;
+            }
+            setIsHUDVisible(true);
+        } else {
+            // HUD just collapsed — restart the 2-second countdown.
+            if (hudTimeoutRef.current) clearTimeout(hudTimeoutRef.current);
+            hudTimeoutRef.current = setTimeout(() => {
+                setIsHUDVisible(false);
+            }, 2000);
+        }
+    }, [isMobileHudExpanded]);
 
     useEffect(() => {
         if (booting || !isAuth) return;
@@ -830,47 +850,106 @@ const App: React.FC = () => {
                                         initial={{ scale: 0, opacity: 0 }}
                                         animate={{ scale: 1, opacity: 1 }}
                                         exit={{ scale: 0, opacity: 0 }}
+                                        transition={{ type: 'spring', damping: 22, stiffness: 200 }}
+                                        style={{ originX: 1, originY: 1 }}
                                         whileTap={{ scale: 0.9 }}
                                         onClick={() => setIsMobileHudExpanded(true)}
-                                        className="relative pointer-events-auto w-14 h-14 bg-amber-500/10 holographic-panel rounded-full border border-amber-500/60 flex items-center justify-center shadow-[0_0_20px_rgba(245,158,11,0.25)] backdrop-blur-md"
+                                        className="relative pointer-events-auto w-20 h-20 flex items-center justify-center"
                                     >
-                                        <Compass size={24} className="text-amber-500 drop-shadow-[0_0_10px_rgba(245,158,11,0.8)]" />
+                                        <SystemCompass theme={theme} />
                                     </motion.button>
                                 ) : (
                                     <motion.div
                                         key="hud-grid"
                                         layoutId="mobile-hud-wrapper"
-                                        className="pointer-events-auto w-full isolate grid grid-cols-[minmax(0,1fr)_56px_56px] items-end gap-2"
+                                        initial={{ scale: 0.6, opacity: 0 }}
+                                        animate={{ scale: 1, opacity: 1 }}
+                                        exit={{ scale: 0.6, opacity: 0 }}
+                                        transition={{ type: 'spring', damping: 22, stiffness: 200 }}
+                                        style={{ originX: 1, originY: 1 }}
+                                        className="pointer-events-auto w-full isolate flex items-end gap-2"
                                     >
-                                        {/* DIVINE SPIRE PANEL */}
-                                        <button
+                                        {/* ── DIVINE SPIRE ── */}
+                                        <motion.button
                                             aria-label="Open Divine Spire"
-                                            onClick={() => setIsSpireOpen(true)}
-                                            className="relative z-10 h-14 w-full holographic-panel border bg-amber-500/10 rounded-sm border-amber-500/50 flex items-center justify-center gap-2 transition-all active:scale-95 shadow-[0_0_20px_rgba(245,158,11,0.15)] overflow-hidden"
+                                            onClick={() => { setIsSpireOpen(true); setIsMobileHudExpanded(false); }}
+                                            whileTap={{ scale: 0.96 }}
+                                            className="relative flex-1 h-16 overflow-hidden backdrop-blur-md"
+                                            style={{
+                                                background: theme.isDark ? 'rgba(10,8,2,0.88)' : 'rgba(0,18,24,0.88)',
+                                                border: `1px solid ${theme.isDark ? 'rgba(245,158,11,0.55)' : 'rgba(6,182,212,0.55)'}`,
+                                                boxShadow: theme.isDark
+                                                    ? '0 0 20px rgba(245,158,11,0.12), inset 0 0 30px rgba(245,158,11,0.04)'
+                                                    : '0 0 20px rgba(6,182,212,0.12), inset 0 0 30px rgba(6,182,212,0.04)',
+                                            }}
                                         >
-                                            <div className="absolute inset-0 bg-amber-500/5 mix-blend-screen pointer-events-none" />
-                                            <LayoutTemplate size={22} className="text-amber-500 drop-shadow-[0_0_8px_rgba(245,158,11,0.8)] shrink-0" />
-                                            <div className="flex flex-col items-start leading-[1] relative z-10 min-w-0 pr-1 truncate">
-                                                <span className="text-[7px] font-mono text-amber-500/80 mb-0.5 shrink-0 block truncate w-full text-left">TERMINAL.EXECUTE</span>
-                                                <span className="text-[10px] xs:text-[11px] font-black font-mono text-amber-500 tracking-[0.2em] uppercase truncate block w-full text-left">DIVINE_SPIRE</span>
+                                            {/* Bracket corners — four tiny fixed SVGs, no calc() needed */}
+                                            <svg className="absolute top-0 left-0 pointer-events-none" width="9" height="9" viewBox="0 0 9 9"><polyline points="0,9 0,0 9,0" fill="none" stroke={theme.isDark ? 'rgba(245,158,11,0.7)' : 'rgba(6,182,212,0.7)'} strokeWidth="1.5" /></svg>
+                                            <svg className="absolute top-0 right-0 pointer-events-none" width="9" height="9" viewBox="0 0 9 9"><polyline points="9,9 9,0 0,0" fill="none" stroke={theme.isDark ? 'rgba(245,158,11,0.7)' : 'rgba(6,182,212,0.7)'} strokeWidth="1.5" /></svg>
+                                            <svg className="absolute bottom-0 left-0 pointer-events-none" width="9" height="9" viewBox="0 0 9 9"><polyline points="0,0 0,9 9,9" fill="none" stroke={theme.isDark ? 'rgba(245,158,11,0.3)' : 'rgba(6,182,212,0.3)'} strokeWidth="1.5" /></svg>
+                                            <svg className="absolute bottom-0 right-0 pointer-events-none" width="9" height="9" viewBox="0 0 9 9"><polyline points="9,0 9,9 0,9" fill="none" stroke={theme.isDark ? 'rgba(245,158,11,0.3)' : 'rgba(6,182,212,0.3)'} strokeWidth="1.5" /></svg>
+                                            {/* Scanline overlay */}
+                                            <div className="absolute inset-0 pointer-events-none opacity-40"
+                                                style={{ backgroundImage: `repeating-linear-gradient(0deg, transparent, transparent 3px, ${theme.isDark ? 'rgba(245,158,11,0.04)' : 'rgba(6,182,212,0.04)'} 3px, ${theme.isDark ? 'rgba(245,158,11,0.04)' : 'rgba(6,182,212,0.04)'} 4px)` }}
+                                            />
+                                            {/* Sweep line animation */}
+                                            <motion.div
+                                                className="absolute left-0 right-0 h-[1px] pointer-events-none"
+                                                style={{ background: theme.isDark ? 'rgba(245,158,11,0.3)' : 'rgba(6,182,212,0.3)' }}
+                                                animate={{ top: ['0%', '100%', '0%'] }}
+                                                transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
+                                            />
+                                            {/* Content */}
+                                            <div className="relative z-10 h-full flex items-center gap-3 px-4">
+                                                <LayoutTemplate size={20} className={`shrink-0 ${theme.highlightText} drop-shadow-[0_0_8px_currentColor]`} />
+                                                <div className="flex flex-col items-start leading-none min-w-0">
+                                                    <span className={`font-mono text-[8px] tracking-[0.25em] uppercase ${theme.highlightText} opacity-60 mb-1`}>TERMINAL.EXECUTE</span>
+                                                    <span className={`font-orbitron font-black text-[11px] tracking-[0.2em] uppercase ${theme.highlightText} drop-shadow-[0_0_6px_currentColor]`}>DIVINE_SPIRE</span>
+                                                </div>
                                             </div>
-                                        </button>
+                                        </motion.button>
 
-                                        {/* CREATE GATE PANEL */}
-                                        <button
+                                        {/* ── CREATE GATE ── */}
+                                        <motion.button
                                             onClick={() => { setEditingItem(null); setIsModalOpen(true); setIsMobileHudExpanded(false); }}
-                                            className="relative w-14 h-14 bg-amber-500/10 holographic-panel rounded-sm border border-amber-500/60 flex items-center justify-center transition-all active:scale-90 shadow-[0_0_20px_rgba(245,158,11,0.2)]"
+                                            whileTap={{ scale: 0.94 }}
+                                            className="relative w-16 h-16 overflow-hidden backdrop-blur-md flex flex-col items-center justify-center gap-1"
+                                            style={{
+                                                background: theme.isDark ? 'rgba(10,8,2,0.88)' : 'rgba(0,18,24,0.88)',
+                                                border: `1px solid ${theme.isDark ? 'rgba(245,158,11,0.55)' : 'rgba(6,182,212,0.55)'}`,
+                                                boxShadow: theme.isDark
+                                                    ? '0 0 16px rgba(245,158,11,0.15)'
+                                                    : '0 0 16px rgba(6,182,212,0.15)',
+                                            }}
                                         >
-                                            <Plus size={24} strokeWidth={2.5} className="text-amber-500 drop-shadow-[0_0_10px_rgba(245,158,11,0.8)]" />
-                                        </button>
+                                            {/* Bracket corners */}
+                                            <svg className="absolute top-0 left-0 pointer-events-none" width="9" height="9" viewBox="0 0 9 9"><polyline points="0,9 0,0 9,0" fill="none" stroke={theme.isDark ? 'rgba(245,158,11,0.7)' : 'rgba(6,182,212,0.7)'} strokeWidth="1.5" /></svg>
+                                            <svg className="absolute top-0 right-0 pointer-events-none" width="9" height="9" viewBox="0 0 9 9"><polyline points="9,9 9,0 0,0" fill="none" stroke={theme.isDark ? 'rgba(245,158,11,0.7)' : 'rgba(6,182,212,0.7)'} strokeWidth="1.5" /></svg>
+                                            <svg className="absolute bottom-0 left-0 pointer-events-none" width="9" height="9" viewBox="0 0 9 9"><polyline points="0,0 0,9 9,9" fill="none" stroke={theme.isDark ? 'rgba(245,158,11,0.3)' : 'rgba(6,182,212,0.3)'} strokeWidth="1.5" /></svg>
+                                            <svg className="absolute bottom-0 right-0 pointer-events-none" width="9" height="9" viewBox="0 0 9 9"><polyline points="9,0 9,9 0,9" fill="none" stroke={theme.isDark ? 'rgba(245,158,11,0.3)' : 'rgba(6,182,212,0.3)'} strokeWidth="1.5" /></svg>
+                                            <Plus size={20} strokeWidth={2} className={`${theme.highlightText} drop-shadow-[0_0_8px_currentColor]`} />
+                                            <span className={`font-mono text-[6px] tracking-[0.15em] ${theme.highlightText} opacity-70 uppercase`}>GATE</span>
+                                        </motion.button>
 
-                                        {/* CLOSE PANEL */}
-                                        <button
+                                        {/* ── CLOSE / COLLAPSE ── */}
+                                        <motion.button
                                             onClick={() => setIsMobileHudExpanded(false)}
-                                            className="relative w-14 h-14 bg-red-500/10 holographic-panel rounded-sm border border-red-500/40 flex items-center justify-center transition-all active:scale-90 shadow-[0_0_20px_rgba(239,68,68,0.2)] backdrop-blur-md"
+                                            whileTap={{ scale: 0.94 }}
+                                            className="relative w-16 h-16 overflow-hidden backdrop-blur-md flex flex-col items-center justify-center gap-1"
+                                            style={{
+                                                background: 'rgba(10,2,2,0.88)',
+                                                border: '1px solid rgba(239,68,68,0.45)',
+                                                boxShadow: '0 0 16px rgba(239,68,68,0.12)',
+                                            }}
                                         >
-                                            <X size={24} strokeWidth={2.5} className="text-red-500 drop-shadow-[0_0_10px_rgba(239,68,68,0.8)]" />
-                                        </button>
+                                            {/* Bracket corners — red tint */}
+                                            <svg className="absolute top-0 left-0 pointer-events-none" width="9" height="9" viewBox="0 0 9 9"><polyline points="0,9 0,0 9,0" fill="none" stroke="rgba(239,68,68,0.6)" strokeWidth="1.5" /></svg>
+                                            <svg className="absolute top-0 right-0 pointer-events-none" width="9" height="9" viewBox="0 0 9 9"><polyline points="9,9 9,0 0,0" fill="none" stroke="rgba(239,68,68,0.6)" strokeWidth="1.5" /></svg>
+                                            <svg className="absolute bottom-0 left-0 pointer-events-none" width="9" height="9" viewBox="0 0 9 9"><polyline points="0,0 0,9 9,9" fill="none" stroke="rgba(239,68,68,0.25)" strokeWidth="1.5" /></svg>
+                                            <svg className="absolute bottom-0 right-0 pointer-events-none" width="9" height="9" viewBox="0 0 9 9"><polyline points="9,0 9,9 0,9" fill="none" stroke="rgba(239,68,68,0.25)" strokeWidth="1.5" /></svg>
+                                            <X size={20} strokeWidth={2} className="text-red-500 drop-shadow-[0_0_8px_rgba(239,68,68,0.8)]" />
+                                            <span className="font-mono text-[6px] tracking-[0.15em] text-red-500/70 uppercase">CLOSE</span>
+                                        </motion.button>
                                     </motion.div>
                                 )}
                             </div>

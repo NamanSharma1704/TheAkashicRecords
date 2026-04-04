@@ -582,11 +582,11 @@ const App: React.FC = () => {
 
     const memoizedMain = useMemo(() => (
         <main id="content-scroll"
-            className="relative mt-16 h-[calc(100dvh-104px)] lg:h-[calc(100dvh-128px)] overflow-y-auto lg:overflow-hidden overflow-x-hidden hide-scrollbar px-4 pb-6 lg:pb-6 z-10 flex flex-col">
+            className="relative mt-16 h-[calc(100dvh-104px)] lg:h-[calc(100dvh-100px)] overflow-y-auto lg:overflow-hidden overflow-x-hidden hide-scrollbar px-4 pb-6 lg:pb-2 z-10 flex flex-col">
             <div className="w-full max-w-[1400px] mx-auto flex-1 min-h-0 flex flex-col lg:flex-row gap-3 lg:gap-4 pt-2 lg:pt-2 pb-0">
                 {/* LEFT COLUMN: HERO CANVAS */}
                 <div className="flex-none lg:flex-1 flex flex-col lg:h-full order-1 overflow-visible relative">
-                    <div className="relative z-10 w-full h-full flex flex-col px-4 md:px-6 lg:px-8 pb-0 justify-between gap-6 overflow-visible pt-8">
+                    <div className="relative z-10 w-full h-full flex flex-col px-4 md:px-6 lg:px-8 pb-2 justify-between gap-4 overflow-visible pt-8">
 
                         {/* CENTER: The 3-Column Display (Enhanced Gaps for Tablets) */}
                         <div className="flex-1 min-h-0 flex justify-center items-center gap-4 md:gap-14 lg:gap-6 xl:gap-12 w-full max-w-[1400px] mx-auto px-4">
@@ -612,7 +612,7 @@ const App: React.FC = () => {
                                 </div>
                             </div>
 
-                            <div className="relative flex-none h-full min-h-0 min-w-0 w-[min(85vw,320px)] md:w-full md:max-w-[45%] lg:w-auto lg:max-h-[800px] aspect-[72/103] self-center flex items-center justify-center transition-all duration-700 ease-out transform-gpu hover:-translate-y-2 perspective-[1000px] group">
+                            <div className="relative flex-none h-full min-h-0 min-w-0 w-[min(85vw,320px)] md:w-full md:max-w-[45%] lg:w-auto lg:max-h-[85vh] aspect-[72/103] self-center flex items-center justify-center transition-all duration-700 ease-out transform-gpu hover:-translate-y-2 perspective-[1000px] group">
                                 {/* FROSTED GLASS PLATFORM (Sharp Square Base) */}
                                 <div
                                     className="absolute -inset-4 backdrop-blur-3xl pointer-events-none transition-all duration-700 opacity-100 group-hover:opacity-60"
@@ -779,7 +779,7 @@ const App: React.FC = () => {
                 </div>
 
                 {/* RIGHT COLUMN: SIDEBAR */}
-                <div className="w-full lg:w-80 xl:w-96 flex flex-col gap-1.5 lg:gap-2 lg:min-h-0 lg:h-full order-2 mb-16 lg:mb-0">
+                <div className="w-full lg:w-80 xl:w-96 flex flex-col gap-1.5 lg:gap-2 lg:min-h-0 lg:h-full order-2 mb-10 lg:mb-0">
                     {/* PLAYER CARD */}
                     <div className="w-full h-auto">
                         <SystemFrame variant="brackets" theme={theme}>
@@ -854,12 +854,12 @@ const App: React.FC = () => {
                     {/* ACTIVE QUESTS LIST - only scrollable region allowed */}
                     <div className="flex-1 flex flex-col min-h-0 gap-1 mt-2 overflow-hidden max-h-[380px] lg:max-h-none">
                         <div className={`text-[10px] font-mono ${theme.headingText} uppercase tracking-widest border-b ${theme.borderSubtle} pb-1.5 mb-1 transition-colors duration-700 shrink-0`}>ACTIVE QUESTS</div>
-                        <div className="flex-1 min-h-0 overflow-y-auto hide-scrollbar">
+                        <div className="flex-1 min-h-0 overflow-y-auto hide-scrollbar touch-pan-y overscroll-contain">
                             <Reorder.Group
                                 axis="y"
                                 values={orderedActiveQuests}
                                 onReorder={handleReorderActiveQuests}
-                                className="flex flex-col gap-1 h-full pb-14"
+                                className="flex flex-col gap-1 h-full pb-6"
                             >
                                 <AnimatePresence initial={false}>
                                     {orderedActiveQuests.map((item) => {

@@ -173,7 +173,7 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
     const abortControllerRef = useRef<AbortController | null>(null);
 
     // --- ACCOUNT MODAL STATE ---
-    const storedUser = useMemo(() => getStoredUser(), []);
+    const [storedUser, setStoredUser] = useState(() => getStoredUser());
     const [showAccountModal, setShowAccountModal] = useState(false);
     const [accountForm, setAccountForm] = useState({ newUsername: '', currentPassword: '', newPassword: '', confirmPassword: '' });
     const [accountStatus, setAccountStatus] = useState<{ type: 'error' | 'success'; msg: string } | null>(null);
@@ -204,8 +204,11 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
             if (!res.ok) {
                 setAccountStatus({ type: 'error', msg: data.message || 'Update failed.' });
             } else {
+                // Persist new token + user to localStorage
                 saveAuthData(data);
-                setAccountStatus({ type: 'success', msg: 'Credentials updated successfully.' });
+                // Immediately update the displayed username in the UI
+                setStoredUser(data.user);
+                setAccountStatus({ type: 'success', msg: 'Credentials updated. Changes saved to database.' });
                 setAccountForm({ newUsername: '', currentPassword: '', newPassword: '', confirmPassword: '' });
             }
         } catch {

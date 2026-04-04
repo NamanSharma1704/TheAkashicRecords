@@ -11,6 +11,7 @@ interface SystemFrameProps {
     animate?: any;
     exit?: any;
     transition?: any;
+    frosted?: boolean;
 }
 
 const SystemFrame: React.FC<SystemFrameProps> = ({ 
@@ -21,7 +22,8 @@ const SystemFrame: React.FC<SystemFrameProps> = ({
     initial,
     animate,
     exit,
-    transition
+    transition,
+    frosted = true
 }) => {
     const borderColor = theme.id === 'LIGHT' ? 'border-sky-400' : 'border-amber-400';
     return (
@@ -36,8 +38,8 @@ const SystemFrame: React.FC<SystemFrameProps> = ({
             <div className={`absolute top-0 right-0 w-3 h-3 border-t-2 border-r-2 ${borderColor} z-20 transition-colors duration-300`} />
             <div className={`absolute bottom-0 right-0 w-3 h-3 border-b-2 border-r-2 ${borderColor} z-20 transition-colors duration-300`} />
             <div className={`absolute bottom-0 left-0 w-3 h-3 border-b-2 border-l-2 ${borderColor} z-20 transition-colors duration-300`} />
-            <div className={`relative h-full w-full ${theme.panelBg} overflow-hidden ${variant === 'full' ? `border ${theme.borderSubtle}` : ''} transition-colors duration-700`}>
-                <div className="absolute inset-0 bg-[url('/noise.svg')] opacity-[0.05] pointer-events-none" />
+            <div className={`relative h-full w-full ${frosted ? `${theme.panelBg} backdrop-blur-md` : 'bg-transparent'} overflow-hidden ${variant === 'full' ? `border ${theme.borderSubtle}` : ''} transition-colors duration-700`}>
+                <div className={`absolute inset-0 bg-[url('/noise.svg')] opacity-[0.05] pointer-events-none ${frosted ? 'block' : 'hidden'}`} />
                 <motion.div className="relative z-10 h-full w-full">{children}</motion.div>
             </div>
         </motion.div>

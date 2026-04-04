@@ -19,6 +19,7 @@ export interface Theme {
     starColor: string;
     gradient: string;
     rayColor: string;
+    accentColor: string;
     isDark: boolean;
 }
 

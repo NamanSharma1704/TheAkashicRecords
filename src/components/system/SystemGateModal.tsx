@@ -254,9 +254,9 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ isOpen, onClose, onSa
                 <div className="flex flex-col h-full overflow-hidden">
 
                     {/* ── HEADER ── */}
-                    <div className={`flex justify-between items-center px-5 py-3.5 border-b ${theme.borderSubtle} shrink-0 bg-black/30`}>
+                    <div className={`flex justify-between items-center px-5 py-3.5 border-b ${theme.borderSubtle} shrink-0 ${theme.isDark ? 'bg-black/30' : 'bg-slate-100/50'}`}>
                         <span className={`${theme.highlightText} font-mono tracking-widest text-[11px] sm:text-sm flex items-center gap-2.5`}>
-                            <span className={`w-1.5 h-1.5 rounded-full ${isScanning ? 'bg-amber-500 animate-ping' : 'bg-amber-500/50'}`} />
+                            <span className={`w-1.5 h-1.5 rounded-full ${isScanning ? (theme.isDark ? 'bg-amber-500 animate-ping' : 'bg-cyan-500 animate-ping') : (theme.isDark ? 'bg-amber-500/50' : 'bg-cyan-500/50')}`} />
                             <RefreshCw size={12} className={isScanning ? 'animate-spin' : ''} />
                             {isScanning ? 'ANALYZING_COORDINATES...' : 'SYSTEM_OVERWRITE'}
                         </span>
@@ -289,7 +289,7 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ isOpen, onClose, onSa
                                             key={src}
                                             type="button"
                                             onClick={() => setSearchSource(src)}
-                                            className={`text-[7px] font-orbitron font-bold tracking-widest px-2 py-0.5 transition-all duration-300 ${searchSource === src ? `${theme.highlightText} border-b border-amber-500` : `${theme.mutedText} hover:text-white`}`}
+                                            className={`text-[7px] font-orbitron font-bold tracking-widest px-2 py-0.5 transition-all duration-300 ${searchSource === src ? `${theme.highlightText} border-b ${theme.isDark ? 'border-amber-500' : 'border-cyan-500'}` : `${theme.mutedText} hover:text-white`}`}
                                         >
                                             {src}
                                         </button>
@@ -304,17 +304,17 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ isOpen, onClose, onSa
                                     value={formData.link}
                                     onChange={handleChange}
                                     placeholder="ENTER_PROTOCOL_URL"
-                                    className={`w-full bg-black/30 border-b-2 ${theme.borderSubtle} focus:border-amber-500/80 pr-28 pl-3 py-2.5 ${theme.baseText} outline-none transition-colors duration-150 font-mono text-[10px] placeholder:opacity-25`}
+                                    className={`w-full ${theme.inputBg} border-b-2 ${theme.borderSubtle} ${theme.isDark ? 'focus:border-amber-500/80' : 'focus:border-cyan-500/80'} pr-28 pl-3 py-2.5 ${theme.baseText} outline-none transition-colors duration-150 font-mono text-[10px] placeholder:opacity-25`}
                                 />
                                 <div className={`absolute bottom-0 left-0 h-[2px] w-0 bg-gradient-to-r ${theme.gradient} group-focus-within:w-[calc(100%-7rem)] transition-all duration-150`} />
                                 <button
                                     type="button"
                                     onClick={handleScan}
                                     disabled={!formData.link || isScanning}
-                                    className={`absolute right-0 top-0 h-full px-4 font-orbitron text-[8px] font-bold tracking-wider border-l ${theme.borderSubtle} ${theme.highlightText} hover:bg-amber-500 hover:text-black disabled:opacity-25 transition-all duration-300 flex items-center gap-1.5 bg-black/40 active:scale-95 overflow-hidden group/btn`}
+                                    className={`absolute right-0 top-0 h-full px-4 font-orbitron text-[10px] font-black tracking-wider border-l ${theme.borderSubtle} ${theme.isDark ? 'text-amber-500 hover:bg-amber-500 hover:text-black' : 'text-cyan-600 hover:bg-cyan-500 hover:text-white'} disabled:opacity-50 transition-all duration-300 flex items-center gap-1.5 ${theme.isDark ? 'bg-black/50' : 'bg-slate-200/60'} active:scale-95 overflow-hidden group/btn drop-shadow-sm`}
                                 >
                                     <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover/btn:translate-x-full transition-transform duration-700" />
-                                    {isScanning ? <Activity size={10} className="animate-pulse" /> : <Search size={10} />}
+                                    {isScanning ? <Activity size={14} className="animate-pulse" /> : <Search size={14} />}
                                     SCAN_CORE
                                 </button>
                             </div>
@@ -338,23 +338,23 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ isOpen, onClose, onSa
                                     value={formData.title}
                                     onChange={handleChange}
                                     placeholder="DESCRIPTOR_REQUIRED"
-                                    className={`w-full bg-black/30 border-b-2 ${theme.borderSubtle} focus:border-amber-500/80 pr-12 pl-3 py-2.5 ${theme.headingText} outline-none transition-colors duration-150 font-orbitron font-bold text-base sm:text-lg italic tracking-tight placeholder:opacity-20`}
+                                    className={`w-full ${theme.inputBg} border-b-2 ${theme.borderSubtle} ${theme.isDark ? 'focus:border-amber-500/80' : 'focus:border-cyan-500/80'} pr-12 pl-3 py-2.5 ${theme.headingText} outline-none transition-colors duration-150 font-orbitron font-bold text-base sm:text-lg italic tracking-tight placeholder:opacity-20`}
                                 />
                                 <div className={`absolute bottom-0 left-0 h-[2px] w-0 bg-gradient-to-r ${theme.gradient} group-focus-within:w-[calc(100%-3rem)] transition-all duration-150`} />
                                 <button
                                     type="button"
                                     onClick={handleTitleSearch}
                                     disabled={!formData.title || isScanning}
-                                    className={`absolute right-0 top-0 h-full px-3 border-l ${theme.borderSubtle} ${theme.highlightText} hover:bg-amber-500/20 disabled:opacity-25 transition-all duration-300 flex items-center justify-center bg-black/40 active:scale-90 group/archive`}
+                                    className={`absolute right-0 top-0 h-full px-4 border-l ${theme.borderSubtle} ${theme.isDark ? 'text-amber-500 hover:bg-amber-500/20' : 'text-cyan-600 hover:bg-cyan-500/20'} disabled:opacity-50 transition-all duration-300 flex items-center justify-center ${theme.isDark ? 'bg-black/50' : 'bg-slate-200/60'} active:scale-90 group/archive drop-shadow-sm`}
                                     title="Search Archives for Cover Art"
                                 >
-                                    <Database size={14} className="group-hover/archive:scale-110 transition-transform" />
+                                    <Database size={16} className="group-hover/archive:scale-110 transition-transform" />
                                 </button>
                             </div>
                         </div>
 
                         {/* ── CHAPTER METRICS ── */}
-                        <div className={`grid grid-cols-2 gap-3 p-3 border ${theme.borderSubtle} bg-white/[0.03] rounded-sm relative`}>
+                        <div className={`grid grid-cols-2 gap-3 p-3 border ${theme.borderSubtle} ${theme.isDark ? 'bg-white/[0.03]' : 'bg-black/[0.03]'} rounded-sm relative`}>
                             <div className={`absolute top-0 left-0 w-3 h-3 border-t border-l ${theme.border} opacity-50`} />
                             <div className={`absolute bottom-0 right-0 w-3 h-3 border-b border-r ${theme.border} opacity-50`} />
 
@@ -368,9 +368,9 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ isOpen, onClose, onSa
                                         value={formData.currentChapter}
                                         onFocus={(e) => e.target.select()}
                                         onChange={handleChange}
-                                        className={`w-full bg-black/50 border ${theme.borderSubtle} hover:border-amber-500/40 focus:${theme.border} py-2 px-3 ${theme.baseText} outline-none transition-colors duration-150 font-mono text-center text-sm font-bold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`}
+                                        className={`w-full ${theme.inputBg} border ${theme.borderSubtle} ${theme.isDark ? 'hover:border-amber-500/40' : 'hover:border-cyan-500/40'} focus:${theme.border} py-2 px-3 ${theme.baseText} outline-none transition-colors duration-150 font-mono text-center text-sm font-bold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`}
                                     />
-                                    <div className="absolute top-0 right-0 w-0.5 h-full bg-gradient-to-b from-amber-500/30 to-transparent" />
+                                    <div className={`absolute top-0 right-0 w-0.5 h-full bg-gradient-to-b ${theme.isDark ? 'from-amber-500/30' : 'from-cyan-500/30'} to-transparent`} />
                                 </div>
                                 <p className={`text-[7px] font-orbitron ${theme.mutedText} tracking-widest opacity-50`}>CURRENT CH.</p>
                             </div>
@@ -385,12 +385,12 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ isOpen, onClose, onSa
                                         value={formData.totalChapters}
                                         onFocus={(e) => e.target.select()}
                                         onChange={handleChange}
-                                        className={`w-full bg-black/50 py-2 px-3 ${theme.baseText} outline-none transition-colors duration-150 font-mono text-center text-sm font-bold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${formData.totalChapters === 0
+                                        className={`w-full ${theme.inputBg} py-2 px-3 ${theme.baseText} outline-none transition-colors duration-150 font-mono text-center text-sm font-bold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${formData.totalChapters === 0
                                             ? 'border border-red-500/50 shadow-[0_0_8px_rgba(239,68,68,0.2)]'
-                                            : `border ${theme.borderSubtle} hover:border-amber-500/40 focus:${theme.border}`
+                                            : `border ${theme.borderSubtle} ${theme.isDark ? 'hover:border-amber-500/40' : 'hover:border-cyan-500/40'} focus:${theme.border}`
                                             }`}
                                     />
-                                    <div className="absolute top-0 left-0 w-0.5 h-full bg-gradient-to-b from-amber-500/30 to-transparent" />
+                                    <div className={`absolute top-0 left-0 w-0.5 h-full bg-gradient-to-b ${theme.isDark ? 'from-amber-500/30' : 'from-cyan-500/30'} to-transparent`} />
                                 </div>
                                 {formData.totalChapters === 0 ? (
                                     <p className="text-[7px] font-orbitron text-red-400/80 tracking-widest flex items-center gap-1">
@@ -417,8 +417,8 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ isOpen, onClose, onSa
                                             referrerPolicy="no-referrer"
                                         />
                                     ) : (
-                                        <div className={`w-16 h-24 sm:w-20 sm:h-28 border border-dashed ${theme.borderSubtle} flex flex-col items-center justify-center relative z-10 bg-black/20 gap-2`}>
-                                            <AlertCircle size={16} className="text-white/10" />
+                                        <div className={`w-16 h-24 sm:w-20 sm:h-28 border border-dashed ${theme.borderSubtle} flex flex-col items-center justify-center relative z-10 ${theme.isDark ? 'bg-black/20' : 'bg-slate-200/50'} gap-2`}>
+                                            <AlertCircle size={16} className={theme.isDark ? "text-white/10" : "text-black/20"} />
                                             <span className={`text-[6px] font-orbitron ${theme.mutedText} opacity-40 tracking-widest`}>NO DATA</span>
                                         </div>
                                     )}
@@ -430,7 +430,7 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ isOpen, onClose, onSa
                                         value={formData.coverUrl}
                                         onChange={handleChange}
                                         placeholder="IMAGE_LINK_ENCODING"
-                                        className={`w-full bg-black/30 border-b ${theme.borderSubtle} focus:border-amber-500/60 px-2 py-2 ${theme.baseText} outline-none transition-colors duration-150 font-mono text-[9px] truncate`}
+                                        className={`w-full ${theme.inputBg} border-b ${theme.borderSubtle} ${theme.isDark ? 'focus:border-amber-500/60' : 'focus:border-cyan-500/60'} px-2 py-2 ${theme.baseText} outline-none transition-colors duration-150 font-mono text-[9px] truncate`}
                                     />
                                     <p className={`text-[8px] font-mono ${theme.mutedText} opacity-30 italic truncate`}>
                                         {formData.coverUrl || 'WAITING_FOR_DATA...'}
@@ -448,14 +448,14 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ isOpen, onClose, onSa
                                         name="status"
                                         value={formData.status}
                                         onChange={handleChange}
-                                        className={`w-full appearance-none bg-black/50 border-b-2 ${theme.borderSubtle} focus:border-amber-500/80 px-3 py-2.5 ${theme.headingText} hover:bg-white/5 outline-none transition-all font-orbitron font-bold text-[9px] tracking-widest cursor-pointer`}
+                                        className={`w-full appearance-none ${theme.inputBg} border-b-2 ${theme.borderSubtle} ${theme.isDark ? 'focus:border-amber-500/80' : 'focus:border-cyan-500/80'} px-3 py-2.5 ${theme.headingText} hover:bg-black/5 outline-none transition-all font-orbitron font-bold text-[9px] tracking-widest cursor-pointer`}
                                     >
-                                        <option value="ACTIVE" className="bg-black text-amber-500">_ACTIVE</option>
-                                        <option value="CONQUERED" className="bg-black text-blue-500">_CONQUERED</option>
-                                        <option value="SEVERED" className="bg-black text-red-500">_SEVERED</option>
+                                        <option value="ACTIVE" className={`${theme.isDark ? 'bg-black text-amber-500' : 'bg-white text-orange-500'}`}>_ACTIVE</option>
+                                        <option value="CONQUERED" className={`${theme.isDark ? 'bg-black text-blue-500' : 'bg-white text-sky-500'}`}>_CONQUERED</option>
+                                        <option value="SEVERED" className={`${theme.isDark ? 'bg-black text-red-500' : 'bg-white text-red-500'}`}>_SEVERED</option>
                                     </select>
                                     <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none opacity-40">
-                                        <div className="w-0 h-0 border-l-[4px] border-l-transparent border-r-[4px] border-r-transparent border-t-[5px] border-t-white" />
+                                        <div className={`w-0 h-0 border-l-[4px] border-l-transparent border-r-[4px] border-r-transparent border-t-[5px] ${theme.isDark ? 'border-t-white' : 'border-t-slate-800'}`} />
                                     </div>
                                     <div className={`absolute bottom-0 left-0 h-[2px] w-full bg-gradient-to-r ${theme.gradient} opacity-20`} />
                                 </div>
@@ -467,16 +467,16 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ isOpen, onClose, onSa
                                         name="classType"
                                         value={formData.classType}
                                         onChange={handleChange}
-                                        className={`w-full appearance-none bg-black/50 border-b-2 ${theme.borderSubtle} focus:border-amber-500/80 px-3 py-2.5 ${theme.headingText} hover:bg-white/5 outline-none transition-all font-orbitron font-bold text-[9px] tracking-widest cursor-pointer`}
+                                        className={`w-full appearance-none ${theme.inputBg} border-b-2 ${theme.borderSubtle} ${theme.isDark ? 'focus:border-amber-500/80' : 'focus:border-sky-500/80'} px-3 py-2.5 ${theme.headingText} hover:bg-black/5 outline-none transition-all font-orbitron font-bold text-[9px] tracking-widest cursor-pointer`}
                                     >
-                                        <option value="PLAYER" className="bg-black">_PLAYER</option>
-                                        <option value="IRREGULAR" className="bg-black">_IRREGULAR</option>
-                                        <option value="MAGE" className="bg-black">_MAGE</option>
-                                        <option value="CONSTELLATION" className="bg-black">_CONSTELLATION</option>
-                                        <option value="NECROMANCER" className="bg-black">_NECROMANCER</option>
+                                        <option value="PLAYER" className={theme.isDark ? 'bg-black' : 'bg-white'}>_PLAYER</option>
+                                        <option value="IRREGULAR" className={theme.isDark ? 'bg-black' : 'bg-white'}>_IRREGULAR</option>
+                                        <option value="MAGE" className={theme.isDark ? 'bg-black' : 'bg-white'}>_MAGE</option>
+                                        <option value="CONSTELLATION" className={theme.isDark ? 'bg-black' : 'bg-white'}>_CONSTELLATION</option>
+                                        <option value="NECROMANCER" className={theme.isDark ? 'bg-black' : 'bg-white'}>_NECROMANCER</option>
                                     </select>
                                     <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none opacity-40">
-                                        <div className="w-0 h-0 border-l-[4px] border-l-transparent border-r-[4px] border-r-transparent border-t-[5px] border-t-white" />
+                                        <div className={`w-0 h-0 border-l-[4px] border-l-transparent border-r-[4px] border-r-transparent border-t-[5px] ${theme.isDark ? 'border-t-white' : 'border-t-slate-800'}`} />
                                     </div>
                                     <div className={`absolute bottom-0 left-0 h-[2px] w-full bg-gradient-to-r ${theme.gradient} opacity-20`} />
                                 </div>
@@ -494,7 +494,7 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ isOpen, onClose, onSa
                                     value={formData.synopsis}
                                     onChange={(e) => setFormData(prev => ({ ...prev, synopsis: e.target.value }))}
                                     placeholder="COLLECTING_RESONANCE_DATA..."
-                                    className={`w-full h-20 bg-black/30 border ${theme.borderSubtle} focus:${theme.border} px-3 py-2.5 ${theme.baseText} outline-none transition-all duration-500 font-rajdhani italic text-[11px] resize-none custom-scrollbar group-hover:bg-white/5`}
+                                    className={`w-full h-20 ${theme.inputBg} border ${theme.borderSubtle} focus:${theme.border} px-3 py-2.5 ${theme.baseText} outline-none transition-all duration-500 font-rajdhani italic text-[11px] resize-none custom-scrollbar group-hover:bg-black/5`}
                                 />
                             </div>
                         </div>
@@ -502,8 +502,8 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ isOpen, onClose, onSa
                     </div>
 
                     {/* ── STICKY FOOTER ── */}
-                    <div className={`px-5 py-3.5 bg-black/70 backdrop-blur-md border-t ${theme.borderSubtle} flex gap-3 shrink-0 relative overflow-hidden`}>
-                        <div className={`absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-amber-500/40 to-transparent`} />
+                    <div className={`px-5 py-3.5 ${theme.isDark ? 'bg-black/70' : 'bg-white/70'} backdrop-blur-md border-t ${theme.borderSubtle} flex gap-3 shrink-0 relative overflow-hidden`}>
+                        <div className={`absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r ${theme.isDark ? 'from-transparent via-amber-500/40 to-transparent' : 'from-transparent via-cyan-500/40 to-transparent'}`} />
 
                         {initialData && (
                             <button
@@ -520,7 +520,7 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ isOpen, onClose, onSa
                         <button
                             onClick={handleSubmit}
                             disabled={isScanning}
-                            className={`flex-1 relative border ${theme.border} ${theme.highlightText} hover:bg-amber-500 hover:text-black font-orbitron font-black uppercase tracking-[0.25em] text-[11px] sm:text-sm transition-all duration-500 disabled:opacity-30 flex items-center justify-center gap-2.5 active:scale-[0.98] overflow-hidden group/confirm py-3.5 rounded-sm`}
+                            className={`flex-1 relative border ${theme.border} ${theme.highlightText} ${theme.isDark ? 'hover:bg-amber-500 hover:text-black' : 'hover:bg-cyan-500 hover:text-white'} font-orbitron font-black uppercase tracking-[0.25em] text-[11px] sm:text-sm transition-all duration-500 disabled:opacity-30 flex items-center justify-center gap-2.5 active:scale-[0.98] overflow-hidden group/confirm py-3.5 rounded-sm`}
                         >
                             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover/confirm:translate-x-full transition-transform duration-700" />
                             {isScanning ? (

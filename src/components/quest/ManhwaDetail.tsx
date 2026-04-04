@@ -192,23 +192,71 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
 
     return (
 
-        <div className={`fixed inset-0 z-[400] ${theme.appBg} flex animate-in fade-in duration-500`}>
+        <div className={`fixed inset-0 z-[400] flex animate-in fade-in duration-500`}
+            style={{ background: theme.isDark
+                ? 'linear-gradient(135deg, #020202 0%, #0d0800 30%, #1a0f00 55%, #0a0500 80%, #020202 100%)'
+                : 'linear-gradient(135deg, #e0f7ff 0%, #f0f9ff 25%, #eef2ff 55%, #f5f3ff 80%, #e0f2fe 100%)'
+            }}>
             {/* FULL-BLEED CINEMATIC BACKDROP */}
-            <div className="absolute inset-0 z-0 overflow-hidden bg-black">
-                <div className={`absolute inset-0 ${theme.isDark ? 'bg-[#020202]/90' : 'bg-slate-900/90'} z-10`} />
+            <div className="absolute inset-0 z-0 overflow-hidden">
+
+                {/* BASE GRADIENT LAYER */}
+                <div className="absolute inset-0 z-[1]" style={{
+                    background: theme.isDark
+                        ? 'radial-gradient(ellipse 80% 60% at 70% 20%, rgba(245,158,11,0.18) 0%, transparent 60%), radial-gradient(ellipse 60% 50% at 20% 80%, rgba(234,179,8,0.12) 0%, transparent 55%), radial-gradient(ellipse 100% 100% at 50% 50%, rgba(2,2,2,0.7) 0%, rgba(2,2,2,0.95) 100%)'
+                        : 'radial-gradient(ellipse 80% 60% at 70% 15%, rgba(6,182,212,0.25) 0%, transparent 60%), radial-gradient(ellipse 60% 50% at 15% 80%, rgba(99,102,241,0.20) 0%, transparent 55%), radial-gradient(ellipse 100% 100% at 50% 50%, rgba(224,242,254,0.4) 0%, rgba(238,242,255,0.65) 100%)'
+                }} />
+
+                {/* COVER ART AURA */}
                 {(quest?.coverUrl || media?.bannerImage || finalCover) ? (
                     <img
                         src={getProxiedImageUrl(quest?.coverUrl || media?.bannerImage || finalCover)}
-                        className="w-full h-full object-cover blur-2xl opacity-40 scale-125 transform-gpu"
+                        className="w-full h-full object-cover blur-3xl scale-125 transform-gpu"
+                        style={{ opacity: theme.isDark ? 0.25 : 0.12 }}
                         referrerPolicy="no-referrer"
                         alt="Background Aura"
                     />
                 ) : null}
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,transparent_0%,rgba(0,0,0,0.8)_100%)] z-20 pointer-events-none" />
 
-                {/* THEME AMBIENT GLOW */}
-                <div className={`absolute -top-[20%] -right-[20%] w-[60%] h-[60%] bg-${theme.primary}-500/10 rounded-full blur-[150px] z-10 pointer-events-none mix-blend-screen`} />
-                <div className={`absolute -bottom-[20%] -left-[20%] w-[60%] h-[60%] bg-${theme.accent}-500/10 rounded-full blur-[150px] z-10 pointer-events-none mix-blend-screen`} />
+                {/* DEPTH VIGNETTE */}
+                <div className="absolute inset-0 z-[2] pointer-events-none" style={{
+                    background: theme.isDark
+                        ? 'radial-gradient(ellipse at 50% 50%, transparent 20%, rgba(0,0,0,0.75) 100%)'
+                        : 'radial-gradient(ellipse at 50% 50%, transparent 20%, rgba(224,242,254,0.5) 100%)'
+                }} />
+
+                {/* LARGE AMBIENT ORB — TOP RIGHT */}
+                <div className="absolute pointer-events-none z-[3]" style={{
+                    top: '-15%', right: '-10%',
+                    width: '65%', height: '65%',
+                    borderRadius: '50%',
+                    filter: 'blur(120px)',
+                    background: theme.isDark
+                        ? 'radial-gradient(circle, rgba(245,158,11,0.22) 0%, rgba(234,179,8,0.08) 60%, transparent 100%)'
+                        : 'radial-gradient(circle, rgba(6,182,212,0.30) 0%, rgba(14,165,233,0.12) 60%, transparent 100%)'
+                }} />
+
+                {/* LARGE AMBIENT ORB — BOTTOM LEFT */}
+                <div className="absolute pointer-events-none z-[3]" style={{
+                    bottom: '-15%', left: '-10%',
+                    width: '60%', height: '60%',
+                    borderRadius: '50%',
+                    filter: 'blur(120px)',
+                    background: theme.isDark
+                        ? 'radial-gradient(circle, rgba(161,98,7,0.20) 0%, rgba(120,53,15,0.08) 60%, transparent 100%)'
+                        : 'radial-gradient(circle, rgba(99,102,241,0.25) 0%, rgba(139,92,246,0.10) 60%, transparent 100%)'
+                }} />
+
+                {/* SECONDARY ACCENT ORB — TOP LEFT */}
+                <div className="absolute pointer-events-none z-[3]" style={{
+                    top: '10%', left: '5%',
+                    width: '30%', height: '30%',
+                    borderRadius: '50%',
+                    filter: 'blur(90px)',
+                    background: theme.isDark
+                        ? 'rgba(251,191,36,0.10)'
+                        : 'rgba(56,189,248,0.18)'
+                }} />
             </div>
 
             {/* TOP NAVIGATION BAR */}
@@ -219,9 +267,9 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                 </div>
                 <button
                     onClick={onClose}
-                    className={`pointer-events-auto p-3 rounded-full bg-black/40 hover:bg-white/10 ${theme.baseText} backdrop-blur-md transition-all border border-white/10 group`}
+                    className={`pointer-events-auto w-9 h-9 flex items-center justify-center border ${theme.borderSubtle} ${theme.mutedText} hover:${theme.highlightText} hover:border-current transition-colors cursor-pointer`}
                 >
-                    <X size={24} className="group-hover:rotate-90 transition-transform duration-500" />
+                    <X size={16} />
                 </button>
             </div>
 
@@ -310,7 +358,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
 
                     {/* PROGRESS HUD: THE RUNIC THREAD */}
                     <motion.div variants={itemVariants} className="w-full relative group mt-4">
-                        <div className="relative rounded-xl p-4 md:p-8 bg-black/40 backdrop-blur-2xl border border-white/10 shadow-2xl overflow-hidden">
+                        <div className={`relative rounded-xl p-4 md:p-8 backdrop-blur-2xl shadow-2xl overflow-hidden border ${theme.isDark ? 'bg-black/40 border-white/10' : 'bg-white/60 border-slate-200/80'}`}>
                             {/* Ambient internal glow */}
                             <div className={`absolute inset-0 bg-gradient-to-r ${theme.gradient} opacity-5 blur-xl pointer-events-none`} />
 
@@ -354,11 +402,11 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                     {/* TWO COLUMN DATA: SYNOPSIS & METADATA */}
                     <motion.div variants={itemVariants} className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-4">
                         {/* LEFT: Synopsis */}
-                        <div className="lg:col-span-2 relative p-4 md:p-8 bg-black/30 backdrop-blur-xl border border-white/5 rounded-xl group/synopsis">
+                        <div className={`lg:col-span-2 relative p-4 md:p-8 backdrop-blur-xl rounded-xl group/synopsis border ${theme.isDark ? 'bg-black/30 border-white/5' : 'bg-white/70 border-slate-200/60'}`}>
                             <div className="flex items-center justify-between mb-6">
                                 <div className="flex items-center gap-2 opacity-60">
-                                    <AlignLeft size={16} className="text-white" />
-                                    <span className="text-[10px] font-mono tracking-[0.3em] text-white font-bold uppercase">ARCHIVE_SYNOPSIS</span>
+                                    <AlignLeft size={16} className={theme.isDark ? 'text-white' : 'text-slate-700'} />
+                                    <span className={`text-[10px] font-mono tracking-[0.3em] font-bold uppercase ${theme.isDark ? 'text-white' : 'text-slate-700'}`}>ARCHIVE_SYNOPSIS</span>
                                 </div>
                                 <button
                                     onClick={() => {
@@ -384,7 +432,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                 />
                             ) : (
                                 <div
-                                    className="text-sm md:text-base leading-loose text-white/80 font-sans"
+                                    className={`text-sm md:text-base leading-loose font-sans ${theme.isDark ? 'text-white/80' : 'text-slate-700'}`}
                                     dangerouslySetInnerHTML={{ __html: quest.synopsis || media?.description || "No synopsis available." }}
                                 />
                             )}
@@ -392,14 +440,14 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
 
                         {/* RIGHT: Quick Stats / Tags */}
                         <div className="flex flex-col gap-4">
-                            <div className="p-6 bg-black/30 backdrop-blur-xl border border-white/5 rounded-xl flex flex-col gap-4">
-                                <span className="text-[10px] font-mono text-white/40 tracking-widest uppercase">Genres</span>
+                            <div className={`p-6 backdrop-blur-xl rounded-xl flex flex-col gap-4 border ${theme.isDark ? 'bg-black/30 border-white/5' : 'bg-white/70 border-slate-200/60'}`}>
+                                <span className={`text-[10px] font-mono tracking-widest uppercase ${theme.isDark ? 'text-white/40' : 'text-slate-500'}`}>Genres</span>
                                 <div className="flex flex-wrap gap-2">
                                     {media?.genres?.length ? media.genres.map(genre => (
-                                        <span key={genre} className="px-3 py-1 text-[10px] font-mono border border-white/10 rounded-full bg-white/5 text-white/70">
+                                        <span key={genre} className={`px-3 py-1 text-[10px] font-mono rounded-full border ${theme.isDark ? 'border-white/10 bg-white/5 text-white/70' : 'border-slate-300 bg-slate-100 text-slate-600'}`}>
                                             {genre}
                                         </span>
-                                    )) : <span className="text-xs text-white/20">UNKNOWN</span>}
+                                    )) : <span className={`text-xs ${theme.isDark ? 'text-white/20' : 'text-slate-400'}`}>UNKNOWN</span>}
                                 </div>
                             </div>
                         </div>

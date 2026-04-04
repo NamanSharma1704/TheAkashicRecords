@@ -13,9 +13,10 @@ interface TowerHUDProps {
     selectedFloorIndex?: number;
     itemsPerFloor?: number;
     streak?: number;
+    dailyAbsorbed?: number;
 }
 
-const TowerHUD: React.FC<TowerHUDProps> = ({ items, theme, onActivate, isFocused = false, selectedFloorIndex = 0, itemsPerFloor = 5, streak = 0 }) => {
+const TowerHUD: React.FC<TowerHUDProps> = ({ items, theme, onActivate, isFocused = false, selectedFloorIndex = 0, itemsPerFloor = 5, streak = 0, dailyAbsorbed }) => {
     // 1. Memoize Stats and Data Slicing
     const { displayItems, totalManhwa, displayChapters, completedManhwa, recents, classEntries } = useMemo(() => {
         const floorStart = selectedFloorIndex * itemsPerFloor;
@@ -107,9 +108,10 @@ const TowerHUD: React.FC<TowerHUDProps> = ({ items, theme, onActivate, isFocused
                         </div>
                     </SystemFrame>
 
-                    {/* RANK CARD */}
+                    {/* RANK + TITLES DISCOVERED + DIVINE MANDATE — in a bracketed box like PLAYER_METRICS */}
                     {!isFocused && (
                         <div className="flex flex-col gap-4">
+                            {/* Rank card */}
                             <div className="relative group min-h-[140px] flex flex-col justify-center">
                                 <div className={`absolute inset-0 bg-gradient-to-r ${theme.gradient} opacity-10 group-hover:opacity-20 transition-opacity`} />
                                 <div className="p-4 md:px-10 md:py-6 flex flex-row items-center gap-4 bg-transparent transition-all overflow-visible relative z-10">
@@ -123,16 +125,41 @@ const TowerHUD: React.FC<TowerHUDProps> = ({ items, theme, onActivate, isFocused
                                 </div>
                             </div>
 
-                            {/* PROGRESS TRACKER */}
-                            <div className="px-1 space-y-2">
-                                <div className={`flex justify-between text-[clamp(9px,1vw,11px)] font-mono font-bold ${theme.highlightText}`}>
-                                    <span className="tracking-widest">TITLES DISCOVERED</span>
-                                    <span>{totalManhwa} / 1000</span>
+                            {/* TITLES DISCOVERED + DIVINE MANDATE — bracketed box */}
+                            <SystemFrame variant="brackets" theme={theme} className="bg-transparent shadow-none w-full">
+                                <div className="p-3 lg:p-4 space-y-3">
+                                    {/* TITLES DISCOVERED */}
+                                    <div className="space-y-1.5">
+                                        <div className={`flex justify-between text-[clamp(9px,1vw,11px)] font-mono font-bold ${theme.highlightText}`}>
+                                            <span className="tracking-widest">TITLES DISCOVERED</span>
+                                            <span>{totalManhwa} / 1000</span>
+                                        </div>
+                                        <div className={`h-1.5 w-full ${theme.isDark ? 'bg-white/10' : 'bg-black/10'} relative overflow-hidden`}>
+                                            <div className={`h-full bg-gradient-to-r ${theme.gradient} progress-bloom transition-all duration-1000 ease-out`} style={{ width: `${Math.min(100, (totalManhwa / 10))}%`, color: theme.id === 'LIGHT' ? '#0ea5e9' : '#fbbf24' }} />
+                                        </div>
+                                    </div>
+
+                                    {/* DIVINE MANDATE */}
+                                    {dailyAbsorbed !== undefined && (
+                                        <div className={`pt-3 border-t ${theme.isDark ? 'border-white/10' : 'border-black/10'} space-y-1.5`}>
+                                            <div className="flex justify-between items-center">
+                                                <div className={`flex items-center gap-2 ${theme.highlightText} font-mono text-[clamp(8px,0.9vw,10px)] tracking-widest font-bold`}>
+                                                    <span>⚡</span> DIVINE_MANDATE
+                                                </div>
+                                                <span className={`text-[clamp(7px,0.8vw,9px)] font-mono ${theme.mutedText}`}>{dailyAbsorbed >= 5 ? '✓ CONQUERED' : 'PENDING'}</span>
+                                            </div>
+                                            <div className={`text-[clamp(7px,0.8vw,9px)] ${theme.mutedText} font-mono tracking-widest uppercase`}>OBJECTIVE</div>
+                                            <div className="flex justify-between items-end">
+                                                <span className={`text-[clamp(10px,1vw,12px)] font-black italic ${theme.headingText} tracking-wide`}>ABSORB 5 STORIES</span>
+                                                <span className={`${theme.highlightText} font-mono font-bold text-[clamp(12px,1.2vw,16px)]`}>{Math.min(5, dailyAbsorbed)}<span className={`${theme.mutedText} text-[clamp(9px,0.9vw,11px)]`}>/5</span></span>
+                                            </div>
+                                            <div className={`h-1 w-full ${theme.isDark ? 'bg-white/10' : 'bg-black/10'} relative overflow-hidden`}>
+                                                <div className={`h-full bg-gradient-to-r ${theme.gradient} progress-bloom transition-all duration-700`} style={{ width: `${Math.min(100, (dailyAbsorbed / 5) * 100)}%`, color: theme.id === 'LIGHT' ? '#0ea5e9' : '#fbbf24' }} />
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
-                                <div className={`h-1.5 w-full ${theme.isDark ? 'bg-white/10' : 'bg-black/10'} relative overflow-hidden`}>
-                                    <div className={`h-full bg-gradient-to-r ${theme.gradient} progress-bloom transition-all duration-1000 ease-out`} style={{ width: `${Math.min(100, (totalManhwa / 10))}%`, color: theme.id === 'LIGHT' ? '#0ea5e9' : '#fbbf24' }} />
-                                </div>
-                            </div>
+                            </SystemFrame>
                         </div>
                     )}
                 </aside>

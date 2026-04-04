@@ -194,7 +194,45 @@ app.post('/api/auth/guest', async (req, res) => {
     }
 });
 
-// --- BATCHED INITIALIZATION ---
+// PUT /api/auth/update - Update Hunter Credentials
+app.put('/api/auth/update', authenticate, async (req, res) => {
+    try {
+        await connectDB();
+        const { newUsername, currentPassword, newPassword } = req.body;
+
+        if (!currentPassword) {
+            return res.status(400).json({ message: 'Current password is required to update credentials.' });
+        }
+
+        const user = await User.findById(req.user._id);
+        if (!user) return res.status(404).json({ message: 'Hunter identity not found in Akashic Records.' });
+
+        const isMatch = await comparePassword(currentPassword, user.passwordHash);
+        if (!isMatch) return res.status(401).json({ message: 'Access Denied: Current password is incorrect.' });
+
+        if (newUsername && newUsername.trim() !== user.username) {
+            const taken = await User.findOne({ username: { $regex: new RegExp(`^${newUsername.trim()}$`, 'i') } });
+            if (taken) return res.status(409).json({ message: 'Archive Collision: Username already taken.' });
+            user.username = newUsername.trim();
+        }
+
+        if (newPassword) {
+            user.passwordHash = await hashPassword(newPassword);
+        }
+
+        await user.save();
+
+        const token = generateToken(user);
+        res.json({
+            token,
+            user: { id: user._id, username: user.username, role: user.role }
+        });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+
 
 // GET /api/boot/initial-data - Batched fetch for instant loading
 app.get('/api/boot/initial-data', authenticate, async (req, res) => {
@@ -410,34 +448,76 @@ app.delete('/api/quests/:id', authenticate, async (req, res) => {
     }
 });
 
-// POST /api/admin/bulk-classify - Admin only migration
+// POST /api/admin/bulk-classify — SSE streaming progress
 app.post('/api/admin/bulk-classify', authenticate, checkRole('SOVEREIGN'), async (req, res) => {
+    // Switch to Server-Sent Events so the client gets live progress per title
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no'); // disable nginx buffering in prod
+    res.flushHeaders();
+
+    const send = (data) => {
+        try { res.write(`data: ${JSON.stringify(data)}\n\n`); } catch (_) {}
+    };
+
     try {
         const Quest = getModel(req.dbConn, 'Quest');
-        console.log("[Admin] Starting Bulk Classification...");
-        const quests = await Quest.find({
-            $or: [
-                { classType: 'UNKNOWN' },
-                { classType: { $exists: false } },
-                { classType: '' },
-                { classType: 'PLAYER' } // Re-evaluate players to see if they fit better classes
-            ]
+        console.log("[Admin] Starting Full Metadata-Based SSE Classification...");
+        const quests = await Quest.find({});
+        const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+        let updated = 0;
+
+        let isAborted = false;
+        req.on('close', () => {
+            console.log("[Admin] SSE Connection closed. Aborting classification.");
+            isAborted = true;
         });
 
-        let updated = 0;
-        for (const quest of quests) {
-            const newClass = inferClassFromTitle(quest.title);
-            if (newClass !== quest.classType) {
+        send({ type: 'start', total: quests.length });
+
+        for (let i = 0; i < quests.length; i++) {
+            if (isAborted) break;
+
+            const quest = quests[i];
+            const oldClass = quest.classType;
+            let newClass = null;
+
+            try {
+                const metadata = await fetchBest(quest.title);
+                const genres = metadata?.genres || [];
+                
+                newClass = classifyBest(quest.title, genres, oldClass);
+                
+                if (genres.length > 0) {
+                    console.log(`[Classify] "${quest.title}" → genres: [${genres.slice(0,4).join(', ')}] + title → ${newClass}`);
+                } else {
+                    console.log(`[Classify] "${quest.title}" → no metadata, title-only → ${newClass}`);
+                }
+            } catch (apiErr) {
+                console.warn(`[Classify] API error for "${quest.title}": ${apiErr.message}`);
+                newClass = classifyBest(quest.title, []);
+            }
+
+            const changed = newClass !== oldClass;
+            if (changed) {
                 quest.classType = newClass;
                 await quest.save();
                 updated++;
             }
+
+            send({ type: 'progress', processed: i + 1, total: quests.length, title: quest.title, class: newClass, changed, updated });
+
+            if (i < quests.length - 1) await sleep(800);
         }
 
-        res.json({ message: "Classification Synchronized", total: quests.length, updated });
+        console.log(`[Admin] SSE Classification complete. ${updated}/${quests.length} records updated.`);
+        send({ type: 'complete', total: quests.length, updated });
+        res.end();
     } catch (err) {
         console.error("[Admin] Classification Failure:", err.message);
-        res.status(500).json({ error: "Classification Engine Failure" });
+        send({ type: 'error', message: err.message });
+        res.end();
     }
 });
 
@@ -584,14 +664,181 @@ app.get('/api/proxy/image', async (req, res) => {
     }
 });
 
-const inferClassFromTitle = (title) => {
-    const t = title.toLowerCase();
-    if (t.includes('necromancer') || t.includes('undead')) return "NECROMANCER";
-    if (t.includes('mage') || t.includes('magic') || t.includes('constellation') || t.includes('star')) return "CONSTELLATION";
-    if (t.includes('irregular') || t.includes('tower')) return "IRREGULAR";
-    if (t.includes('return') || t.includes('reincarnat') || t.includes('wizard')) return "MAGE";
-    if (t.includes('player') || t.includes('ranker') || t.includes('level')) return "PLAYER";
-    return "PLAYER";
+// ─── INTERNAL SCORERS ─────────────────────────────────────────────────────────
+// Both return a Record<class, number> so they can be additively combined.
+
+const _genreScores = (genres) => {
+    const scores = { NECROMANCER: 0, CONSTELLATION: 0, MAGE: 0, IRREGULAR: 0, PLAYER: 0 };
+    if (!genres || genres.length === 0) return scores;
+
+    const g = genres.map(x => x.toLowerCase());
+    const has = (kw) => g.some(genre => genre.includes(kw));
+
+    // PLAYER — explicit game/system mechanics
+    if (has('game'))                     scores.PLAYER += 8;
+    if (has('rpg'))                      scores.PLAYER += 8;
+    if (has('video game'))               scores.PLAYER += 8;
+    if (has('virtual reality'))          scores.PLAYER += 6;
+    if (has('level'))                    scores.PLAYER += 5;
+    if (has('system'))                   scores.PLAYER += 5;
+    if (has('dungeon'))                  scores.PLAYER += 5;
+    if (has('user registration'))        scores.PLAYER += 6;
+    if (has('guild'))                    scores.PLAYER += 4;
+    if (has('tournament'))               scores.PLAYER += 3;
+
+    // IRREGULAR — isekai / regression / transmigration
+    if (has('isekai'))                   scores.IRREGULAR += 9;
+    if (has('reincarnation'))            scores.IRREGULAR += 9;
+    if (has('regression'))               scores.IRREGULAR += 9;
+    if (has('transmigration'))           scores.IRREGULAR += 9;
+    if (has('time travel'))              scores.IRREGULAR += 7;
+    if (has('time loop'))                scores.IRREGULAR += 7;
+    if (has('transported to another'))   scores.IRREGULAR += 8;
+    if (has('villainess'))               scores.IRREGULAR += 6;
+    if (has('second chance'))            scores.IRREGULAR += 6;
+    if (has('tower'))                    scores.IRREGULAR += 5;
+    if (has('overpowered main character')) scores.IRREGULAR += 3;
+
+    // MAGE — explicit magic/sorcery tags (note: bare 'fantasy' is very generic, only +1)
+    if (has('magic system'))             scores.MAGE += 8;
+    if (has('magic'))                    scores.MAGE += 7;
+    if (has('alchemy'))                  scores.MAGE += 7;
+    if (has('sorcery'))                  scores.MAGE += 8;
+    if (has('wizard'))                   scores.MAGE += 8;
+    if (has('witchcraft'))               scores.MAGE += 8;
+    if (has('elemental'))                scores.MAGE += 5;
+    if (has('mana'))                     scores.MAGE += 5;
+    if (has('spirit'))                   scores.MAGE += 4;
+    if (has('contract'))                 scores.MAGE += 4;
+    if (has('familiar'))                 scores.MAGE += 4;
+    if (has('enchant'))                  scores.MAGE += 5;
+    // "fantasy" alone is too vague — minimal weight so title signals can override
+    if (has('fantasy') && !has('isekai') && !has('reincarnation')) scores.MAGE += 1;
+
+    // CONSTELLATION — divine / mythological / cosmic
+    if (has('mythology'))                scores.CONSTELLATION += 9;
+    if (has('gods'))                     scores.CONSTELLATION += 8;
+    if (has('divine'))                   scores.CONSTELLATION += 8;
+    if (has('celestial'))                scores.CONSTELLATION += 8;
+    if (has('cosmic'))                   scores.CONSTELLATION += 8;
+    if (has('religion'))                 scores.CONSTELLATION += 6;
+    if (has('prophecy'))                 scores.CONSTELLATION += 7;
+    if (has('fate'))                     scores.CONSTELLATION += 5;
+    if (has('chosen one'))               scores.CONSTELLATION += 6;
+    if (has('heaven'))                   scores.CONSTELLATION += 5;
+    if (has('saint'))                    scores.CONSTELLATION += 5;
+    if (has('angel'))                    scores.CONSTELLATION += 5;
+    if (has('dragon'))                   scores.CONSTELLATION += 4;
+
+    // NECROMANCER — death / dark arts / horror / underworld
+    if (has('necromancy'))               scores.NECROMANCER += 10;
+    if (has('undead'))                   scores.NECROMANCER += 9;
+    if (has('horror'))                   scores.NECROMANCER += 7;
+    if (has('gore'))                     scores.NECROMANCER += 6;
+    if (has('zombie'))                   scores.NECROMANCER += 8;
+    if (has('skeleton'))                 scores.NECROMANCER += 8;
+    if (has('dark fantasy'))             scores.NECROMANCER += 6;
+    if (has('supernatural') && has('horror')) scores.NECROMANCER += 5;
+    if (has('demons') && has('horror'))  scores.NECROMANCER += 5;
+    if (has('psychological') && has('horror')) scores.NECROMANCER += 5;
+    if (has('survival') && has('horror')) scores.NECROMANCER += 4;
+    if (has('shadow'))                   scores.NECROMANCER += 5;
+    if (has('death'))                    scores.NECROMANCER += 4;
+
+    return scores;
 };
+
+const _titleScores = (title) => {
+    const t = title.toLowerCase();
+    const scores = { NECROMANCER: 0, CONSTELLATION: 0, MAGE: 0, IRREGULAR: 0, PLAYER: 0 };
+
+    // Weight tiers:
+    //   10 = class-defining single word (necromancer, wizard, isekai)
+    //    6 = strong supporting word (shadow, lich, tower)
+    //    3 = ambiguous but relevant (dark, return, awakened)
+
+    // NECROMANCER keywords
+    [['necromancer', 10], ['necromancy', 10], ['necro', 10], ['undead', 10], ['lich', 10],
+     ['death knight', 10], ['zombie', 9], ['skeleton', 9], ['dark lord', 8],
+     ['shadow monarch', 8], ['death god', 8], ['demon king', 6], ['bone', 6],
+     ['corpse', 6], ['grave', 6], ['reaper', 6], ['wraith', 6], ['phantom', 6],
+     ['abyss', 5], ['cursed', 4], ['shadow', 5], ['hollow', 4], ['shade', 5],
+     ['requiem', 6], ['soul stealer', 8], ['revenant', 8]
+    ].forEach(([kw, w]) => { if (t.includes(kw)) scores.NECROMANCER += w; });
+
+    // CONSTELLATION keywords
+    [['constellation', 10], ['celestial', 10], ['mythology', 10], ['divine', 8],
+     ['cosmic', 8], ['god', 6], ['goddess', 8], ['angel', 7], ['archangel', 8],
+     ['oracle', 8], ['saint', 7], ['holy', 6], ['sacred', 6], ['heaven', 6],
+     ['ascend', 5], ['transcend', 5], ['immortal', 5], ['eternal', 5],
+     ['dragon god', 8], ['prophecy', 7], ['fated', 5], ['chosen', 5]
+    ].forEach(([kw, w]) => { if (t.includes(kw)) scores.CONSTELLATION += w; });
+
+    // IRREGULAR keywords
+    [['isekai', 10], ['reincarnation', 10], ['reincarnate', 10], ['transmigrat', 10],
+     ['regression', 10], ['regress', 9], ['returner', 8], ['time loop', 9],
+     ['time travel', 9], ['second life', 8], ['second chance', 8], ['restart', 7],
+     ['irregular', 10], ['villainess', 8], ['return', 4], ['otherworld', 7],
+     ['tower', 5], ['invincible', 5], ['strongest', 5], ['overpowered', 5]
+    ].forEach(([kw, w]) => { if (t.includes(kw)) scores.IRREGULAR += w; });
+
+    // MAGE keywords
+    [['wizard', 10], ['mage', 10], ['sorcerer', 10], ['witch', 10], ['archmage', 10],
+     ['arch mage', 10], ['witchcraft', 10], ['magician', 8], ['sorcery', 10],
+     ['enchant', 7], ['alchemy', 9], ['alchemist', 9], ['arcane', 8],
+     ['spell', 6], ['magic', 7], ['potion', 6], ['familiar', 6],
+     ['grimoire', 7], ['elemental', 6], ['summoner', 6], ['mystic', 5]
+    ].forEach(([kw, w]) => { if (t.includes(kw)) scores.MAGE += w; });
+
+    // PLAYER keywords
+    [['player', 10], ['ranker', 9], ['leveling', 10], ['levelling', 10],
+     ['level up', 9], ['hunter', 7], ['dungeon', 7], ['guild', 7],
+     ['raider', 7], ['mmorpg', 10], ['game', 7], ['rpg', 10],
+     ['solo', 5], ['rank', 4], ['awakener', 6], ['boss', 5]
+    ].forEach(([kw, w]) => { if (t.includes(kw)) scores.PLAYER += w; });
+
+    return scores;
+};
+
+// Combined classifier — adds genre + title scores so neither is silently discarded.
+// Example: "Return of the Necromancer" with genres ["Action","Fantasy"]:
+//   NECROMANCER = genre:0 + title:10 = 10  ✓ wins
+//   MAGE        = genre:1 + title:0  = 1
+const classifyBest = (title, genres, oldClass) => {
+    const gs = _genreScores(genres || []);
+    const ts = _titleScores(title || '');
+
+    const PRIORITY = ['NECROMANCER', 'CONSTELLATION', 'MAGE', 'IRREGULAR', 'PLAYER'];
+    let best = 'PLAYER', bestScore = 0;
+    for (const cls of PRIORITY) {
+        const combined = gs[cls] + ts[cls];
+        if (combined > bestScore) { bestScore = combined; best = cls; }
+    }
+    
+    // If we confidently scored something, return it.
+    // Otherwise, retain the old class. If no old class exists, default to PLAYER.
+    if (bestScore > 0) return best;
+    return oldClass || 'PLAYER';
+};
+
+// ── Backward-compat wrappers ──────────────────────────────────────────────────
+const classifyFromGenres = (genres) => {
+    const scores = _genreScores(genres);
+    const maxScore = Math.max(...Object.values(scores));
+    if (maxScore === 0) return null;
+    const priority = ['NECROMANCER', 'CONSTELLATION', 'MAGE', 'IRREGULAR', 'PLAYER'];
+    return priority.find(cls => scores[cls] === maxScore) || null;
+};
+
+const inferClassFromTitle = (title) => {
+    const scores = _titleScores(title);
+    const maxScore = Math.max(...Object.values(scores));
+    if (maxScore === 0) return 'IRREGULAR';
+    const priority = ['NECROMANCER', 'CONSTELLATION', 'MAGE', 'IRREGULAR', 'PLAYER'];
+    return priority.find(cls => scores[cls] === maxScore) || 'IRREGULAR';
+};
+
+
+
 
 module.exports = app;

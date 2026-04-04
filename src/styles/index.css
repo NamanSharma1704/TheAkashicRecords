@@ -62,6 +62,27 @@
     }
 }
 
+@keyframes scan-h {
+    0% { transform: scaleX(0); opacity: 0; left: 0; }
+    5% { transform: scaleX(1); opacity: 1; }
+    95% { transform: scaleX(1); opacity: 1; }
+    100% { transform: scaleX(0); opacity: 0; left: 100%; }
+}
+
+@keyframes glitch {
+    0% { transform: translate(0); text-shadow: -2px 0 #ff00c1, 2px 0 #00fff9; }
+    20% { transform: translate(-2px, 2px); }
+    40% { transform: translate(-2px, -2px); text-shadow: 2px 0 #ff00c1, -2px 0 #00fff9; }
+    60% { transform: translate(2px, 2px); }
+    80% { transform: translate(2px, -2px); text-shadow: -2px 0 #ff00c1, 2px 0 #00fff9; }
+    100% { transform: translate(0); }
+}
+
+@keyframes pulse-aura {
+    0%, 100% { opacity: 0.3; transform: scale(1); filter: blur(10px); }
+    50% { opacity: 0.6; transform: scale(1.1); filter: blur(15px); }
+}
+
 @keyframes text-shimmer {
     0% {
         background-position: 0% 50%;
@@ -138,6 +159,18 @@
     .animate-text-shimmer {
         animation: text-shimmer 3s linear infinite;
         will-change: background-position;
+    }
+
+    .animate-glitch {
+        animation: glitch 0.3s cubic-bezier(.25, .46, .45, .94) both infinite;
+    }
+
+    .animate-aura {
+        animation: pulse-aura 2s ease-in-out infinite;
+    }
+
+    .animate-scan-h {
+        animation: scan-h 3s linear infinite;
     }
 
     .progress-bloom {

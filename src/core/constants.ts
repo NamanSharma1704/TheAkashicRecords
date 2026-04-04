@@ -13,7 +13,7 @@ export const THEMES: Record<string, Theme> = {
         inputBg: 'bg-black/50',
         baseText: 'text-gray-300',
         headingText: 'text-white',
-        mutedText: 'text-gray-500',
+        mutedText: 'text-gray-400',
         highlightText: 'text-[#f59e0b]',
         border: 'border-[#f59e0b]',
         borderSubtle: 'border-white/10',
@@ -23,6 +23,7 @@ export const THEMES: Record<string, Theme> = {
         starColor: '255, 255, 255',
         gradient: 'from-[#f59e0b] via-yellow-400 to-white',
         rayColor: 'rgba(245, 158, 11, 0.08)',
+        accentColor: '#f59e0b',
         isDark: true
     },
     LIGHT: {
@@ -46,6 +47,7 @@ export const THEMES: Record<string, Theme> = {
         starColor: '6, 182, 212',
         gradient: 'from-[#06b6d4] to-cyan-500',
         rayColor: 'rgba(6, 182, 212, 0.15)',
+        accentColor: '#06b6d4',
         isDark: false
     },
     SYSTEM: {
@@ -59,7 +61,7 @@ export const THEMES: Record<string, Theme> = {
         inputBg: 'bg-black/50',
         baseText: 'text-slate-300',
         headingText: 'text-cyan-50',
-        mutedText: 'text-slate-500',
+        mutedText: 'text-slate-400',
         highlightText: 'text-cyan-400',
         border: 'border-cyan-900/50',
         borderSubtle: 'border-cyan-950/50',
@@ -69,6 +71,7 @@ export const THEMES: Record<string, Theme> = {
         starColor: '34, 211, 238', // Cyan-400 RGB
         gradient: 'from-cyan-400 to-blue-500',
         rayColor: 'from-cyan-500/10',
+        accentColor: '#06b6d4', // Standardizing on Cyan-500 for System
         isDark: true
     },
     BLOOD: {
@@ -82,7 +85,7 @@ export const THEMES: Record<string, Theme> = {
         inputBg: 'bg-black/50',
         baseText: 'text-stone-300',
         headingText: 'text-red-50',
-        mutedText: 'text-stone-500',
+        mutedText: 'text-stone-400',
         highlightText: 'text-red-500',
         border: 'border-red-900/30',
         borderSubtle: 'border-red-950/50',
@@ -92,6 +95,7 @@ export const THEMES: Record<string, Theme> = {
         starColor: '248, 113, 113', // Red-400 RGB
         gradient: 'from-red-500 to-rose-600',
         rayColor: 'from-red-500/10',
+        accentColor: '#ef4444',
         isDark: true
     }
 };

@@ -16,9 +16,10 @@ interface DivineSpireProps {
     itemsPerFloor: number;
     playerRank: { name: string; color: string };
     streak: number;
+    dailyAbsorbed: number;
 }
 
-const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items, onActivate, itemsPerFloor, playerRank, streak }) => {
+const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items, onActivate, itemsPerFloor, playerRank, streak, dailyAbsorbed }) => {
     // TOWER SYSTEM STATE
     const [viewMode, setViewMode] = useState<'TOWER' | 'FLOOR'>('TOWER'); // 'TOWER' | 'FLOOR'
     const [selectedFloorIndex, setSelectedFloorIndex] = useState(0);
@@ -137,7 +138,7 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
             {/* TOWER BACKGROUND LAYER (FULLSCREEN) */}
             {viewMode === 'TOWER' && (
                 <div className="absolute inset-0 z-0 animate-in fade-in duration-700">
-                    <TowerHUD items={items} theme={theme} onActivate={onActivate} isFocused={isFocused} selectedFloorIndex={selectedFloorIndex} itemsPerFloor={itemsPerFloor} streak={streak} />
+                    <TowerHUD items={items} theme={theme} onActivate={onActivate} isFocused={isFocused} selectedFloorIndex={selectedFloorIndex} itemsPerFloor={itemsPerFloor} streak={streak} dailyAbsorbed={dailyAbsorbed} />
                     <TowerStructure theme={theme} onSelectFloor={handleSelectFloor} onFocus={handleFocus} items={items} itemsPerFloor={itemsPerFloor} isPaused={false} />
                 </div>
             )}

@@ -42,7 +42,7 @@ const QuestCard = React.memo<DivineMonolithProps>(({ item, onClick, index, id, t
             whileTap={{ scale: 0.95 }}
             className="group relative cursor-pointer perspective-1000 w-full h-full shadow-[0_20px_50px_rgba(0,0,0,0.5)] hover:shadow-[0_40px_80px_rgba(0,0,0,0.8)] transition-shadow duration-700 rounded-lg border border-white/5 hover:border-white/20"
         >
-            <div className={`relative w-full h-full min-h-[400px] md:min-h-[500px] aspect-[9/13] ${theme.panelBg} border ${theme.borderSubtle} group-hover:border-opacity-0 transition-all duration-700 ease-out overflow-hidden rounded-lg shadow-2xl`}>
+            <div className={`relative w-full h-full min-h-[400px] md:min-h-[500px] aspect-[72/103] ${theme.panelBg} border ${theme.borderSubtle} group-hover:border-opacity-0 transition-all duration-700 ease-out overflow-hidden rounded-lg shadow-2xl`}>
                 <div className={`absolute inset-0 z-20 ${theme.overlay} group-hover:opacity-0 transition-opacity duration-700 flex flex-col items-center justify-center bg-black/40 backdrop-blur-[2px]`}>
                     <div className={`w-[1px] h-16 ${rankStyle.bg} opacity-50 mb-4 shadow-[0_0_15px_currentColor]`} />
                     <Fingerprint size={32} className={`${rankStyle.color} opacity-30 animate-pulse`} />

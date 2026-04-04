@@ -54,10 +54,26 @@ const SystemNotification: React.FC<SystemNotificationProps> = ({
                             <div className={`p-3 rounded-full ${theme.isDark ? 'bg-white/5' : 'bg-black/5'} border ${theme.borderSubtle}`}>
                                 {getIcon()}
                             </div>
-                            <div className="flex-1 pt-1">
-                                <p className={`font-orbitron font-bold text-sm tracking-wide ${theme.headingText} leading-relaxed`}>
-                                    {message}
-                                </p>
+                            <div className="flex-1 pt-1 space-y-2.5">
+                                {message.split('\n').map((paragraph, index) => {
+                                    if (!paragraph.trim()) return null;
+                                    
+                                    // Make the very first paragraph a striking, bold header
+                                    if (index === 0) {
+                                        return (
+                                            <p key={index} className={`font-orbitron font-bold text-xs sm:text-sm tracking-widest uppercase ${theme.headingText} leading-relaxed`}>
+                                                {paragraph}
+                                            </p>
+                                        );
+                                    }
+                                    
+                                    // Subsequent paragraphs are rendered as sleek terminal data feeds
+                                    return (
+                                        <p key={index} className={`font-mono text-[10px] sm:text-xs tracking-wide ${paragraph.includes('WARNING:') ? 'text-amber-500 font-bold' : theme.mutedText} leading-loose`}>
+                                            {paragraph}
+                                        </p>
+                                    );
+                                })}
                             </div>
                         </div>
 

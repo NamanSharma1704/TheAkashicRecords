@@ -612,10 +612,10 @@ const App: React.FC = () => {
                                 </div>
                             </div>
 
-                            <div className="relative flex-none h-full min-h-0 min-w-0 w-[min(85vw,320px)] md:w-full md:max-w-[45%] lg:w-auto lg:max-h-[800px] aspect-[72/103] self-center flex items-center justify-center transition-all duration-300">
-                                {/* FROSTED GLASS PLATFORM (Sharp Square Base - High Visibility) */}
+                            <div className="relative flex-none h-full min-h-0 min-w-0 w-[min(85vw,320px)] md:w-full md:max-w-[45%] lg:w-auto lg:max-h-[800px] aspect-[72/103] self-center flex items-center justify-center transition-all duration-700 ease-out transform-gpu hover:-translate-y-2 perspective-[1000px] group">
+                                {/* FROSTED GLASS PLATFORM (Sharp Square Base) */}
                                 <div
-                                    className="absolute -inset-4 backdrop-blur-3xl pointer-events-none transition-all duration-700"
+                                    className="absolute -inset-4 backdrop-blur-3xl pointer-events-none transition-all duration-700 opacity-100 group-hover:opacity-60"
                                     style={{ 
                                         background: theme.isDark ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.45)',
                                         border: theme.isDark ? '1px solid rgba(255,255,255,0.3)' : '1px solid rgba(0,0,0,0.1)',
@@ -623,25 +623,32 @@ const App: React.FC = () => {
                                     }}
                                 />
 
-                                {/* Outer wrapper: pulsing glow border around the cover (SHARP) */}
-                                <div className="relative w-full h-full shadow-[0_0_20px_rgba(0,0,0,0.3)]">
+                                {/* Outer wrapper: pulsing glow border around the cover (SHARP + PARALLAX FLOAT) */}
+                                <div className="relative w-full h-full shadow-[0_0_20px_rgba(0,0,0,0.3)] transition-all duration-700 group-hover:shadow-[0_30px_60px_rgba(0,0,0,0.5)]">
+                                    
+                                    {/* Corner Reticles (External Floating Targeting Geometry) */}
+                                    <div className="absolute -top-[16px] -left-[16px] w-8 h-8 border-t-[2px] border-l-[2px] z-30 pointer-events-none opacity-80 transition-colors duration-700" style={{ borderColor: theme.isDark ? '#E2E8F0' : '#475569', filter: theme.isDark ? 'drop-shadow(0 0 4px rgba(255,255,255,0.4))' : 'drop-shadow(0 2px 4px rgba(0,0,0,0.6))' }} />
+                                    <div className="absolute -top-[16px] -right-[16px] w-8 h-8 border-t-[2px] border-r-[2px] z-30 pointer-events-none opacity-80 transition-colors duration-700" style={{ borderColor: theme.isDark ? '#E2E8F0' : '#475569', filter: theme.isDark ? 'drop-shadow(0 0 4px rgba(255,255,255,0.4))' : 'drop-shadow(0 2px 4px rgba(0,0,0,0.6))' }} />
+                                    <div className="absolute -bottom-[16px] -left-[16px] w-8 h-8 border-b-[2px] border-l-[2px] z-30 pointer-events-none opacity-80 transition-colors duration-700" style={{ borderColor: theme.isDark ? '#E2E8F0' : '#475569', filter: theme.isDark ? 'drop-shadow(0 0 4px rgba(255,255,255,0.4))' : 'drop-shadow(0 2px 4px rgba(0,0,0,0.6))' }} />
+                                    <div className="absolute -bottom-[16px] -right-[16px] w-8 h-8 border-b-[2px] border-r-[2px] z-30 pointer-events-none opacity-80 transition-colors duration-700" style={{ borderColor: theme.isDark ? '#E2E8F0' : '#475569', filter: theme.isDark ? 'drop-shadow(0 0 4px rgba(255,255,255,0.4))' : 'drop-shadow(0 2px 4px rgba(0,0,0,0.6))' }} />
+
                                     {/* Pulsing border glow (Unified High-Contrast Chrome - Visible on White) */}
                                     <div
                                         className="absolute -inset-[3.5px] animate-[pulse_3s_ease-in-out_infinite] pointer-events-none z-10"
                                         style={{
-                                            border: `1.5px solid rgba(255, 255, 255, 0.95)`,
-                                            outline: theme.isDark ? `0.5px solid rgba(255, 255, 255, 0.1)` : `1px solid rgba(0, 0, 0, 0.25)`,
+                                            border: theme.isDark ? `1.5px solid rgba(255, 255, 255, 0.95)` : `1.5px solid #475569`,
+                                            outline: theme.isDark ? `0.5px solid rgba(255, 255, 255, 0.1)` : `0.5px solid rgba(0, 0, 0, 0.1)`,
                                             boxShadow: theme.isDark 
                                                 ? `0 0 20px rgba(255, 255, 255, 0.4), 0 0 40px ${theme.accentColor}22, inset 0 0 10px rgba(255, 255, 255, 0.2)`
-                                                : `0 4px 15px rgba(0, 0, 0, 0.1), 0 0 20px ${theme.accentColor}22, inset 0 0 5px rgba(255, 255, 255, 0.5)`
+                                                : `0 4px 15px rgba(0, 0, 0, 0.15), 0 0 20px ${theme.accentColor}22, inset 0 0 5px rgba(0, 0, 0, 0.2)`
                                         }}
                                     />
-                                    {/* Inner cover image container (SHARP) */}
+                                    {/* Inner cover image container (SHARP + HIGH IMAGE VISIBILITY) */}
                                     <div
-                                        className={`w-full h-full overflow-hidden relative group transition-all duration-700`}
+                                        className={`w-full h-full overflow-hidden relative transition-all duration-700`}
                                         style={{
-                                            border: `1px solid rgba(255, 255, 255, 0.1)`,
-                                            boxShadow: `inset 0 0 40px rgba(0,0,0,0.8)`
+                                            border: theme.isDark ? `1px solid rgba(255, 255, 255, 0.1)` : `1px solid rgba(0, 0, 0, 0.15)`,
+                                            boxShadow: `inset 0 0 15px rgba(0,0,0,0.3)` /* Lighter internal vignette */
                                         }}
                                     >
                                         <img
@@ -672,8 +679,8 @@ const App: React.FC = () => {
                                             }}
                                         />
 
-                                        {/* Hover gradient overlay */}
-                                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none opacity-40 group-hover:opacity-90 transition-opacity duration-300" />
+                                        {/* Hover gradient overlay (Initial opacity-0 for immediate full visibility) */}
+                                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
                                         {/* Bright Bottom Accent Bar */}
                                         <div

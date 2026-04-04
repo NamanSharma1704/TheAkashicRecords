@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useMemo, Suspense, lazy, useRef } from 'react';
-import { motion, AnimatePresence, Reorder } from 'motion/react';
+import { motion, AnimatePresence, Reorder, useDragControls } from 'motion/react';
 import { Quest } from './types';
 import SystemFrame from '../components/system/SystemFrame';
 import SystemLogo from '../components/system/SystemLogo';
 import ScrambleText from '../components/system/ScrambleText';
-import { Sword, Activity, ExternalLink, Terminal, Sun, Moon, Plus, Zap, Crown, X, LayoutTemplate } from 'lucide-react';
+import { Sword, Activity, ExternalLink, Terminal, Sun, Moon, Plus, Zap, Crown, X, LayoutTemplate, GripVertical } from 'lucide-react';
 import { getPlayerRank, getThemedRankStyle, calculateQuestRank } from '../utils/ranks';
 import { THEMES, ITEMS_PER_FLOOR } from './constants';
 
@@ -35,6 +35,55 @@ const mapQuest = (q: any): Quest => ({
     classType: q.classType || "PLAYER",
     lastUpdated: q.lastRead || q.lastUpdated || Date.now()
 });
+
+// SUB-COMPONENT: QuestListItem to handle individual drag controls and touch scrolling
+const QuestListItem = ({ item, theme, activeId, handleLogClick }: any) => {
+    const dragControls = useDragControls();
+    const isHighlighted = activeId === item.id;
+
+    return (
+        <Reorder.Item
+            key={item.id}
+            value={item}
+            dragListener={false}
+            dragControls={dragControls}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => handleLogClick(item.id)}
+            className={`relative group cursor-pointer border py-1.5 px-3 transition-colors duration-200 ${isHighlighted ? `${theme.border} ${theme.isDark ? 'bg-white/5' : 'bg-sky-500/5'}` : `border-transparent hover:${theme.borderSubtle} bg-transparent`}`}
+        >
+            <div className="flex justify-between items-center h-full">
+                <div className="flex items-center gap-2 max-w-[85%] min-w-0">
+                    {/* Dedicated Drag Handle for iPad scrolling support */}
+                    <div
+                        className={`cursor-grab active:cursor-grabbing p-1 -ml-2 opacity-0 group-hover:opacity-40 transition-opacity flex-none ${theme.baseText}`}
+                        onPointerDown={(e) => dragControls.start(e)}
+                    >
+                        <GripVertical size={14} />
+                    </div>
+
+                    {item.coverUrl && (
+                        <div className={`w-8 h-[45px] xl:w-10 xl:h-[56px] flex-none rounded-sm border ${theme.isDark ? 'border-gray-800' : 'border-gray-300'} bg-black overflow-hidden opacity-80 group-hover:opacity-100 transition-opacity shadow-sm object-cover shrink-0`}>
+                            <img src={item.coverUrl} className="w-full h-full object-cover" />
+                        </div>
+                    )}
+                    <div className="flex flex-col min-w-0 pr-2">
+                        <span className={`font-bold font-mono text-xs ${isHighlighted ? theme.highlightText : `${theme.mutedText} group-hover:${theme.headingText}`} transition-colors duration-700 uppercase truncate`}>{item.title}</span>
+                        <div className="flex items-center gap-2 mt-1">
+                            <div className={`w-1 h-1 rounded-full flex-none ${item.status === 'ACTIVE' ? (theme.isDark ? 'bg-amber-400' : 'bg-cyan-500') : 'bg-gray-400'}`} />
+                            <span className={`text-[9px] ${theme.mutedText} uppercase font-mono tracking-widest transition-colors duration-700 truncate`}>{item.status}</span>
+                        </div>
+                    </div>
+                </div>
+                <div className="flex items-center gap-2">
+                    {isHighlighted && <Sun size={14} className={`${theme.highlightText} animate-spin-slow transition-colors duration-700 shrink-0`} />}
+                </div>
+            </div>
+        </Reorder.Item>
+    );
+};
+
 
 // ----------------------------------------------------------------------
 // LAZY LOADED HEAVY COMPONENTS 
@@ -616,7 +665,7 @@ const App: React.FC = () => {
                                 {/* FROSTED GLASS PLATFORM (Sharp Square Base) */}
                                 <div
                                     className="absolute -inset-4 backdrop-blur-3xl pointer-events-none transition-all duration-700 opacity-100 group-hover:opacity-60"
-                                    style={{ 
+                                    style={{
                                         background: theme.isDark ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.45)',
                                         border: theme.isDark ? '1px solid rgba(255,255,255,0.3)' : '1px solid rgba(0,0,0,0.1)',
                                         boxShadow: theme.isDark ? '0 10px 40px rgba(0,0,0,0.2)' : '0 10px 40px rgba(0,0,0,0.08)'
@@ -625,7 +674,7 @@ const App: React.FC = () => {
 
                                 {/* Outer wrapper: pulsing glow border around the cover (SHARP + PARALLAX FLOAT) */}
                                 <div className="relative w-full h-full shadow-[0_0_20px_rgba(0,0,0,0.3)] transition-all duration-700 group-hover:shadow-[0_30px_60px_rgba(0,0,0,0.5)]">
-                                    
+
                                     {/* Corner Reticles (External Floating Targeting Geometry) */}
                                     <div className="absolute -top-[16px] -left-[16px] w-8 h-8 border-t-[2px] border-l-[2px] z-30 pointer-events-none opacity-80 transition-colors duration-700" style={{ borderColor: theme.isDark ? '#E2E8F0' : '#475569', filter: theme.isDark ? 'drop-shadow(0 0 4px rgba(255,255,255,0.4))' : 'drop-shadow(0 2px 4px rgba(0,0,0,0.6))' }} />
                                     <div className="absolute -top-[16px] -right-[16px] w-8 h-8 border-t-[2px] border-r-[2px] z-30 pointer-events-none opacity-80 transition-colors duration-700" style={{ borderColor: theme.isDark ? '#E2E8F0' : '#475569', filter: theme.isDark ? 'drop-shadow(0 0 4px rgba(255,255,255,0.4))' : 'drop-shadow(0 2px 4px rgba(0,0,0,0.6))' }} />
@@ -638,7 +687,7 @@ const App: React.FC = () => {
                                         style={{
                                             border: theme.isDark ? `1.5px solid rgba(255, 255, 255, 0.95)` : `1.5px solid #475569`,
                                             outline: theme.isDark ? `0.5px solid rgba(255, 255, 255, 0.1)` : `0.5px solid rgba(0, 0, 0, 0.1)`,
-                                            boxShadow: theme.isDark 
+                                            boxShadow: theme.isDark
                                                 ? `0 0 20px rgba(255, 255, 255, 0.4), 0 0 40px ${theme.accentColor}22, inset 0 0 10px rgba(255, 255, 255, 0.2)`
                                                 : `0 4px 15px rgba(0, 0, 0, 0.15), 0 0 20px ${theme.accentColor}22, inset 0 0 5px rgba(0, 0, 0, 0.2)`
                                         }}
@@ -862,38 +911,15 @@ const App: React.FC = () => {
                                 className="flex flex-col gap-1 h-full pb-6"
                             >
                                 <AnimatePresence initial={false}>
-                                    {orderedActiveQuests.map((item) => {
-                                        const isHighlighted = activeId === item.id;
-                                        return (
-                                            <Reorder.Item
-                                                key={item.id}
-                                                value={item}
-                                                initial={{ opacity: 0 }}
-                                                animate={{ opacity: 1 }}
-                                                exit={{ opacity: 0 }}
-                                                onClick={() => handleLogClick(item.id)}
-                                                className={`relative group cursor-pointer border py-1.5 px-3 transition-colors duration-200 ${isHighlighted ? `${theme.border} ${theme.isDark ? 'bg-white/5' : 'bg-sky-500/5'}` : `border-transparent hover:${theme.borderSubtle} bg-transparent`}`}
-                                            >
-                                                <div className="flex justify-between items-center pointer-events-none">
-                                                    <div className="flex items-center gap-3 max-w-[85%]">
-                                                        {item.coverUrl && (
-                                                            <div className={`w-8 h-[45px] xl:w-10 xl:h-[56px] flex-none rounded-sm border ${theme.isDark ? 'border-gray-800' : 'border-gray-300'} bg-black overflow-hidden opacity-80 group-hover:opacity-100 transition-opacity shadow-sm object-cover shrink-0`}>
-                                                                <img src={item.coverUrl} className="w-full h-full object-cover" />
-                                                            </div>
-                                                        )}
-                                                        <div className="flex flex-col min-w-0 pr-2">
-                                                            <span className={`font-bold font-mono text-xs ${isHighlighted ? theme.highlightText : `${theme.mutedText} group-hover:${theme.headingText}`} transition-colors duration-700 uppercase truncate`}>{item.title}</span>
-                                                            <div className="flex items-center gap-2 mt-1">
-                                                                <div className={`w-1 h-1 rounded-full flex-none ${item.status === 'ACTIVE' ? (theme.isDark ? 'bg-amber-400' : 'bg-cyan-500') : 'bg-gray-400'}`} />
-                                                                <span className={`text-[9px] ${theme.mutedText} uppercase font-mono tracking-widest transition-colors duration-700 truncate`}>{item.status}</span>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                    {isHighlighted && <Sun size={14} className={`${theme.highlightText} animate-spin-slow transition-colors duration-700 shrink-0`} />}
-                                                </div>
-                                            </Reorder.Item>
-                                        );
-                                    })}
+                                    {orderedActiveQuests.map((item) => (
+                                        <QuestListItem
+                                            key={item.id}
+                                            item={item}
+                                            theme={theme}
+                                            activeId={activeId}
+                                            handleLogClick={handleLogClick}
+                                        />
+                                    ))}
                                 </AnimatePresence>
                             </Reorder.Group>
                         </div>

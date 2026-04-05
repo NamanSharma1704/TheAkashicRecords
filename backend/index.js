@@ -561,10 +561,10 @@ app.post('/api/admin/bulk-classify', authenticate, checkRole('SOVEREIGN'), async
             let newClass = null;
 
             try {
-                // Per-item timeout: if fetchBest hangs for any reason, skip after 25s
+                // Per-item timeout: fetchBest has its own internal 11s ceiling, so 14s is more than enough here
                 const metadataPromise = fetchBest(quest.title);
                 const timeoutPromise = new Promise((_, reject) =>
-                    setTimeout(() => reject(new Error('Per-item timeout')), 25000)
+                    setTimeout(() => reject(new Error('Per-item timeout')), 14000)
                 );
                 const metadata = await Promise.race([metadataPromise, timeoutPromise]);
                 const genres = metadata?.genres || [];
@@ -590,7 +590,7 @@ app.post('/api/admin/bulk-classify', authenticate, checkRole('SOVEREIGN'), async
 
             send({ type: 'progress', processed: i + 1, total: quests.length, title: quest.title, class: newClass, changed, updated });
 
-            if (i < quests.length - 1) await sleep(1200);
+            if (i < quests.length - 1) await sleep(600); // Reduced from 1200ms — Jikan rate-limit is now caught faster
         }
 
         console.log(`[Admin] SSE Classification complete. ${updated}/${quests.length} records updated.`);

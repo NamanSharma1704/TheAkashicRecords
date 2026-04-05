@@ -212,7 +212,7 @@ const fetchMangaDex = async (title) => {
 const fetchJikan = async (title) => {
     try {
         const searchUrl = `https://api.jikan.moe/v4/manga?q=${encodeURIComponent(title)}&limit=1&sfw=false`;
-        const response = await fetchWithTimeout(searchUrl, {}, 10000);
+        const response = await fetchWithTimeout(searchUrl, {}, 6000); // Tight 6s timeout — Jikan rate-limits aggressively
         // Jikan returns 429 when rate-limited — treat as a miss rather than hanging
         if (response.status === 429) {
             console.warn(`[Jikan] Rate-limited for "${title}" — skipping.`);
@@ -257,11 +257,13 @@ const fetchBest = async (title) => {
     const searchLower = title.toLowerCase().trim();
     const searchWords = new Set(searchLower.split(/\s+/));
 
-    // 1. Fetch from all sources in parallel
+    // 1. Fetch from all sources in parallel with a hard 12s ceiling on the whole batch.
+    //    This prevents Jikan 429s or network hangs from stalling the bulk-classify loop.
+    const hardTimeout = (ms) => new Promise((resolve) => setTimeout(() => resolve(null), ms));
     const [aniResult, mdResult, jkResult] = await Promise.all([
-        fetchAniList(title).catch(() => null),
-        fetchMangaDex(title).catch(() => null),
-        fetchJikan(title).catch(() => null)
+        Promise.race([fetchAniList(title).catch(() => null), hardTimeout(11000)]),
+        Promise.race([fetchMangaDex(title).catch(() => null), hardTimeout(11000)]),
+        Promise.race([fetchJikan(title).catch(() => null), hardTimeout(8000)]),  // Jikan gets less time — it rate-limits hardest
     ]);
 
     const results = [

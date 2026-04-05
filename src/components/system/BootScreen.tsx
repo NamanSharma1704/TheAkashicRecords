@@ -100,50 +100,76 @@ const MythicalConstellations: React.FC = () => {
             ))}
 
             {/* ── LEFT CONSTELLATION: "The Monarch's Crown" ── */}
-            {/* Positioned at ~15% x, 40% y of the 1600x900 viewport */}
             <motion.g
-                animate={{ x: [0, 8, 0], y: [0, 5, 0] }}
+                animate={{ x: [0, 10, 0], y: [0, 6, 0] }}
                 transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
-                opacity={0.75}
+                opacity={0.8}
                 style={{ willChange: 'transform' }}
             >
-                <g transform="translate(240, 360)">
-                    {/* Connection lines — thin gold threads */}
-                    <line x1="0"   y1="0"    x2="48"  y2="-90"  stroke={gold} strokeWidth="0.6" opacity="0.3" />
-                    <line x1="48"  y1="-90" x2="128" y2="-60"  stroke={gold} strokeWidth="0.6" opacity="0.3" />
-                    <line x1="128" y1="-60" x2="176" y2="30"   stroke={gold} strokeWidth="0.6" opacity="0.3" />
-                    <line x1="176" y1="30"  x2="96"  y2="110"  stroke={gold} strokeWidth="0.6" opacity="0.3" />
-                    <line x1="96"  y1="110" x2="24"  y2="85"   stroke={gold} strokeWidth="0.6" opacity="0.3" />
-                    <line x1="24"  y1="85"  x2="0"   y2="0"    stroke={gold} strokeWidth="0.6" opacity="0.3" />
-                    {/* Node dots — small, with glow filter only on these */}
-                    <circle cx="0"   cy="0"   r="2"   fill={white} filter="url(#nodeGlow)" />
-                    <circle cx="48"  cy="-90" r="1.5" fill={gold}  filter="url(#nodeGlow)" />
-                    <circle cx="128" cy="-60" r="3"   fill={gold}  filter="url(#nodeGlow)" />
-                    <circle cx="176" cy="30"  r="1.8" fill={white} filter="url(#nodeGlow)" />
-                    <circle cx="96"  cy="110" r="1.6" fill={gold}  filter="url(#nodeGlow)" />
-                    <circle cx="24"  cy="85"  r="1.2" fill={white} filter="url(#nodeGlow)" />
+                <g transform="translate(180, 520)">
+                    {/* Faint distant connections */}
+                    <line x1="-40" y1="20" x2="60" y2="-90" stroke={gold} strokeWidth="0.3" opacity="0.15" />
+                    <line x1="60" y1="-90" x2="220" y2="-120" stroke={gold} strokeWidth="0.4" opacity="0.2" />
+                    <line x1="140" y1="-10" x2="300" y2="40" stroke={gold} strokeWidth="0.3" opacity="0.15" strokeDasharray="2 4" />
+                    
+                    {/* Primary constellation branches */}
+                    <path d="M0,0 L60,-90 L140,-10 L200,60" fill="none" stroke={gold} strokeWidth="0.8" opacity="0.35" />
+                    <path d="M140,-10 L220,-120 L270,-40 L200,60" fill="none" stroke={gold} strokeWidth="0.6" opacity="0.25" />
+                    <path d="M220,-120 L320,-80 L270,-40" fill="none" stroke={gold} strokeWidth="0.5" opacity="0.2" />
+                    
+                    {/* Major star nodes */}
+                    <circle cx="0" cy="0" r="2.5" fill={white} filter="url(#nodeGlow)" />
+                    <circle cx="60" cy="-90" r="1.5" fill={gold} filter="url(#nodeGlow)" />
+                    <circle cx="140" cy="-10" r="3.5" fill={gold} filter="url(#nodeGlow)" />
+                    <circle cx="200" cy="60" r="2" fill={white} filter="url(#nodeGlow)" />
+                    <circle cx="220" cy="-120" r="2.5" fill={white} filter="url(#nodeGlow)" />
+                    <circle cx="270" cy="-40" r="1.5" fill={gold} filter="url(#nodeGlow)" />
+                    <circle cx="320" cy="-80" r="2" fill={gold} filter="url(#nodeGlow)" />
+                    
+                    {/* Minor background stars */}
+                    <circle cx="-40" cy="20" r="1" fill={white} opacity="0.5" />
+                    <circle cx="300" cy="40" r="1.2" fill={gold} opacity="0.6" />
                 </g>
             </motion.g>
 
-            {/* ── RIGHT CONSTELLATION: "The Gatekeeper's Sigil" ── */}
-            {/* Positioned at ~80% x, 30% y */}
+            {/* ── RIGHT CONSTELLATION: "The Gatekeeper's Eye" ── */}
             <motion.g
-                animate={{ x: [0, -8, 0], y: [0, 7, 0] }}
-                transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-                opacity={0.75}
+                animate={{ x: [0, -12, 0], y: [0, 8, 0], rotate: [0, -1, 0] }}
+                transition={{ duration: 22, repeat: Infinity, ease: "easeInOut" }}
+                opacity={0.8}
                 style={{ willChange: 'transform' }}
+                transformOrigin="center"
             >
-                <g transform="translate(1280, 270)">
-                    <path
-                        d="M0 0 L64 45 L100 -30 L165 75 L115 150 L50 120 Z"
-                        fill="none" stroke={gold} strokeWidth="0.6" strokeDasharray="6 6" opacity="0.3"
-                    />
-                    <circle cx="0"   cy="0"   r="2.2" fill={white} filter="url(#nodeGlow)" />
-                    <circle cx="64"  cy="45"  r="1.5" fill={gold}  filter="url(#nodeGlow)" />
-                    <circle cx="100" cy="-30" r="3"   fill={gold}  filter="url(#nodeGlow)" />
-                    <circle cx="165" cy="75"  r="1.8" fill={gold}  filter="url(#nodeGlow)" />
-                    <circle cx="115" cy="150" r="2.5" fill={white} filter="url(#nodeGlow)" />
-                    <circle cx="50"  cy="120" r="1.3" fill={gold}  filter="url(#nodeGlow)" />
+                <g transform="translate(1050, 250)">
+                    {/* Ethereal background web */}
+                    <path d="M-50,80 L40,-30 L160,-60 L240,20 L130,120 Z" fill="none" stroke={gold} strokeWidth="0.3" opacity="0.1" />
+                    
+                    {/* Core geometric frame */}
+                    <path d="M0,0 L100,-40 L200,30 L110,80 Z" fill="none" stroke={gold} strokeWidth="0.8" opacity="0.4" />
+                    
+                    {/* Intersecting central lines (The pupil) */}
+                    <line x1="40" y1="20" x2="160" y2="10" stroke={gold} strokeWidth="0.6" strokeDasharray="4 6" opacity="0.3" />
+                    <line x1="100" y1="-40" x2="110" y2="80" stroke={gold} strokeWidth="0.6" opacity="0.3" />
+                    
+                    {/* Trailing tail */}
+                    <path d="M200,30 L280,-10 L360,-20" fill="none" stroke={white} strokeWidth="0.5" opacity="0.25" strokeDasharray="3 3" />
+                    
+                    {/* Star nodes */}
+                    <circle cx="0" cy="0" r="2" fill={white} filter="url(#nodeGlow)" />
+                    <circle cx="100" cy="-40" r="3" fill={gold} filter="url(#nodeGlow)" />
+                    <circle cx="200" cy="30" r="2.5" fill={white} filter="url(#nodeGlow)" />
+                    <circle cx="110" cy="80" r="1.5" fill={gold} filter="url(#nodeGlow)" />
+                    <circle cx="40" cy="20" r="1.2" fill={gold} opacity="0.8" filter="url(#nodeGlow)" />
+                    <circle cx="160" cy="10" r="1.2" fill={gold} opacity="0.8" filter="url(#nodeGlow)" />
+                    <circle cx="280" cy="-10" r="2" fill={gold} filter="url(#nodeGlow)" />
+                    <circle cx="360" cy="-20" r="1.5" fill={white} filter="url(#nodeGlow)" />
+                    
+                    {/* Floating space dust around the eye */}
+                    <circle cx="-50" cy="80" r="1" fill={white} opacity="0.4" />
+                    <circle cx="40" cy="-30" r="0.8" fill={gold} opacity="0.5" />
+                    <circle cx="160" cy="-60" r="1.2" fill={white} opacity="0.6" />
+                    <circle cx="240" cy="20" r="0.8" fill={gold} opacity="0.5" />
+                    <circle cx="130" cy="120" r="1" fill={white} opacity="0.4" />
                 </g>
             </motion.g>
         </svg>

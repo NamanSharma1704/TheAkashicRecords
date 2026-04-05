@@ -341,18 +341,24 @@ const App: React.FC = () => {
 
     const handleEnterPortal = useCallback((url: string) => {
         if (!url || url === '#') return;
-        // Store the URL — DO NOT open any tab yet (that would instantly switch tabs)
+        // Store the URL
         portalPendingUrl.current = url;
         setPortalAnimating(true);
-        // After animation completes, fire the hidden anchor click to open the new tab.
-        // We use a direct .click() on a real <a target="_blank"> in the DOM, which is
-        // more permissive with popup blockers than window.open() inside a setTimeout.
+        
+        // After animation completes, attempt to open the portal.
+        // On iOS/Safari, async window opening is blocked by the popup blocker.
         setTimeout(() => {
-            if (portalAnchorRef.current) {
-                portalAnchorRef.current.href = portalPendingUrl.current;
-                portalAnchorRef.current.click();
+            // Attempt to open in a new tab first
+            const newWindow = window.open(portalPendingUrl.current, '_blank', 'noopener,noreferrer');
+            
+            // If the browser (like Safari on iPad) blocked the new tab popup,
+            // fallback to navigating the current tab so the user isn't stuck.
+            if (!newWindow) {
+                window.location.href = portalPendingUrl.current;
+            } else {
+                setPortalAnimating(false);
             }
-            setPortalAnimating(false);
+            
             portalPendingUrl.current = '';
         }, 1550);
     }, []);

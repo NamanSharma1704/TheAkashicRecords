@@ -37,9 +37,20 @@ const mapQuest = (q: any): Quest => ({
 });
 
 // SUB-COMPONENT: QuestListItem to handle individual drag controls and touch scrolling
-const QuestListItem = ({ item, theme, activeId, handleLogClick }: any) => {
+const QuestListItem = ({ item, theme, activeId, handleLogClick, onDragStateChange }: any) => {
     const dragControls = useDragControls();
     const isHighlighted = activeId === item.id;
+    const [thumbError, setThumbError] = React.useState(false);
+
+    const handleDragStart = (e: React.PointerEvent) => {
+        e.preventDefault();
+        onDragStateChange?.(true);   // tell scroll container: lock scroll
+        dragControls.start(e);
+    };
+
+    const handleDragEnd = () => {
+        onDragStateChange?.(false);  // restore scroll
+    };
 
     return (
         <Reorder.Item
@@ -47,6 +58,7 @@ const QuestListItem = ({ item, theme, activeId, handleLogClick }: any) => {
             value={item}
             dragListener={false}
             dragControls={dragControls}
+            onDragEnd={handleDragEnd}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -55,17 +67,35 @@ const QuestListItem = ({ item, theme, activeId, handleLogClick }: any) => {
         >
             <div className="flex justify-between items-center h-full">
                 <div className="flex items-center gap-2 max-w-[85%] min-w-0">
-                    {/* Dedicated Drag Handle for iPad scrolling support */}
+                    {/* Drag Handle — always visible on touch (mobile/tablet), hover-only on desktop */}
                     <div
-                        className={`cursor-grab active:cursor-grabbing p-1 -ml-2 opacity-0 group-hover:opacity-40 transition-opacity flex-none ${theme.baseText}`}
-                        onPointerDown={(e) => dragControls.start(e)}
+                        className={`cursor-grab active:cursor-grabbing flex-none touch-none select-none ${theme.baseText}
+                            p-2 -ml-2
+                            opacity-40 lg:opacity-0 group-hover:opacity-70 active:opacity-100
+                            transition-opacity
+                            [@media(pointer:coarse)]:opacity-60
+                        `}
+                        style={{ touchAction: 'none', minWidth: '28px', minHeight: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                        onPointerDown={handleDragStart}
                     >
-                        <GripVertical size={14} />
+                        <GripVertical size={16} />
                     </div>
 
                     {item.coverUrl && (
-                        <div className={`w-8 h-[45px] xl:w-10 xl:h-[56px] flex-none rounded-sm border ${theme.isDark ? 'border-gray-800' : 'border-gray-300'} bg-black overflow-hidden opacity-80 group-hover:opacity-100 transition-opacity shadow-sm object-cover shrink-0`}>
-                            <img src={item.coverUrl} className="w-full h-full object-cover" />
+                        <div className={`w-8 h-[45px] xl:w-10 xl:h-[56px] flex-none rounded-sm border ${theme.isDark ? 'border-gray-800' : 'border-gray-300'} bg-black overflow-hidden opacity-80 group-hover:opacity-100 transition-opacity shadow-sm shrink-0`}>
+                            {!thumbError ? (
+                                <img
+                                    key={item.coverUrl}
+                                    src={item.coverUrl}
+                                    className="w-full h-full object-cover"
+                                    loading="eager"
+                                    onError={() => setThumbError(true)}
+                                />
+                            ) : (
+                                <div className="w-full h-full flex items-center justify-center bg-gray-900">
+                                    <span className="text-[6px] text-gray-600 font-mono uppercase">N/A</span>
+                                </div>
+                            )}
                         </div>
                     )}
                     <div className="flex flex-col min-w-0 pr-2">
@@ -84,6 +114,45 @@ const QuestListItem = ({ item, theme, activeId, handleLogClick }: any) => {
     );
 };
 
+// SUB-COMPONENT: ActiveQuestList — owns touch-action state for drag-vs-scroll resolution
+// On touch devices, the browser fights between scroll and drag. This component:
+//   1. Keeps touchAction='pan-y' normally (allows vertical scroll)
+//   2. Switches to touchAction='none' the instant a drag begins (blocks scroll so Motion can move the item)
+//   3. Restores 'pan-y' when drag ends
+const ActiveQuestList = ({ orderedActiveQuests, handleReorderActiveQuests, theme, activeId, handleLogClick }: any) => {
+    const [isDragging, setIsDragging] = React.useState(false);
+
+    const handleDragStateChange = React.useCallback((dragging: boolean) => {
+        setIsDragging(dragging);
+    }, []);
+
+    return (
+        <div
+            className="flex-1 min-h-0 overflow-y-auto hide-scrollbar overscroll-contain"
+            style={{ touchAction: isDragging ? 'none' : 'pan-y' }}
+        >
+            <Reorder.Group
+                axis="y"
+                values={orderedActiveQuests}
+                onReorder={handleReorderActiveQuests}
+                className="flex flex-col gap-1 h-full pb-6"
+            >
+                <AnimatePresence initial={false}>
+                    {orderedActiveQuests.map((item: any) => (
+                        <QuestListItem
+                            key={item.id}
+                            item={item}
+                            theme={theme}
+                            activeId={activeId}
+                            handleLogClick={handleLogClick}
+                            onDragStateChange={handleDragStateChange}
+                        />
+                    ))}
+                </AnimatePresence>
+            </Reorder.Group>
+        </div>
+    );
+};
 
 // ----------------------------------------------------------------------
 // LAZY LOADED HEAVY COMPONENTS 
@@ -131,8 +200,6 @@ const App: React.FC = () => {
     const [isAuth, setIsAuth] = useState<boolean>(isAuthenticated());
 
     // Cover-extracted accent color — dynamically sampled per active quest
-    const [pendingCoverUrl, setPendingCoverUrl] = useState<string>('');
-    useEffect(() => { if (activeId) setPendingCoverUrl(''); }, [activeId]);
 
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isSpireOpen, setIsSpireOpen] = useState(false);
@@ -309,8 +376,18 @@ const App: React.FC = () => {
         }
     }, [isAuth]);
 
+    // Listen for server-side 401s (expired/invalid token) and clean up gracefully
+    useEffect(() => {
+        const handleSessionExpired = () => {
+            setIsAuth(false);
+            setLibrary([]);
+            setActiveId(null);
+        };
+        window.addEventListener('akashic:session-expired', handleSessionExpired);
+        return () => window.removeEventListener('akashic:session-expired', handleSessionExpired);
+    }, []);
+
     const fetchInitialData = async () => {
-        const start = Date.now();
         try {
             const res = await systemFetch('/api/boot/initial-data');
 
@@ -629,6 +706,10 @@ const App: React.FC = () => {
         </AnimatePresence>
     ), [theme, currentTheme, isHeaderVisible]);
 
+    // Track hero cover image error state — reset whenever the active quest changes
+    const [coverImgError, setCoverImgError] = React.useState(false);
+    useEffect(() => { setCoverImgError(false); }, [activeId]);
+
     const memoizedMain = useMemo(() => (
         <main id="content-scroll"
             className="relative mt-16 h-[calc(100dvh-104px)] lg:h-[calc(100dvh-100px)] overflow-y-auto lg:overflow-hidden overflow-x-hidden hide-scrollbar px-4 pb-6 lg:pb-2 z-10 flex flex-col">
@@ -700,12 +781,25 @@ const App: React.FC = () => {
                                             boxShadow: `inset 0 0 15px rgba(0,0,0,0.3)` /* Lighter internal vignette */
                                         }}
                                     >
-                                        <img
-                                            src={activeQuest.coverUrl}
-                                            className="w-full h-full object-cover transition-transform duration-[10s] group-hover:scale-110"
-                                            referrerPolicy="no-referrer"
-                                            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                                        />
+                                        {/* key=activeQuest.id forces a fresh <img> DOM node on quest change,
+                                            clearing any stale onError state from the previous entry. */}
+                                        {!coverImgError ? (
+                                            <img
+                                                key={activeQuest.id}
+                                                src={activeQuest.coverUrl}
+                                                className="w-full h-full object-cover transition-transform duration-[10s] group-hover:scale-110"
+                                                referrerPolicy="no-referrer"
+                                                loading="eager"
+
+                                                onError={() => setCoverImgError(true)}
+                                            />
+                                        ) : (
+                                            /* Fallback placeholder — shown when proxy/CDN fails */
+                                            <div className="w-full h-full flex flex-col items-center justify-center gap-2 bg-gradient-to-b from-gray-900 to-black">
+                                                <span className="text-2xl opacity-20">📖</span>
+                                                <span className="text-[9px] font-mono text-white/20 uppercase tracking-widest">Cover Unavailable</span>
+                                            </div>
+                                        )}
 
                                         {/* THEME-ADAPTIVE TINT OVERLAY (Color Unity) */}
                                         <div
@@ -903,26 +997,13 @@ const App: React.FC = () => {
                     {/* ACTIVE QUESTS LIST - only scrollable region allowed */}
                     <div className="flex-1 flex flex-col min-h-0 gap-1 mt-2 overflow-hidden max-h-[380px] lg:max-h-none">
                         <div className={`text-[10px] font-mono ${theme.headingText} uppercase tracking-widest border-b ${theme.borderSubtle} pb-1.5 mb-1 transition-colors duration-700 shrink-0`}>ACTIVE QUESTS</div>
-                        <div className="flex-1 min-h-0 overflow-y-auto hide-scrollbar touch-pan-y overscroll-contain">
-                            <Reorder.Group
-                                axis="y"
-                                values={orderedActiveQuests}
-                                onReorder={handleReorderActiveQuests}
-                                className="flex flex-col gap-1 h-full pb-6"
-                            >
-                                <AnimatePresence initial={false}>
-                                    {orderedActiveQuests.map((item) => (
-                                        <QuestListItem
-                                            key={item.id}
-                                            item={item}
-                                            theme={theme}
-                                            activeId={activeId}
-                                            handleLogClick={handleLogClick}
-                                        />
-                                    ))}
-                                </AnimatePresence>
-                            </Reorder.Group>
-                        </div>
+                        <ActiveQuestList
+                            orderedActiveQuests={orderedActiveQuests}
+                            handleReorderActiveQuests={handleReorderActiveQuests}
+                            theme={theme}
+                            activeId={activeId}
+                            handleLogClick={handleLogClick}
+                        />
                     </div>
 
                     {/* DIVINE SPIRE BUTTON */}
@@ -930,7 +1011,7 @@ const App: React.FC = () => {
                 </div>
             </div>
         </main>
-    ), [theme, currentTheme, isSpireOpen, activeQuest, progressPercent, activeId, handleLogClick, activeQuests, totalChaptersRead, playerRank, userState, updateProgress]);
+    ), [theme, currentTheme, isSpireOpen, activeQuest, progressPercent, activeId, handleLogClick, activeQuests, orderedActiveQuests, handleReorderActiveQuests, totalChaptersRead, playerRank, userState, updateProgress, coverImgError]);
 
     if (booting) return <BootScreen onComplete={() => setBooting(false)} theme={theme} />;
 

@@ -20,10 +20,25 @@ export const getStoredUser = (): User | null => {
     return user ? JSON.parse(user) : null;
 };
 
-export const isAuthenticated = () => !!getStoredToken();
+/**
+ * Check auth state by decoding the JWT exp claim client-side.
+ * Prevents the flash of the authenticated UI for users with expired tokens.
+ */
+export const isAuthenticated = (): boolean => {
+    const token = getStoredToken();
+    if (!token) return false;
+    try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        // payload.exp is in seconds; Date.now() is in milliseconds
+        return typeof payload.exp === 'number' && payload.exp * 1000 > Date.now();
+    } catch {
+        return false; // Malformed token
+    }
+};
 
 /**
  * Standard fetch wrapper that automatically injects the Auth token.
+ * On 401, dispatches a custom event instead of a hard reload to prevent loops.
  */
 export const systemFetch = async (url: string, options: RequestInit = {}) => {
     const token = getStoredToken();
@@ -37,9 +52,9 @@ export const systemFetch = async (url: string, options: RequestInit = {}) => {
     const response = await fetch(url, { ...options, headers });
 
     if (response.status === 401) {
-        // Token might be expired or invalid
+        // Token is invalid or expired — clear local state and notify the app
         clearAuthData();
-        window.location.reload(); // Force re-auth
+        window.dispatchEvent(new Event('akashic:session-expired'));
     }
 
     return response;

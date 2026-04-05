@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion } from 'motion/react';
 import { Theme, Quest } from '../../core/types';
 import SystemFrame from './SystemFrame';
 import { X, RefreshCw, AlertCircle, CheckCircle, Database, Search, Activity, Trash2 } from 'lucide-react';
@@ -16,7 +16,7 @@ interface SystemGateModalProps {
 }
 
 // --- SYSTEM GATE MODAL (Controlled Form with Scan Logic) ---
-const SystemGateModal: React.FC<SystemGateModalProps> = ({ isOpen, onClose, onSave, onDelete, initialData, theme, existingQuests }) => {
+const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDelete, initialData, theme, existingQuests }) => {
     const [formData, setFormData] = useState<Partial<Quest>>({
         title: '',
         currentChapter: 0,

@@ -29,7 +29,7 @@ async function standardize() {
                     passwordHash: passwordHash,
                     role: 'SOVEREIGN'
                 },
-                { upsert: true, new: true }
+                { upsert: true, returnDocument: 'after' }
             );
 
             console.log(`Database [${dbName}]: Sovereign Identity Standardized.`);

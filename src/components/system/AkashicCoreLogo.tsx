@@ -8,7 +8,7 @@ interface AkashicCoreLogoProps {
     animate?: boolean;
 }
 
-const AkashicCoreLogo: React.FC<AkashicCoreLogoProps> = ({ theme, className = "w-full h-full", animate = true }) => {
+const AkashicCoreLogo: React.FC<AkashicCoreLogoProps> = ({ className = "w-full h-full", animate = true }) => {
     // Premium gold palette matching the reference image exactly
     const goldPrm = "#F4C430"; // Bright glowing gold for highlights
     const goldMid = "#D4AF37"; // Metallic mid-tone

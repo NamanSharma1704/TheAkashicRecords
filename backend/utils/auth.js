@@ -3,7 +3,10 @@ const jwt = require('jsonwebtoken');
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '../.env') });
 
-const JWT_SECRET = process.env.JWT_SECRET || 'akashic-secret-key-system-override-v1';
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+    throw new Error('[FATAL] JWT_SECRET environment variable is not set. System cannot start.');
+}
 
 /**
  * Hash a password using bcrypt.

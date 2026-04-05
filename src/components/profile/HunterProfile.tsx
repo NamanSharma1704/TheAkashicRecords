@@ -310,11 +310,16 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
-        link.setAttribute('href', url);
-        link.setAttribute('download', `akashic_records_${new Date().toISOString().split('T')[0]}.csv`);
+        link.href = url;
+        link.download = `akashic_records_${new Date().toISOString().split('T')[0]}.csv`;
+        link.style.display = 'none';
         document.body.appendChild(link);
         link.click();
-        document.body.removeChild(link);
+        
+        setTimeout(() => {
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(url);
+        }, 100);
 
         showNotification("ARCHIVE EXTRACTED SUCCESSFULLY.", "SUCCESS");
     };

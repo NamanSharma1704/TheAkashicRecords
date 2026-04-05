@@ -1,6 +1,7 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
+const rateLimit = require('express-rate-limit');
 const { connectDB, getTenantDb } = require('./config/db');
 const { initDatabase } = require('./config/init');
 const { getModel } = require('./models/modelFactory');
@@ -14,9 +15,61 @@ const app = express();
 
 const getTodayStr = () => new Date().toISOString().split('T')[0];
 
-// Middleware
-app.use(cors());
+// ─── SECURITY HELPERS ─────────────────────────────────────────────────────────
+
+/**
+ * Sanitize error messages for production responses.
+ * Never leak raw DB/stack trace details to the client.
+ */
+const sendError = (res, status, publicMessage, internalErr = null) => {
+    if (internalErr) console.error(`[ERROR ${status}]`, internalErr.message || internalErr);
+    return res.status(status).json({ message: publicMessage });
+};
+
+/**
+ * Escape regex special characters to prevent ReDoS / injection.
+ */
+const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+// ─── CORS ─────────────────────────────────────────────────────────────────────
+const ALLOWED_ORIGINS = [
+    'https://the-akashic-records.vercel.app',
+    'http://localhost:5173',
+    'http://localhost:5000'
+];
+
+app.use(cors({
+    origin: (origin, callback) => {
+        // Allow server-to-server (no origin) and known origins
+        if (!origin || ALLOWED_ORIGINS.includes(origin)) {
+            callback(null, true);
+        } else {
+            callback(new Error(`CORS: Origin "${origin}" not permitted.`));
+        }
+    },
+    credentials: true
+}));
+
 app.use(express.json());
+
+// ─── RATE LIMITING ────────────────────────────────────────────────────────────
+const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 30,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { message: 'Too many requests from this IP. Protocol throttled.' }
+});
+
+// Apply rate limit to all auth routes
+app.use('/api/auth', authLimiter);
+
+// ─── SSRF BLOCKLIST (Permissive for Public Images) ───────────────────────────
+const isInternalHostname = (hostname) => {
+    // Blocks localhost, private network spaces (10.x, 192.168.x, 172.16-31.x), loopback, metadata IPs, and local domains
+    const internalRegex = /^(localhost|0\.0\.0\.0|127\.\d+\.\d+\.\d+|10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(1[6-9]|2[0-9]|3[0-1])\.\d+\.\d+|169\.254\.\d+\.\d+|::1|.*\.local|.*\.internal)$/i;
+    return internalRegex.test(hostname);
+};
 
 // --- AUTH MIDDLEWARE ---
 const authenticate = async (req, res, next) => {
@@ -120,8 +173,9 @@ app.post('/api/auth/register', async (req, res) => {
 app.post('/api/auth/upsert-sovereign', async (req, res) => {
     try {
         const { systemSecret, username, password } = req.body;
-        if (systemSecret !== JWT_SECRET) {
-            return res.status(403).json({ message: 'Forbidden: Secret Link Unauthorized.' });
+        const SYSTEM_ADMIN_SECRET = process.env.SYSTEM_ADMIN_SECRET;
+        if (!SYSTEM_ADMIN_SECRET || systemSecret !== SYSTEM_ADMIN_SECRET) {
+            return res.status(403).json({ message: 'Forbidden: System Authority Refused.' });
         }
 
         await connectDB();
@@ -134,7 +188,7 @@ app.post('/api/auth/upsert-sovereign', async (req, res) => {
                 passwordHash,
                 role: 'SOVEREIGN'
             },
-            { upsert: true, new: true }
+            { upsert: true, returnDocument: 'after' }
         );
 
         res.json({ message: 'Sovereign Identity Synchronized.', username: user.username });
@@ -148,17 +202,23 @@ app.post('/api/auth/login', async (req, res) => {
     try {
         await connectDB();
         const { username, password } = req.body;
-        const dbName = mongoose.connection ? mongoose.connection.name : 'Unknown';
-        console.log(`[AUTH] Login attempt: "${username}" (DB: ${dbName})`);
 
-        const user = await User.findOne({ username: { $regex: new RegExp(`^${username}$`, 'i') } });
+        if (!username || !password) {
+            return res.status(400).json({ message: 'Username and password are required.' });
+        }
+
+        console.log(`[AUTH] Login attempt: "${username}"`);
+
+        // Escape regex special chars to prevent ReDoS / injection
+        const safeUsername = escapeRegex(username.trim());
+        const user = await User.findOne({ username: { $regex: new RegExp(`^${safeUsername}$`, 'i') } });
         if (!user) {
-            console.log(`[AUTH] User not found: "${username}"`);
-            return res.status(401).json({ message: 'Access Denied: Subject Unknown.' });
+            // Generic message — don't reveal whether user exists
+            return res.status(401).json({ message: 'Access Denied: Invalid credentials.' });
         }
 
         const isMatch = await comparePassword(password, user.passwordHash);
-        if (!isMatch) return res.status(401).json({ message: 'Access Denied: Password Mismatch.' });
+        if (!isMatch) return res.status(401).json({ message: 'Access Denied: Invalid credentials.' });
 
         // Update last login
         user.lastLogin = Date.now();
@@ -170,7 +230,7 @@ app.post('/api/auth/login', async (req, res) => {
             user: { id: user._id, username: user.username, role: user.role }
         });
     } catch (err) {
-        res.status(500).json({ message: err.message });
+        return sendError(res, 500, 'Authentication system fault. Please try again.', err);
     }
 });
 
@@ -361,11 +421,24 @@ app.get('/api/quests', authenticate, async (req, res) => {
     }
 });
 
+// Allowed fields for quest creation/update (prevents mass assignment)
+const QUEST_ALLOWED_FIELDS = ['title', 'cover', 'synopsis', 'totalChapters', 'currentChapter', 'status', 'classType', 'readLink', 'lastRead'];
+
+const sanitizeQuestBody = (body) => {
+    const safe = {};
+    QUEST_ALLOWED_FIELDS.forEach(f => {
+        if (body[f] !== undefined) safe[f] = body[f];
+    });
+    return safe;
+};
+
 app.post('/api/quests', authenticate, async (req, res) => {
     try {
         const Quest = getModel(req.dbConn, 'Quest');
         const { title } = req.body;
-        if (!title) return res.status(400).json({ message: "Title required" });
+        if (!title || typeof title !== 'string' || !title.trim()) {
+            return res.status(400).json({ message: "Title required" });
+        }
 
         // 1. AGGRESSIVE DUPLICATE CHECK (Ignores punctuation, apostrophes, and casing)
         const normalizedTitle = title.toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -378,14 +451,16 @@ app.post('/api/quests', authenticate, async (req, res) => {
             });
         }
 
-        const newQuest = new Quest(req.body);
+        // 2. Allowlist fields — prevents mass assignment
+        const safeBody = sanitizeQuestBody(req.body);
+        const newQuest = new Quest(safeBody);
         const savedQuest = await newQuest.save();
         res.status(201).json(savedQuest);
     } catch (err) {
         if (err.code === 11000) {
             return res.status(409).json({ message: "Database Archive Collision: Title already exists in the records." });
         }
-        res.status(400).json({ message: err.message });
+        return sendError(res, 400, 'Failed to create quest record.', err);
     }
 });
 
@@ -396,7 +471,9 @@ app.put('/api/quests/:id', authenticate, async (req, res) => {
         const UserSettings = getModel(req.dbConn, 'UserSettings');
         const DailyQuest = getModel(req.dbConn, 'DailyQuest');
         const questId = req.params.id;
-        const body = req.body;
+
+        // Allowlist fields — prevents mass assignment
+        const body = sanitizeQuestBody(req.body);
 
         if (body.currentChapter !== undefined) {
             const today = getTodayStr();
@@ -429,11 +506,11 @@ app.put('/api/quests/:id', authenticate, async (req, res) => {
         const updatedQuest = await Quest.findByIdAndUpdate(
             questId,
             { ...body, lastRead: Date.now() },
-            { new: true }
+            { returnDocument: 'after' }
         );
         res.json(updatedQuest);
     } catch (err) {
-        res.status(400).json({ message: err.message });
+        return sendError(res, 400, 'Failed to update quest record.', err);
     }
 });
 
@@ -444,7 +521,7 @@ app.delete('/api/quests/:id', authenticate, async (req, res) => {
         await Quest.findByIdAndDelete(req.params.id);
         res.json({ message: 'Quest Purged.' });
     } catch (err) {
-        res.status(500).json({ message: err.message });
+        return sendError(res, 500, 'Failed to purge quest record.', err);
     }
 });
 
@@ -624,26 +701,57 @@ app.get('/api/proxy/metadata', authenticate, async (req, res) => {
     }
 });
 
-// GET /api/proxy/image - Image proxy to bypass CORS/CORP blocks
+// GET /api/proxy/image - Image proxy (SSRF-protected via allowlist)
 app.get('/api/proxy/image', async (req, res) => {
     const { url } = req.query;
     if (!url) return res.status(400).send("URL required");
 
+    // --- SSRF PROTECTION: Block Internal/Private Subnets, Allow Public Internet ---
     try {
-        const fetchOptions = {
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-                'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
-                'Accept-Language': 'en-US,en;q=0.9',
-                'Sec-Fetch-Dest': 'image',
-                'Sec-Fetch-Mode': 'no-cors',
-                'Sec-Fetch-Site': 'cross-site',
-                'Referer': new URL(url).origin + '/'
-            },
-            redirect: 'follow'
-        };
+        const parsed = new URL(url);
+        const hostname = parsed.hostname.toLowerCase();
+        
+        // Prevent SSRF into internal networks, AWS metadata, and localhost
+        if (isInternalHostname(hostname)) {
+            console.warn(`[ImageProxy] SSRF BLOCKED: Rejected internal hostname "${hostname}"`);
+            return res.status(403).send('Image origin located on internal/restricted network. Blocked.');
+        }
+    } catch {
+        return res.status(400).send('Invalid URL format.');
+    }
 
-        const response = await fetch(url, fetchOptions);
+    const fetchWithTimeout = async (targetUrl, timeoutMs) => {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), timeoutMs);
+        try {
+            const response = await fetch(targetUrl, {
+                signal: controller.signal,
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+                    'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+                    'Accept-Language': 'en-US,en;q=0.9',
+                    'Sec-Fetch-Dest': 'image',
+                    'Sec-Fetch-Mode': 'no-cors',
+                    'Sec-Fetch-Site': 'cross-site',
+                    'Referer': new URL(targetUrl).origin + '/'
+                },
+                redirect: 'follow'
+            });
+            return response;
+        } finally {
+            clearTimeout(timer);
+        }
+    };
+
+    try {
+        let response;
+        try {
+            response = await fetchWithTimeout(url, 6000);
+        } catch (firstErr) {
+            // Retry once on timeout or network error
+            console.warn(`[ImageProxy] First attempt failed (${firstErr.message}), retrying: ${url}`);
+            response = await fetchWithTimeout(url, 7000);
+        }
 
         if (!response.ok) {
             console.error(`[ImageProxy] Upstream Error: ${response.status} for ${url}`);
@@ -653,16 +761,19 @@ app.get('/api/proxy/image', async (req, res) => {
         const contentType = response.headers.get('content-type');
         if (contentType) res.setHeader('Content-Type', contentType);
 
-        // Cache images for 24 hours
-        res.setHeader('Cache-Control', 'public, max-age=86400');
+        // Browser: 24h cache. Vercel CDN edge: 1h (s-maxage).
+        // stale-while-revalidate serves cached content while silently refreshing.
+        res.setHeader('Cache-Control', 'public, max-age=86400, s-maxage=3600, stale-while-revalidate=86400');
+        res.setHeader('Vary', 'Accept');
 
         const arrayBuffer = await response.arrayBuffer();
         res.send(Buffer.from(arrayBuffer));
     } catch (err) {
         console.error("[ImageProxy] Critical Failure:", err.message, url);
-        res.status(500).json({ error: "Failed to proxy image", message: err.message });
+        res.status(504).json({ error: "Failed to proxy image", message: err.message });
     }
 });
+
 
 // ─── INTERNAL SCORERS ─────────────────────────────────────────────────────────
 // Both return a Record<class, number> so they can be additively combined.

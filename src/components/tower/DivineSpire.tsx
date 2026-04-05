@@ -5,7 +5,7 @@ import TowerStructure from './TowerStructure';
 import QuestCard from '../quest/QuestCard';
 import SystemLogo from '../system/SystemLogo';
 import { getQuestRankObj } from '../../utils/ranks';
-import { ChevronLeft, ChevronRight, X, Search, AlertCircle, ChevronDown, Filter, Check } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X, Search, AlertCircle, ChevronDown, Filter } from 'lucide-react';
 
 interface DivineSpireProps {
     isOpen: boolean;

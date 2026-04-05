@@ -9,7 +9,7 @@ interface LoginScreenProps {
     theme: Theme;
 }
 
-const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, theme }) => {
+const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);

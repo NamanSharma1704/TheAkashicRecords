@@ -414,7 +414,9 @@ const App: React.FC = () => {
                 if (stats) setUserState(stats);
             }
         } catch (e: any) {
-            console.error("BOOT_SYNC_FAILURE:", e.message);
+            if (!e.message.includes('401')) {
+                console.error("BOOT_SYNC_FAILURE:", e.message);
+            }
             // Fallback to empty state to prevent UI crash
             setLibrary([]);
         }

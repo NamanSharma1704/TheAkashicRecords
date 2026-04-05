@@ -5,7 +5,7 @@ const rateLimit = require('express-rate-limit');
 const { connectDB, getTenantDb } = require('./config/db');
 const { initDatabase } = require('./config/init');
 const { getModel } = require('./models/modelFactory');
-const { fetchAniList, fetchMangaDex, fetchJikan, fetchBest } = require('./utils/metadataProxy');
+const { fetchAniList, fetchMangaDex, fetchJikan, fetchBest, fetchGenresOnly } = require('./utils/metadataProxy');
 const User = require('./models/User');
 const { hashPassword, comparePassword, generateToken, verifyToken, JWT_SECRET } = require('./utils/auth');
 const path = require('path');
@@ -561,23 +561,18 @@ app.post('/api/admin/bulk-classify', authenticate, checkRole('SOVEREIGN'), async
             let newClass = null;
 
             try {
-                // Per-item timeout: fetchBest has its own internal 11s ceiling, so 14s is more than enough here
-                const metadataPromise = fetchBest(quest.title);
-                const timeoutPromise = new Promise((_, reject) =>
-                    setTimeout(() => reject(new Error('Per-item timeout')), 14000)
-                );
-                const metadata = await Promise.race([metadataPromise, timeoutPromise]);
-                const genres = metadata?.genres || [];
-                
+                // fetchGenresOnly: Lean AniList + MangaDex parallel fetch, NO Jikan.
+                // Has its own hard 8s ceiling per source — will never hang indefinitely.
+                const genres = await fetchGenresOnly(quest.title);
                 newClass = classifyBest(quest.title, genres, oldClass);
-                
+
                 if (genres.length > 0) {
-                    console.log(`[Classify] "${quest.title}" → genres: [${genres.slice(0,4).join(', ')}] + title → ${newClass}`);
+                    console.log(`[Classify] "${quest.title}" → genres: [${genres.slice(0,4).join(', ')}] → ${newClass}`);
                 } else {
                     console.log(`[Classify] "${quest.title}" → no metadata, title-only → ${newClass}`);
                 }
             } catch (apiErr) {
-                console.warn(`[Classify] API error/timeout for "${quest.title}": ${apiErr.message}`);
+                console.warn(`[Classify] Unexpected error for "${quest.title}": ${apiErr.message}`);
                 newClass = classifyBest(quest.title, []);
             }
 
@@ -590,7 +585,7 @@ app.post('/api/admin/bulk-classify', authenticate, checkRole('SOVEREIGN'), async
 
             send({ type: 'progress', processed: i + 1, total: quests.length, title: quest.title, class: newClass, changed, updated });
 
-            if (i < quests.length - 1) await sleep(600); // Reduced from 1200ms — Jikan rate-limit is now caught faster
+            if (i < quests.length - 1) await sleep(400); // 400ms — only 2 APIs now, less throttle pressure
         }
 
         console.log(`[Admin] SSE Classification complete. ${updated}/${quests.length} records updated.`);

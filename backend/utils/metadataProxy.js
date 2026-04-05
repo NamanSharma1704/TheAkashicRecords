@@ -339,4 +339,54 @@ const fetchBest = async (title) => {
     return winner;
 };
 
-module.exports = { fetchAniList, fetchMangaDex, fetchJikan, fetchBest };
+/**
+ * fetchGenresOnly — Purpose-built for bulk-classify.
+ * Only fetches genres (skips Jikan entirely to avoid TCP-hang rate limiting).
+ * Uses tight 7s timeouts on AniList + MangaDex in parallel.
+ * Returns: string[] of genres, or [] on any failure.
+ */
+const fetchGenresOnly = async (title) => {
+    const timeout = (ms) => new Promise((resolve) => setTimeout(() => resolve(null), ms));
+
+    try {
+        // AniList: Lightweight query — only title + genres, no characters/recommendations
+        const aniListQuery = `
+        query ($search: String) {
+          Media (search: $search, type: MANGA, sort: SEARCH_MATCH) {
+            genres
+            title { english romaji }
+          }
+        }`;
+
+        const aniListFetch = fetchWithTimeout('https://graphql.anilist.co', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            body: JSON.stringify({ query: aniListQuery, variables: { search: title } })
+        }, 7000).then(r => r.json()).then(d => d?.data?.Media?.genres || []).catch(() => []);
+
+        // MangaDex: Tag-based genre fetch
+        const mangaDexFetch = fetchWithTimeout(
+            `https://api.mangadex.org/manga?title=${encodeURIComponent(title)}&limit=5&contentRating[]=safe&contentRating[]=suggestive&order[relevance]=desc`,
+            {},
+            7000
+        ).then(r => r.json()).then(d => {
+            if (!d.data || d.data.length === 0) return [];
+            return d.data[0].attributes.tags.map(t => t.attributes.name.en).filter(Boolean);
+        }).catch(() => []);
+
+        // Race both fetches with a hard 8s ceiling on the whole batch
+        const [aniGenres, mdGenres] = await Promise.all([
+            Promise.race([aniListFetch, timeout(8000).then(() => [])]),
+            Promise.race([mangaDexFetch, timeout(8000).then(() => [])]),
+        ]);
+
+        // Merge and deduplicate genres from both sources
+        const merged = [...new Set([...aniGenres, ...mdGenres])];
+        return merged;
+    } catch (e) {
+        console.warn(`[fetchGenresOnly] Failed for "${title}": ${e.message}`);
+        return [];
+    }
+};
+
+module.exports = { fetchAniList, fetchMangaDex, fetchJikan, fetchBest, fetchGenresOnly };

@@ -553,39 +553,48 @@ app.post('/api/admin/bulk-classify', authenticate, checkRole('SOVEREIGN'), async
 
         send({ type: 'start', total: quests.length });
 
-        for (let i = 0; i < quests.length; i++) {
+        const BATCH_SIZE = 3;
+        for (let i = 0; i < quests.length; i += BATCH_SIZE) {
             if (isAborted) break;
 
-            const quest = quests[i];
-            const oldClass = quest.classType;
-            let newClass = null;
+            const batch = quests.slice(i, i + BATCH_SIZE);
+            
+            await Promise.all(batch.map(async (quest, idx) => {
+                const oldClass = quest.classType;
+                let newClass = null;
+                let changed = false;
 
-            try {
-                // fetchGenresOnly: Lean AniList + MangaDex parallel fetch, NO Jikan.
-                // Has its own hard 8s ceiling per source — will never hang indefinitely.
-                const genres = await fetchGenresOnly(quest.title);
-                newClass = classifyBest(quest.title, genres, oldClass);
+                try {
+                    const genres = await fetchGenresOnly(quest.title);
+                    newClass = classifyBest(quest.title, genres, oldClass);
 
-                if (genres.length > 0) {
-                    console.log(`[Classify] "${quest.title}" → genres: [${genres.slice(0,4).join(', ')}] → ${newClass}`);
-                } else {
-                    console.log(`[Classify] "${quest.title}" → no metadata, title-only → ${newClass}`);
+                    if (genres.length > 0) {
+                        console.log(`[Classify] "${quest.title}" → genres: [${genres.slice(0,4).join(', ')}] → ${newClass}`);
+                    } else {
+                        console.log(`[Classify] "${quest.title}" → no metadata, title-only → ${newClass}`);
+                    }
+                } catch (apiErr) {
+                    console.warn(`[Classify] Unexpected error for "${quest.title}": ${apiErr.message}`);
+                    newClass = classifyBest(quest.title, []);
                 }
-            } catch (apiErr) {
-                console.warn(`[Classify] Unexpected error for "${quest.title}": ${apiErr.message}`);
-                newClass = classifyBest(quest.title, []);
+
+                changed = newClass !== oldClass;
+                if (changed) {
+                    quest.classType = newClass;
+                    await quest.save();
+                    updated++;
+                }
+
+                // Send progress immediately as each item in the batch completes
+                send({ type: 'progress', processed: i + idx + 1, total: quests.length, title: quest.title, class: newClass, changed, updated });
+            }));
+
+            // Sleep 300ms between batches to stay under MangaDex 5 RPS limit.
+            // 31 batches * (400ms API + 300ms sleep) = ~22 seconds total execution.
+            // Well under Vercel's 60s maxDuration.
+            if (i + BATCH_SIZE < quests.length) {
+                await sleep(300);
             }
-
-            const changed = newClass !== oldClass;
-            if (changed) {
-                quest.classType = newClass;
-                await quest.save();
-                updated++;
-            }
-
-            send({ type: 'progress', processed: i + 1, total: quests.length, title: quest.title, class: newClass, changed, updated });
-
-            if (i < quests.length - 1) await sleep(400); // 400ms — only 2 APIs now, less throttle pressure
         }
 
         console.log(`[Admin] SSE Classification complete. ${updated}/${quests.length} records updated.`);

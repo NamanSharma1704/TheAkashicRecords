@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, Suspense, lazy, useRef } from 'react';
+import React, { useState, useEffect, useMemo, Suspense, lazy, useRef, useCallback } from 'react';
 import { motion, AnimatePresence, Reorder, useDragControls } from 'motion/react';
 import { Quest } from './types';
 import SystemFrame from '../components/system/SystemFrame';
@@ -169,6 +169,139 @@ const HeavyLoader = ({ theme }: { theme: any }) => (
     </div>
 );
 
+// --- DIMENSIONAL RIFT OVERLAY (Entering a New World - Dimensional Dive) ---
+const DimensionalRiftOverlay: React.FC<{ isActive: boolean; accentColor: string; isDark: boolean }> = ({ isActive, accentColor, isDark }) => {
+    if (!isActive) return null;
+    const colorPrimary = isDark ? accentColor : '#0ea5e9'; // sky-500
+    const colorSecondary = isDark ? '#fbbf24' : '#38bdf8'; // amber-400 / sky-400
+
+    return (
+        <motion.div
+            key="dimensional-rift"
+            className="fixed inset-0 z-[9999] flex items-center justify-center overflow-hidden font-orbitron"
+            style={{ backgroundColor: '#020202', perspective: '1000px', willChange: 'opacity' }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+        >
+            {/* 1. WARP SPEED STREAKS (GPU Optimized - Animating scaleY instead of height) */}
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
+                {Array.from({ length: 45 }).map((_, i) => {
+                    const angle = (i * 360) / 45;
+                    return (
+                        <motion.div
+                            key={i}
+                            className="absolute"
+                            style={{
+                                width: '2px',
+                                height: '150vh', // Fixed height prevents Layout Reflow
+                                transformOrigin: 'top center',
+                                rotate: `${angle}deg`,
+                                background: `linear-gradient(to bottom, transparent, ${colorSecondary}88, white)`,
+                                willChange: 'transform, opacity'
+                            }}
+                            animate={{ 
+                                scaleY: [0, 1, 0], // GPU accelerated scaling
+                                y: ['0vh', '150vh'], // Pushes streak outwards
+                                opacity: [0, 1, 0],
+                            }}
+                            transition={{ 
+                                duration: 0.4 + Math.random() * 0.4, 
+                                delay: Math.random() * 0.8, 
+                                ease: "easeIn",
+                                repeat: Infinity
+                            }}
+                        />
+                    );
+                })}
+            </div>
+
+            {/* 2. THE DIMENSIONAL TUNNEL (Pure CSS borders - Zero SVG scaling overhead) */}
+            <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
+                {Array.from({ length: 6 }).map((_, i) => (
+                    <motion.div
+                        key={`ring-${i}`}
+                        className="absolute rounded-full border-[2px] flex items-center justify-center"
+                        style={{
+                            borderColor: i % 2 === 0 ? colorPrimary : 'rgba(255,255,255,0.3)',
+                            borderStyle: i % 2 === 0 ? 'solid' : 'dashed',
+                            boxShadow: `0 0 40px 10px ${colorPrimary}40, inset 0 0 20px ${colorPrimary}20`,
+                            width: '40vmin',
+                            height: '40vmin',
+                            willChange: 'transform, opacity' // Hardware acceleration hint
+                        }}
+                        // GPU-accelerated scaling
+                        animate={{ 
+                            scale: [0.01, 15], 
+                            opacity: [0, 1, 0.1], 
+                            rotate: i % 2 === 0 ? [0, 120] : [0, -120] 
+                        }}
+                        transition={{ 
+                            duration: 1.5, 
+                            delay: i * 0.2, 
+                            ease: "easeIn" 
+                        }}
+                    >
+                        {/* Nested circle for geometric depth (pure CSS, no SVG) */}
+                        <div 
+                            className="absolute rounded-full border border-white/20" 
+                            style={{ 
+                                width: '85%', 
+                                height: '85%', 
+                                borderStyle: i % 2 === 0 ? 'dashed' : 'solid' 
+                            }}
+                        />
+                    </motion.div>
+                ))}
+            </div>
+
+            {/* 3. CENTER DESTINATION LIGHT (GPU Optimized - Animating scale) */}
+            <motion.div
+                className="absolute z-30 rounded-full flex items-center justify-center pointer-events-none mix-blend-screen"
+                style={{
+                    width: '100vmin', // Fixed dimensions
+                    height: '100vmin', // Fixed dimensions
+                    background: `radial-gradient(circle, #fff 0%, ${colorPrimary} 40%, transparent 80%)`,
+                    boxShadow: `0 0 120px 60px ${colorPrimary}`,
+                    willChange: 'transform, opacity'
+                }}
+                animate={{
+                    scale: [0, 0.05, 4], // GPU-accelerated massive expansion
+                    opacity: [0, 0.8, 1],
+                }}
+                transition={{ duration: 1.55, times: [0, 0.5, 1], ease: "easeIn" }} 
+            />
+
+            {/* 4. ETHEREAL TYPOGRAPHY */}
+            <motion.div
+                className="absolute z-40 flex flex-col items-center justify-center text-center pointer-events-none"
+                style={{ willChange: 'transform, opacity' }}
+                animate={{ 
+                    scale: [0.8, 1.2, 8], 
+                    opacity: [0, 1, 0] 
+                }}
+                transition={{ duration: 1.4, times: [0, 0.4, 1], ease: "easeIn" }}
+            >
+                <div className="font-orbitron font-black text-2xl md:text-5xl uppercase" style={{ color: 'white', textShadow: `0 0 20px ${colorPrimary}` }}>
+                    AKASHIC LINK ESTABLISHED
+                </div>
+                <div className="font-mono tracking-[0.5em] text-xs md:text-sm mt-4 uppercase" style={{ color: colorSecondary, textShadow: `0 0 10px ${colorSecondary}` }}>
+                    &lt; ENTERING NEW DIMENSION &gt;
+                </div>
+            </motion.div>
+            
+            {/* 5. FINAL OVERRIDE WHITEOUT (GPU Optimized opacity) */}
+            <motion.div
+                className="absolute inset-0 bg-white z-[100] pointer-events-none"
+                style={{ willChange: 'opacity' }}
+                animate={{ opacity: [0, 0, 0, 1] }}
+                transition={{ duration: 1.55, times: [0, 0.85, 0.95, 1], ease: "easeIn" }}
+            />
+        </motion.div>
+    );
+};
+
 // --- APP ---
 const App: React.FC = () => {
     const [booting, setBooting] = useState<boolean>(true);
@@ -200,6 +333,29 @@ const App: React.FC = () => {
     const [isAuth, setIsAuth] = useState<boolean>(isAuthenticated());
 
     // Cover-extracted accent color — dynamically sampled per active quest
+
+    const [portalAnimating, setPortalAnimating] = useState(false);
+
+    const portalAnchorRef = useRef<HTMLAnchorElement>(null);
+    const portalPendingUrl = useRef<string>('');
+
+    const handleEnterPortal = useCallback((url: string) => {
+        if (!url || url === '#') return;
+        // Store the URL — DO NOT open any tab yet (that would instantly switch tabs)
+        portalPendingUrl.current = url;
+        setPortalAnimating(true);
+        // After animation completes, fire the hidden anchor click to open the new tab.
+        // We use a direct .click() on a real <a target="_blank"> in the DOM, which is
+        // more permissive with popup blockers than window.open() inside a setTimeout.
+        setTimeout(() => {
+            if (portalAnchorRef.current) {
+                portalAnchorRef.current.href = portalPendingUrl.current;
+                portalAnchorRef.current.click();
+            }
+            setPortalAnimating(false);
+            portalPendingUrl.current = '';
+        }, 1550);
+    }, []);
 
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isSpireOpen, setIsSpireOpen] = useState(false);
@@ -904,11 +1060,16 @@ const App: React.FC = () => {
                                     className={`w-14 h-12 flex-none border ${theme.borderSubtle} ${theme.isDark ? 'bg-black/80 hover:border-white hover:text-white backdrop-blur-md' : 'bg-white/80 hover:border-black hover:text-black backdrop-blur-md'} flex items-center justify-center transition-colors cursor-pointer rounded-sm`}>
                                     <span className="text-xl font-bold">-</span>
                                 </motion.button>
-                                <motion.a whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} href={activeQuest.link || '#'} target="_blank"
-                                    className={`h-12 flex-1 max-w-[400px] backdrop-blur-md flex items-center justify-center gap-2 transition-all font-mono font-bold tracking-widest text-[12px] group cursor-pointer shadow-lg rounded-sm border text-white drop-shadow-md`}
-                                    style={{ backgroundColor: theme.accentColor, borderColor: theme.accentColor, boxShadow: `0 0 20px ${theme.accentColor}66` }}>
+                                <motion.button
+                                    whileHover={{ scale: 1.02 }}
+                                    whileTap={{ scale: 0.96 }}
+                                    onClick={() => handleEnterPortal(activeQuest.link || '#')}
+                                    disabled={!activeQuest.link || activeQuest.link === '#'}
+                                    className={`h-12 flex-1 max-w-[400px] backdrop-blur-md flex items-center justify-center gap-2 transition-all font-mono font-bold tracking-widest text-[12px] group cursor-pointer shadow-lg rounded-sm border text-white drop-shadow-md disabled:opacity-40 disabled:cursor-not-allowed`}
+                                    style={{ backgroundColor: theme.accentColor, borderColor: theme.accentColor, boxShadow: `0 0 20px ${theme.accentColor}66` }}
+                                >
                                     <ExternalLink size={16} className="group-hover:rotate-12 transition-transform" /> ENTER PORTAL
-                                </motion.a>
+                                </motion.button>
                                 <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => updateProgress(1)}
                                     className={`w-14 h-12 flex-none border ${theme.borderSubtle} ${theme.isDark ? 'hover:border-white hover:text-white bg-black/80 backdrop-blur-md' : 'hover:border-black hover:text-black bg-white/80 backdrop-blur-md'} flex items-center justify-center transition-colors cursor-pointer rounded-sm`}
                                     style={{ color: theme.accentColor }}>
@@ -1013,7 +1174,7 @@ const App: React.FC = () => {
                 </div>
             </div>
         </main>
-    ), [theme, currentTheme, isSpireOpen, activeQuest, progressPercent, activeId, handleLogClick, activeQuests, orderedActiveQuests, handleReorderActiveQuests, totalChaptersRead, playerRank, userState, updateProgress, coverImgError]);
+    ), [theme, currentTheme, isSpireOpen, activeQuest, progressPercent, activeId, handleLogClick, activeQuests, orderedActiveQuests, handleReorderActiveQuests, totalChaptersRead, playerRank, userState, updateProgress, coverImgError, handleEnterPortal]);
 
     if (booting) return <BootScreen onComplete={() => setBooting(false)} theme={theme} />;
 
@@ -1242,6 +1403,20 @@ const App: React.FC = () => {
                         )}
                     </AnimatePresence>
                 )}
+
+            {/* DIMENSIONAL RIFT PORTAL TRANSITION */}
+            <AnimatePresence>
+                {portalAnimating && (
+                    <DimensionalRiftOverlay
+                        isActive={portalAnimating}
+                        accentColor={theme.accentColor}
+                        isDark={theme.isDark}
+                    />
+                )}
+            </AnimatePresence>
+
+            {/* Hidden anchor used by portal animation to open new tab after animation completes */}
+            <a ref={portalAnchorRef} href="#" target="_blank" rel="noopener noreferrer" aria-hidden="true" style={{ display: 'none' }} />
 
             <SystemNotification
                 isOpen={sysNote.isOpen}

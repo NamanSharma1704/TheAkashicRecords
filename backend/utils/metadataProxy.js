@@ -1,5 +1,16 @@
 const fetch = global.fetch; // Use global fetch (Node 18+)
 
+// Fetch wrapper with AbortController-based timeout
+const fetchWithTimeout = async (url, options = {}, timeoutMs = 8000) => {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+        return await fetch(url, { ...options, signal: controller.signal });
+    } finally {
+        clearTimeout(timer);
+    }
+};
+
 const cleanDescription = (desc) => {
     if (!desc) return "No description available.";
     return desc
@@ -51,15 +62,19 @@ const fetchAniList = async (title) => {
     const tryFetch = async (searchTitle) => {
         try {
             console.log(`[AniList] Probing Archives for: "${searchTitle}"`);
-            const response = await fetch('https://graphql.anilist.co', {
+            const response = await fetchWithTimeout('https://graphql.anilist.co', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
                 body: JSON.stringify({ query, variables: { search: searchTitle } })
-            });
+            }, 8000);
             const data = await response.json();
             return data?.data?.Media || null;
         } catch (e) {
-            console.error(`[AniList] Probe Failed for "${searchTitle}":`, e.message);
+            if (e.name === 'AbortError') {
+                console.warn(`[AniList] Timeout (8s) for "${searchTitle}" — skipping.`);
+            } else {
+                console.error(`[AniList] Probe Failed for "${searchTitle}":`, e.message);
+            }
             return null;
         }
     };
@@ -96,7 +111,7 @@ const fetchMangaDex = async (title) => {
         // Boost search with relevance and popularity sorting
         const searchUrl = `https://api.mangadex.org/manga?title=${encodeURIComponent(title)}&limit=100&includes[]=cover_art&includes[]=author&includes[]=manga&contentRating[]=safe&contentRating[]=suggestive&contentRating[]=erotica&contentRating[]=pornographic&order[relevance]=desc&order[followedCount]=desc`;
 
-        const searchRes = await fetch(searchUrl);
+        const searchRes = await fetchWithTimeout(searchUrl, {}, 8000);
         const searchData = await searchRes.json();
 
         if (!searchData.data || searchData.data.length === 0) return null;
@@ -146,7 +161,7 @@ const fetchMangaDex = async (title) => {
             tags.forEach(tagId => params.append('includedTags[]', tagId));
             params.append('contentRating[]', 'safe');
 
-            const recRes = await fetch(`https://api.mangadex.org/manga?${params.toString()}`);
+            const recRes = await fetchWithTimeout(`https://api.mangadex.org/manga?${params.toString()}`, {}, 6000);
             const recData = await recRes.json();
             if (recData.data) {
                 recommendations = recData.data
@@ -185,7 +200,11 @@ const fetchMangaDex = async (title) => {
             recommendations: { nodes: recommendations }
         };
     } catch (e) {
-        console.error("[Proxy] MangaDex Error:", e.message);
+        if (e.name === 'AbortError') {
+            console.warn(`[MangaDex] Timeout for "${title}" — skipping.`);
+        } else {
+            console.error("[Proxy] MangaDex Error:", e.message);
+        }
         return null;
     }
 };
@@ -193,7 +212,12 @@ const fetchMangaDex = async (title) => {
 const fetchJikan = async (title) => {
     try {
         const searchUrl = `https://api.jikan.moe/v4/manga?q=${encodeURIComponent(title)}&limit=1&sfw=false`;
-        const response = await fetch(searchUrl);
+        const response = await fetchWithTimeout(searchUrl, {}, 10000);
+        // Jikan returns 429 when rate-limited — treat as a miss rather than hanging
+        if (response.status === 429) {
+            console.warn(`[Jikan] Rate-limited for "${title}" — skipping.`);
+            return null;
+        }
         const data = await response.json();
 
         if (data.data && data.data.length > 0) {
@@ -220,7 +244,11 @@ const fetchJikan = async (title) => {
         }
         return null;
     } catch (e) {
-        console.error("[Proxy] Jikan Error:", e.message);
+        if (e.name === 'AbortError') {
+            console.warn(`[Jikan] Timeout (10s) for "${title}" — skipping.`);
+        } else {
+            console.error("[Proxy] Jikan Error:", e.message);
+        }
         return null;
     }
 };

@@ -561,7 +561,12 @@ app.post('/api/admin/bulk-classify', authenticate, checkRole('SOVEREIGN'), async
             let newClass = null;
 
             try {
-                const metadata = await fetchBest(quest.title);
+                // Per-item timeout: if fetchBest hangs for any reason, skip after 25s
+                const metadataPromise = fetchBest(quest.title);
+                const timeoutPromise = new Promise((_, reject) =>
+                    setTimeout(() => reject(new Error('Per-item timeout')), 25000)
+                );
+                const metadata = await Promise.race([metadataPromise, timeoutPromise]);
                 const genres = metadata?.genres || [];
                 
                 newClass = classifyBest(quest.title, genres, oldClass);
@@ -572,7 +577,7 @@ app.post('/api/admin/bulk-classify', authenticate, checkRole('SOVEREIGN'), async
                     console.log(`[Classify] "${quest.title}" → no metadata, title-only → ${newClass}`);
                 }
             } catch (apiErr) {
-                console.warn(`[Classify] API error for "${quest.title}": ${apiErr.message}`);
+                console.warn(`[Classify] API error/timeout for "${quest.title}": ${apiErr.message}`);
                 newClass = classifyBest(quest.title, []);
             }
 
@@ -585,7 +590,7 @@ app.post('/api/admin/bulk-classify', authenticate, checkRole('SOVEREIGN'), async
 
             send({ type: 'progress', processed: i + 1, total: quests.length, title: quest.title, class: newClass, changed, updated });
 
-            if (i < quests.length - 1) await sleep(800);
+            if (i < quests.length - 1) await sleep(1200);
         }
 
         console.log(`[Admin] SSE Classification complete. ${updated}/${quests.length} records updated.`);

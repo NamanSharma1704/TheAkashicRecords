@@ -6,7 +6,7 @@
     "dev": "concurrently \"npm run dev-backend\" \"npm run dev-frontend\"",
     "dev-backend": "nodemon backend/server.js",
     "dev-frontend": "cd system && vite",
-    "build": "cd system && npm run build",
+    "build": "cd system && npx vite build",
     "postinstall": "echo 'Root dependencies installed. Sub-modules will use root packages when possible.'"
   },
   "dependencies": {

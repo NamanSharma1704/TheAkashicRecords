@@ -345,7 +345,6 @@ const SystemReader: React.FC<SystemReaderProps> = ({ isOpen, onClose, quest, the
             exit={{ opacity: 0 }}
             className="flex flex-col items-center justify-center h-full w-full relative overflow-hidden select-none pointer-events-none"
         >
-            <GlitchOverlay isActive={true} />
             <div className={`absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] ${isLight ? 'from-cyan-900/20' : 'from-amber-900/20'} via-black to-black opacity-80`} />
 
             <div className={`relative z-10 flex flex-col items-center gap-8 bg-black/40 p-12 border ${isLight ? 'border-cyan-500/30 shadow-[0_0_50px_rgba(6,182,212,0.15)]' : 'border-amber-500/30 shadow-[0_0_50px_rgba(245,158,11,0.15)]'} rounded-lg backdrop-blur-md`}>

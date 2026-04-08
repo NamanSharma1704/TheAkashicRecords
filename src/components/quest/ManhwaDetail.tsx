@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { X, Users, Share2, Zap, Edit2, Target, AlignLeft, Check } from 'lucide-react';
+import { X, Users, Share2, Zap, Edit2, Target, AlignLeft, Check, ExternalLink } from 'lucide-react';
 import { getProxiedImageUrl } from '../../utils/api';
 import { systemFetch } from '../../utils/auth';
 
 import { Theme, Quest } from '../../core/types';
 import ScrambleText from '../system/ScrambleText';
+import SystemReader from '../reader/SystemReader';
+import './ManhwaDetail.css';
 
 
 
@@ -58,6 +60,7 @@ interface AniListMedia {
 // --- COMPONENT ---
 const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, theme, allQuests, onSetActive, onUpdate, onEdit }) => {
     const [media, setMedia] = useState<AniListMedia | null>(null);
+    const [isReaderOpen, setIsReaderOpen] = useState(false);
     const [isEditingSynopsis, setIsEditingSynopsis] = useState(false);
     const [draftSynopsis, setDraftSynopsis] = useState("");
     const [isLoadingMedia, setIsLoadingMedia] = useState(false);
@@ -192,71 +195,36 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
 
     return (
 
-        <div className={`fixed inset-0 z-[400] flex animate-in fade-in duration-500`}
-            style={{ background: theme.isDark
-                ? 'linear-gradient(135deg, #020202 0%, #0d0800 30%, #1a0f00 55%, #0a0500 80%, #020202 100%)'
-                : 'linear-gradient(135deg, #e0f7ff 0%, #f0f9ff 25%, #eef2ff 55%, #f5f3ff 80%, #e0f2fe 100%)'
-            }}>
+        <div className={`fixed inset-0 z-[400] flex animate-in fade-in duration-500 manhwa-detail-backdrop`}
+            data-theme={theme.isDark ? 'dark' : 'light'}
+        >
             {/* FULL-BLEED CINEMATIC BACKDROP */}
             <div className="absolute inset-0 z-0 overflow-hidden">
 
                 {/* BASE GRADIENT LAYER */}
-                <div className="absolute inset-0 z-[1]" style={{
-                    background: theme.isDark
-                        ? 'radial-gradient(ellipse 80% 60% at 70% 20%, rgba(245,158,11,0.18) 0%, transparent 60%), radial-gradient(ellipse 60% 50% at 20% 80%, rgba(234,179,8,0.12) 0%, transparent 55%), radial-gradient(ellipse 100% 100% at 50% 50%, rgba(2,2,2,0.7) 0%, rgba(2,2,2,0.95) 100%)'
-                        : 'radial-gradient(ellipse 80% 60% at 70% 15%, rgba(6,182,212,0.25) 0%, transparent 60%), radial-gradient(ellipse 60% 50% at 15% 80%, rgba(99,102,241,0.20) 0%, transparent 55%), radial-gradient(ellipse 100% 100% at 50% 50%, rgba(224,242,254,0.4) 0%, rgba(238,242,255,0.65) 100%)'
-                }} />
+                <div className="absolute inset-0 z-[1] manhwa-detail-base-gradient" />
 
                 {/* COVER ART AURA */}
                 {(quest?.coverUrl || media?.bannerImage || finalCover) ? (
                     <img
                         src={getProxiedImageUrl(quest?.coverUrl || media?.bannerImage || finalCover)}
-                        className="w-full h-full object-cover blur-3xl scale-125 transform-gpu"
-                        style={{ opacity: theme.isDark ? 0.25 : 0.12 }}
+                        className="w-full h-full object-cover blur-3xl scale-125 transform-gpu manhwa-detail-aura"
                         referrerPolicy="no-referrer"
                         alt="Background Aura"
                     />
                 ) : null}
 
                 {/* DEPTH VIGNETTE */}
-                <div className="absolute inset-0 z-[2] pointer-events-none" style={{
-                    background: theme.isDark
-                        ? 'radial-gradient(ellipse at 50% 50%, transparent 20%, rgba(0,0,0,0.75) 100%)'
-                        : 'radial-gradient(ellipse at 50% 50%, transparent 20%, rgba(224,242,254,0.5) 100%)'
-                }} />
+                <div className="absolute inset-0 z-[2] pointer-events-none manhwa-detail-vignette" />
 
                 {/* LARGE AMBIENT ORB — TOP RIGHT */}
-                <div className="absolute pointer-events-none z-[3]" style={{
-                    top: '-15%', right: '-10%',
-                    width: '65%', height: '65%',
-                    borderRadius: '50%',
-                    filter: 'blur(120px)',
-                    background: theme.isDark
-                        ? 'radial-gradient(circle, rgba(245,158,11,0.22) 0%, rgba(234,179,8,0.08) 60%, transparent 100%)'
-                        : 'radial-gradient(circle, rgba(6,182,212,0.30) 0%, rgba(14,165,233,0.12) 60%, transparent 100%)'
-                }} />
+                <div className="absolute pointer-events-none z-[3] manhwa-detail-orb-top-right" />
 
                 {/* LARGE AMBIENT ORB — BOTTOM LEFT */}
-                <div className="absolute pointer-events-none z-[3]" style={{
-                    bottom: '-15%', left: '-10%',
-                    width: '60%', height: '60%',
-                    borderRadius: '50%',
-                    filter: 'blur(120px)',
-                    background: theme.isDark
-                        ? 'radial-gradient(circle, rgba(161,98,7,0.20) 0%, rgba(120,53,15,0.08) 60%, transparent 100%)'
-                        : 'radial-gradient(circle, rgba(99,102,241,0.25) 0%, rgba(139,92,246,0.10) 60%, transparent 100%)'
-                }} />
+                <div className="absolute pointer-events-none z-[3] manhwa-detail-orb-bottom-left" />
 
                 {/* SECONDARY ACCENT ORB — TOP LEFT */}
-                <div className="absolute pointer-events-none z-[3]" style={{
-                    top: '10%', left: '5%',
-                    width: '30%', height: '30%',
-                    borderRadius: '50%',
-                    filter: 'blur(90px)',
-                    background: theme.isDark
-                        ? 'rgba(251,191,36,0.10)'
-                        : 'rgba(56,189,248,0.18)'
-                }} />
+                <div className="absolute pointer-events-none z-[3] manhwa-detail-orb-top-left" />
             </div>
 
             {/* TOP NAVIGATION BAR */}
@@ -268,6 +236,8 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                 <button
                     onClick={onClose}
                     className={`pointer-events-auto w-9 h-9 flex items-center justify-center border ${theme.borderSubtle} ${theme.mutedText} hover:${theme.highlightText} hover:border-current transition-colors cursor-pointer`}
+                    title="Close Details"
+                    aria-label="Close Details"
                 >
                     <X size={16} />
                 </button>
@@ -275,12 +245,8 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
 
             {/* MAIN SCROLLABLE CONTENT (CENTERED COLUMN) */}
             <div
-                className="relative z-30 w-full h-full overflow-y-auto custom-scrollbar pt-16 sm:pt-24 pb-32 px-4 sm:px-8 md:px-16"
-                style={{
-                    '--scrollbar-thumb': theme.id === 'LIGHT' ? '#0ea5e9' : '#f59e0b',
-                    '--scrollbar-track': 'transparent',
-                    '--scrollbar-thumb-hover': theme.id === 'LIGHT' ? '#0284c7' : '#d97706'
-                } as React.CSSProperties}
+                className="relative z-30 w-full h-full overflow-y-auto custom-scrollbar pt-16 sm:pt-24 pb-32 px-4 sm:px-8 md:px-16 manhwa-detail-scroll-container"
+                data-theme={theme.isDark ? 'dark' : 'light'}
             >
                 <motion.div variants={containerVariants} initial="hidden" animate="visible" className="max-w-6xl mx-auto flex flex-col gap-6 md:gap-12">
 
@@ -322,17 +288,15 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
 
                             {/* PROTOCOL BUTTONS ROW */}
                             <div className="flex flex-wrap gap-3 w-full justify-center md:justify-start mt-4">
-                                {quest?.link && (
-                                    <a
-                                        href={quest.link}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className={`px-8 py-3 rounded-sm border ${theme.isDark ? 'bg-amber-500/10 hover:bg-amber-500/20 border-amber-500/30 shadow-[0_0_15px_rgba(245,158,11,0.2)]' : 'bg-sky-500/10 hover:bg-sky-500/20 border-sky-500/30 shadow-[0_0_15px_rgba(14,165,233,0.2)]'} ${theme.highlightText} font-bold transition-all flex items-center gap-3 group/dive hover:scale-105 active:scale-95`}
-                                    >
-                                        <Zap size={16} className={`${theme.highlightText} group-hover/dive:animate-pulse`} />
-                                        <ScrambleText text="INITIALIZE_DIVE" className="text-[10px] tracking-[0.2em] font-orbitron" />
-                                    </a>
-                                )}
+                                <button
+                                    onClick={() => setIsReaderOpen(true)}
+                                    className={`px-8 py-3 rounded-sm border ${theme.isDark ? 'bg-amber-500/10 hover:bg-amber-500/20 border-amber-500/30 shadow-[0_0_15px_rgba(245,158,11,0.2)]' : 'bg-sky-500/10 hover:bg-sky-500/20 border-sky-500/30 shadow-[0_0_15px_rgba(14,165,233,0.2)]'} ${theme.highlightText} font-bold transition-all flex items-center gap-3 group/dive hover:scale-105 active:scale-95 cursor-pointer`}
+                                    title="Start Reading"
+                                    aria-label="Start Reading"
+                                >
+                                    <Zap size={16} className={`${theme.highlightText} group-hover/dive:animate-pulse`} />
+                                    <ScrambleText text="INITIALIZE_DIVE" className="text-[10px] tracking-[0.2em] font-orbitron" />
+                                </button>
                                 <button
                                     onClick={() => quest && onEdit && onEdit(quest)}
                                     className={`px-6 py-3 rounded-sm border bg-white/5 hover:bg-white/10 border-white/10 text-white font-bold transition-all flex items-center gap-3 group/edit hover:border-white/30`}
@@ -352,6 +316,17 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                     <Target size={16} className="opacity-70 group-hover/active:opacity-100 transition-opacity" />
                                     <span className="text-[10px] tracking-[0.2em] font-orbitron">MARK_TARGET</span>
                                 </button>
+                                {quest?.link && (
+                                    <a
+                                        href={quest.link}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className={`px-6 py-3 rounded-sm border bg-white/5 hover:bg-white/10 border-white/10 text-white font-bold transition-all flex items-center gap-3 group/ext hover:border-white/30`}
+                                    >
+                                        <ExternalLink size={16} className="opacity-70 group-hover/ext:opacity-100 transition-opacity" />
+                                        <span className="text-[10px] tracking-[0.2em] font-orbitron">EXTERNAL_LINK</span>
+                                    </a>
+                                )}
                             </div>
                         </div>
                     </motion.div>
@@ -388,12 +363,13 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
 
                                 {/* The Thread */}
                                 <div className="h-1 w-full bg-white/10 rounded-full overflow-hidden relative shadow-inner">
-                                    <div
-                                        className={`absolute top-0 left-0 h-full bg-gradient-to-r ${theme.gradient} transition-transform duration-1000 ease-out origin-left`}
-                                        style={{ transform: `scaleX(${Math.min(1, (quest.totalChapters || 0) > 0 ? (quest.currentChapter / quest.totalChapters) : 0)})`, width: '100%' }}
+                                    <motion.div
+                                        className={`absolute top-0 left-0 h-full bg-gradient-to-r ${theme.gradient} transition-transform duration-1000 ease-out origin-left manhwa-detail-progress-bar-fill`}
+                                        initial={{ scaleX: 0 }}
+                                        animate={{ scaleX: Math.min(1, (quest.totalChapters || 0) > 0 ? (quest.currentChapter / quest.totalChapters) : 0) }}
                                     >
                                         <div className="absolute right-0 top-0 h-full w-8 bg-white opacity-50 blur-sm" />
-                                    </div>
+                                    </motion.div>
                                 </div>
                             </div>
                         </div>
@@ -524,7 +500,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                 <div className="flex overflow-x-auto gap-4 pb-4 custom-scrollbar snap-x">
                                     {similarQuests.map((rec) => (
                                         <div key={rec.id} onClick={() => onSetActive && onSetActive(rec.id)} className="w-[160px] shrink-0 snap-start group relative aspect-[2/3] rounded-lg overflow-hidden cursor-pointer shadow-lg border border-white/5">
-                                            <img src={getProxiedImageUrl(rec.coverUrl)} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" referrerPolicy="no-referrer" />
+                                            <img src={getProxiedImageUrl(rec.coverUrl)} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" referrerPolicy="no-referrer" alt={rec.title} title={rec.title} />
                                             <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/20 to-transparent opacity-80 group-hover:opacity-100 transition-opacity duration-300" />
                                             <div className="absolute bottom-0 w-full p-4 transform translate-y-2 group-hover:translate-y-0 transition-transform duration-300">
                                                 <div className="text-[10px] font-bold truncate text-white uppercase group-hover:textShadow-glow">
@@ -544,6 +520,15 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
             </div>
 
             {/* SHARED NOISE HANDLED BY BACKGROUND CONTROLLER */}
+
+            {/* READER OVERLAY */}
+            {quest && <SystemReader
+                isOpen={isReaderOpen}
+                onClose={() => setIsReaderOpen(false)}
+                quest={quest}
+                theme={theme}
+                onUpdate={onUpdate}
+            />}
         </div>
     );
 };

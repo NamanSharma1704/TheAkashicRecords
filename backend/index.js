@@ -729,20 +729,27 @@ app.get('/api/proxy/image', async (req, res) => {
         return res.status(400).send('Invalid URL format.');
     }
 
-    const fetchWithTimeout = async (targetUrl, timeoutMs) => {
+    const fetchWithTimeout = async (targetUrl, timeoutMs, customReferer) => {
         const controller = new AbortController();
         const timer = setTimeout(() => controller.abort(), timeoutMs);
         try {
             const response = await fetch(targetUrl, {
                 signal: controller.signal,
                 headers: {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36',
                     'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
                     'Accept-Language': 'en-US,en;q=0.9',
                     'Sec-Fetch-Dest': 'image',
                     'Sec-Fetch-Mode': 'no-cors',
                     'Sec-Fetch-Site': 'cross-site',
-                    'Referer': new URL(targetUrl).origin + '/'
+                    'Referer': customReferer || (() => {
+                        const h = new URL(targetUrl).hostname.toLowerCase();
+                        if (h.includes('mangabuddy') || h.includes('mbcdns')) return 'https://mangabuddy.com/';
+                        if (h.includes('asurascans')) return 'https://asurascans.com/';
+                        if (h.includes('mgeko')) return 'https://www.mgeko.cc/';
+                        return new URL(targetUrl).origin + '/';
+                    })(),
+
                 },
                 redirect: 'follow'
             });
@@ -755,11 +762,11 @@ app.get('/api/proxy/image', async (req, res) => {
     try {
         let response;
         try {
-            response = await fetchWithTimeout(url, 6000);
+            response = await fetchWithTimeout(url, 6000, req.query.referer);
         } catch (firstErr) {
             // Retry once on timeout or network error
             console.warn(`[ImageProxy] First attempt failed (${firstErr.message}), retrying: ${url}`);
-            response = await fetchWithTimeout(url, 7000);
+            response = await fetchWithTimeout(url, 7000, req.query.referer);
         }
 
         if (!response.ok) {
@@ -960,5 +967,8 @@ const inferClassFromTitle = (title) => {
 
 
 
+
+const readerController = require('./controllers/readerController');
+app.use('/api/reader', authenticate, readerController);
 
 module.exports = app;

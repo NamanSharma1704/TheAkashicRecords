@@ -74,8 +74,8 @@ const QuestListItem = ({ item, theme, activeId, handleLogClick, onDragStateChang
                             opacity-40 lg:opacity-0 group-hover:opacity-70 active:opacity-100
                             transition-opacity
                             [@media(pointer:coarse)]:opacity-60
+                            flex items-center justify-center min-w-[28px] min-h-[32px]
                         `}
-                        style={{ touchAction: 'none', minWidth: '28px', minHeight: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                         onPointerDown={handleDragStart}
                     >
                         <GripVertical size={16} />
@@ -87,6 +87,7 @@ const QuestListItem = ({ item, theme, activeId, handleLogClick, onDragStateChang
                                 <img
                                     key={item.coverUrl}
                                     src={item.coverUrl}
+                                    alt={item.title}
                                     className="w-full h-full object-cover"
                                     loading="eager"
                                     onError={() => setThumbError(true)}
@@ -128,8 +129,7 @@ const ActiveQuestList = ({ orderedActiveQuests, handleReorderActiveQuests, theme
 
     return (
         <div
-            className="flex-1 min-h-0 overflow-y-auto hide-scrollbar overscroll-contain"
-            style={{ touchAction: isDragging ? 'none' : 'pan-y' }}
+            className={`flex-1 min-h-0 overflow-y-auto hide-scrollbar overscroll-contain ${isDragging ? 'touch-none' : 'touch-pan-y'}`}
         >
             <Reorder.Group
                 axis="y"
@@ -161,6 +161,7 @@ const ManhwaDetail = lazy(() => import('../components/quest/ManhwaDetail'));
 const HunterProfile = lazy(() => import('../components/profile/HunterProfile'));
 const DivineSpire = lazy(() => import('../components/tower/DivineSpire'));
 const SystemGateModal = lazy(() => import('../components/system/SystemGateModal'));
+const SystemReader = lazy(() => import('../components/reader/SystemReader'));
 
 // Loading Fallback Strategy
 const HeavyLoader = ({ theme }: { theme: any }) => (
@@ -178,8 +179,8 @@ const DimensionalRiftOverlay: React.FC<{ isActive: boolean; accentColor: string;
     return (
         <motion.div
             key="dimensional-rift"
-            className="fixed inset-0 z-[9999] flex items-center justify-center overflow-hidden font-orbitron"
-            style={{ backgroundColor: '#020202', perspective: '1000px', willChange: 'opacity' }}
+            className="fixed inset-0 z-[9999] flex items-center justify-center overflow-hidden font-orbitron bg-[#020202]"
+            style={{ perspective: '1000px', willChange: 'opacity' }}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -245,12 +246,7 @@ const DimensionalRiftOverlay: React.FC<{ isActive: boolean; accentColor: string;
                     >
                         {/* Nested circle for geometric depth (pure CSS, no SVG) */}
                         <div 
-                            className="absolute rounded-full border border-white/20" 
-                            style={{ 
-                                width: '85%', 
-                                height: '85%', 
-                                borderStyle: i % 2 === 0 ? 'dashed' : 'solid' 
-                            }}
+                            className={`absolute rounded-full border border-white/20 w-[85%] h-[85%] ${i % 2 === 0 ? 'border-dashed' : 'border-solid'}`} 
                         />
                     </motion.div>
                 ))}
@@ -339,35 +335,50 @@ const App: React.FC = () => {
     const portalAnchorRef = useRef<HTMLAnchorElement>(null);
     const portalPendingUrl = useRef<string>('');
 
+    const handleEnterInternalPortal = useCallback((url: string) => {
+        if (!url || url === '#' || portalAnimating) return;
+        
+        setPortalAnimating(true);
+        setTimeout(() => {
+            setIsReaderOpen(true);
+            setPortalAnimating(false);
+        }, 1550);
+    }, [portalAnimating]);
+
     const handleEnterPortal = useCallback((url: string) => {
-        if (!url || url === '#') return;
-        // Store the URL
+        if (!url || url === '#' || portalAnimating) return;
+        
+        // Mobile/Safari hack: open synchronously to capture user activation 
+        // before the 1.5s animation delay ends.
+        const newWindow = window.open('about:blank', '_blank');
+        
         portalPendingUrl.current = url;
         setPortalAnimating(true);
         
-        // After animation completes, attempt to open the portal.
-        // On iOS/Safari, async window opening is blocked by the popup blocker.
+        // After animation completes, update the already opened window.
         setTimeout(() => {
-            // Attempt to open in a new tab first
-            const newWindow = window.open(portalPendingUrl.current, '_blank', 'noopener,noreferrer');
-            
-            // If the browser (like Safari on iPad) blocked the new tab popup,
-            // fallback to navigating the current tab so the user isn't stuck.
-            if (!newWindow) {
-                window.location.href = portalPendingUrl.current;
+            if (newWindow) {
+                newWindow.location.href = portalPendingUrl.current;
             } else {
-                setPortalAnimating(false);
+                // Secondary attempt with anchor if window.open was blocked entirely
+                if (portalAnchorRef.current) {
+                    portalAnchorRef.current.href = portalPendingUrl.current;
+                    portalAnchorRef.current.click();
+                }
             }
             
+            setPortalAnimating(false);
             portalPendingUrl.current = '';
         }, 1550);
-    }, []);
+    }, [portalAnimating]);
 
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isReaderOpen, setIsReaderOpen] = useState(false);
     const [isSpireOpen, setIsSpireOpen] = useState(false);
     const [isProfileOpen, setIsProfileOpen] = useState(false);
     const [isDetailOpen, setIsDetailOpen] = useState(false);
     const detailOpenedFromProfile = useRef(false);
+    const lastCoverTap = useRef<number>(0);
 
     const [selectedQuest, setSelectedQuest] = useState<Quest | null>(null);
     const [editingItem, setEditingItem] = useState<Quest | null>(null);
@@ -484,10 +495,10 @@ const App: React.FC = () => {
     }, []);
 
     useEffect(() => {
-        if (!isSpireOpen && !isDetailOpen && !isModalOpen && !isProfileOpen) {
+        if (!isSpireOpen && !isDetailOpen && !isModalOpen && !isProfileOpen && !isReaderOpen) {
             triggerHUD();
         }
-    }, [isSpireOpen, isDetailOpen, isModalOpen, isProfileOpen]);
+    }, [isSpireOpen, isDetailOpen, isModalOpen, isProfileOpen, isReaderOpen]);
 
     // --- SYSTEM NOTIFICATION STATE ---
     const [sysNote, setSysNote] = useState<{
@@ -893,20 +904,29 @@ const App: React.FC = () => {
                                             <Crown size={10} style={{ color: theme.accentColor }} />
                                             <span style={{ marginRight: '-0.3em' }}>RANK ASSESSMENT</span>
                                         </div>
-                                        <div className={`text-6xl xl:text-[80px] font-black font-orbitron leading-none transition-colors duration-700 text-right`}
-                                            style={{ color: theme.accentColor, filter: `drop-shadow(0 0 25px ${theme.accentColor}88)` }}>
+                                        <div className="text-6xl xl:text-[80px] font-black font-orbitron leading-none transition-colors duration-700 text-right text-[var(--accent-color)] [filter:drop-shadow(0_0_25px_var(--accent-glow))]">
                                             {calculateQuestRank(activeQuest)}
                                         </div>
                                     </div>
                                     <div className="flex flex-col items-end w-max max-w-none">
                                         <div className={`text-[10px] font-mono ${theme.mutedText} tracking-[0.3em] uppercase mb-1 text-right w-full`}>CLASSIFICATION</div>
-                                        <div className={`text-base lg:text-lg xl:text-2xl font-black font-orbitron tracking-wider whitespace-nowrap text-right transition-colors duration-700`}
-                                            style={{ color: theme.accentColor }}>{activeQuest.classType || 'UNKNOWN'}</div>
+                                        <div className={`text-base lg:text-lg xl:text-2xl font-black font-orbitron tracking-wider whitespace-nowrap text-right transition-colors duration-700 text-[var(--accent-color)]`}>{activeQuest.classType || 'UNKNOWN'}</div>
                                     </div>
                                 </div>
                             </div>
 
-                            <div className="relative flex-none h-full min-h-0 min-w-0 w-[min(85vw,320px)] md:w-full md:max-w-[45%] lg:w-auto lg:max-h-[85vh] aspect-[72/103] self-center flex items-center justify-center transition-all duration-700 ease-out transform-gpu hover:-translate-y-2 perspective-[1000px] group">
+                            <div
+                                onDoubleClick={() => { setEditingItem(activeQuest); setIsModalOpen(true); }}
+                                onClick={() => {
+                                    const now = Date.now();
+                                    if (now - lastCoverTap.current < 300) {
+                                        setEditingItem(activeQuest);
+                                        setIsModalOpen(true);
+                                    }
+                                    lastCoverTap.current = now;
+                                }}
+                                className="relative flex-none h-full min-h-0 min-w-0 w-[min(85vw,320px)] md:w-full md:max-w-[45%] lg:w-auto lg:max-h-[85vh] aspect-[72/103] self-center flex items-center justify-center transition-all duration-700 ease-out transform-gpu hover:-translate-y-2 perspective-[1000px] group cursor-pointer"
+                            >
                                 {/* FROSTED GLASS PLATFORM (Sharp Square Base) */}
                                 <div
                                     className="absolute -inset-4 backdrop-blur-3xl pointer-events-none transition-all duration-700 opacity-100 group-hover:opacity-60"
@@ -951,6 +971,7 @@ const App: React.FC = () => {
                                             <img
                                                 key={activeQuest.id}
                                                 src={activeQuest.coverUrl}
+                                                alt={activeQuest.title}
                                                 className="w-full h-full object-cover transition-transform duration-[10s] group-hover:scale-110"
                                                 referrerPolicy="no-referrer"
                                                 loading="eager"
@@ -991,11 +1012,7 @@ const App: React.FC = () => {
 
                                         {/* Bright Bottom Accent Bar */}
                                         <div
-                                            className="absolute bottom-0 left-0 w-full h-[4px] z-30"
-                                            style={{
-                                                background: `linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.8), transparent)`,
-                                                boxShadow: `0 0 15px rgba(255, 255, 255, 0.5)`
-                                            }}
+                                            className="absolute bottom-0 left-0 w-full h-[4px] z-30 [background:linear-gradient(90deg,transparent,rgba(255,255,255,0.8),transparent)] [box-shadow:0_0_15px_rgba(255,255,255,0.5)]"
                                         />
                                     </div>{/* end inner cover */}
                                 </div>
@@ -1005,8 +1022,7 @@ const App: React.FC = () => {
                             <div className="hidden md:flex flex-col items-start justify-center gap-4 md:gap-6 xl:gap-10 self-stretch flex-1 basis-0 min-w-0 shrink">
                                 <div className="flex flex-col items-start w-max max-w-none">
                                     <div className={`text-[10px] font-mono ${theme.mutedText} tracking-[0.3em] uppercase mb-1`}>SEQUENCE DATA</div>
-                                    <div className={`text-5xl xl:text-[70px] font-black font-mono tabular-nums leading-none text-left transition-colors duration-700`}
-                                        style={{ color: theme.accentColor }}>
+                                    <div className={`text-5xl xl:text-[70px] font-black font-mono tabular-nums leading-none text-left transition-colors duration-700 text-[var(--accent-color)]`}>
                                         {String(activeQuest.currentChapter).padStart(3, '0')}
                                     </div>
                                     <div className={`text-[11px] font-mono tracking-widest mt-2 ${theme.mutedText}`}>
@@ -1055,8 +1071,8 @@ const App: React.FC = () => {
                                     <span style={{ color: theme.accentColor }}>{progressPercent}%</span>
                                 </div>
                                 <div className={`h-1.5 ${theme.isDark ? 'bg-gray-900/40' : 'bg-gray-300/40'} w-full relative overflow-hidden backdrop-blur-md rounded-full shadow-inner`}>
-                                    <div className={`h-full transition-transform duration-700 ease-out origin-left`}
-                                        style={{ transform: `scaleX(${progressPercent / 100})`, background: `linear-gradient(90deg, ${theme.accentColor}99, ${theme.accentColor})`, boxShadow: `0 0 12px ${theme.accentColor}88` }} />
+                                    <div className="h-full transition-transform duration-700 ease-out origin-left [background:linear-gradient(90deg,var(--accent-glow),var(--accent-color))] [box-shadow:0_0_12px_var(--accent-glow)]"
+                                        style={{ transform: `scaleX(${progressPercent / 100})` }} />
                                 </div>
                             </div>
 
@@ -1069,21 +1085,22 @@ const App: React.FC = () => {
                                 <motion.button
                                     whileHover={{ scale: 1.02 }}
                                     whileTap={{ scale: 0.96 }}
-                                    onClick={() => handleEnterPortal(activeQuest.link || '#')}
+                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleEnterInternalPortal(activeQuest.link || '#'); }}
                                     disabled={!activeQuest.link || activeQuest.link === '#'}
                                     className={`h-12 flex-1 max-w-[400px] backdrop-blur-md flex items-center justify-center gap-2 transition-all font-mono font-bold tracking-widest text-[12px] group cursor-pointer shadow-lg rounded-sm border text-white drop-shadow-md disabled:opacity-40 disabled:cursor-not-allowed`}
                                     style={{ backgroundColor: theme.accentColor, borderColor: theme.accentColor, boxShadow: `0 0 20px ${theme.accentColor}66` }}
                                 >
-                                    <ExternalLink size={16} className="group-hover:rotate-12 transition-transform" /> ENTER PORTAL
+                                    <Sword size={16} className="group-hover:rotate-12 transition-transform" /> ENTER PORTAL
                                 </motion.button>
                                 <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => updateProgress(1)}
                                     className={`w-14 h-12 flex-none border ${theme.borderSubtle} ${theme.isDark ? 'hover:border-white hover:text-white bg-black/80 backdrop-blur-md' : 'hover:border-black hover:text-black bg-white/80 backdrop-blur-md'} flex items-center justify-center transition-colors cursor-pointer rounded-sm`}
                                     style={{ color: theme.accentColor }}>
                                     <Sword size={18} />
                                 </motion.button>
-                                <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => { setEditingItem(activeQuest); setIsModalOpen(true); }}
+                                <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+                                    onClick={() => { handleEnterPortal(activeQuest.link || '#'); }}
                                     className={`w-14 h-12 flex-none border ${theme.borderSubtle} ${theme.isDark ? 'hover:border-white hover:text-white bg-black/80 backdrop-blur-md' : 'hover:border-black hover:text-black bg-white/80 backdrop-blur-md'} flex items-center justify-center transition-colors cursor-pointer shadow-lg rounded-sm`}>
-                                    <Terminal size={16} />
+                                    <ExternalLink size={16} />
                                 </motion.button>
                             </div>
                         </div>
@@ -1120,12 +1137,12 @@ const App: React.FC = () => {
 
                                     <div className="flex flex-col items-start text-left flex-1 min-w-0 sm:-mt-6">
                                         <div className={`text-[10px] ${theme.highlightText} font-black font-mono uppercase tracking-[0.2em] mb-1 mt-0.5 opacity-90 transition-colors duration-700 whitespace-nowrap`}>ENTITY CLASSIFICATION</div>
-                                        <div className="text-3xl sm:text-4xl lg:text-2xl xl:text-4xl font-black font-manifold tracking-tight drop-shadow-sm flex items-baseline leading-normal overflow-hidden">
-                                            <span className={`inline-block pr-[6px] text-transparent bg-clip-text bg-gradient-to-r ${theme.gradient} transition-colors duration-700 truncate`}>{playerRank.name}</span>
+                                        <div className="text-3xl sm:text-4xl lg:text-2xl xl:text-4xl font-black font-manifold tracking-tight drop-shadow-sm flex items-baseline leading-normal overflow-hidden h-[1.5em] sm:h-[1.5em] lg:h-[1.8em] xl:h-[1.5em]">
+                                            <span className={`inline-block pr-[6px] text-transparent bg-clip-text bg-gradient-to-r ${theme.gradient} transition-colors duration-700 truncate`} style={{ lineHeight: '1.2' }}>{playerRank.name}</span>
                                         </div>
                                     </div>
                                 </div>
-                                <div className="mt-3"><div className={`flex justify-between text-[8px] font-mono ${theme.highlightText} mb-0.5 transition-colors duration-700`}><span>EXP ACQUIRED</span><span>{totalChaptersRead} PTS</span></div><div className={`h-1 w-full ${theme.isDark ? 'bg-gray-800' : 'bg-gray-200'} transition-colors duration-700 overflow-hidden relative`}><div className={`h-full w-full bg-gradient-to-r ${theme.gradient} progress-bloom transition-transform duration-700 origin-left`} style={{ transform: `scaleX(0.6)`, color: theme.id === 'LIGHT' ? '#06b6d4' : '#f59e0b' }} /></div></div>
+                                <div className="mt-3"><div className={`flex justify-between text-[8px] font-mono ${theme.highlightText} mb-0.5 transition-colors duration-700 uppercase`}><span>EXP ACQUIRED</span><span>{totalChaptersRead} PTS</span></div><div className={`h-1 w-full ${theme.isDark ? 'bg-gray-800' : 'bg-gray-200'} transition-colors duration-700 overflow-hidden relative`}><div className={`h-full w-full bg-gradient-to-r ${theme.gradient} progress-bloom transition-transform duration-700 origin-left [color:var(--accent-color)]`} style={{ transform: `scaleX(0.6)` }} /></div></div>
                             </div>
                         </SystemFrame>
                     </div>
@@ -1187,7 +1204,15 @@ const App: React.FC = () => {
     if (!isAuth) return <LoginScreen onLoginSuccess={handleLoginSuccess} theme={theme} />;
 
     return (
-        <div id="main-scroll-area" className={`relative h-[100dvh] overflow-hidden ${theme.appBg} ${theme.baseText} font-sans selection:bg-amber-500/30 transition-colors duration-700 ease-in-out`}>
+        <div 
+            id="main-scroll-area" 
+            className={`relative h-[100dvh] overflow-hidden ${theme.appBg} ${theme.baseText} font-sans selection:bg-amber-500/30 transition-colors duration-700 ease-in-out`}
+            style={{ 
+                '--accent-color': theme.accentColor,
+                '--accent-glow': `${theme.accentColor}88`,
+                '--accent-faint': `${theme.accentColor}22`
+            } as React.CSSProperties}
+        >
             <BackgroundController theme={theme} isPaused={isModalOpen} isMobile={isMobile} />
             {/* BACKGROUND GRADIENT FIX */}
             <div className="absolute inset-0 pointer-events-none z-0 bg-[radial-gradient(circle,transparent_50%,rgba(0,0,0,0.4)_100%)] opacity-50" />
@@ -1202,7 +1227,8 @@ const App: React.FC = () => {
             {!isSpireOpen &&
                 !isModalOpen &&
                 !isProfileOpen &&
-                !isDetailOpen && (
+                !isDetailOpen &&
+                !isReaderOpen && (
                     <SystemConsole theme={theme} />
                 )}
 
@@ -1347,8 +1373,7 @@ const App: React.FC = () => {
                                             />
                                             {/* Sweep line animation */}
                                             <motion.div
-                                                className="absolute left-0 right-0 h-[1px] pointer-events-none"
-                                                style={{ background: theme.isDark ? 'rgba(245,158,11,0.3)' : 'rgba(6,182,212,0.3)' }}
+                                                className="absolute left-0 right-0 h-[1px] pointer-events-none bg-[var(--accent-glow)]"
                                                 animate={{ top: ['0%', '100%', '0%'] }}
                                                 transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
                                             />
@@ -1364,7 +1389,7 @@ const App: React.FC = () => {
 
                                         {/* ── CREATE GATE ── */}
                                         <motion.button
-                                            onClick={() => { setEditingItem(null); setIsModalOpen(true); setIsMobileHudExpanded(false); }}
+                                            onClick={() => { handleEnterPortal(activeQuest.link || '#'); setIsMobileHudExpanded(false); }}
                                             whileTap={{ scale: 0.94 }}
                                             className="relative w-16 h-16 overflow-hidden backdrop-blur-md flex flex-col items-center justify-center gap-1"
                                             style={{
@@ -1380,8 +1405,8 @@ const App: React.FC = () => {
                                             <svg className="absolute top-0 right-0 pointer-events-none" width="9" height="9" viewBox="0 0 9 9"><polyline points="9,9 9,0 0,0" fill="none" stroke={theme.isDark ? 'rgba(245,158,11,0.7)' : 'rgba(6,182,212,0.7)'} strokeWidth="1.5" /></svg>
                                             <svg className="absolute bottom-0 left-0 pointer-events-none" width="9" height="9" viewBox="0 0 9 9"><polyline points="0,0 0,9 9,9" fill="none" stroke={theme.isDark ? 'rgba(245,158,11,0.3)' : 'rgba(6,182,212,0.3)'} strokeWidth="1.5" /></svg>
                                             <svg className="absolute bottom-0 right-0 pointer-events-none" width="9" height="9" viewBox="0 0 9 9"><polyline points="9,0 9,9 0,9" fill="none" stroke={theme.isDark ? 'rgba(245,158,11,0.3)' : 'rgba(6,182,212,0.3)'} strokeWidth="1.5" /></svg>
-                                            <Plus size={20} strokeWidth={2} className={`${theme.highlightText} drop-shadow-[0_0_8px_currentColor]`} />
-                                            <span className={`font-mono text-[6px] tracking-[0.15em] ${theme.highlightText} opacity-70 uppercase`}>GATE</span>
+                                            <ExternalLink size={20} strokeWidth={2} className={`${theme.highlightText} drop-shadow-[0_0_8px_currentColor]`} />
+                                            <span className={`font-mono text-[6px] tracking-[0.15em] ${theme.highlightText} opacity-70 uppercase`}>PORTAL</span>
                                         </motion.button>
 
                                         {/* ── CLOSE / COLLAPSE ── */}
@@ -1423,6 +1448,20 @@ const App: React.FC = () => {
 
             {/* Hidden anchor used by portal animation to open new tab after animation completes */}
             <a ref={portalAnchorRef} href="#" target="_blank" rel="noopener noreferrer" aria-hidden="true" style={{ display: 'none' }} />
+
+            <Suspense fallback={null}>
+                {isReaderOpen && (
+                    <SystemReader
+                        isOpen={isReaderOpen}
+                        onClose={() => setIsReaderOpen(false)}
+                        quest={activeQuest}
+                        theme={theme}
+                        onUpdate={async (id, data) => {
+                            await handleSave({ ...data, id });
+                        }}
+                    />
+                )}
+            </Suspense>
 
             <SystemNotification
                 isOpen={sysNote.isOpen}

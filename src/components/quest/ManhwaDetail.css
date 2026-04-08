@@ -1,0 +1,88 @@
+/* ManhwaDetail.css */
+
+/* THEME: DARK */
+[data-theme='dark'].manhwa-detail-backdrop {
+    --detail-bg-gradient: linear-gradient(135deg, #020202 0%, #0d0800 30%, #1a0f00 55%, #0a0500 80%, #020202 100%);
+    --detail-base-radial: radial-gradient(ellipse 80% 60% at 70% 20%, rgba(245,158,11,0.18) 0%, transparent 60%), radial-gradient(ellipse 60% 50% at 20% 80%, rgba(234,179,8,0.12) 0%, transparent 55%), radial-gradient(ellipse 100% 100% at 50% 50%, rgba(2,2,2,0.7) 0%, rgba(2,2,2,0.95) 100%);
+    --detail-aura-opacity: 0.25;
+    --detail-vignette-radial: radial-gradient(ellipse at 50% 50%, transparent 20%, rgba(0,0,0,0.75) 100%);
+    --detail-orb-tr-gradient: radial-gradient(circle, rgba(245,158,11,0.22) 0%, rgba(234,179,8,0.08) 60%, transparent 100%);
+    --detail-orb-bl-gradient: radial-gradient(circle, rgba(161,98,7,0.20) 0%, rgba(120,53,15,0.08) 60%, transparent 100%);
+    --detail-orb-tl-color: rgba(251,191,36,0.10);
+}
+
+/* THEME: LIGHT */
+[data-theme='light'].manhwa-detail-backdrop {
+    --detail-bg-gradient: linear-gradient(135deg, #e0f7ff 0%, #f0f9ff 25%, #eef2ff 55%, #f5f3ff 80%, #e0f2fe 100%);
+    --detail-base-radial: radial-gradient(ellipse 80% 60% at 70% 15%, rgba(6,182,212,0.25) 0%, transparent 60%), radial-gradient(ellipse 60% 50% at 15% 80%, rgba(99,102,241,0.20) 0%, transparent 55%), radial-gradient(ellipse 100% 100% at 50% 50%, rgba(224,242,254,0.4) 0%, rgba(238,242,255,0.65) 100%);
+    --detail-aura-opacity: 0.12;
+    --detail-vignette-radial: radial-gradient(ellipse at 50% 50%, transparent 20%, rgba(224,242,254,0.5) 100%);
+    --detail-orb-tr-gradient: radial-gradient(circle, rgba(6,182,212,0.30) 0%, rgba(14,165,233,0.12) 60%, transparent 100%);
+    --detail-orb-bl-gradient: radial-gradient(circle, rgba(99,102,241,0.25) 0%, rgba(139,92,246,0.10) 60%, transparent 100%);
+    --detail-orb-tl-color: rgba(56,189,248,0.18);
+}
+
+.manhwa-detail-backdrop {
+    background: var(--detail-bg-gradient);
+}
+
+.manhwa-detail-base-gradient {
+    background: var(--detail-base-radial);
+}
+
+.manhwa-detail-aura {
+    opacity: var(--detail-aura-opacity);
+}
+
+.manhwa-detail-vignette {
+    background: var(--detail-vignette-radial);
+}
+
+.manhwa-detail-orb-top-right {
+    top: -15%;
+    right: -10%;
+    width: 65%;
+    height: 65%;
+    border-radius: 50%;
+    filter: blur(120px);
+    background: var(--detail-orb-tr-gradient);
+}
+
+.manhwa-detail-orb-bottom-left {
+    bottom: -15%;
+    left: -10%;
+    width: 60%;
+    height: 60%;
+    border-radius: 50%;
+    filter: blur(120px);
+    background: var(--detail-orb-bl-gradient);
+}
+
+.manhwa-detail-orb-top-left {
+    top: 10%;
+    left: 5%;
+    width: 30%;
+    height: 30%;
+    border-radius: 50%;
+    filter: blur(90px);
+    background: var(--detail-orb-tl-color);
+}
+
+.manhwa-detail-scroll-container {
+    --scrollbar-track: transparent;
+}
+
+[data-theme='light'].manhwa-detail-scroll-container {
+    --scrollbar-thumb: #0ea5e9;
+    --scrollbar-thumb-hover: #0284c7;
+}
+
+[data-theme='dark'].manhwa-detail-scroll-container {
+    --scrollbar-thumb: #f59e0b;
+    --scrollbar-thumb-hover: #d97706;
+}
+
+.manhwa-detail-progress-bar-fill {
+    transform: scaleX(var(--detail-progress-scale, 0));
+    width: 100%;
+}

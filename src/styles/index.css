@@ -63,24 +63,72 @@
 }
 
 @keyframes scan-h {
-    0% { transform: scaleX(0); opacity: 0; left: 0; }
-    5% { transform: scaleX(1); opacity: 1; }
-    95% { transform: scaleX(1); opacity: 1; }
-    100% { transform: scaleX(0); opacity: 0; left: 100%; }
+    0% {
+        transform: scaleX(0);
+        opacity: 0;
+        left: 0;
+    }
+
+    5% {
+        transform: scaleX(1);
+        opacity: 1;
+    }
+
+    95% {
+        transform: scaleX(1);
+        opacity: 1;
+    }
+
+    100% {
+        transform: scaleX(0);
+        opacity: 0;
+        left: 100%;
+    }
 }
 
 @keyframes glitch {
-    0% { transform: translate(0); text-shadow: -2px 0 #ff00c1, 2px 0 #00fff9; }
-    20% { transform: translate(-2px, 2px); }
-    40% { transform: translate(-2px, -2px); text-shadow: 2px 0 #ff00c1, -2px 0 #00fff9; }
-    60% { transform: translate(2px, 2px); }
-    80% { transform: translate(2px, -2px); text-shadow: -2px 0 #ff00c1, 2px 0 #00fff9; }
-    100% { transform: translate(0); }
+    0% {
+        transform: translate(0);
+        text-shadow: -2px 0 #ff00c1, 2px 0 #00fff9;
+    }
+
+    20% {
+        transform: translate(-2px, 2px);
+    }
+
+    40% {
+        transform: translate(-2px, -2px);
+        text-shadow: 2px 0 #ff00c1, -2px 0 #00fff9;
+    }
+
+    60% {
+        transform: translate(2px, 2px);
+    }
+
+    80% {
+        transform: translate(2px, -2px);
+        text-shadow: -2px 0 #ff00c1, 2px 0 #00fff9;
+    }
+
+    100% {
+        transform: translate(0);
+    }
 }
 
 @keyframes pulse-aura {
-    0%, 100% { opacity: 0.3; transform: scale(1); filter: blur(10px); }
-    50% { opacity: 0.6; transform: scale(1.1); filter: blur(15px); }
+
+    0%,
+    100% {
+        opacity: 0.3;
+        transform: scale(1);
+        filter: blur(10px);
+    }
+
+    50% {
+        opacity: 0.6;
+        transform: scale(1.1);
+        filter: blur(15px);
+    }
 }
 
 @keyframes text-shimmer {
@@ -108,8 +156,7 @@
 
     /* Custom Scrollbar */
     .custom-scrollbar {
-        scrollbar-width: thin;
-        scrollbar-color: var(--scrollbar-thumb, #4b5563) var(--scrollbar-track, transparent);
+        -ms-overflow-style: auto;
     }
 
     .custom-scrollbar::-webkit-scrollbar {
@@ -134,8 +181,6 @@
     .hide-scrollbar {
         -ms-overflow-style: none;
         /* IE and Edge */
-        scrollbar-width: none;
-        /* Firefox */
     }
 
     .hide-scrollbar::-webkit-scrollbar {

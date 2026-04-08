@@ -373,7 +373,11 @@ const SystemReader: React.FC<SystemReaderProps> = ({ isOpen, onClose, quest, the
                     </h3>
                     <p className={`text-sm font-mono flex items-center justify-center gap-2 ${isLight ? 'text-cyan-400/60' : 'text-amber-500/60'}`}>
                         <Monitor className="w-4 h-4" />
-                        Provider: {activeProvider || 'NEURAL_LINK_PENDING'}
+                        Provider: {
+                            activeProvider === 'Universal' && (activeManga?.url || quest?.link)
+                                ? (() => { try { return new URL(activeManga?.url || quest?.link).hostname.replace(/^www\./, '').split('.')[0]; } catch { return 'Universal'; } })()
+                                : (activeProvider || 'NEURAL_LINK_PENDING')
+                        }
                     </p>
                     {isFallback && (
                         <p className={`text-xs font-mono mt-2 ${isLight ? 'text-cyan-500/80' : 'text-amber-500/80'}`}>
@@ -475,7 +479,16 @@ const SystemReader: React.FC<SystemReaderProps> = ({ isOpen, onClose, quest, the
                                                 setActiveManga(null);
                                             }}
                                         >
-                                            {providersAvailable.map(p => <option key={p} value={p} className="bg-gray-900">{p}</option>)}
+                                            {providersAvailable.map(p => {
+                                                let displayP = p;
+                                                if (p === 'Universal') {
+                                                    const urlToParse = activeManga?.url || quest?.link;
+                                                    if (urlToParse && urlToParse !== '#') {
+                                                        try { displayP = new URL(urlToParse).hostname.replace(/^www\./, '').split('.')[0]; } catch(e) {}
+                                                    }
+                                                }
+                                                return <option key={p} value={p} className="bg-gray-900">{displayP}</option>
+                                            })}
                                         </select>
                                     </div>
                                 )}
@@ -492,6 +505,7 @@ const SystemReader: React.FC<SystemReaderProps> = ({ isOpen, onClose, quest, the
                 <div
                     ref={scrollContainerRef}
                     onScroll={handleScroll}
+                    onClick={() => setShowControls(prev => !prev)}
                     className="w-full h-full overflow-y-auto overflow-x-hidden pt-16 pb-24 flex flex-col items-center hide-scrollbar relative [-webkit-overflow-scrolling:touch] [touch-action:pan-y]"
                 >
                     {/* ERROR STATE */}
@@ -521,7 +535,6 @@ const SystemReader: React.FC<SystemReaderProps> = ({ isOpen, onClose, quest, the
 
                     {!error && loadingState === 'IDLE' && pages.length > 0 && (
                         <div 
-                            onClick={() => setShowControls(prev => !prev)}
                             className={`flex flex-col relative transition-all duration-500 ease-out 
                                 ${fitMode === 'WIDTH' ? 'w-[100vw] px-0' : 'w-full max-w-3xl px-2 sm:px-4'}`}
                         >
@@ -549,7 +562,7 @@ const SystemReader: React.FC<SystemReaderProps> = ({ isOpen, onClose, quest, the
                                 <div className={`text-[10px] font-mono tracking-widest uppercase z-10 ${isLight ? 'text-cyan-300/50' : 'text-amber-300/50'}`}>[ Chapter {activeChapter.number} Decoded & Synchronized ]</div>
                                 {chapters.findIndex(c => c.id === activeChapter.id) > 0 && (
                                     <button
-                                        onClick={handleNextChapter}
+                                        onClick={(e) => { e.stopPropagation(); handleNextChapter(); }}
                                         className={`mt-4 px-12 py-4 rounded-full border shadow-2xl font-mono tracking-[0.3em] uppercase text-xs transition-all transform hover:scale-105 active:scale-95 z-10 flex items-center gap-4 group ${isLight ? 'bg-cyan-950/60 text-cyan-300 border-cyan-400/50 hover:bg-cyan-900/80 hover:text-cyan-100 shadow-cyan-500/30' : 'bg-amber-950/60 text-amber-300 border-amber-400/50 hover:bg-amber-900/80 hover:text-amber-100 shadow-amber-500/30'}`}
                                     >
                                         Initiate Next Phase

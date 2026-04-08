@@ -1,4 +1,11 @@
-﻿const { chromium } = require('playwright-chromium');
+﻿let chromium = null;
+try {
+    if (!process.env.VERCEL && !process.env.VERCEL_ENV) {
+        chromium = require('playwright-chromium').chromium;
+    }
+} catch (e) {
+    console.warn('[BrowserManager] playwright-chromium not found or unsupported environment. Serverless fallback will be used.');
+}
 
 /**
  * BrowserManager
@@ -23,6 +30,8 @@ class BrowserManager {
 
             console.log('[BrowserManager] Launching isolated Chromium instance...');
             try {
+                if (!chromium) throw new Error('Chromium module not loaded (Serverless/Missing Dep)');
+                
                 this.browser = await chromium.launch({
                     headless: true,
                     args: [

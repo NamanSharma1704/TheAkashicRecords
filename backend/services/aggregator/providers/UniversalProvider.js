@@ -267,6 +267,142 @@ class UniversalProvider extends BaseProvider {
             throw e;
         }
     }
+
+    async getPages(chapter) {
+        try {
+            return await BrowserManager.withPage(async (page) => {
+                console.log(`[Universal][Pages] Opening reader for ${chapter.url}`);
+                const imageUrls = new Set();
+                const imageRequests = new Set();
+                const pageOrigin = new URL(chapter.url).origin;
+
+                const normalizeUrl = (p) => {
+                    if (!p) return '';
+                    if (p.startsWith('http')) return p;
+                    if (p.startsWith('//')) return 'https:' + p;
+                    try { return new URL(p, pageOrigin).href; } catch { return p; }
+                };
+
+                await page.route('**/*', (route) => {
+                    const url = route.request().url().toLowerCase();
+                    const adKeywords = ['google-analytics', 'doubleclick', 'adonxs', 'popads', 'zergnet', 'mgid', 'taboola', 'outbrain', 'exoclick', 'adsterra', 'ad-delivery', 'clickadu', 'propellerads', 'revenuehits', 'infolinks', 'popcash'];
+                    if (adKeywords.some(kw => url.includes(kw))) return route.abort();
+                    if (url.includes('admin-ajax.php') && (url.includes('action=manga_') || url.includes('action=z_do_ajax'))) return route.abort();
+                    route.continue().catch(() => {});
+                });
+
+                page.on('request', (request) => {
+                    const url = request.url().toLowerCase();
+                    if (url.match(/\.(webp|jpg|png|jpeg)/i) && 
+                        !url.includes('avatar') && !url.includes('logo') && !url.includes('icon') && !url.includes('favicon') && 
+                        !url.includes('banner') && !url.includes('bg') && !url.includes('index.jpg') && !url.includes('background') && 
+                        !url.includes('discord') && !url.includes('sponsor') && !url.includes('promo') && !url.includes('donate') && 
+                        !url.includes('tiktok') && !url.includes('paypal') && !url.includes('ko-fi') && !url.includes('credit') && !url.includes('profiles')) {
+                        imageRequests.add(request.url());
+                    }
+                });
+
+                await page.goto(chapter.url, { waitUntil: 'domcontentloaded', timeout: 45000 });
+                await page.waitForTimeout(1000);
+
+                await page.evaluate(() => {
+                    const nextTriggers = document.querySelectorAll('.next, .next-chapter, .ch-next, .nav-next, #next, [id*="next-chapter"], .reading-content-next, .btn-next');
+                    nextTriggers.forEach(el => el.remove());
+                });
+
+                let previousHeight = 0;
+                for (let i = 0; i < 20; i++) {
+                    await page.mouse.wheel(0, 4000);
+                    await page.waitForTimeout(400); 
+                    const newHeight = await page.evaluate(() => document.body.scrollHeight);
+                    if (newHeight === previousHeight && i > 6) break;
+                    previousHeight = newHeight;
+                }
+
+                const html = await page.content();
+                const cheerio = require('cheerio');
+                const $ = cheerio.load(html);
+
+                let maxImages = 0;
+                let readerContainer = null;
+
+                $('.reader, #reader, .reading-content, #images, .reader-images, .page-break, .container, .main').each((_, el) => {
+                    const imgCount = $(el).find('img').length;
+                    if (imgCount > maxImages) { maxImages = imgCount; readerContainer = el; }
+                });
+
+                if (!readerContainer) {
+                    $('div, section, article').each((_, el) => {
+                        const imgCount = $(el).find('img').length;
+                        const classId = ($(el).attr('class') || '') + ' ' + ($(el).attr('id') || '');
+                        if (classId.toLowerCase().match(/(sidebar|menu|header|footer|widget|comment|related)/)) return;
+                        if (imgCount > maxImages) { maxImages = imgCount; readerContainer = el; }
+                    });
+                }
+
+                const extractSrc = (el) => $(el).attr('src') || $(el).attr('data-src') || $(el).attr('data-lazy-src') || $(el).attr('data-altsrc');
+
+                const isValidImage = (src) => {
+                    if (!src) return false;
+                    const lower = src.toLowerCase();
+                    return lower.startsWith('http') && !lower.includes('avatar') && !lower.includes('logo') && 
+                           !lower.includes('thumb') && !lower.includes('bg') && !lower.includes('index.jpg') && 
+                           !lower.includes('background') && !lower.includes('profiles') && !lower.includes('icon') && 
+                           !lower.includes('banner') && !lower.includes('discord') && !lower.includes('sponsor') && 
+                           !lower.includes('promo') && !lower.includes('donate') && !lower.includes('credit') && 
+                           !lower.includes('paypal') && !lower.includes('tiktok') && !lower.includes('ko-fi');
+                };
+
+                if (readerContainer && maxImages >= 2 && imageUrls.size === 0) {
+                    $(readerContainer).find('img').each((_, el) => {
+                        const src = extractSrc(el);
+                        if (isValidImage(src)) imageUrls.add(normalizeUrl(src));
+                    });
+                }
+
+                if (imageUrls.size === 0) {
+                    $('img').each((_, el) => {
+                        const src = extractSrc(el);
+                        if (!isValidImage(src)) return;
+                        const normalizedSrc = normalizeUrl(src);
+                        const classStr = ($(el).attr('class') || '').toLowerCase();
+                        const idStr = ($(el).attr('id') || '').toLowerCase();
+                        const parentStr = ($(el).parent().attr('class') || '').toLowerCase();
+
+                        if (classStr.includes('chapter') || classStr.includes('page') || classStr.includes('reader') || classStr.includes('img-') || idStr.includes('image') || parentStr.includes('page') || parentStr.includes('reader')) {
+                            imageUrls.add(normalizedSrc);
+                        } else if (Array.from(imageRequests).some(req => req.includes(src))) {
+                            imageUrls.add(normalizedSrc);
+                        }
+                    });
+                }
+
+                if (imageUrls.size === 0) {
+                    imageRequests.forEach(req => imageUrls.add(normalizeUrl(req)));
+                }
+
+                if (imageUrls.size === 0) {
+                   throw new Error('Failed to find images on page via Playwright');
+                }
+
+                return Array.from(imageUrls);
+            });
+        } catch (e) {
+            if (e.message === 'SERVERLESS_UNSUPPORTED') {
+                console.log(`[Universal][Pages] Serverless HTTP fallback for ${chapter.url}`);
+                // Use BaseProvider's multi-strategy engine with axios 
+                return await this.resolvePages(chapter, [
+                    this.nextDataStrategy,
+                    this.apiDiscoveryStrategy,
+                    this.preloadStrategy,
+                    this.astroStrategy,
+                    this.scriptRegexStrategy,
+                    this.domStrategy
+                ]);
+            }
+            throw e;
+        }
+    }
 }
 
 module.exports = UniversalProvider;

@@ -15,24 +15,35 @@ class BrowserManager {
 
     async getBrowser() {
         if (!this.isLaunched || !this.browser) {
+            console.log('[BrowserManager] Checking environment...');
+            if (process.env.VERCEL || process.env.VERCEL_ENV) {
+                console.log('[BrowserManager] Serverless environment detected. Cannot launch full Chromium.');
+                return null; // Return null if Vercel serverless environment
+            }
+
             console.log('[BrowserManager] Launching isolated Chromium instance...');
-            this.browser = await chromium.launch({
-                headless: true,
-                args: [
-                    '--no-sandbox',
-                    '--disable-setuid-sandbox',
-                    '--disable-dev-shm-usage',
-                    '--disable-accelerated-2d-canvas',
-                    '--disable-gpu',
-                    '--disable-blink-features=AutomationControlled'
-                ]
-            });
-            this.context = await this.browser.newContext({
-                userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
-                viewport: { width: 1280, height: 720 },
-                locale: 'en-US'
-            });
-            this.isLaunched = true;
+            try {
+                this.browser = await chromium.launch({
+                    headless: true,
+                    args: [
+                        '--no-sandbox',
+                        '--disable-setuid-sandbox',
+                        '--disable-dev-shm-usage',
+                        '--disable-accelerated-2d-canvas',
+                        '--disable-gpu',
+                        '--disable-blink-features=AutomationControlled'
+                    ]
+                });
+                this.context = await this.browser.newContext({
+                    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
+                    viewport: { width: 1280, height: 720 },
+                    locale: 'en-US'
+                });
+                this.isLaunched = true;
+            } catch (error) {
+                console.error('[BrowserManager] Failed to launch Chromium:', error.message);
+                return null; // Return null on launch failure
+            }
         }
         return this.browser;
     }
@@ -42,7 +53,11 @@ class BrowserManager {
      * Automatically handles page lifecycle and error cleanup.
      */
     async withPage(callback) {
-        await this.getBrowser();
+        const browser = await this.getBrowser();
+        if (!browser) {
+            throw new Error('SERVERLESS_UNSUPPORTED');
+        }
+
         const page = await this.context.newPage();
 
         // Speed up execution by bypassing stealth overhead on static sites, but keeping it

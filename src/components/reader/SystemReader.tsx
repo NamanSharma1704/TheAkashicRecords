@@ -343,7 +343,7 @@ const SystemReader: React.FC<SystemReaderProps> = ({ isOpen, onClose, quest, the
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="flex flex-col items-center justify-center h-full w-full relative overflow-hidden"
+            className="flex flex-col items-center justify-center h-full w-full relative overflow-hidden select-none pointer-events-none"
         >
             <GlitchOverlay isActive={true} />
             <div className={`absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] ${isLight ? 'from-cyan-900/20' : 'from-amber-900/20'} via-black to-black opacity-80`} />
@@ -405,7 +405,7 @@ const SystemReader: React.FC<SystemReaderProps> = ({ isOpen, onClose, quest, the
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 1.05 }}
                 transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-                className="fixed inset-0 z-[500] bg-black/95 backdrop-blur-3xl flex flex-col items-center justify-center text-white font-sans select-none"
+                className="fixed inset-0 z-[500] bg-black/95 backdrop-blur-3xl flex flex-col items-center justify-center text-white font-sans select-none selection:bg-transparent"
             >
                 {/* TOP BAR */}
                 <AnimatePresence>

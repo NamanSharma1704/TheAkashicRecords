@@ -405,7 +405,7 @@ const SystemReader: React.FC<SystemReaderProps> = ({ isOpen, onClose, quest, the
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 1.05 }}
                 transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-                className="fixed inset-0 z-[500] bg-black/95 backdrop-blur-3xl flex flex-col items-center justify-center text-white font-sans"
+                className="fixed inset-0 z-[500] bg-black/95 backdrop-blur-3xl flex flex-col items-center justify-center text-white font-sans select-none"
             >
                 {/* TOP BAR */}
                 <AnimatePresence>

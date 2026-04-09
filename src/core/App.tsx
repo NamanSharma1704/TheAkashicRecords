@@ -14,6 +14,7 @@ import BackgroundController from '../components/fx/BackgroundController';
 import EntityAvatar from '../components/system/EntityAvatar';
 import SystemNotification from '../components/system/SystemNotification';
 import SystemCompass from '../components/system/SystemCompass';
+import { InfinitePortalIcon, CalibratedPlusIcon, CalibratedMinusIcon } from '../components/system/CustomIcons';
 
 import { getProxiedImageUrl } from '../utils/api';
 import { saveAuthData, performLogout, systemFetch, isAuthenticated, getStoredUser } from '../utils/auth';
@@ -100,7 +101,7 @@ const QuestListItem = ({ item, theme, activeId, handleLogClick, onDragStateChang
                         </div>
                     )}
                     <div className="flex flex-col min-w-0 pr-2">
-                        <span className={`font-bold font-mono text-xs ${isHighlighted ? theme.highlightText : `${theme.mutedText} group-hover:${theme.headingText}`} transition-colors duration-700 uppercase truncate`}>{item.title}</span>
+                        <span className={`font-bold font-mono text-[11px] leading-tight ${isHighlighted ? theme.highlightText : `${theme.mutedText} group-hover:${theme.headingText}`} transition-colors duration-700 uppercase line-clamp-2`}>{item.title}</span>
                         <div className="flex items-center gap-2 mt-1">
                             <div className={`w-1 h-1 rounded-full flex-none ${item.status === 'ACTIVE' ? (theme.isDark ? 'bg-amber-400' : 'bg-cyan-500') : 'bg-gray-400'}`} />
                             <span className={`text-[9px] ${theme.mutedText} uppercase font-mono tracking-widest transition-colors duration-700 truncate`}>{item.status}</span>
@@ -947,7 +948,7 @@ const App: React.FC = () => {
             <div className="w-full max-w-[1400px] mx-auto flex-1 min-h-0 flex flex-col lg:flex-row gap-3 lg:gap-4 pt-2 lg:pt-2 pb-0">
                 {/* LEFT COLUMN: HERO CANVAS */}
                 <div className="flex-none lg:flex-1 flex flex-col lg:h-full order-1 overflow-visible relative">
-                    <div className="relative z-10 w-full h-full flex flex-col px-4 md:px-6 lg:px-8 pb-2 justify-between gap-4 overflow-visible pt-8">
+                    <div className="relative z-10 w-full h-full flex flex-col px-4 md:px-6 lg:px-8 justify-between gap-4 overflow-visible pt-8">
 
                         {/* CENTER: The 3-Column Display (Enhanced Gaps for Tablets) */}
                         <div className="flex-1 min-h-0 flex justify-center items-center gap-4 md:gap-14 lg:gap-6 xl:gap-12 w-full max-w-[1400px] mx-auto px-4">
@@ -1105,11 +1106,11 @@ const App: React.FC = () => {
 
                         </div>
 
-                        <div className="w-full max-w-4xl mx-auto flex flex-col gap-3 shrink-0 pointer-events-auto">
+                        <div className="w-full max-w-3xl mx-auto flex flex-col gap-3 shrink-0 pointer-events-auto">
                             {/* Title — overflow-visible to prevent last character clipping */}
                             <div className="text-center flex flex-col items-center justify-end px-6 w-full min-h-[3rem] sm:min-h-[4rem] xl:min-h-[5rem] overflow-visible">
                                 <h1
-                                    className={`text-2xl sm:text-3xl xl:text-4xl font-black font-orbitron tracking-tighter text-transparent bg-clip-text uppercase leading-[1.15] line-clamp-2 w-full`}
+                                    className={`${activeQuest.title.length > 25 ? 'text-xl sm:text-2xl xl:text-3xl' : 'text-2xl sm:text-3xl xl:text-4xl'} font-black font-orbitron tracking-tighter text-transparent bg-clip-text uppercase leading-[1.15] line-clamp-2 w-full`}
                                     style={{
                                         backgroundImage: `linear-gradient(90deg, ${theme.accentColor}cc, ${theme.accentColor}, ${theme.accentColor}cc)`,
                                         textTransform: 'uppercase',
@@ -1133,25 +1134,28 @@ const App: React.FC = () => {
                             </div>
 
                             {/* Controls */}
-                            <div className="flex gap-2 max-w-3xl w-full mx-auto justify-center mt-2">
+                            <div className="flex gap-2 w-full justify-center mt-2">
                                 <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => updateProgress(-1)}
-                                    className={`w-14 h-12 flex-none border ${theme.borderSubtle} ${theme.isDark ? 'bg-black/80 hover:border-white hover:text-white backdrop-blur-md' : 'bg-white/80 hover:border-black hover:text-black backdrop-blur-md'} flex items-center justify-center transition-colors cursor-pointer rounded-sm`}>
-                                    <span className="text-xl font-bold">-</span>
+                                    className={`w-14 h-12 flex-none border ${theme.isDark ? 'bg-black/80 backdrop-blur-md' : 'bg-white/80 backdrop-blur-md'} flex items-center justify-center transition-colors cursor-pointer rounded-sm`}
+                                    style={{ borderColor: `${theme.accentColor}33` }}
+                                >
+                                    <CalibratedMinusIcon size={20} color={theme.accentColor} />
                                 </motion.button>
                                 <motion.button
                                     whileHover={{ scale: 1.02 }}
                                     whileTap={{ scale: 0.96 }}
                                     onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleEnterPortal(activeQuest.link || '#'); }}
                                     disabled={!activeQuest.link || activeQuest.link === '#'}
-                                    className={`h-12 flex-1 max-w-[400px] backdrop-blur-md flex items-center justify-center gap-2 transition-all font-mono font-bold tracking-widest text-[12px] group cursor-pointer shadow-lg rounded-sm border text-white drop-shadow-md disabled:opacity-40 disabled:cursor-not-allowed`}
+                                    className={`h-12 flex-1 max-w-[400px] backdrop-blur-md flex items-center justify-center gap-2 transition-all font-mono font-bold tracking-widest text-[12px] group cursor-pointer shadow-lg rounded-sm text-white drop-shadow-md disabled:opacity-40 disabled:cursor-not-allowed`}
                                     style={{ backgroundColor: theme.accentColor, borderColor: theme.accentColor, boxShadow: `0 0 20px ${theme.accentColor}66` }}
                                 >
-                                    <ExternalLink size={16} className="group-hover:rotate-12 transition-transform" /> ENTER PORTAL
+                                    <InfinitePortalIcon size={18} className="group-hover:rotate-12 transition-transform" /> ENTER PORTAL
                                 </motion.button>
                                 <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => updateProgress(1)}
-                                    className={`w-14 h-12 flex-none border ${theme.borderSubtle} ${theme.isDark ? 'hover:border-white hover:text-white bg-black/80 backdrop-blur-md' : 'hover:border-black hover:text-black bg-white/80 backdrop-blur-md'} flex items-center justify-center transition-colors cursor-pointer rounded-sm`}
-                                    style={{ color: theme.accentColor }}>
-                                    <Plus size={18} />
+                                    className={`w-14 h-12 flex-none border ${theme.isDark ? 'bg-black/80 backdrop-blur-md' : 'bg-white/80 backdrop-blur-md'} flex items-center justify-center transition-colors cursor-pointer rounded-sm`}
+                                    style={{ borderColor: `${theme.accentColor}33` }}
+                                >
+                                    <CalibratedPlusIcon size={20} color={theme.accentColor} />
                                 </motion.button>
 
                             </div>
@@ -1245,7 +1249,7 @@ const App: React.FC = () => {
                     </div>
 
                     {/* DIVINE SPIRE BUTTON */}
-                    <button aria-label="Open Divine Spire" onClick={() => { setIsSpireOpen(true); }} className={`mt-auto hidden lg:flex w-full py-2 lg:py-3 xl:py-4 ${theme.isDark ? 'bg-white/5' : 'bg-sky-500/10'} border ${theme.borderSubtle} ${theme.highlightText} hover:bg-${theme.primary}-500 ${theme.isDark ? 'hover:text-black' : 'hover:text-white'} font-mono font-bold tracking-widest uppercase transition-all items-center justify-center gap-2 text-xs shrink-0 shadow-sm cursor-pointer duration-700`}><LayoutTemplate size={16} /> DIVINE SPIRE</button>
+                    <button aria-label="Open Divine Spire" onClick={() => { setIsSpireOpen(true); }} className={`mt-auto hidden lg:flex w-full h-12 ${theme.isDark ? 'bg-white/5' : 'bg-sky-500/10'} border ${theme.borderSubtle} ${theme.highlightText} hover:bg-${theme.primary}-500 ${theme.isDark ? 'hover:text-black' : 'hover:text-white'} font-mono font-bold tracking-widest uppercase transition-all items-center justify-center gap-2 text-[12px] shrink-0 shadow-sm cursor-pointer duration-700`}><LayoutTemplate size={16} /> DIVINE SPIRE</button>
                 </div>
             </div>
         </main>

@@ -59,3 +59,18 @@ export const systemFetch = async (url: string, options: RequestInit = {}) => {
 
     return response;
 };
+
+/**
+ * Perform a graceful logout by notifying the backend (to purge sandboxes)
+ * and clearing local session data.
+ */
+export const performLogout = async () => {
+    try {
+        await systemFetch('/api/auth/logout', { method: 'POST' });
+    } catch (err) {
+        console.error('Logout sync failed:', err);
+    } finally {
+        clearAuthData();
+    }
+};
+

@@ -72,6 +72,34 @@ const isInternalHostname = (hostname) => {
 };
 
 // --- AUTH MIDDLEWARE ---
+
+/**
+ * Resiliently purges a guest sandbox.
+ * Tries to drop the database, falls back to wiping collections if permissions are missing.
+ */
+const resilientPurge = async (dbConn, dbName) => {
+    try {
+        await dbConn.dropDatabase();
+        console.log(`[PURGE] Successfully dropped database: ${dbName}`);
+    } catch (err) {
+        // Handle common permission errors (Atlas Error 8000 / not allowed)
+        if (err.message.includes('not allowed') || err.code === 8000) {
+            console.warn(`[PURGE] PERMISSION_DENIED: Cannot drop database shell for [${dbName}].`);
+            console.warn(`[PURGE] FALLBACK: Wiping content only. Grant 'dbAdmin' roles for full shell removal.`);
+            
+            try {
+                // Use native driver to bypass model collision issues
+                await dbConn.db.collection('manhwas').deleteMany({});
+                console.log(`[PURGE] Fallback Success: Wiped clinical data in ${dbName}`);
+            } catch (wipeErr) {
+                console.error(`[PURGE] Fallback Failure in [${dbName}]:`, wipeErr.message);
+            }
+        } else {
+            console.error(`[PURGE] Critical Failure in [${dbName}]:`, err.message);
+        }
+    }
+};
+
 const authenticate = async (req, res, next) => {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -97,7 +125,7 @@ const authenticate = async (req, res, next) => {
 
         // --- MULTI-TENANCY LOGIC ---
         // SOVEREIGN -> akashic_records, GUEST -> test_records
-        const dbName = req.user.role === 'SOVEREIGN' ? 'akashic_records' : 'test_records';
+        const dbName = req.user.role === 'SOVEREIGN' ? 'akashic_records' : `gsb_${req.user._id}`;
         req.dbConn = await getTenantDb(dbName);
 
         next();
@@ -234,15 +262,24 @@ app.post('/api/auth/login', async (req, res) => {
     }
 });
 
-// POST /api/auth/guest - Access Sandbox Environment
+// POST /api/auth/guest - Access Sandbox Environment (Cloned from test_records)
 app.post('/api/auth/guest', async (req, res) => {
     try {
-        const guestId = `guest_${Math.random().toString(36).substring(2, 9)}`;
+        // Use timestamp in guestId to allow the Reaper to track session age
+        const guestId = `g_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 7)}`;
         const guestUser = {
             _id: guestId,
-            username: `Guest_${guestId.slice(-4).toUpperCase()}`,
+            username: `G_${guestId.slice(-4).toUpperCase()}`,
             role: 'GUEST'
         };
+
+        // --- SANDBOX INITIALIZATION ---
+        // Every guest gets a fresh copy of the 'test_records' database.
+        const sandboxConn = await getTenantDb(`gsb_${guestId}`);
+        const templateConn = await getTenantDb('test_records');
+        
+        // Populate the sandbox immediately
+        await initDatabase(() => sandboxConn, templateConn);
 
         const token = generateToken(guestUser);
         res.json({
@@ -250,7 +287,22 @@ app.post('/api/auth/guest', async (req, res) => {
             user: { id: guestUser._id, username: guestUser.username, role: guestUser.role }
         });
     } catch (err) {
-        res.status(500).json({ message: err.message });
+        console.error('[GUEST_INIT] Failure:', err.message);
+        res.status(500).json({ message: 'Sandbox Initialization Fault: Connection to archives severed.' });
+    }
+});
+
+// POST /api/auth/logout - Terminate Session and Purge Sandbox
+app.post('/api/auth/logout', authenticate, async (req, res) => {
+    try {
+        if (req.user.role === 'GUEST') {
+            console.log(`[AUTH] Purging sandbox for guest: ${req.user._id}`);
+            await resilientPurge(req.dbConn, `gsb_${req.user._id}`);
+        }
+        res.json({ message: 'Identity Purged.' });
+    } catch (err) {
+        console.error('[AUTH] Logout Failure:', err.message);
+        res.status(500).json({ message: 'Purge protocol failed.' });
     }
 });
 
@@ -968,7 +1020,44 @@ const inferClassFromTitle = (title) => {
 
 
 
-const readerController = require('./controllers/readerController');
-app.use('/api/reader', authenticate, readerController);
+
+
+
+
+// ─── STALE SANDBOX REAPER ─────────────────────────────────────────────────────
+
+/**
+ * Identifies and drops guest_sandbox_* databases older than 2 hours.
+ */
+const purgeStaleSandboxes = async () => {
+    try {
+        console.log('[REAPER] Starting maintenance check...');
+        const admin = mongoose.connection.db.admin();
+        const { databases } = await admin.listDatabases();
+        const now = Date.now();
+        const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
+
+        for (const dbInfo of databases) {
+            if (dbInfo.name.startsWith('gsb_')) {
+                const parts = dbInfo.name.split('_');
+                // parts[0] = gsb, parts[1] = g, parts[2] = <base36_timestamp>
+                const timestamp = parseInt(parts[2], 36);
+                
+                if (!isNaN(timestamp) && (now - timestamp) > TWO_HOURS_MS) {
+                    console.log(`[REAPER] Purging stale sandbox: ${dbInfo.name}`);
+                    const conn = await getTenantDb(dbInfo.name);
+                    await resilientPurge(conn, dbInfo.name);
+                }
+            }
+        }
+    } catch (err) {
+        console.error('[REAPER] Maintenance Failure:', err.message);
+    }
+};
+
+// Run Reaper every 30 minutes
+setInterval(purgeStaleSandboxes, 30 * 60 * 1000);
+// Also run on startup after a short delay to ensure DB is connected
+setTimeout(purgeStaleSandboxes, 10000);
 
 module.exports = app;

@@ -4,7 +4,7 @@ import { Quest } from './types';
 import SystemFrame from '../components/system/SystemFrame';
 import SystemLogo from '../components/system/SystemLogo';
 import ScrambleText from '../components/system/ScrambleText';
-import { Sword, Activity, ExternalLink, Terminal, Sun, Moon, Plus, Zap, Crown, X, LayoutTemplate, GripVertical } from 'lucide-react';
+import { Sword, Activity, ExternalLink, Sun, Moon, Plus, Zap, Crown, X, LayoutTemplate, GripVertical } from 'lucide-react';
 import { getPlayerRank, getThemedRankStyle, calculateQuestRank } from '../utils/ranks';
 import { THEMES, ITEMS_PER_FLOOR } from './constants';
 
@@ -16,7 +16,7 @@ import SystemNotification from '../components/system/SystemNotification';
 import SystemCompass from '../components/system/SystemCompass';
 
 import { getProxiedImageUrl } from '../utils/api';
-import { saveAuthData, clearAuthData, systemFetch, isAuthenticated } from '../utils/auth';
+import { saveAuthData, performLogout, systemFetch, isAuthenticated, getStoredUser } from '../utils/auth';
 import LoginScreen from '../components/system/LoginScreen';
 import { User } from './types';
 
@@ -161,7 +161,6 @@ const ManhwaDetail = lazy(() => import('../components/quest/ManhwaDetail'));
 const HunterProfile = lazy(() => import('../components/profile/HunterProfile'));
 const DivineSpire = lazy(() => import('../components/tower/DivineSpire'));
 const SystemGateModal = lazy(() => import('../components/system/SystemGateModal'));
-const SystemReader = lazy(() => import('../components/reader/SystemReader'));
 
 // Loading Fallback Strategy
 const HeavyLoader = ({ theme }: { theme: any }) => (
@@ -335,36 +334,19 @@ const App: React.FC = () => {
     const portalAnchorRef = useRef<HTMLAnchorElement>(null);
     const portalPendingUrl = useRef<string>('');
 
-    const handleEnterInternalPortal = useCallback((url: string) => {
-        if (!url || url === '#' || portalAnimating) return;
-        
-        setPortalAnimating(true);
-        setTimeout(() => {
-            setIsReaderOpen(true);
-            setPortalAnimating(false);
-        }, 1550);
-    }, [portalAnimating]);
-
     const handleEnterPortal = useCallback((url: string) => {
         if (!url || url === '#' || portalAnimating) return;
-        
-        // Mobile/Safari hack: open synchronously to capture user activation 
-        // before the 1.5s animation delay ends.
-        const newWindow = window.open('about:blank', '_blank');
         
         portalPendingUrl.current = url;
         setPortalAnimating(true);
         
-        // After animation completes, update the already opened window.
+        // After "Dimensional Dive" animation completes (1.5s whiteout), trigger the portal
         setTimeout(() => {
-            if (newWindow) {
-                newWindow.location.href = portalPendingUrl.current;
+            if (portalAnchorRef.current) {
+                portalAnchorRef.current.href = portalPendingUrl.current;
+                portalAnchorRef.current.click();
             } else {
-                // Secondary attempt with anchor if window.open was blocked entirely
-                if (portalAnchorRef.current) {
-                    portalAnchorRef.current.href = portalPendingUrl.current;
-                    portalAnchorRef.current.click();
-                }
+                window.open(portalPendingUrl.current, '_blank', 'noopener,noreferrer');
             }
             
             setPortalAnimating(false);
@@ -373,7 +355,6 @@ const App: React.FC = () => {
     }, [portalAnimating]);
 
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [isReaderOpen, setIsReaderOpen] = useState(false);
     const [isSpireOpen, setIsSpireOpen] = useState(false);
     const [isProfileOpen, setIsProfileOpen] = useState(false);
     const [isDetailOpen, setIsDetailOpen] = useState(false);
@@ -495,10 +476,10 @@ const App: React.FC = () => {
     }, []);
 
     useEffect(() => {
-        if (!isSpireOpen && !isDetailOpen && !isModalOpen && !isProfileOpen && !isReaderOpen) {
+        if (!isSpireOpen && !isDetailOpen && !isModalOpen && !isProfileOpen) {
             triggerHUD();
         }
-    }, [isSpireOpen, isDetailOpen, isModalOpen, isProfileOpen, isReaderOpen]);
+    }, [isSpireOpen, isDetailOpen, isModalOpen, isProfileOpen]);
 
     // --- SYSTEM NOTIFICATION STATE ---
     const [sysNote, setSysNote] = useState<{
@@ -529,11 +510,78 @@ const App: React.FC = () => {
     const handleLogout = async () => {
         const confirmed = await showSystemNotification("TERMINATE_SESSION: Are you sure?", "WARNING", true);
         if (confirmed) {
-            clearAuthData();
+            await performLogout();
             setIsAuth(false);
             setLibrary([]);
         }
     };
+
+    const [guestTimeLeft, setGuestTimeLeft] = useState<number | null>(null);
+
+    // Format milliseconds to MM:SS or HH:MM:SS
+    const formatTime = (ms: number) => {
+        const totalSecs = Math.floor(ms / 1000);
+        const mins = Math.floor(totalSecs / 60);
+        const secs = totalSecs % 60;
+        return `${mins}:${secs.toString().padStart(2, '0')}`;
+    };
+
+    // GUEST SESSION REAPER & TIMER (Hard 2-hour Limit)
+    useEffect(() => {
+        if (!isAuth) {
+            setGuestTimeLeft(null);
+            return;
+        }
+
+        const user = getStoredUser();
+        if (user && user.role === 'GUEST') {
+            // guestId format: g_<base36_timestamp>_<random>
+            const parts = user.id.split('_');
+            const startTime = parseInt(parts[1], 36);
+            const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
+
+            if (isNaN(startTime)) return;
+
+            const checkSession = () => {
+                const now = Date.now();
+                const elapsed = now - startTime;
+                const remaining = Math.max(0, TWO_HOURS_MS - elapsed);
+                setGuestTimeLeft(remaining);
+
+                // Notifications for imminent portal collapse
+                if (remaining <= 60000 && remaining > 50000) {
+                    showSystemNotification("SYSTEM_ALERT: Portal destabilizing. 1 minute remaining.", "WARNING");
+                } else if (remaining <= 300000 && remaining > 290000) {
+                    showSystemNotification("SYSTEM_ALERT: Connection failing. 5 minutes remaining.", "WARNING");
+                }
+
+                if (remaining <= 0) {
+                    performLogout().then(() => {
+                        setIsAuth(false);
+                        setLibrary([]);
+                        showSystemNotification("PROTOCOL_COMPLETE: Trial experience expired. Data purged.", "INFO");
+                    });
+                }
+            };
+
+            checkSession();
+            const timer = setInterval(checkSession, 10000); // Check every 10s
+            return () => clearInterval(timer);
+        }
+    }, [isAuth]);
+
+    // Handle Tab Close Cleanup
+    useEffect(() => {
+        const handleUnload = () => {
+            const user = getStoredUser();
+            if (user && user.role === 'GUEST') {
+                // Best effort to drop DB on tab close
+                navigator.sendBeacon('/api/auth/logout');
+            }
+        };
+        window.addEventListener('beforeunload', handleUnload);
+        return () => window.removeEventListener('beforeunload', handleUnload);
+    }, []);
 
     const handleViewDetails = (id: string) => {
         const item = library.find(q => q.id === id);
@@ -869,6 +917,14 @@ const App: React.FC = () => {
                         </div>
                     </div>
                     <div className="flex items-center gap-3">
+                        {guestTimeLeft !== null && (
+                            <div className="flex flex-col items-end leading-none mr-2">
+                                <span className="text-[7px] font-mono text-amber-500/70 tracking-[0.2em] font-black uppercase">LINK_STABILITY</span>
+                                <span className="text-[14px] font-mono font-black text-amber-500 drop-shadow-[0_0_8px_rgba(245,158,11,0.5)]">
+                                    {formatTime(guestTimeLeft)}
+                                </span>
+                            </div>
+                        )}
                         <button onClick={toggleTheme} className={`w-8 h-8 flex items-center justify-center border ${theme.borderSubtle} ${theme.isDark ? 'bg-white/5 hover:bg-white/10' : 'bg-black/5 hover:bg-black/10'} rounded transition-colors duration-700`}>
                             {currentTheme === 'LIGHT' ? <Sun size={14} className="text-sky-600 transition-colors duration-700" /> : <Moon size={14} className="text-amber-400 transition-colors duration-700" />}
                         </button>
@@ -879,7 +935,7 @@ const App: React.FC = () => {
                 </motion.header>
             )}
         </AnimatePresence>
-    ), [theme, currentTheme, isHeaderVisible]);
+    ), [theme, currentTheme, isHeaderVisible, guestTimeLeft]);
 
     // Track hero cover image error state — reset whenever the active quest changes
     const [coverImgError, setCoverImgError] = React.useState(false);
@@ -1085,7 +1141,7 @@ const App: React.FC = () => {
                                 <motion.button
                                     whileHover={{ scale: 1.02 }}
                                     whileTap={{ scale: 0.96 }}
-                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleEnterInternalPortal(activeQuest.link || '#'); }}
+                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleEnterPortal(activeQuest.link || '#'); }}
                                     disabled={!activeQuest.link || activeQuest.link === '#'}
                                     className={`h-12 flex-1 max-w-[400px] backdrop-blur-md flex items-center justify-center gap-2 transition-all font-mono font-bold tracking-widest text-[12px] group cursor-pointer shadow-lg rounded-sm border text-white drop-shadow-md disabled:opacity-40 disabled:cursor-not-allowed`}
                                     style={{ backgroundColor: theme.accentColor, borderColor: theme.accentColor, boxShadow: `0 0 20px ${theme.accentColor}66` }}
@@ -1097,11 +1153,7 @@ const App: React.FC = () => {
                                     style={{ color: theme.accentColor }}>
                                     <Sword size={18} />
                                 </motion.button>
-                                <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
-                                    onClick={() => { handleEnterPortal(activeQuest.link || '#'); }}
-                                    className={`w-14 h-12 flex-none border ${theme.borderSubtle} ${theme.isDark ? 'hover:border-white hover:text-white bg-black/80 backdrop-blur-md' : 'hover:border-black hover:text-black bg-white/80 backdrop-blur-md'} flex items-center justify-center transition-colors cursor-pointer shadow-lg rounded-sm`}>
-                                    <ExternalLink size={16} />
-                                </motion.button>
+
                             </div>
                         </div>
                     </div>
@@ -1227,8 +1279,7 @@ const App: React.FC = () => {
             {!isSpireOpen &&
                 !isModalOpen &&
                 !isProfileOpen &&
-                !isDetailOpen &&
-                !isReaderOpen && (
+                !isDetailOpen && (
                     <SystemConsole theme={theme} />
                 )}
 
@@ -1449,19 +1500,7 @@ const App: React.FC = () => {
             {/* Hidden anchor used by portal animation to open new tab after animation completes */}
             <a ref={portalAnchorRef} href="#" target="_blank" rel="noopener noreferrer" aria-hidden="true" style={{ display: 'none' }} />
 
-            <Suspense fallback={null}>
-                {isReaderOpen && (
-                    <SystemReader
-                        isOpen={isReaderOpen}
-                        onClose={() => setIsReaderOpen(false)}
-                        quest={activeQuest}
-                        theme={theme}
-                        onUpdate={async (id, data) => {
-                            await handleSave({ ...data, id });
-                        }}
-                    />
-                )}
-            </Suspense>
+
 
             <SystemNotification
                 isOpen={sysNote.isOpen}

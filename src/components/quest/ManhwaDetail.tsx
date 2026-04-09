@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { X, Users, Share2, Zap, Edit2, Target, AlignLeft, Check, ExternalLink } from 'lucide-react';
+import { X, Users, Share2, Zap, Edit2, Target, AlignLeft, Check } from 'lucide-react';
 import { getProxiedImageUrl } from '../../utils/api';
 import { systemFetch } from '../../utils/auth';
 
 import { Theme, Quest } from '../../core/types';
 import ScrambleText from '../system/ScrambleText';
-import SystemReader from '../reader/SystemReader';
 import './ManhwaDetail.css';
 
 
@@ -60,7 +59,6 @@ interface AniListMedia {
 // --- COMPONENT ---
 const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, theme, allQuests, onSetActive, onUpdate, onEdit }) => {
     const [media, setMedia] = useState<AniListMedia | null>(null);
-    const [isReaderOpen, setIsReaderOpen] = useState(false);
     const [isEditingSynopsis, setIsEditingSynopsis] = useState(false);
     const [draftSynopsis, setDraftSynopsis] = useState("");
     const [isLoadingMedia, setIsLoadingMedia] = useState(false);
@@ -288,15 +286,19 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
 
                             {/* PROTOCOL BUTTONS ROW */}
                             <div className="flex flex-wrap gap-3 w-full justify-center md:justify-start mt-4">
-                                <button
-                                    onClick={() => setIsReaderOpen(true)}
-                                    className={`px-8 py-3 rounded-sm border ${theme.isDark ? 'bg-amber-500/10 hover:bg-amber-500/20 border-amber-500/30 shadow-[0_0_15px_rgba(245,158,11,0.2)]' : 'bg-sky-500/10 hover:bg-sky-500/20 border-sky-500/30 shadow-[0_0_15px_rgba(14,165,233,0.2)]'} ${theme.highlightText} font-bold transition-all flex items-center gap-3 group/dive hover:scale-105 active:scale-95 cursor-pointer`}
-                                    title="Start Reading"
-                                    aria-label="Start Reading"
-                                >
-                                    <Zap size={16} className={`${theme.highlightText} group-hover/dive:animate-pulse`} />
-                                    <ScrambleText text="INITIALIZE_DIVE" className="text-[10px] tracking-[0.2em] font-orbitron" />
-                                </button>
+                                {quest?.link && (
+                                    <a
+                                        href={quest.link}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className={`px-8 py-3 rounded-sm border ${theme.isDark ? 'bg-amber-500/10 hover:bg-amber-500/20 border-amber-500/30 shadow-[0_0_15px_rgba(245,158,11,0.2)]' : 'bg-sky-500/10 hover:bg-sky-500/20 border-sky-500/30 shadow-[0_0_15px_rgba(14,165,233,0.2)]'} ${theme.highlightText} font-bold transition-all flex items-center gap-3 group/dive hover:scale-105 active:scale-95 cursor-pointer`}
+                                        title="Enter Portal"
+                                        aria-label="Enter Portal"
+                                    >
+                                        <Zap size={16} className={`${theme.highlightText} group-hover/dive:animate-pulse`} />
+                                        <ScrambleText text="ENTER_PORTAL" className="text-[10px] tracking-[0.2em] font-orbitron" />
+                                    </a>
+                                )}
                                 <button
                                     onClick={() => quest && onEdit && onEdit(quest)}
                                     className={`px-6 py-3 rounded-sm border bg-white/5 hover:bg-white/10 border-white/10 text-white font-bold transition-all flex items-center gap-3 group/edit hover:border-white/30`}
@@ -316,17 +318,6 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                     <Target size={16} className="opacity-70 group-hover/active:opacity-100 transition-opacity" />
                                     <span className="text-[10px] tracking-[0.2em] font-orbitron">MARK_TARGET</span>
                                 </button>
-                                {quest?.link && (
-                                    <a
-                                        href={quest.link}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className={`px-6 py-3 rounded-sm border bg-white/5 hover:bg-white/10 border-white/10 text-white font-bold transition-all flex items-center gap-3 group/ext hover:border-white/30`}
-                                    >
-                                        <ExternalLink size={16} className="opacity-70 group-hover/ext:opacity-100 transition-opacity" />
-                                        <span className="text-[10px] tracking-[0.2em] font-orbitron">EXTERNAL_LINK</span>
-                                    </a>
-                                )}
                             </div>
                         </div>
                     </motion.div>
@@ -522,13 +513,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
             {/* SHARED NOISE HANDLED BY BACKGROUND CONTROLLER */}
 
             {/* READER OVERLAY */}
-            {quest && <SystemReader
-                isOpen={isReaderOpen}
-                onClose={() => setIsReaderOpen(false)}
-                quest={quest}
-                theme={theme}
-                onUpdate={onUpdate}
-            />}
+
         </div>
     );
 };

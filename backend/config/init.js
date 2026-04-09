@@ -1,63 +1,37 @@
 const { getModel } = require('../models/modelFactory');
 
-const BASE_QUESTS = [
-    {
-        title: 'TOWER OF GOD',
-        status: 'ACTIVE',
-        currentChapter: 580,
-        totalChapters: 600,
-        lastRead: Date.now(),
-        classType: 'IRREGULAR',
-        cover: 'https://images2.alphacoders.com/107/1079366.jpg',
-        readLink: 'https://www.webtoons.com/en/fantasy/tower-of-god/list?title_no=95'
-    },
-    {
-        title: 'SOLO LEVELING',
-        status: 'ACTIVE',
-        currentChapter: 179,
-        totalChapters: 179,
-        lastRead: Date.now() - 86400000,
-        classType: 'PLAYER',
-        cover: 'https://wallpaperaccess.com/full/2405389.jpg',
-        readLink: 'https://sololevelingmanhwa.com/'
-    },
-    {
-        title: 'THE BEGINNING AFTER THE END',
-        status: 'ACTIVE',
-        currentChapter: 175,
-        totalChapters: 175,
-        lastRead: Date.now() - 172800000,
-        classType: 'MAGE',
-        cover: 'https://wallpapercave.com/wp/wp8922416.jpg',
-        readLink: 'https://tapas.io/series/tbate-comic/info'
-    },
-    {
-        title: 'ORVM: OMNISCIENT READER',
-        status: 'ACTIVE',
-        currentChapter: 180,
-        totalChapters: 200,
-        lastRead: Date.now(),
-        classType: 'CONSTELLATION',
-        cover: 'https://wallpapercave.com/wp/wp8862413.jpg',
-        readLink: 'https://www.webtoons.com/en/action/omniscient-reader/list?title_no=2154'
-    },
-    {
-        title: 'SECOND LIFE RANKER',
-        status: 'ACTIVE',
-        currentChapter: 150,
-        totalChapters: 160,
-        lastRead: Date.now() - 3600000,
-        classType: 'PLAYER',
-        cover: 'https://wallpapercave.com/wp/wp8691500.jpg',
-        readLink: 'https://www.webtoons.com/en/action/second-life-ranker/list?title_no=3555'
-    }
-];
+/**
+ * Clones all manhwas from a template database to a target database connection.
+ * @param {object} targetConn - The mongoose connection for the target guest sandbox.
+ * @param {object} templateConn - The mongoose connection for the template database (e.g., test_records).
+ */
+const cloneFromTemplate = async (targetConn, templateConn) => {
+    try {
+        const SourceQuest = getModel(templateConn, 'Quest');
+        const TargetQuest = getModel(targetConn, 'Quest');
 
-const seedDB = async (Quest) => {
-    const count = await Quest.countDocuments();
-    if (count === 0) {
-        console.log("Seeding Database with BASE_QUESTS...");
-        await Quest.insertMany(BASE_QUESTS);
+        const templateQuests = await SourceQuest.find({});
+        
+        if (templateQuests.length > 0) {
+            console.log(`[INIT] Cloning ${templateQuests.length} quests from [${templateConn.name}] to [${targetConn.name}]...`);
+            
+            // Prepare documents for insertion: Remove IDs to avoid collisions in the new DB
+            const cleanedQuests = templateQuests.map(q => {
+                const obj = q.toObject();
+                delete obj._id;
+                delete obj.__v;
+                delete obj.createdAt;
+                delete obj.updatedAt;
+                return obj;
+            });
+
+            await TargetQuest.insertMany(cleanedQuests);
+            console.log(`[INIT] Sandbox synchronization complete.`);
+        } else {
+            console.log(`[INIT] Template database [${templateConn.name}] is empty. Sandbox starts fresh.`);
+        }
+    } catch (err) {
+        console.error("[INIT] Cloning failure:", err.message);
     }
 };
 
@@ -86,13 +60,25 @@ const deduplicateDB = async (Quest) => {
     }
 };
 
-const initDatabase = async (getConnection) => {
+/**
+ * Initialize a database connection.
+ * @param {function} getConnection - Function to get the connection.
+ * @param {object} templateConn - Optional template connection to clone from.
+ */
+const initDatabase = async (getConnection, templateConn = null) => {
     try {
-        // getConnection should be a function that returns the connection object
         const conn = await getConnection();
         const Quest = getModel(conn, 'Quest');
 
-        await seedDB(Quest);
+        // If a template is provided, we clone from it.
+        // Otherwise, we just ensure it exists and deduplicate.
+        if (templateConn) {
+            const count = await Quest.countDocuments();
+            if (count === 0) {
+                await cloneFromTemplate(conn, templateConn);
+            }
+        }
+
         await deduplicateDB(Quest);
         console.log(`Database Layer Ready [${conn.name}].`);
     } catch (err) {
@@ -100,4 +86,5 @@ const initDatabase = async (getConnection) => {
     }
 };
 
-module.exports = { initDatabase };
+module.exports = { initDatabase, cloneFromTemplate };
+

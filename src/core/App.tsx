@@ -4,7 +4,7 @@ import { Quest } from './types';
 import SystemFrame from '../components/system/SystemFrame';
 import SystemLogo from '../components/system/SystemLogo';
 import ScrambleText from '../components/system/ScrambleText';
-import { Sword, Activity, ExternalLink, Sun, Moon, Plus, Zap, Crown, X, LayoutTemplate, GripVertical } from 'lucide-react';
+import { Activity, ExternalLink, Sun, Moon, Plus, Zap, Crown, X, LayoutTemplate, GripVertical } from 'lucide-react';
 import { getPlayerRank, getThemedRankStyle, calculateQuestRank } from '../utils/ranks';
 import { THEMES, ITEMS_PER_FLOOR } from './constants';
 
@@ -1146,12 +1146,12 @@ const App: React.FC = () => {
                                     className={`h-12 flex-1 max-w-[400px] backdrop-blur-md flex items-center justify-center gap-2 transition-all font-mono font-bold tracking-widest text-[12px] group cursor-pointer shadow-lg rounded-sm border text-white drop-shadow-md disabled:opacity-40 disabled:cursor-not-allowed`}
                                     style={{ backgroundColor: theme.accentColor, borderColor: theme.accentColor, boxShadow: `0 0 20px ${theme.accentColor}66` }}
                                 >
-                                    <Sword size={16} className="group-hover:rotate-12 transition-transform" /> ENTER PORTAL
+                                    <ExternalLink size={16} className="group-hover:rotate-12 transition-transform" /> ENTER PORTAL
                                 </motion.button>
                                 <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => updateProgress(1)}
                                     className={`w-14 h-12 flex-none border ${theme.borderSubtle} ${theme.isDark ? 'hover:border-white hover:text-white bg-black/80 backdrop-blur-md' : 'hover:border-black hover:text-black bg-white/80 backdrop-blur-md'} flex items-center justify-center transition-colors cursor-pointer rounded-sm`}
                                     style={{ color: theme.accentColor }}>
-                                    <Sword size={18} />
+                                    <Plus size={18} />
                                 </motion.button>
 
                             </div>

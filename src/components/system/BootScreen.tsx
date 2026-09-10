@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+﻿import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { motion } from 'motion/react';
 import { Theme } from '../../core/types';
 import AkashicCoreLogo from './AkashicCoreLogo';
@@ -17,7 +17,7 @@ const AWAKENING_PHASES = [
 ];
 
 // Boot timeline, in milliseconds from mount.
-const FILL_MS = 8000;                                   // 0 → 100%
+const FILL_MS = 8000;                                   // 0 â†’ 100%
 const AWAKEN_HOLD_MS = 1600;                            // logo flare before the outro
 const OUTRO_MS = 1000;                                  // fade to the app
 const PHASE_MS = FILL_MS / AWAKENING_PHASES.length;     // one label per slice
@@ -25,7 +25,7 @@ const TOTAL_MS = FILL_MS + AWAKEN_HOLD_MS + OUTRO_MS;
 
 // Tick fast enough to look smooth in the foreground. Background tabs clamp this to
 // roughly 1s (and to once a minute under Chrome's intensive throttling), which is
-// exactly why nothing below counts ticks — every value is recomputed from elapsed time.
+// exactly why nothing below counts ticks â€” every value is recomputed from elapsed time.
 const TICK_MS = 30;
 
 /**
@@ -33,8 +33,8 @@ const TICK_MS = 30;
  *
  * These were two module constants (#fbbf24 gold, #ffffff white) and the component never
  * read its `theme` prop at all, so the boot sequence stayed amber-on-black even with the
- * app in Aureic. Deriving them keeps the celestial identity — which is the house
- * aesthetic — while letting it invert with everything else.
+ * app in Aureic. Deriving them keeps the celestial identity â€” which is the house
+ * aesthetic â€” while letting it invert with everything else.
  */
 type BootPalette = { accent: string; ink: string; ground: string; isDark: boolean };
 
@@ -50,33 +50,110 @@ type StarData = {
     cx: number;
     cy: number;
     r: number;
+    peak: number;
     dx: number;
     opDur: number;
     opDelay: number;
     xDur: number;
 };
 
+const frac = (n: number) => n - Math.floor(n);
+/** Deterministic hash in [0,1). Stands in for Math.random() so renders stay stable. */
+const hash = (n: number, seed: number) => frac(Math.sin(n * seed) * 43758.5453123);
+
+/**
+ * R2 low-discrepancy sequence (the 2D generalisation of the golden ratio).
+ *
+ * The previous generator was `(i * 593.6) % 1600` paired with `(i * 213.3) % 900`, which
+ * advances every star by the SAME vector and wraps â€” putting all 110 of them on one
+ * lattice line. Measured, it produced exactly one distinct dx and one distinct dy across
+ * the whole field, which the eye reads as diagonal ruling rather than as stars. Its
+ * comment claimed a golden-ratio distribution, but phi only ever touched the radius and
+ * the timings, never the position.
+ *
+ * R2 genuinely equidistributes without repeating a step, and a small deterministic jitter
+ * breaks up the residual regularity so the field clumps slightly, the way a real sky does.
+ */
+// Plastic number, at the precision a double actually carries.
+const PLASTIC = 1.324717957244746;
+const A1 = 1 / PLASTIC;
+const A2 = 1 / (PLASTIC * PLASTIC);
+
 function generateStars(count: number): StarData[] {
-    // Deterministic positions in 1600x900 viewBox space (golden-ratio distribution)
     const stars: StarData[] = [];
-    const phi = 1.6180339887;
-    for (let i = 0; i < count; i++) {
-        const t = (i * phi) % 1;
-        const u = (i * 0.7319) % 1;
+    for (let i = 1; i <= count; i++) {
+        const jx = hash(i, 12.9898) - 0.5;
+        const jy = hash(i, 78.2330) - 0.5;
+
+        // Magnitude, skewed so most stars are faint and only a handful burn brightly â€”
+        // a uniform size distribution is a large part of what made this read as a texture.
+        const m = hash(i, 4.1237);
+        const bright = Math.pow(m, 3);
+
         stars.push({
-            cx: (i * 37.1 * 16 + 13) % 1600,   // 0–1600 px space
-            cy: (i * 23.7 * 9  +  7) % 900,    // 0–900 px space
-            r:  0.4 + t * 0.8,                  // 0.4–1.2 px — pinpoint sized
-            dx: (u * 12) - 6,                   // subtle horizontal drift in px
-            opDur:  2 + t * 3,
-            opDelay: u * 5,
-            xDur:   12 + u * 10,
+            cx: frac(0.5 + A1 * i) * 1600 + jx * 30,
+            cy: frac(0.5 + A2 * i) * 900 + jy * 30,
+            r: 0.35 + bright * 1.25,
+            peak: 0.22 + bright * 0.55,
+            dx: (hash(i, 33.71) * 12) - 6,
+            opDur: 2 + hash(i, 55.13) * 3.5,
+            opDelay: hash(i, 91.77) * 5,
+            xDur: 12 + hash(i, 24.09) * 10,
         });
     }
     return stars;
 }
 
-const STAR_DATA = generateStars(110);
+const STAR_DATA = generateStars(140);
+
+/**
+ * Asterisms drawn from real star patterns.
+ *
+ * The originals were arbitrary closed polygons joined by dashed technical lines, which
+ * read as HUD wireframe rather than as sky. These use the geometry of actual asterisms â€”
+ * Cassiopeia's W and the Plough â€” with per-star magnitudes, so the shapes are ones the
+ * eye already recognises as constellations. The in-fiction names are unchanged.
+ */
+type Asterism = {
+    label: string;
+    at: [number, number];
+    stars: { x: number; y: number; mag: number }[];
+    edges: [number, number][];
+};
+
+const ASTERISMS: Asterism[] = [
+    {
+        // Cassiopeia â€” the W.
+        label: "The Monarch's Crown",
+        at: [150, 500],
+        stars: [
+            { x: 0, y: 74, mag: 2.2 },
+            { x: 64, y: 16, mag: 2.3 },
+            { x: 132, y: 66, mag: 2.5 },
+            { x: 202, y: 8, mag: 2.7 },
+            { x: 268, y: 78, mag: 3.4 },
+        ],
+        edges: [[0, 1], [1, 2], [2, 3], [3, 4]],
+    },
+    {
+        // Ursa Major's Plough â€” closed bowl, trailing handle.
+        label: "The Gatekeeper's Eye",
+        at: [1080, 210],
+        stars: [
+            { x: 0, y: 0, mag: 1.8 },     // Dubhe
+            { x: 6, y: 58, mag: 2.4 },    // Merak
+            { x: 66, y: 66, mag: 2.4 },   // Phecda
+            { x: 60, y: 20, mag: 3.3 },   // Megrez
+            { x: 118, y: 10, mag: 1.8 },  // Alioth
+            { x: 176, y: 22, mag: 2.2 },  // Mizar
+            { x: 232, y: 56, mag: 1.9 },  // Alkaid
+        ],
+        edges: [[0, 1], [1, 2], [2, 3], [3, 0], [3, 4], [4, 5], [5, 6]],
+    },
+];
+
+/** Brighter stars (lower magnitude) render larger, as they do in a star chart. */
+const magRadius = (mag: number) => Math.max(1.1, 3.9 - mag * 0.65);
 
 // --- CELESTIAL & HUD COMPONENTS ---
 
@@ -87,7 +164,7 @@ const MythicalConstellations: React.FC<{ p: BootPalette }> = ({ p }) => {
          * viewBox="0 0 1600 900" with preserveAspectRatio="xMidYMid slice" keeps the
          * coordinate system uniformly scaled on all screens so circles remain circular
          * (not stretched ovals) on phones, tablets, and laptops.
-         * Stars have NO blur filter — they are crisp 1px pinpoints of light.
+         * Stars have NO blur filter â€” they are crisp 1px pinpoints of light.
          * Only constellation node dots get the subtle glow filter.
          */
         <svg
@@ -96,7 +173,7 @@ const MythicalConstellations: React.FC<{ p: BootPalette }> = ({ p }) => {
             preserveAspectRatio="xMidYMid slice"
         >
             <defs>
-                {/* Only used for constellation node circles — NOT stars */}
+                {/* Only used for constellation node circles â€” NOT stars */}
                 <filter id="nodeGlow" x="-150%" y="-150%" width="400%" height="400%">
                     <feGaussianBlur stdDeviation="2.5" result="blur" />
                     <feMerge>
@@ -106,17 +183,19 @@ const MythicalConstellations: React.FC<{ p: BootPalette }> = ({ p }) => {
                 </filter>
             </defs>
 
-            {/* ── STARFIELD ── crisp pinpoints, no blur filter */}
+            {/* â”€â”€ STARFIELD â”€â”€ crisp pinpoints, no blur filter */}
             {STAR_DATA.map((star, i) => (
                 <motion.circle
                     key={i}
                     cx={star.cx}
                     cy={star.cy}
-                    r={star.r}        // 0.4–1.2 px in 1600x900 space — true pinpoints
+                    r={star.r}
                     fill={white}
                     animate={{
                         x:       [0, star.dx, 0],
-                        opacity: [0.08, 0.60, 0.08],
+                        // Peak brightness varies per star, so the field twinkles unevenly
+                        // instead of every point pulsing to the same value together.
+                        opacity: [star.peak * 0.15, star.peak, star.peak * 0.15],
                     }}
                     transition={{
                         x:       { duration: star.xDur, repeat: Infinity, ease: "linear" },
@@ -126,79 +205,48 @@ const MythicalConstellations: React.FC<{ p: BootPalette }> = ({ p }) => {
                 />
             ))}
 
-            {/* ── LEFT CONSTELLATION: "The Monarch's Crown" ── */}
-            <motion.g
-                animate={{ x: [0, 10, 0], y: [0, 6, 0] }}
-                transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
-                opacity={0.8}
-                style={{ willChange: 'transform' }}
-            >
-                <g transform="translate(180, 520)">
-                    {/* Faint distant connections */}
-                    <line x1="-40" y1="20" x2="60" y2="-90" stroke={gold} strokeWidth="0.3" opacity="0.15" />
-                    <line x1="60" y1="-90" x2="220" y2="-120" stroke={gold} strokeWidth="0.4" opacity="0.2" />
-                    <line x1="140" y1="-10" x2="300" y2="40" stroke={gold} strokeWidth="0.3" opacity="0.15" strokeDasharray="2 4" />
+            {/* ── ASTERISMS ── drawn from the ASTERISMS table above */}
+            {ASTERISMS.map((a, ai) => (
+                <motion.g
+                    key={a.label}
+                    animate={ai === 0 ? { x: [0, 10, 0], y: [0, 6, 0] } : { x: [0, -12, 0], y: [0, 8, 0] }}
+                    transition={{ duration: ai === 0 ? 25 : 22, repeat: Infinity, ease: "easeInOut" }}
+                    opacity={0.85}
+                    style={{ willChange: 'transform' }}
+                >
+                    <g transform={`translate(${a.at[0]}, ${a.at[1]})`}>
+                        {/* Links between stars: thin, solid, unadorned — a star chart draws
+                            plain lines. The dashed technical strokes here previously read as
+                            engineering diagram rather than sky. */}
+                        {a.edges.map(([from, to], ei) => (
+                            <line
+                                key={ei}
+                                x1={a.stars[from].x} y1={a.stars[from].y}
+                                x2={a.stars[to].x}   y2={a.stars[to].y}
+                                stroke={gold}
+                                strokeWidth="0.6"
+                                opacity="0.3"
+                            />
+                        ))}
 
-                    {/* Primary constellation branches */}
-                    <path d="M0,0 L60,-90 L140,-10 L200,60" fill="none" stroke={gold} strokeWidth="0.8" opacity="0.35" />
-                    <path d="M140,-10 L220,-120 L270,-40 L200,60" fill="none" stroke={gold} strokeWidth="0.6" opacity="0.25" />
-                    <path d="M220,-120 L320,-80 L270,-40" fill="none" stroke={gold} strokeWidth="0.5" opacity="0.2" />
-
-                    {/* Major star nodes */}
-                    <circle cx="0" cy="0" r="2.5" fill={white} filter="url(#nodeGlow)" />
-                    <circle cx="60" cy="-90" r="1.5" fill={gold} filter="url(#nodeGlow)" />
-                    <circle cx="140" cy="-10" r="3.5" fill={gold} filter="url(#nodeGlow)" />
-                    <circle cx="200" cy="60" r="2" fill={white} filter="url(#nodeGlow)" />
-                    <circle cx="220" cy="-120" r="2.5" fill={white} filter="url(#nodeGlow)" />
-                    <circle cx="270" cy="-40" r="1.5" fill={gold} filter="url(#nodeGlow)" />
-                    <circle cx="320" cy="-80" r="2" fill={gold} filter="url(#nodeGlow)" />
-
-                    {/* Minor background stars */}
-                    <circle cx="-40" cy="20" r="1" fill={white} opacity="0.5" />
-                    <circle cx="300" cy="40" r="1.2" fill={gold} opacity="0.6" />
-                </g>
-            </motion.g>
-
-            {/* ── RIGHT CONSTELLATION: "The Gatekeeper's Eye" ── */}
-            <motion.g
-                animate={{ x: [0, -12, 0], y: [0, 8, 0], rotate: [0, -1, 0] }}
-                transition={{ duration: 22, repeat: Infinity, ease: "easeInOut" }}
-                opacity={0.8}
-                style={{ willChange: 'transform' }}
-                transformOrigin="center"
-            >
-                <g transform="translate(1050, 250)">
-                    {/* Ethereal background web */}
-                    <path d="M-50,80 L40,-30 L160,-60 L240,20 L130,120 Z" fill="none" stroke={gold} strokeWidth="0.3" opacity="0.1" />
-
-                    {/* Core geometric frame */}
-                    <path d="M0,0 L100,-40 L200,30 L110,80 Z" fill="none" stroke={gold} strokeWidth="0.8" opacity="0.4" />
-
-                    {/* Intersecting central lines (The pupil) */}
-                    <line x1="40" y1="20" x2="160" y2="10" stroke={gold} strokeWidth="0.6" strokeDasharray="4 6" opacity="0.3" />
-                    <line x1="100" y1="-40" x2="110" y2="80" stroke={gold} strokeWidth="0.6" opacity="0.3" />
-
-                    {/* Trailing tail */}
-                    <path d="M200,30 L280,-10 L360,-20" fill="none" stroke={white} strokeWidth="0.5" opacity="0.25" strokeDasharray="3 3" />
-
-                    {/* Star nodes */}
-                    <circle cx="0" cy="0" r="2" fill={white} filter="url(#nodeGlow)" />
-                    <circle cx="100" cy="-40" r="3" fill={gold} filter="url(#nodeGlow)" />
-                    <circle cx="200" cy="30" r="2.5" fill={white} filter="url(#nodeGlow)" />
-                    <circle cx="110" cy="80" r="1.5" fill={gold} filter="url(#nodeGlow)" />
-                    <circle cx="40" cy="20" r="1.2" fill={gold} opacity="0.8" filter="url(#nodeGlow)" />
-                    <circle cx="160" cy="10" r="1.2" fill={gold} opacity="0.8" filter="url(#nodeGlow)" />
-                    <circle cx="280" cy="-10" r="2" fill={gold} filter="url(#nodeGlow)" />
-                    <circle cx="360" cy="-20" r="1.5" fill={white} filter="url(#nodeGlow)" />
-
-                    {/* Floating space dust around the eye */}
-                    <circle cx="-50" cy="80" r="1" fill={white} opacity="0.4" />
-                    <circle cx="40" cy="-30" r="0.8" fill={gold} opacity="0.5" />
-                    <circle cx="160" cy="-60" r="1.2" fill={white} opacity="0.6" />
-                    <circle cx="240" cy="20" r="0.8" fill={gold} opacity="0.5" />
-                    <circle cx="130" cy="120" r="1" fill={white} opacity="0.4" />
-                </g>
-            </motion.g>
+                        {/* Stars, sized by magnitude. */}
+                        {a.stars.map((s, si) => (
+                            <g key={si}>
+                                <circle
+                                    cx={s.x} cy={s.y}
+                                    r={magRadius(s.mag)}
+                                    fill={s.mag < 2.1 ? white : gold}
+                                    filter="url(#nodeGlow)"
+                                />
+                                {/* The brightest few get a faint halo, as on a chart. */}
+                                {s.mag < 2.0 && (
+                                    <circle cx={s.x} cy={s.y} r={magRadius(s.mag) * 2.6} fill={gold} opacity="0.09" />
+                                )}
+                            </g>
+                        ))}
+                    </g>
+                </motion.g>
+            ))}
         </svg>
     );
 };
@@ -238,22 +286,50 @@ const BackgroundDials: React.FC<{ p: BootPalette }> = ({ p }) => {
     );
 };
 
+const TELEMETRY_ROWS = 20;
+
+/**
+ * Scrolling coordinate readout down each edge.
+ *
+ * The addresses used to be `i * 0x13a7 + 0x4f2b`, which over 40 rows produced only four
+ * distinct leading nibbles — ten consecutive rows all began "0000", so the column read as
+ * a counter rather than a memory dump. The values were `i * 7.31 + 13.47`, a straight
+ * ramp climbing the screen. Both now come from an integer avalanche hash, so every digit
+ * varies and the numbers no longer march in order.
+ */
 const LateralTelemetry: React.FC<{ side: 'left' | 'right'; p: BootPalette }> = ({ side, p }) => {
-    // Memoize the hex data so it doesn't regenerate on each render
-    const rows = useMemo(() => Array.from({ length: 40 }).map((_, i) => ({
-        hex: ((i * 0x13a7 + 0x4f2b) & 0xffffffff).toString(16).substring(0, 8).toUpperCase().padStart(8, '0'),
-        val: ((i * 7.31 + 13.47) % 100).toFixed(2),
-    })), []);
+    const rows = useMemo(() => {
+        const mix = (n: number) => {
+            let h = Math.imul(n + 0x9e3779b9, 0x85ebca6b) >>> 0;
+            h ^= h >>> 13;
+            h = Math.imul(h, 0xc2b2ae35) >>> 0;
+            h ^= h >>> 16;
+            return h >>> 0;
+        };
+        return Array.from({ length: TELEMETRY_ROWS }).map((_, i) => {
+            const a = mix(i * 2 + 1);
+            const b = mix(i * 2 + 2);
+            return {
+                hex: a.toString(16).toUpperCase().padStart(8, '0'),
+                val: ((b % 10000) / 100).toFixed(2).padStart(5, '0'),
+            };
+        });
+    }, []);
+
+    // Rendered twice. The track animates a full -50%, so the second copy is exactly what
+    // scrolls into view as the first leaves — without the duplicate the loop snapped back
+    // to the top instead of wrapping.
+    const track = [...rows, ...rows];
 
     return (
-        <div className={`absolute top-0 bottom-0 ${side === 'left' ? 'left-6 xl:left-8' : 'right-6 xl:right-8'} w-28 xl:w-32 pointer-events-none hidden xl:flex flex-col ${p.isDark ? 'opacity-20' : 'opacity-30'} overflow-hidden font-orbitron z-0`}>
+        <div className={`absolute top-0 bottom-0 ${side === 'left' ? 'left-6 xl:left-8' : 'right-6 xl:right-8'} w-28 xl:w-32 pointer-events-none hidden xl:flex flex-col ${p.isDark ? 'opacity-20' : 'opacity-30'} overflow-hidden font-mono z-0`}>
             <motion.div
                 animate={{ y: ["0%", "-50%"] }}
-                transition={{ duration: 30, repeat: Infinity, ease: "linear" }}
-                className="flex flex-col gap-8 text-[7px] tracking-[0.4em]"
+                transition={{ duration: 40, repeat: Infinity, ease: "linear" }}
+                className="flex flex-col gap-8 text-[7px] tracking-[0.3em]"
                 style={{ color: `${p.ink}80`, willChange: 'transform' }}
             >
-                {rows.map((row, i) => (
+                {track.map((row, i) => (
                     <div key={i} className={`flex items-center gap-4 ${side === 'right' ? 'justify-end' : ''}`}>
                         {side === 'left' && <div className="w-[1px] h-4" style={{ backgroundColor: `${p.accent}80` }} />}
                         <span>{row.hex}</span>
@@ -278,7 +354,7 @@ const CelestialVoid: React.FC<{ p: BootPalette }> = ({ p }) => (
             />
         </div>
 
-        {/* Layer 2: Mana Mist — motion instead of animate-pulse for GPU acceleration */}
+        {/* Layer 2: Mana Mist â€” motion instead of animate-pulse for GPU acceleration */}
         <motion.div
             animate={{ opacity: [0.25, 0.45, 0.25] }}
             transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut" }}
@@ -397,7 +473,7 @@ const BootScreen: React.FC<BootScreenProps> = ({ onComplete, theme }) => {
     // The sequence start is pinned to the first render, not to the effect.
     //
     // The effect depends on the completion callback, and a parent passing an inline arrow
-    // gives it a fresh identity on every render — which re-ran this effect and restarted
+    // gives it a fresh identity on every render â€” which re-ran this effect and restarted
     // the clock from zero mid-boot. The old tick-accumulating version masked that (a
     // restart just kept adding to the previous total); computing from elapsed time does
     // not, so the origin has to survive re-runs.
@@ -412,7 +488,7 @@ const BootScreen: React.FC<BootScreenProps> = ({ onComplete, theme }) => {
          *
          * Nothing here accumulates per tick. That matters because a hidden tab has its
          * timers clamped to ~1s, so the old tick-counting version needed roughly 267
-         * throttled ticks — over four minutes — to reach 100%. Deriving from the clock
+         * throttled ticks â€” over four minutes â€” to reach 100%. Deriving from the clock
          * means a single late tick lands on the correct state, so the sequence finishes
          * on schedule whether or not anyone is watching.
          */
@@ -456,7 +532,7 @@ const BootScreen: React.FC<BootScreenProps> = ({ onComplete, theme }) => {
             className="fixed inset-0 z-[100] flex items-center justify-center overflow-hidden font-mono"
             style={{ backgroundColor: p.ground, willChange: 'opacity' }}
         >
-            {/* Fade-out overlay — separate element for smoother composite */}
+            {/* Fade-out overlay â€” separate element for smoother composite */}
             <motion.div
                 className="absolute inset-0 z-[200] pointer-events-none"
                 style={{ backgroundColor: p.ground, willChange: 'opacity' }}
@@ -477,7 +553,7 @@ const BootScreen: React.FC<BootScreenProps> = ({ onComplete, theme }) => {
                 {/* TOP SPACER for header clearance */}
                 <div className="flex-shrink-0" style={{ height: 'clamp(40px, 6vh, 80px)' }} />
 
-                {/* LOGO AREA — fills available vertical space between header and HUD */}
+                {/* LOGO AREA â€” fills available vertical space between header and HUD */}
                 <div className="relative flex items-center justify-center flex-1 w-full">
                     <DiamondHalo p={p} />
                     <motion.div
@@ -493,7 +569,7 @@ const BootScreen: React.FC<BootScreenProps> = ({ onComplete, theme }) => {
                         }}
                         className={`relative z-30 flex items-center justify-center ${blendFor(p)}`}
                         style={{
-                            /* Viewport-relative size: fills well on phones → tablets → laptops */
+                            /* Viewport-relative size: fills well on phones â†’ tablets â†’ laptops */
                             width:  'clamp(200px, min(70vw, 55vh), 560px)',
                             height: 'clamp(200px, min(70vw, 55vh), 560px)',
                             willChange: 'transform, opacity, filter',
@@ -503,7 +579,7 @@ const BootScreen: React.FC<BootScreenProps> = ({ onComplete, theme }) => {
                     </motion.div>
                 </div>
 
-                {/* BOTTOM LOADING HUD — bracketed like every panel in the app */}
+                {/* BOTTOM LOADING HUD â€” bracketed like every panel in the app */}
                 <div className="w-full max-w-xs sm:max-w-md md:max-w-2xl px-6 sm:px-10 md:px-12 flex-shrink-0 relative z-40">
                     <div className="relative px-5 py-4">
                         <BracketCorners color={p.accent} />

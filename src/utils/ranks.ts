@@ -17,12 +17,10 @@ export const getPlayerRank = (titlesTracked: number) => {
 };
 
 export const getThemedRankStyle = (theme: string, isRankS: boolean = false) => {
-    switch (theme) {
-        case 'LIGHT': return isRankS ? 'text-amber-600' : 'text-slate-800';
-        case 'SYSTEM': return isRankS ? 'text-amber-400' : 'text-cyan-400';
-        case 'DARK': return isRankS ? 'text-amber-400' : 'text-cyan-400';
-        default: return isRankS ? 'text-amber-400' : 'text-cyan-400';
-    }
+    // Light inverts to dark text on a pale ground; every other case is the dark treatment.
+    // (A 'SYSTEM' branch used to sit here returning exactly the same pair as 'DARK'.)
+    if (theme === 'LIGHT') return isRankS ? 'text-amber-600' : 'text-slate-800';
+    return isRankS ? 'text-amber-400' : 'text-cyan-400';
 };
 
 export const calculateQuestRank = (quest: Quest) => {

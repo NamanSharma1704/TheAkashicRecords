@@ -1,7 +1,21 @@
 
 import { Theme } from './types';
 
-export const THEMES: Record<string, Theme> = {
+/**
+ * The two themes the app ships: Void (dark, amber) and Aureic (light, cyan).
+ *
+ * Typed as an exact record rather than Record<string, Theme> so the header toggle and
+ * any future theme switcher can only ever name a theme that exists — a missing key is a
+ * compile error instead of an undefined lookup at runtime.
+ *
+ * Two further themes, SYSTEM (cyan on slate) and BLOOD (red on black), were defined here
+ * but never reachable: currentTheme only ever holds 'DARK' or 'LIGHT', and every theme
+ * check in the codebase is a binary `theme.id === 'LIGHT'`. They were removed rather than
+ * left as decoration; re-adding one means adding it here and widening ThemeId.
+ */
+export type ThemeId = 'DARK' | 'LIGHT';
+
+export const THEMES: Record<ThemeId, Theme> = {
     DARK: {
         id: 'DARK',
         name: 'Dark Mode',
@@ -50,54 +64,6 @@ export const THEMES: Record<string, Theme> = {
         accentColor: '#06b6d4',
         isDark: false
     },
-    SYSTEM: {
-        id: 'SYSTEM',
-        name: 'System Mode',
-        primary: 'bg-slate-900',
-        accent: 'bg-cyan-500',
-        appBg: 'bg-slate-950',
-        panelBg: 'bg-slate-900/80',
-        modalBg: 'bg-slate-950/95',
-        inputBg: 'bg-black/50',
-        baseText: 'text-slate-300',
-        headingText: 'text-cyan-50',
-        mutedText: 'text-slate-400',
-        highlightText: 'text-cyan-400',
-        border: 'border-cyan-900/50',
-        borderSubtle: 'border-cyan-950/50',
-        shadow: 'shadow-[0_0_15px_rgba(0,0,0,0.5)]',
-        glow: 'shadow-[0_0_15px_rgba(6,182,212,0.2)]',
-        overlay: 'bg-black/60',
-        starColor: '34, 211, 238', // Cyan-400 RGB
-        gradient: 'from-cyan-400 to-blue-500',
-        rayColor: 'from-cyan-500/10',
-        accentColor: '#06b6d4', // Standardizing on Cyan-500 for System
-        isDark: true
-    },
-    BLOOD: {
-        id: 'BLOOD',
-        name: 'Blood Mode',
-        primary: 'bg-stone-950',
-        accent: 'bg-red-500',
-        appBg: 'bg-black',
-        panelBg: 'bg-stone-900/80',
-        modalBg: 'bg-stone-950/95',
-        inputBg: 'bg-black/50',
-        baseText: 'text-stone-300',
-        headingText: 'text-red-50',
-        mutedText: 'text-stone-400',
-        highlightText: 'text-red-500',
-        border: 'border-red-900/30',
-        borderSubtle: 'border-red-950/50',
-        shadow: 'shadow-[0_0_15px_rgba(0,0,0,0.5)]',
-        glow: 'shadow-[0_0_15px_rgba(239,68,68,0.2)]',
-        overlay: 'bg-black/70',
-        starColor: '248, 113, 113', // Red-400 RGB
-        gradient: 'from-red-500 to-rose-600',
-        rayColor: 'from-red-500/10',
-        accentColor: '#ef4444',
-        isDark: true
-    }
 };
 export const SYSTEM_LOGS = [
     { type: 'init', msg: 'System initializing...', time: 0 },

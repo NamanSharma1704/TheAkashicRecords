@@ -6,7 +6,7 @@ import SystemLogo from '../components/system/SystemLogo';
 import ScrambleText from '../components/system/ScrambleText';
 import { Activity, ExternalLink, Sun, Moon, Plus, Zap, Crown, X, LayoutTemplate, GripVertical } from 'lucide-react';
 import { getPlayerRank, getThemedRankStyle, calculateQuestRank } from '../utils/ranks';
-import { THEMES, ITEMS_PER_FLOOR } from './constants';
+import { THEMES, ITEMS_PER_FLOOR, ThemeId } from './constants';
 
 import SystemConsole from '../components/system/SystemConsole';
 import BootScreen from '../components/system/BootScreen';
@@ -338,8 +338,8 @@ const App: React.FC = () => {
             clearTimeout(timeoutId);
         };
     }, []);
-    const [currentTheme, setCurrentTheme] = useState<string>('DARK');
-    const theme = THEMES[currentTheme as keyof typeof THEMES];
+    const [currentTheme, setCurrentTheme] = useState<ThemeId>('DARK');
+    const theme = THEMES[currentTheme];
 
     const [library, setLibrary] = useState<Quest[]>([]);
     const [activeId, setActiveId] = useState<string | null>(null);

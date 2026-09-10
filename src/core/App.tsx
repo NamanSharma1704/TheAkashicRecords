@@ -934,6 +934,9 @@ const App: React.FC = () => {
     // useCallback so the memoised header can list it as a dependency without being
     // rebuilt on every render. Its only input is currentTheme, which the header already
     // depends on, so this changes nothing about when the header recomputes.
+    // Stable identity so BootScreen's timeline effect is not re-created on every render.
+    const finishBooting = useCallback(() => setBooting(false), []);
+
     const toggleTheme = useCallback(() => {
         const next: ThemeId = currentTheme === 'LIGHT' ? 'DARK' : 'LIGHT';
         setCurrentTheme(next);
@@ -1310,7 +1313,7 @@ const App: React.FC = () => {
         // in this block, so they only forced needless recomputation.
     ), [theme, activeQuest, progressPercent, activeId, handleLogClick, orderedActiveQuests, handleReorderActiveQuests, totalChaptersRead, playerRank, updateProgress, coverImgError, handleEnterPortal]);
 
-    if (booting) return <BootScreen onComplete={() => setBooting(false)} theme={theme} />;
+    if (booting) return <BootScreen onComplete={finishBooting} theme={theme} />;
 
     if (!isAuth) return <LoginScreen onLoginSuccess={handleLoginSuccess} theme={theme} onToggleTheme={toggleTheme} />;
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { motion } from 'motion/react';
 import { Theme } from '../../core/types';
 import AkashicCoreLogo from './AkashicCoreLogo';
@@ -15,6 +15,18 @@ const AWAKENING_PHASES = [
     "DECRYPTING_AKASHIC_CORE...",
     "SYSTEM_AWAKENING_COMPLETE"
 ];
+
+// Boot timeline, in milliseconds from mount.
+const FILL_MS = 8000;                                   // 0 → 100%
+const AWAKEN_HOLD_MS = 1600;                            // logo flare before the outro
+const OUTRO_MS = 1000;                                  // fade to the app
+const PHASE_MS = FILL_MS / AWAKENING_PHASES.length;     // one label per slice
+const TOTAL_MS = FILL_MS + AWAKEN_HOLD_MS + OUTRO_MS;
+
+// Tick fast enough to look smooth in the foreground. Background tabs clamp this to
+// roughly 1s (and to once a minute under Chrome's intensive throttling), which is
+// exactly why nothing below counts ticks — every value is recomputed from elapsed time.
+const TICK_MS = 30;
 
 /**
  * Boot palette, derived from the active theme.
@@ -373,29 +385,71 @@ const BootScreen: React.FC<BootScreenProps> = ({ onComplete, theme }) => {
     const [isShattering, setIsShattering] = useState(false);
     const [isAwakened, setIsAwakened] = useState(false);
 
-    useEffect(() => {
-        const interval = setInterval(() => {
-            setProgress(prev => {
-                const next = Math.min(prev + (100 / (8000 / 30)), 100);
-                if (next === 100) {
-                    clearInterval(interval);
-                    setIsAwakened(true);
-                    setTimeout(() => setIsShattering(true), 1600);
-                    setTimeout(onComplete, 2600);
-                }
-                return next;
-            });
-        }, 30);
+    // onComplete can be reached from three places (the timeline, the outro animation, and
+    // a return-to-tab catch-up), so it is latched to fire exactly once.
+    const completedRef = useRef(false);
+    const finish = useCallback(() => {
+        if (completedRef.current) return;
+        completedRef.current = true;
+        onComplete();
+    }, [onComplete]);
 
-        const phaseInterval = setInterval(() => {
-            setPhaseIndex(prev => (prev + 1) % AWAKENING_PHASES.length);
-        }, 1600);
+    // The sequence start is pinned to the first render, not to the effect.
+    //
+    // The effect depends on the completion callback, and a parent passing an inline arrow
+    // gives it a fresh identity on every render — which re-ran this effect and restarted
+    // the clock from zero mid-boot. The old tick-accumulating version masked that (a
+    // restart just kept adding to the previous total); computing from elapsed time does
+    // not, so the origin has to survive re-runs.
+    const startRef = useRef<number | null>(null);
+    if (startRef.current === null) startRef.current = performance.now();
+
+    useEffect(() => {
+        const start = startRef.current as number;
+
+        /**
+         * Recompute the whole timeline from elapsed time.
+         *
+         * Nothing here accumulates per tick. That matters because a hidden tab has its
+         * timers clamped to ~1s, so the old tick-counting version needed roughly 267
+         * throttled ticks — over four minutes — to reach 100%. Deriving from the clock
+         * means a single late tick lands on the correct state, so the sequence finishes
+         * on schedule whether or not anyone is watching.
+         */
+        const sync = () => {
+            const elapsed = performance.now() - start;
+
+            setProgress(Math.min(100, (elapsed / FILL_MS) * 100));
+            setPhaseIndex(Math.min(
+                AWAKENING_PHASES.length - 1,
+                Math.floor(elapsed / PHASE_MS)
+            ));
+
+            if (elapsed >= FILL_MS) setIsAwakened(true);
+            if (elapsed >= FILL_MS + AWAKEN_HOLD_MS) setIsShattering(true);
+            if (elapsed >= TOTAL_MS) finish();
+        };
+
+        const interval = setInterval(sync, TICK_MS);
+
+        // A frozen or heavily throttled tab may not have ticked for a while. Resync the
+        // moment it comes back so the user never sees a stale bar catch up in front of them.
+        const onVisibility = () => { if (!document.hidden) sync(); };
+        document.addEventListener('visibilitychange', onVisibility);
+
+        // Backstop: one absolute timer for the end of the sequence. A single long timeout
+        // is not subject to the repeating-interval clamp, so even if the interval is
+        // starved this still lands close to on time.
+        const failsafe = setTimeout(finish, TOTAL_MS);
+
+        sync();
 
         return () => {
             clearInterval(interval);
-            clearInterval(phaseInterval);
+            clearTimeout(failsafe);
+            document.removeEventListener('visibilitychange', onVisibility);
         };
-    }, [onComplete]);
+    }, [finish]);
 
     return (
         <div
@@ -409,7 +463,9 @@ const BootScreen: React.FC<BootScreenProps> = ({ onComplete, theme }) => {
                 animate={{ opacity: isShattering ? 1 : 0 }}
                 transition={{ duration: 1.0, ease: "easeIn" }}
                 onAnimationComplete={() => {
-                    if (isShattering) onComplete();
+                    // Foreground fast path. In a hidden tab rAF is suspended so this never
+                    // fires; the elapsed-time timeline and the failsafe cover that case.
+                    if (isShattering) finish();
                 }}
             />
 

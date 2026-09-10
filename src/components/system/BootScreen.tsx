@@ -499,7 +499,7 @@ const BootScreen: React.FC<BootScreenProps> = ({ onComplete, theme }) => {
                             willChange: 'transform, opacity, filter',
                         }}
                     >
-                        <AkashicCoreLogo animate={true} />
+                        <AkashicCoreLogo theme={theme} animate={true} />
                     </motion.div>
                 </div>
 

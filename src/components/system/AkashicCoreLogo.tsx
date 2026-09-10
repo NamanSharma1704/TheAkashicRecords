@@ -8,13 +8,34 @@ interface AkashicCoreLogoProps {
     animate?: boolean;
 }
 
-const AkashicCoreLogo: React.FC<AkashicCoreLogoProps> = ({ className = "w-full h-full", animate = true }) => {
-    // Premium gold palette matching the reference image exactly
-    const goldPrm = "#F4C430"; // Bright glowing gold for highlights
-    const goldMid = "#D4AF37"; // Metallic mid-tone
-    const goldDrk = "#B8860B"; // Dark goldenrod for 3D shadows/depth
-    const glowPls = "#FFF8DC"; // Cornsilk/white for intense core flare
-    
+const AkashicCoreLogo: React.FC<AkashicCoreLogoProps> = ({ theme, className = "w-full h-full", animate = true }) => {
+    /**
+     * The mark is painted from the active theme.
+     *
+     * It previously carried its own "premium gold" ramp (#F4C430 / #D4AF37 / #B8860B /
+     * #FFF8DC) that exists nowhere else in the product, and the `theme` prop was declared
+     * but never read. Since this mark fills the boot screen, those four colours were what
+     * made the whole sequence read as a different design language: bathed in bright gold,
+     * where the app spends amber sparingly on near-black.
+     */
+    const isDark = theme?.isDark ?? true;
+
+    const pal = isDark
+        ? { prm: '#f59e0b', mid: '#b45309', drk: '#78350f', deep: '#451a03', flare: '#fde68a', core: '#fffbeb' }
+        : { prm: '#06b6d4', mid: '#0e7490', drk: '#164e63', deep: '#083344', flare: '#22d3ee', core: '#67e8f9' };
+
+    // Kept under the original names so the drawing code below reads unchanged.
+    const goldPrm = pal.prm;
+    const goldMid = pal.mid;
+    const glowPls = pal.flare;
+
+    // On the Void ground the ramp runs bright-to-dark so the mark glows. On the pale
+    // Aureic ground that would wash out, so it runs saturated-to-deep instead and keeps
+    // its contrast against white.
+    const rampStops = isDark
+        ? [pal.core, pal.prm, pal.mid, pal.drk]
+        : [pal.prm, pal.mid, pal.drk, pal.deep];
+
     // Animation timing logic for sequential architectural build
     const dur = 2.5; 
     const wireframeDraw = animate ? { duration: dur, ease: "easeInOut" as const } : { duration: 0 };
@@ -42,14 +63,14 @@ const AkashicCoreLogo: React.FC<AkashicCoreLogoProps> = ({ className = "w-full h
                         </feMerge>
                     </filter>
                     <linearGradient id="goldGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor={glowPls} />
-                        <stop offset="30%" stopColor={goldPrm} />
-                        <stop offset="80%" stopColor={goldMid} />
-                        <stop offset="100%" stopColor={goldDrk} />
+                        <stop offset="0%" stopColor={rampStops[0]} />
+                        <stop offset="30%" stopColor={rampStops[1]} />
+                        <stop offset="80%" stopColor={rampStops[2]} />
+                        <stop offset="100%" stopColor={rampStops[3]} />
                     </linearGradient>
                     <linearGradient id="shadowGradient" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="0%" stopColor={goldMid} />
-                        <stop offset="100%" stopColor="#8B6508" />
+                        <stop offset="100%" stopColor={pal.deep} />
                     </linearGradient>
                 </defs>
 
@@ -165,7 +186,7 @@ const AkashicCoreLogo: React.FC<AkashicCoreLogoProps> = ({ className = "w-full h
                             
                             {/* Central Glowing Arch Doorway */}
                             <path d="M190 280 L200 240 L210 280 Z" fill={glowPls} filter="url(#hyperGlow)" />
-                            <path d="M190 280 L200 240 L210 280 Z" fill="#FFF" />
+                            <path d="M190 280 L200 240 L210 280 Z" fill={pal.core} />
 
                             {/* Cybernet Lines/Windows */}
                             <g stroke={glowPls} strokeWidth="2" opacity="0.8">
@@ -183,7 +204,11 @@ const AkashicCoreLogo: React.FC<AkashicCoreLogoProps> = ({ className = "w-full h
                     textAnchor="middle" 
                     fill="url(#goldGradient)"
                     className="font-orbitron font-black uppercase tracking-[0.4em] text-[22px]"
-                    style={{ filter: "drop-shadow(0px 2px 4px rgba(0,0,0,0.8)) drop-shadow(0px 0px 8px rgba(244,196,48,0.4))" }}
+                    style={{
+                        filter: isDark
+                            ? `drop-shadow(0px 2px 4px rgba(0,0,0,0.8)) drop-shadow(0px 0px 8px ${pal.prm}66)`
+                            : `drop-shadow(0px 1px 2px rgba(0,0,0,0.15)) drop-shadow(0px 0px 6px ${pal.prm}40)`
+                    }}
                     initial={{ opacity: 0, y: 10, letterSpacing: "1em" }}
                     animate={{ opacity: 1, y: 0, letterSpacing: "0.4em" }}
                     transition={{ duration: 1.5, delay: dur + 0.5, ease: "easeOut" }}

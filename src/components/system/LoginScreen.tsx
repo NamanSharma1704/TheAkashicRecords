@@ -1,16 +1,33 @@
 import React, { useState } from 'react';
+import { motion } from 'motion/react';
 import { Theme, AuthResponse } from '../../core/types';
 import ScrambleText from './ScrambleText';
-import OmniscientField from '../fx/OmniscientField';
-import { Shield, Terminal, Key, Cpu, Zap, Fingerprint } from 'lucide-react';
+import SystemFrame from './SystemFrame';
+import BackgroundController from '../fx/BackgroundController';
+import { Shield, Terminal, Key, Cpu, Zap, Fingerprint, Sun, Moon } from 'lucide-react';
 
 interface LoginScreenProps {
     /** The session itself arrives as an httpOnly cookie; this carries only display state. */
     onLoginSuccess: (auth: AuthResponse) => void;
     theme: Theme;
+    /** Mirrors the in-app header toggle so the entry screen is not locked to one palette. */
+    onToggleTheme?: () => void;
 }
 
-const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
+/**
+ * Section label: the app's standard "◇ LABEL_TEXT" divider, used on every panel in the
+ * dashboard, profile and Spire. Reproduced here so the entry screen reads as the same
+ * system rather than as a separate product.
+ */
+const SectionLabel: React.FC<{ theme: Theme; children: React.ReactNode }> = ({ theme, children }) => (
+    <div className="flex items-center gap-2">
+        <div className="w-1 h-1 rotate-45" style={{ backgroundColor: theme.accentColor }} />
+        <span className={`text-[9px] font-mono tracking-[0.3em] uppercase ${theme.mutedText}`}>{children}</span>
+        <div className={`flex-1 h-[1px] ${theme.isDark ? 'bg-white/10' : 'bg-slate-200'}`} />
+    </div>
+);
+
+const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, theme, onToggleTheme }) => {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
@@ -67,160 +84,193 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
         }
     };
 
+    // Field styling shared by both inputs, so they stay identical.
+    const fieldClass = `w-full ${theme.inputBg} border ${theme.borderSubtle} px-3 py-2.5 outline-none
+        focus:border-current transition-colors duration-700 font-mono text-sm peer
+        ${theme.isDark ? 'text-white placeholder-white/20' : 'text-slate-900 placeholder-slate-400'}`;
+
     return (
-        <div className="fixed inset-0 z-[200] bg-[#020202] font-mono overflow-y-auto hide-scrollbar selection:bg-amber-500/30">
-            {/* Cinematic Background */}
-            <OmniscientField forceAmber={true} />
+        <div className={`fixed inset-0 z-[200] ${theme.appBg} font-mono overflow-y-auto hide-scrollbar transition-colors duration-700`}>
+            {/* Same ambient stack the dashboard uses, rather than a one-off field. */}
+            <BackgroundController theme={theme} />
 
-            {/* Ambient System Glows */}
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(245,158,11,0.1)_0%,transparent_50%)] pointer-events-none" />
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_100%,rgba(245,158,11,0.05)_0%,transparent_50%)] pointer-events-none" />
+            {/* Theme toggle, positioned like the in-app header control. */}
+            {onToggleTheme && (
+                <div className="absolute top-4 right-4 sm:top-6 sm:right-6 z-20">
+                    <button
+                        onClick={onToggleTheme}
+                        aria-label="Toggle theme"
+                        className={`w-8 h-8 flex items-center justify-center border ${theme.borderSubtle} ${theme.isDark ? 'bg-white/5 hover:bg-white/10' : 'bg-black/5 hover:bg-black/10'} rounded transition-colors duration-700`}
+                    >
+                        {theme.isDark
+                            ? <Moon size={14} className="transition-colors duration-700" style={{ color: theme.accentColor }} />
+                            : <Sun size={14} className="text-sky-600 transition-colors duration-700" />}
+                    </button>
+                </div>
+            )}
 
-            <div className="min-h-full w-full flex items-center justify-center p-4 sm:p-6 py-12 relative z-10 scanline-effect">
-                <div className="w-full max-w-md relative group">
+            <div className="min-h-full w-full flex items-center justify-center p-4 sm:p-6 py-12 relative z-10">
+                <div className="w-full max-w-md">
 
-                    {/* HOLOGRAPHIC PANEL (Main Container) */}
-                    <div className="holographic-panel p-8 md:p-10 relative overflow-hidden bracket-glow">
+                    <SystemFrame theme={theme} variant="full">
+                        <div className="p-8 md:p-10 space-y-8">
 
-                        {/* Internal Scanline & Grid texture */}
-                        <div className="absolute inset-0 bg-[linear-gradient(rgba(245,158,11,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(245,158,11,0.03)_1px,transparent_1px)] bg-[size:20px_20px] pointer-events-none opacity-50" />
-                        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-amber-500/5 to-transparent animate-scanning pointer-events-none mix-blend-overlay" />
-
-                        <div className="relative z-10 space-y-10">
-
-                            {/* HEADER */}
-                            <div className="text-center space-y-3">
-                                <div className="flex justify-center mb-6">
-                                    <div className="relative p-4 rounded-xl border border-amber-500/20 bg-amber-500/5 shadow-[0_0_30px_rgba(245,158,11,0.1)] group-hover:shadow-[0_0_50px_rgba(245,158,11,0.2)] transition-shadow duration-700">
-                                        <div className="absolute inset-0 bg-amber-500 blur-xl opacity-20 animate-pulse mix-blend-screen" />
-                                        <Fingerprint size={48} strokeWidth={1} className="text-amber-500 relative z-10" />
+                            {/* ── IDENTITY MARK ── */}
+                            <div className="text-center space-y-4">
+                                <div className="flex justify-center">
+                                    <div
+                                        className={`relative p-4 rounded-lg border ${theme.borderSubtle} ${theme.isDark ? 'bg-white/5' : 'bg-black/5'} transition-colors duration-700`}
+                                    >
+                                        <div
+                                            className="absolute inset-0 blur-xl opacity-20 rounded-lg"
+                                            style={{ backgroundColor: theme.accentColor }}
+                                        />
+                                        <Fingerprint
+                                            size={40}
+                                            strokeWidth={1}
+                                            className="relative z-10"
+                                            style={{ color: theme.accentColor }}
+                                        />
                                     </div>
                                 </div>
-                                <h1 className="text-2xl md:text-3xl font-black tracking-[0.2em] md:tracking-[0.3em] text-amber-500 uppercase overflow-hidden textShadow-glow drop-shadow-lg">
+
+                                <h1 className={`font-orbitron text-2xl md:text-3xl font-black tracking-[0.2em] md:tracking-[0.3em] uppercase ${theme.headingText}`}>
                                     <ScrambleText text="AKASHIC.SYS" speed={60} revealSpeed={0.5} />
                                 </h1>
-                                <div className="flex items-center justify-center gap-2 text-[9px] text-amber-400/60 tracking-[0.3em] uppercase">
-                                    <div className="w-2 h-2 bg-amber-500/40 rounded-full animate-ping" />
+
+                                <div className={`flex items-center justify-center gap-2 text-[9px] tracking-[0.3em] uppercase ${theme.mutedText}`}>
+                                    <span
+                                        className="w-1.5 h-1.5 rounded-full animate-pulse"
+                                        style={{ backgroundColor: theme.accentColor }}
+                                    />
                                     <span>Identity Verification Required</span>
-                                    <div className="w-2 h-2 bg-amber-500/40 rounded-full animate-ping" />
+                                    <span
+                                        className="w-1.5 h-1.5 rounded-full animate-pulse"
+                                        style={{ backgroundColor: theme.accentColor }}
+                                    />
                                 </div>
                             </div>
 
-                            {/* TERMINAL FORM */}
-                            <form onSubmit={handleSubmit} className="space-y-8">
-                                <div className="space-y-6">
-                                    {/* USERNAME INPUT */}
-                                    <div className="space-y-2 relative group/input cursor-text">
-                                        <label className="text-[10px] text-amber-500/80 tracking-widest flex items-center gap-2 font-bold group-focus-within/input:text-amber-400 transition-colors">
-                                            <Terminal size={12} /> {'>'} HUNTER_ID
+                            {/* ── CREDENTIALS ── */}
+                            <form onSubmit={handleSubmit} className="space-y-6">
+                                <SectionLabel theme={theme}>Credentials</SectionLabel>
+
+                                <div className="space-y-5">
+                                    <div className="space-y-2">
+                                        <label
+                                            className="text-[10px] tracking-[0.3em] uppercase flex items-center gap-2 font-bold"
+                                            style={{ color: theme.accentColor }}
+                                        >
+                                            <Terminal size={11} /> Hunter_ID
                                         </label>
-                                        <div className="relative">
-                                            <input
-                                                type="text"
-                                                value={username}
-                                                onChange={(e) => setUsername(e.target.value)}
-                                                className="w-full bg-black/40 border-b-2 border-amber-500/20 px-3 py-3 text-amber-400 outline-none focus:border-amber-500 focus:bg-amber-500/5 transition-all uppercase tracking-[0.2em] text-sm peer placeholder-amber-500/20 backdrop-blur-sm shadow-inner"
-                                                placeholder="UUID..."
-                                                required
-                                                disabled={loading}
-                                                autoComplete="username"
-                                            />
-                                            {/* Input focus brackets */}
-                                            <div className="absolute left-0 bottom-0 w-1 h-3 border-l-2 border-b-2 border-amber-500 opacity-0 peer-focus:opacity-100 transition-opacity" />
-                                            <div className="absolute right-0 bottom-0 w-1 h-3 border-r-2 border-b-2 border-amber-500 opacity-0 peer-focus:opacity-100 transition-opacity" />
-                                        </div>
+                                        <input
+                                            type="text"
+                                            value={username}
+                                            onChange={(e) => setUsername(e.target.value)}
+                                            className={fieldClass}
+                                            style={{ caretColor: theme.accentColor }}
+                                            placeholder="UUID..."
+                                            required
+                                            disabled={loading}
+                                            autoComplete="username"
+                                        />
                                     </div>
 
-                                    {/* PASSWORD INPUT */}
-                                    <div className="space-y-2 relative group/input cursor-text">
-                                        <label className="text-[10px] text-amber-500/80 tracking-widest flex items-center gap-2 font-bold group-focus-within/input:text-amber-400 transition-colors">
-                                            <Key size={12} /> {'>'} ACCESS_KEY
+                                    <div className="space-y-2">
+                                        <label
+                                            className="text-[10px] tracking-[0.3em] uppercase flex items-center gap-2 font-bold"
+                                            style={{ color: theme.accentColor }}
+                                        >
+                                            <Key size={11} /> Access_Key
                                         </label>
-                                        <div className="relative">
-                                            <input
-                                                type="password"
-                                                value={password}
-                                                onChange={(e) => setPassword(e.target.value)}
-                                                className="w-full bg-black/40 border-b-2 border-amber-500/20 px-3 py-3 text-amber-400 outline-none focus:border-amber-500 focus:bg-amber-500/5 transition-all tracking-[0.5em] text-lg peer placeholder-amber-500/20 backdrop-blur-sm shadow-inner"
-                                                placeholder="••••••••"
-                                                required
-                                                disabled={loading}
-                                                autoComplete="current-password"
-                                            />
-                                            {/* Input focus brackets */}
-                                            <div className="absolute left-0 bottom-0 w-1 h-3 border-l-2 border-b-2 border-amber-500 opacity-0 peer-focus:opacity-100 transition-opacity" />
-                                            <div className="absolute right-0 bottom-0 w-1 h-3 border-r-2 border-b-2 border-amber-500 opacity-0 peer-focus:opacity-100 transition-opacity" />
-                                        </div>
+                                        <input
+                                            type="password"
+                                            value={password}
+                                            onChange={(e) => setPassword(e.target.value)}
+                                            className={`${fieldClass} tracking-[0.3em]`}
+                                            style={{ caretColor: theme.accentColor }}
+                                            placeholder="••••••••"
+                                            required
+                                            disabled={loading}
+                                            autoComplete="current-password"
+                                        />
                                     </div>
                                 </div>
 
-                                {/* ERROR DISPLAY */}
+                                {/* Error. The old markup used an `animate-shake` class that was never
+                                    defined in any stylesheet, so the shake never happened; it is a real
+                                    motion animation now. */}
                                 {error && (
-                                    <div className="p-3 border-l-2 border-red-500 bg-red-950/20 text-red-500 text-[9px] tracking-[0.1em] md:tracking-[0.2em] font-bold uppercase animate-shake shadow-[0_0_15px_rgba(239,68,68,0.2)]">
+                                    <motion.div
+                                        initial={{ opacity: 0, x: 0 }}
+                                        animate={{ opacity: 1, x: [0, -6, 6, -4, 4, 0] }}
+                                        transition={{ duration: 0.4, ease: 'easeOut' }}
+                                        role="alert"
+                                        className={`p-3 border-l-2 border-red-500 text-red-500 text-[10px] tracking-[0.2em] font-bold uppercase ${theme.isDark ? 'bg-red-950/30' : 'bg-red-50'}`}
+                                    >
                                         [!] SYS_ERR: {error}
-                                    </div>
+                                    </motion.div>
                                 )}
 
-                                {/* ACTION BUTTONS */}
-                                <div className="space-y-4 pt-4">
+                                {/* ── ACTIONS ── */}
+                                <div className="space-y-3 pt-2">
                                     <button
                                         type="submit"
                                         disabled={loading}
-                                        className={`w-full py-4 bg-amber-500/10 hover:bg-amber-500 border border-amber-500/50 hover:border-amber-500 font-black tracking-[0.3em] uppercase text-sm md:text-base text-amber-500 hover:text-black hover:shadow-[0_0_30px_rgba(245,158,11,0.6)] transition-all duration-300 relative group overflow-hidden ${loading ? 'opacity-50 cursor-wait' : 'cursor-pointer'} skew-x-[-2deg]`}
+                                        className={`w-full py-3.5 border font-black tracking-[0.3em] uppercase text-sm transition-all duration-700 relative group overflow-hidden flex items-center justify-center gap-3 ${loading ? 'opacity-50 cursor-wait' : 'cursor-pointer'}`}
+                                        style={{
+                                            color: theme.isDark ? theme.accentColor : '#ffffff',
+                                            borderColor: theme.accentColor,
+                                            backgroundColor: theme.isDark ? `${theme.accentColor}1a` : theme.accentColor
+                                        }}
                                     >
-                                        <div className="relative z-10 flex items-center justify-center gap-3 skew-x-[2deg]">
-                                            {loading ? (
-                                                <>
-                                                    <Cpu size={18} className="animate-spin" />
-                                                    SYNCHRONIZING...
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <Zap size={18} className="group-hover:animate-bounce" />
-                                                    INITIATE_LOGIN
-                                                </>
-                                            )}
-                                        </div>
-                                        {!loading && (
-                                            <div className="absolute inset-0 bg-white/20 -translate-x-[150%] group-hover:translate-x-[150%] transition-transform duration-700 skew-x-12" />
-                                        )}
+                                        {loading
+                                            ? <><Cpu size={16} className="animate-spin" /> Synchronizing...</>
+                                            : <><Zap size={16} /> Initiate_Login</>}
                                     </button>
 
-                                    <div className="flex items-center gap-4 py-2 opacity-50">
-                                        <div className="h-[1px] flex-1 bg-amber-500/20" />
-                                        <span className="text-[8px] text-amber-500 uppercase tracking-widest font-bold">ALT_PROTOCOL</span>
-                                        <div className="h-[1px] flex-1 bg-amber-500/20" />
-                                    </div>
+                                    <SectionLabel theme={theme}>Alt_Protocol</SectionLabel>
 
+                                    {/* Hover colour is written as two complete literals rather than
+                                        `hover:${theme.headingText}` — an interpolated variant is
+                                        assembled at runtime and Tailwind's scanner never emits it. */}
                                     <button
                                         type="button"
                                         onClick={handleGuestAccess}
                                         disabled={loading}
-                                        className={`w-full py-3 bg-black/60 border border-amber-500/20 hover:border-amber-500/50 hover:bg-amber-500/5 font-bold tracking-[0.2em] uppercase text-[10px] text-amber-500/60 hover:text-amber-400 transition-all duration-300 relative group overflow-hidden ${loading ? 'opacity-50 cursor-wait' : 'cursor-pointer'} flex items-center justify-center gap-2`}
+                                        className={`w-full py-3 border ${theme.borderSubtle} ${theme.isDark
+                                            ? 'bg-black/40 hover:bg-white/5 text-gray-300 hover:text-white'
+                                            : 'bg-white/60 hover:bg-black/5 text-slate-600 hover:text-slate-900'} font-bold tracking-[0.2em] uppercase text-[10px] transition-colors duration-700 flex items-center justify-center gap-2 ${loading ? 'opacity-50 cursor-wait' : 'cursor-pointer'}`}
                                     >
-                                        <Shield size={14} className="group-hover:text-amber-400 transition-colors" />
-                                        BYPASS_AUTHENTICATION (GUEST)
+                                        <Shield size={13} /> Bypass_Authentication (Guest)
                                     </button>
                                 </div>
                             </form>
 
-                            {/* FOOTER METADATA */}
-                            <div className="pt-6 border-t border-amber-500/10 flex flex-wrap gap-2 justify-between items-center text-[7px] md:text-[8px] text-amber-500/40 tracking-[0.2em] uppercase font-bold">
-                                <span>Ver_1.08 [ALPHA]</span>
+                            {/* ── FOOTER TELEMETRY ── */}
+                            <div className={`pt-5 border-t ${theme.borderSubtle} flex flex-wrap gap-2 justify-between items-center text-[8px] tracking-[0.2em] uppercase font-bold ${theme.mutedText}`}>
+                                <span>Ver_1.08 [Alpha]</span>
                                 <span className="hidden sm:inline">Encrypted_Channel</span>
-                                <div>NODE_<span className="text-amber-500/80 animate-pulse">ONLINE</span></div>
+                                <span>
+                                    Node_<span style={{ color: theme.accentColor }} className="animate-pulse">Online</span>
+                                </span>
                             </div>
                         </div>
-                    </div>
+                    </SystemFrame>
                 </div>
             </div>
 
-            {/* Global Borders / Tactical HUD Accents */}
-            <div className="fixed top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-amber-500/30 to-transparent pointer-events-none z-[100]" />
-            <div className="fixed bottom-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-amber-500/30 to-transparent pointer-events-none z-[100]" />
+            {/* Edge accents, matching the hairlines the dashboard uses top and bottom. */}
+            <div
+                className="fixed top-0 left-0 w-full h-[2px] pointer-events-none z-[100]"
+                style={{ background: `linear-gradient(90deg, transparent, ${theme.accentColor}4d, transparent)` }}
+            />
+            <div
+                className="fixed bottom-0 left-0 w-full h-[2px] pointer-events-none z-[100]"
+                style={{ background: `linear-gradient(90deg, transparent, ${theme.accentColor}4d, transparent)` }}
+            />
         </div>
     );
 };
 
 export default LoginScreen;
-

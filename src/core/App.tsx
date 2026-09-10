@@ -338,7 +338,17 @@ const App: React.FC = () => {
             clearTimeout(timeoutId);
         };
     }, []);
-    const [currentTheme, setCurrentTheme] = useState<ThemeId>('DARK');
+    // Restored from the previous visit. Without this the boot sequence and login screen
+    // always render in Void regardless of the palette the user chose, since both run
+    // before any in-app toggle is reachable.
+    const [currentTheme, setCurrentTheme] = useState<ThemeId>(() => {
+        try {
+            const saved = localStorage.getItem('akashic_theme');
+            return saved === 'LIGHT' || saved === 'DARK' ? saved : 'DARK';
+        } catch {
+            return 'DARK'; // storage can throw outright in private mode
+        }
+    });
     const theme = THEMES[currentTheme];
 
     const [library, setLibrary] = useState<Quest[]>([]);
@@ -925,7 +935,13 @@ const App: React.FC = () => {
     // rebuilt on every render. Its only input is currentTheme, which the header already
     // depends on, so this changes nothing about when the header recomputes.
     const toggleTheme = useCallback(() => {
-        setCurrentTheme(currentTheme === 'LIGHT' ? 'DARK' : 'LIGHT');
+        const next: ThemeId = currentTheme === 'LIGHT' ? 'DARK' : 'LIGHT';
+        setCurrentTheme(next);
+        try {
+            localStorage.setItem('akashic_theme', next);
+        } catch {
+            // Non-fatal: the palette still applies for this session.
+        }
     }, [currentTheme]);
 
     const memoizedHeader = useMemo(() => (
@@ -1296,7 +1312,7 @@ const App: React.FC = () => {
 
     if (booting) return <BootScreen onComplete={() => setBooting(false)} theme={theme} />;
 
-    if (!isAuth) return <LoginScreen onLoginSuccess={handleLoginSuccess} theme={theme} />;
+    if (!isAuth) return <LoginScreen onLoginSuccess={handleLoginSuccess} theme={theme} onToggleTheme={toggleTheme} />;
 
     return (
         <div 

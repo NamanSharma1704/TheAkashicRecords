@@ -13,7 +13,6 @@
     ],
     "headers": [
         {
-            "//": "Document and static asset headers. /api is excluded: the Express app sets its own, stricter set.",
             "source": "/((?!api/).*)",
             "headers": [
                 {

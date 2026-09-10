@@ -113,7 +113,13 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, theme, onTogg
             <div className="min-h-full w-full flex items-center justify-center p-4 sm:p-6 py-12 relative z-10">
                 <div className="w-full max-w-md">
 
-                    <SystemFrame theme={theme} variant="full">
+                    {/* Glass panel: the ambient starfield reads through the surface, with the
+                        frame's backdrop blur keeping the form legible on top of it. */}
+                    <SystemFrame
+                        theme={theme}
+                        variant="full"
+                        surfaceClass={theme.isDark ? 'bg-black/20' : 'bg-white/50'}
+                    >
                         <div className="p-8 md:p-10 space-y-8">
 
                             {/* ── IDENTITY MARK ── */}

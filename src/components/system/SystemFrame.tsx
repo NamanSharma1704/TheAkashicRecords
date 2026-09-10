@@ -12,6 +12,12 @@ interface SystemFrameProps {
     exit?: any;
     transition?: any;
     frosted?: boolean;
+    /**
+     * Overrides the panel surface, e.g. "bg-black/40" for a glass panel that lets the
+     * ambient background through. Defaults to the theme's solid panel colour, so every
+     * existing usage is unaffected. Ignored when `frosted` is false.
+     */
+    surfaceClass?: string;
 }
 
 const SystemFrame: React.FC<SystemFrameProps> = ({ 
@@ -23,9 +29,11 @@ const SystemFrame: React.FC<SystemFrameProps> = ({
     animate,
     exit,
     transition,
-    frosted = true
+    frosted = true,
+    surfaceClass
 }) => {
     const borderColor = theme.id === 'LIGHT' ? 'border-sky-400' : 'border-amber-400';
+    const surface = surfaceClass ?? theme.panelBg;
     return (
         <motion.div 
             initial={initial}
@@ -38,7 +46,7 @@ const SystemFrame: React.FC<SystemFrameProps> = ({
             <div className={`absolute top-0 right-0 w-3 h-3 border-t-2 border-r-2 ${borderColor} z-20 transition-colors duration-300`} />
             <div className={`absolute bottom-0 right-0 w-3 h-3 border-b-2 border-r-2 ${borderColor} z-20 transition-colors duration-300`} />
             <div className={`absolute bottom-0 left-0 w-3 h-3 border-b-2 border-l-2 ${borderColor} z-20 transition-colors duration-300`} />
-            <div className={`relative h-full w-full ${frosted ? `${theme.panelBg} backdrop-blur-md` : 'bg-transparent'} overflow-hidden ${variant === 'full' ? `border ${theme.borderSubtle}` : ''} transition-colors duration-700`}>
+            <div className={`relative h-full w-full ${frosted ? `${surface} backdrop-blur-md` : 'bg-transparent'} overflow-hidden ${variant === 'full' ? `border ${theme.borderSubtle}` : ''} transition-colors duration-700`}>
                 <div className={`absolute inset-0 bg-[url('/noise.svg')] opacity-[0.05] pointer-events-none ${frosted ? 'block' : 'hidden'}`} />
                 <motion.div className="relative z-10 h-full w-full">{children}</motion.div>
             </div>

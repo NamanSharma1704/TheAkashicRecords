@@ -3,8 +3,9 @@ import { motion } from 'motion/react';
 import { Theme, AuthResponse } from '../../core/types';
 import ScrambleText from './ScrambleText';
 import SystemFrame from './SystemFrame';
+import EntityAvatar from './EntityAvatar';
 import BackgroundController from '../fx/BackgroundController';
-import { Shield, Terminal, Key, Cpu, Zap, Fingerprint, Sun, Moon } from 'lucide-react';
+import { Shield, Terminal, Key, Cpu, Zap, Sun, Moon } from 'lucide-react';
 
 interface LoginScreenProps {
     /** The session itself arrives as an httpOnly cookie; this carries only display state. */
@@ -117,20 +118,15 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, theme, onTogg
 
                             {/* ── IDENTITY MARK ── */}
                             <div className="text-center space-y-4">
+                                {/* The Apostle from the dashboard entity card and profile, rather than a
+                                    generic icon — the same figure greets you before sign-in and after. */}
                                 <div className="flex justify-center">
-                                    <div
-                                        className={`relative p-4 rounded-lg border ${theme.borderSubtle} ${theme.isDark ? 'bg-white/5' : 'bg-black/5'} transition-colors duration-700`}
-                                    >
+                                    <div className="relative">
                                         <div
-                                            className="absolute inset-0 blur-xl opacity-20 rounded-lg"
+                                            className="absolute -inset-3 blur-2xl opacity-25 rounded-full pointer-events-none"
                                             style={{ backgroundColor: theme.accentColor }}
                                         />
-                                        <Fingerprint
-                                            size={40}
-                                            strokeWidth={1}
-                                            className="relative z-10"
-                                            style={{ color: theme.accentColor }}
-                                        />
+                                        <EntityAvatar theme={theme} size={96} className="relative z-10 drop-shadow-2xl" />
                                     </div>
                                 </div>
 

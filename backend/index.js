@@ -5,10 +5,11 @@ const rateLimit = require('express-rate-limit');
 const { connectDB, getTenantDb } = require('./config/db');
 const { initDatabase } = require('./config/init');
 const { getModel } = require('./models/modelFactory');
+const { normalizeTitle } = require('./utils/normalizeTitle');
 const { fetchAniList, fetchMangaDex, fetchJikan, fetchBest, fetchGenresOnly } = require('./utils/metadataProxy');
 const User = require('./models/User');
 const {
-    hashPassword, comparePassword, generateToken, verifyToken, JWT_SECRET,
+    hashPassword, comparePassword, generateToken, verifyToken,
     getTokenTtlMs, setAuthCookie, clearAuthCookie, readAuthCookie
 } = require('./utils/auth');
 const { DOCUMENT_CSP, API_CSP } = require('./utils/securityHeaders');
@@ -686,10 +687,24 @@ app.post('/api/quests', authenticate, async (req, res) => {
             return res.status(400).json({ message: "Title required" });
         }
 
-        // 1. AGGRESSIVE DUPLICATE CHECK (Ignores punctuation, apostrophes, and casing)
-        const normalizedTitle = title.toLowerCase().replace(/[^a-z0-9]/g, '');
-        const allQuests = await Quest.find({});
-        const collision = allQuests.find(q => q.title.toLowerCase().replace(/[^a-z0-9]/g, '') === normalizedTitle);
+        // 1. DUPLICATE CHECK (ignores punctuation, apostrophes and casing)
+        const normalizedTitle = normalizeTitle(title);
+
+        // Fast path: a single indexed lookup. This replaced a Quest.find({}) that pulled
+        // every document — synopses included — into Node on each create, once per row
+        // during a CSV import.
+        let collision = await Quest.findOne({ normalizedTitle }).select('title');
+
+        // Slow path, for documents written before normalizedTitle existed. It is scoped to
+        // just those documents and projects only the title, and disappears entirely once
+        // backend/scripts/backfill_normalized_titles.js has run.
+        if (!collision) {
+            const legacy = await Quest
+                .find({ $or: [{ normalizedTitle: { $exists: false } }, { normalizedTitle: '' }] })
+                .select('title')
+                .lean();
+            collision = legacy.find(q => normalizeTitle(q.title) === normalizedTitle) || null;
+        }
 
         if (collision) {
             return res.status(409).json({
@@ -699,7 +714,7 @@ app.post('/api/quests', authenticate, async (req, res) => {
 
         // 2. Allowlist fields — prevents mass assignment
         const safeBody = sanitizeQuestBody(req.body);
-        const newQuest = new Quest(safeBody);
+        const newQuest = new Quest({ ...safeBody, normalizedTitle });
         const savedQuest = await newQuest.save();
         res.status(201).json(savedQuest);
     } catch (err) {
@@ -720,6 +735,11 @@ app.put('/api/quests/:id', authenticate, async (req, res) => {
 
         // Allowlist fields — prevents mass assignment
         const body = sanitizeQuestBody(req.body);
+
+        // Keep the duplicate-detection key in step with the title it derives from.
+        if (body.title !== undefined) {
+            body.normalizedTitle = normalizeTitle(body.title);
+        }
 
         if (body.currentChapter !== undefined) {
             const today = getTodayStr();
@@ -860,12 +880,15 @@ app.post('/api/admin/purge-duplicates', authenticate, checkRole('SOVEREIGN'), as
         console.log("[Admin] Initiating Duplicate Purge...");
 
         // 1. Group by title (Aggressive Normalization)
-        const allQuests = await Quest.find({});
+        // Only the fields the ranking below actually reads are fetched; pulling whole
+        // documents meant transferring every synopsis just to compare titles.
+        const allQuests = await Quest.find({})
+            .select('title currentChapter lastRead')
+            .lean();
         const groups = {};
 
         allQuests.forEach(q => {
-            // Aggressive normalization: lowercase and remove all non-alphanumeric
-            const key = q.title.toLowerCase().replace(/[^a-z0-9]/g, '');
+            const key = normalizeTitle(q.title);
             if (!groups[key]) groups[key] = [];
             groups[key].push(q);
         });
@@ -884,7 +907,7 @@ app.post('/api/admin/purge-duplicates', authenticate, checkRole('SOVEREIGN'), as
                     return b.lastRead - a.lastRead;
                 });
 
-                const toKeep = matches[0];
+                // matches[0] is the survivor after the sort above; everything behind it goes.
                 const toRemove = matches.slice(1);
 
                 for (const quest of toRemove) {
@@ -1268,22 +1291,9 @@ const classifyBest = (title, genres, oldClass) => {
     return oldClass || 'PLAYER';
 };
 
-// ── Backward-compat wrappers ──────────────────────────────────────────────────
-const classifyFromGenres = (genres) => {
-    const scores = _genreScores(genres);
-    const maxScore = Math.max(...Object.values(scores));
-    if (maxScore === 0) return null;
-    const priority = ['NECROMANCER', 'CONSTELLATION', 'MAGE', 'IRREGULAR', 'PLAYER'];
-    return priority.find(cls => scores[cls] === maxScore) || null;
-};
-
-const inferClassFromTitle = (title) => {
-    const scores = _titleScores(title);
-    const maxScore = Math.max(...Object.values(scores));
-    if (maxScore === 0) return 'IRREGULAR';
-    const priority = ['NECROMANCER', 'CONSTELLATION', 'MAGE', 'IRREGULAR', 'PLAYER'];
-    return priority.find(cls => scores[cls] === maxScore) || 'IRREGULAR';
-};
+// The former classifyFromGenres / inferClassFromTitle wrappers were removed: nothing
+// called them, and classifyBest above supersedes both by combining the two score sets
+// rather than choosing between them.
 
 
 

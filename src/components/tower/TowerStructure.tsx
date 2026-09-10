@@ -352,7 +352,6 @@ const TowerStructure: React.FC<TowerStructureProps> = ({ onSelectFloor, theme, o
             let textWidth = 4000;
             if (tempCtx) {
                 tempCtx.font = '900 400px "Orbitron", sans-serif';
-                // @ts-ignore
                 tempCtx.letterSpacing = "20px";
                 textWidth = tempCtx.measureText(text).width;
             }
@@ -372,7 +371,6 @@ const TowerStructure: React.FC<TowerStructureProps> = ({ onSelectFloor, theme, o
                 ctx.font = '900 400px "Orbitron", sans-serif';
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
-                // @ts-ignore
                 ctx.letterSpacing = "20px";
 
                 const themeColor = isDark ? '#ffaa00' : '#0369a1';
@@ -737,10 +735,14 @@ const TowerStructure: React.FC<TowerStructureProps> = ({ onSelectFloor, theme, o
             renderer.forceContextLoss();
             renderer.dispose();
 
-            // Extra safety
-            // @ts-ignore
+            // @ts-expect-error deliberately clearing a non-nullable field to release the canvas
             renderer.domElement = null;
         };
+        // Scoped to `theme` on purpose. This effect builds and tears down the entire
+        // Three.js scene; adding items/itemsPerFloor/isPaused/onFocus would destroy and
+        // rebuild the WebGL context every time the library or a callback identity changed.
+        // Those values are read through refs inside the render loop instead.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [theme]);
 
     return <div ref={mountRef} className="w-full h-full min-h-[500px]" />;

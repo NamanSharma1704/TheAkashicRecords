@@ -1,5 +1,4 @@
 const https = require('https');
-const mongoose = require('mongoose');
 const { getTenantDb } = require('../config/db');
 const { getModel } = require('../models/modelFactory');
 const path = require('path');

@@ -6,6 +6,7 @@ import SystemFrame from '../system/SystemFrame';
 import EntityAvatar from '../system/EntityAvatar';
 import { X, Database, Layers, Target, Download, Upload, RefreshCw, LogOut, Terminal, Edit2, KeyRound, User2, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { USER_RANKS } from '../../utils/ranks';
+import { getProxiedImageUrl } from '../../utils/api';
 import GalaxyNebula from '../fx/GalaxyNebula';
 import OmniscientField from '../fx/OmniscientField';
 import NoiseOverlay from '../fx/NoiseOverlay';
@@ -247,7 +248,8 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
             const decoder = new TextDecoder();
             let buffer = '';
 
-            while (true) {
+            // for(;;) rather than while(true): same loop, but not flagged as a constant condition.
+            for (;;) {
                 const { done, value } = await reader.read();
                 if (done) break;
 
@@ -279,7 +281,7 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                         } else if (event.type === 'error') {
                             setCalibration(p => p ? { ...p, phase: 'error', errorMsg: event.message } : null);
                         }
-                    } catch (_) { /* ignore malformed SSE lines */ }
+                    } catch { /* ignore malformed SSE lines */ }
                 }
             }
         } catch (err: any) {
@@ -381,7 +383,7 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                     onImport(newQuests);
                     showNotification(`Successfully synchronized ${newQuests.length} records.`, 'SUCCESS');
                 }
-            } catch (err) {
+            } catch {
                 showNotification("Data corruption detected in source file.", 'ERROR');
             }
         };
@@ -680,7 +682,7 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                                     {item.coverUrl && (
                                         <div className="absolute inset-0 z-0 overflow-hidden">
                                             <div className={`absolute inset-0 bg-gradient-to-r ${theme.isDark ? 'from-[#050505] via-[#050505]/95' : 'from-[#f8fafc] via-[#f8fafc]/95'} to-transparent z-10 transition-colors duration-500`} />
-                                            <img src={item.coverUrl} className="absolute right-0 top-1/2 -translate-y-1/2 w-1/2 h-[150%] object-cover object-center opacity-70 lg:opacity-85 select-none mix-blend-luminosity group-hover:mix-blend-normal group-hover:scale-110 transition-all duration-700" alt="" />
+                                            <img src={getProxiedImageUrl(item.coverUrl)} className="absolute right-0 top-1/2 -translate-y-1/2 w-1/2 h-[150%] object-cover object-center opacity-70 lg:opacity-85 select-none mix-blend-luminosity group-hover:mix-blend-normal group-hover:scale-110 transition-all duration-700" alt="" />
                                         </div>
                                     )}
                                     <div className={`w-7 h-7 flex items-center justify-center shrink-0 relative z-20 rounded shadow-sm ${theme.isDark ? 'bg-amber-500/20 text-amber-400 border border-amber-400/50' : 'bg-sky-400 text-white shadow-sky-400/30'}`}>
@@ -717,7 +719,7 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                                 >
                                     {item.coverUrl ? (
                                         <div className="absolute inset-0 z-0 overflow-hidden">
-                                            <img src={item.coverUrl} className="w-full h-full object-cover object-center opacity-75 group-hover:opacity-95 group-hover:scale-105 transition-all duration-700 select-none" alt="" />
+                                            <img src={getProxiedImageUrl(item.coverUrl)} className="w-full h-full object-cover object-center opacity-75 group-hover:opacity-95 group-hover:scale-105 transition-all duration-700 select-none" alt="" />
                                             <div className={`absolute inset-0 bg-gradient-to-t ${theme.isDark ? 'from-black/90 via-black/40' : 'from-black/75 via-black/20'} to-transparent`} />
                                         </div>
                                     ) : (

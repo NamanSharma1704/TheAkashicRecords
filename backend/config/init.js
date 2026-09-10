@@ -37,7 +37,12 @@ const cloneFromTemplate = async (targetConn, templateConn) => {
 
 const deduplicateDB = async (Quest) => {
     try {
-        const allQuests = await Quest.find().sort({ lastRead: -1 });
+        // Only _id and title are needed to decide what to drop; fetching full documents
+        // pulled every synopsis across the wire on each sandbox initialisation.
+        const allQuests = await Quest.find()
+            .select('title')
+            .sort({ lastRead: -1 })
+            .lean();
         const seenTitles = new Set();
         const duplicates = [];
 

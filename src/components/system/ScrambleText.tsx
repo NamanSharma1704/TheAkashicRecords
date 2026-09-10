@@ -44,6 +44,11 @@ const ScrambleText: React.FC<ScrambleTextProps> = ({
         return () => {
             if (intervalRef.current) clearInterval(intervalRef.current);
         };
+        // `display` is read on line 23 but must NOT be a dependency: it changes on every
+        // 60ms tick, so listing it would tear down and restart the interval each frame and
+        // the text would never finish resolving. The guard is meant to compare against the
+        // value as it stood when `text` changed, which is exactly what excluding it gives.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [text, speed, revealSpeed]);
     const gradientClass = animatedGradient ? `bg-gradient-to-r ${gradientColors} bg-[200%_auto] animate-text-shimmer bg-clip-text text-transparent` : "";
     return (<span className={`${className} ${gradientClass} font-mono cursor-default inline break-words`}>{display}</span>);

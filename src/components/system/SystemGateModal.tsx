@@ -150,7 +150,7 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
                 // CLEANUP: 
                 // 1. Remove common URL junk like "-manhwa", "-manga", "-comic"
                 // 2. Remove trailing hash-like IDs (e.g. title-827364)
-                let cleanedSlug = slug
+                const cleanedSlug = slug
                     .replace(/-(manhwa|manga|comic|webtoon|novel)$/i, '')
                     .replace(/-[a-f0-9]{8,}$/i, '') // Remove long hex IDs
                     .replace(/-[0-9]{4,}$/i, '');   // Remove long numeric IDs

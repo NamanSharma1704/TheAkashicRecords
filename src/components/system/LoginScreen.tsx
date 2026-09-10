@@ -37,7 +37,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
             } else {
                 setError(data.message || 'AUTHENTICATION_PROTOCOL_FAILURE');
             }
-        } catch (err) {
+        } catch {
             setError('COMMUNICATION_LINK_SEVERED');
         } finally {
             setLoading(false);
@@ -60,7 +60,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
             } else {
                 setError(data.message || 'GUEST_PROTO_FAILURE');
             }
-        } catch (err) {
+        } catch {
             setError('GUEST_LINK_SEVERED');
         } finally {
             setLoading(false);

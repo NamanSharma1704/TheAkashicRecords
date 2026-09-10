@@ -16,18 +16,36 @@ import SystemNotification from '../components/system/SystemNotification';
 import SystemCompass from '../components/system/SystemCompass';
 import { InfinitePortalIcon, CalibratedPlusIcon, CalibratedMinusIcon } from '../components/system/CustomIcons';
 
-import { getProxiedImageUrl } from '../utils/api';
+import { getProxiedImageUrl, unproxyImageUrl } from '../utils/api';
 import { saveAuthData, performLogout, systemFetch, isAuthenticated, getStoredUser } from '../utils/auth';
 import LoginScreen from '../components/system/LoginScreen';
 import { AuthResponse } from './types';
 
 const API_URL = '/api/quests';
 
+// Placeholder shown when the library is empty. Module scope, not component scope: as a
+// per-render object literal it was a fresh reference every time, which made every useMemo
+// depending on it recompute on every render.
+const DEFAULT_QUEST: Quest = {
+    id: '0',
+    title: 'No Active Quest',
+    coverUrl: "",
+    totalChapters: 0,
+    currentChapter: 0,
+    status: 'LOCKED',
+    classType: 'UNKNOWN',
+    link: ''
+};
+
 // Helper to normalize quest data from both MongoDB and local BASE_QUESTS
 const mapQuest = (q: any): Quest => ({
     id: String(q._id || q.id || ""),
     title: q.title || "",
-    coverUrl: getProxiedImageUrl(q.cover || q.coverUrl || ""),
+    // Keep the ORIGIN url in state. Proxying happens at render time instead, because
+    // this value round-trips back to the database through the edit form — mapping it to
+    // a proxied path here is what caused "/api/proxy/image?url=..." to be persisted as
+    // the cover. unproxyImageUrl also repairs records already written that way.
+    coverUrl: unproxyImageUrl(q.cover || q.coverUrl || ""),
     link: q.readLink || q.link || q.siteUrl || "",
     synopsis: q.synopsis || "",
     currentChapter: Number(q.currentChapter) || 0,
@@ -87,7 +105,7 @@ const QuestListItem = ({ item, theme, activeId, handleLogClick, onDragStateChang
                             {!thumbError ? (
                                 <img
                                     key={item.coverUrl}
-                                    src={item.coverUrl}
+                                    src={getProxiedImageUrl(item.coverUrl)}
                                     alt={item.title}
                                     className="w-full h-full object-cover"
                                     loading="eager"
@@ -369,7 +387,7 @@ const App: React.FC = () => {
         try {
             const saved = localStorage.getItem('activeQuestOrder');
             return saved ? JSON.parse(saved) : [];
-        } catch (e) {
+        } catch {
             return [];
         }
     });
@@ -596,6 +614,10 @@ const App: React.FC = () => {
         if (isAuth) {
             fetchInitialData();
         }
+        // Deliberately keyed on isAuth alone. fetchInitialData is redefined every render
+        // and closes over activeId, so listing it would re-pull the entire library on each
+        // render and again whenever the active quest changed.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isAuth]);
 
     // Listen for server-side 401s (expired/invalid token) and clean up gracefully
@@ -644,18 +666,21 @@ const App: React.FC = () => {
         }
     };
 
-    // Migration / Integrity Check removed since we use MongoDB now
+    /**
+     * Refresh only the streak / daily-absorbed counters.
+     *
+     * Logging a chapter advances server-side state that the PUT response does not carry,
+     * but the library itself is already up to date from that response — so this hits the
+     * small /api/user/state endpoint rather than re-pulling every quest.
+     */
+    const refreshUserState = useCallback(async () => {
+        const res = await systemFetch('/api/user/state');
+        if (!res.ok) return;
+        const stats = await res.json();
+        if (stats) setUserState(stats);
+    }, []);
 
-    const DEFAULT_QUEST: Quest = {
-        id: '0',
-        title: 'No Active Quest',
-        coverUrl: "",
-        totalChapters: 0,
-        currentChapter: 0,
-        status: 'LOCKED',
-        classType: 'UNKNOWN',
-        link: ''
-    };
+    // Migration / Integrity Check removed since we use MongoDB now
 
     const activeQuest = useMemo(() => {
         return library.find(q => q.id === activeId) || library[0] || DEFAULT_QUEST;
@@ -687,12 +712,15 @@ const App: React.FC = () => {
         setOrderedActiveQuests(sorted);
     }, [activeQuests, customSortOrder]);
 
-    const handleReorderActiveQuests = (newOrder: Quest[]) => {
+    // Stable identity: this touches only state setters and localStorage, so it never
+    // needs rebuilding — and as a fresh function each render it was invalidating the
+    // memoised main panel on every single render.
+    const handleReorderActiveQuests = useCallback((newOrder: Quest[]) => {
         setOrderedActiveQuests(newOrder); // Optimistic UI update
         const newIds = newOrder.map(q => q.id);
         setCustomSortOrder(newIds);
         localStorage.setItem('activeQuestOrder', JSON.stringify(newIds));
-    };
+    }, []);
     const spireItems = useMemo(() => {
         return [...library].sort((a, b) => {
             const idA = a.id || '';
@@ -710,7 +738,8 @@ const App: React.FC = () => {
         }
     }
 
-    const handleLogClick = async (id: string) => {
+    // Stable: reads nothing from render scope beyond setters and module constants.
+    const handleLogClick = useCallback(async (id: string) => {
         setActiveId(id);
         const now = new Date().toISOString();
         // OPTIMISTIC UPDATE: Immediate UI Feedback
@@ -727,7 +756,7 @@ const App: React.FC = () => {
         } catch (e) {
             console.error("Update failed", e);
         }
-    };
+    }, []);
 
     const handleSetActiveQuest = async (id: string) => {
         setActiveId(id);
@@ -849,7 +878,7 @@ const App: React.FC = () => {
         showSystemNotification(`Archive Reputed. ${count} New Origins Formed. ${updatedCount} Records Enhanced. ${skippedCount} Outdated Clusters Ignored.`, 'SUCCESS');
     };
 
-    const updateProgress = async (amt: number) => {
+    const updateProgress = useCallback(async (amt: number) => {
         if (!activeQuest.id) return;
         const next = activeQuest.totalChapters > 0
             ? Math.min(Math.max(0, activeQuest.currentChapter + amt), activeQuest.totalChapters)
@@ -865,14 +894,17 @@ const App: React.FC = () => {
             });
             const updated = await res.json();
             setLibrary(prev => prev.map(q => q.id === activeId ? mapQuest(updated) : q));
-            // De-prioritized refresh to prevent UI stutter during rapid clicks
-            setTimeout(() => {
-                fetchInitialData().catch(console.error);
-            }, 500);
+
+            // The PUT response is the authoritative updated quest and has already been
+            // merged above, so there is nothing left to reconcile. This used to schedule
+            // a full fetchInitialData() 500ms after every increment, re-pulling the whole
+            // library on each chapter click. Streak and daily-absorbed counters are the
+            // only other state the server touches here, so refresh just those.
+            refreshUserState().catch(console.error);
         } catch (e) {
             console.error("Progress update failed", e);
         }
-    };
+    }, [activeQuest, activeId, refreshUserState]);
 
     const deleteQuest = async () => {
         if (editingItem) {
@@ -889,7 +921,12 @@ const App: React.FC = () => {
             }
         }
     };
-    const toggleTheme = () => { const newTheme = currentTheme === 'LIGHT' ? 'DARK' : 'LIGHT'; setCurrentTheme(newTheme); };
+    // useCallback so the memoised header can list it as a dependency without being
+    // rebuilt on every render. Its only input is currentTheme, which the header already
+    // depends on, so this changes nothing about when the header recomputes.
+    const toggleTheme = useCallback(() => {
+        setCurrentTheme(currentTheme === 'LIGHT' ? 'DARK' : 'LIGHT');
+    }, [currentTheme]);
 
     const memoizedHeader = useMemo(() => (
         <AnimatePresence>
@@ -936,7 +973,7 @@ const App: React.FC = () => {
                 </motion.header>
             )}
         </AnimatePresence>
-    ), [theme, currentTheme, isHeaderVisible, guestTimeLeft]);
+    ), [theme, currentTheme, isHeaderVisible, guestTimeLeft, toggleTheme]);
 
     // Track hero cover image error state — reset whenever the active quest changes
     const [coverImgError, setCoverImgError] = React.useState(false);
@@ -1027,7 +1064,7 @@ const App: React.FC = () => {
                                         {!coverImgError ? (
                                             <img
                                                 key={activeQuest.id}
-                                                src={activeQuest.coverUrl}
+                                                src={getProxiedImageUrl(activeQuest.coverUrl)}
                                                 alt={activeQuest.title}
                                                 className="w-full h-full object-cover transition-transform duration-[10s] group-hover:scale-110"
                                                 referrerPolicy="no-referrer"
@@ -1253,7 +1290,9 @@ const App: React.FC = () => {
                 </div>
             </div>
         </main>
-    ), [theme, currentTheme, isSpireOpen, activeQuest, progressPercent, activeId, handleLogClick, activeQuests, orderedActiveQuests, handleReorderActiveQuests, totalChaptersRead, playerRank, userState, updateProgress, coverImgError, handleEnterPortal]);
+        // activeQuests, currentTheme, isSpireOpen and userState were listed but never read
+        // in this block, so they only forced needless recomputation.
+    ), [theme, activeQuest, progressPercent, activeId, handleLogClick, orderedActiveQuests, handleReorderActiveQuests, totalChaptersRead, playerRank, updateProgress, coverImgError, handleEnterPortal]);
 
     if (booting) return <BootScreen onComplete={() => setBooting(false)} theme={theme} />;
 

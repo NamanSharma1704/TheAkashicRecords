@@ -31,7 +31,13 @@ module.exports = {
                 '@typescript-eslint/no-explicit-any': 'off',
                 // Defer to the TypeScript-aware rule; the base rule misreports type-only usage.
                 'no-unused-vars': 'off',
-                '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
+                '@typescript-eslint/no-unused-vars': ['warn', {
+                    argsIgnorePattern: '^_',
+                    varsIgnorePattern: '^_',
+                    // `const { id: _, ...rest } = obj` is how a field is omitted; the named
+                    // binding is intentionally discarded, not forgotten.
+                    ignoreRestSiblings: true,
+                }],
             },
         },
         {

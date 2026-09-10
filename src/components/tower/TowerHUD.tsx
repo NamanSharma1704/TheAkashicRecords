@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { Quest } from '../../core/types';
 import SystemFrame from '../system/SystemFrame';
 import { getPlayerRank } from '../../utils/ranks';
+import { getProxiedImageUrl } from '../../utils/api';
 import EntityAvatar from '../system/EntityAvatar';
 import { Activity, Target, Layers, Database, Sword } from 'lucide-react';
 
@@ -223,7 +224,7 @@ const TowerHUD: React.FC<TowerHUDProps> = ({ items, theme, onActivate, isFocused
                             {recents.map(item => (
                                 <div key={item.id} onClick={() => onActivate(item.id)} className="group flex flex-row-reverse items-center gap-3 cursor-pointer p-1 transition-all">
                                     <div className="w-8 h-8 lg:w-10 lg:h-10 shrink-0 overflow-hidden border border-white/5 grayscale group-hover:grayscale-0 transition-all duration-500">
-                                        <img src={item.coverUrl} alt={item.title} className="w-full h-full object-cover" referrerPolicy="no-referrer" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                                        <img src={getProxiedImageUrl(item.coverUrl)} alt={item.title} className="w-full h-full object-cover" referrerPolicy="no-referrer" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <div className={`text-[clamp(9px,0.9vw,11px)] font-bold truncate ${theme.headingText} group-hover:${theme.highlightText} transition-colors uppercase font-orbitron`}>{item.title}</div>

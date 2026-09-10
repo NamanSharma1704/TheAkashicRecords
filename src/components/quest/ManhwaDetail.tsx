@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion } from 'motion/react';
 import { X, Users, Share2, Zap, Edit2, Target, AlignLeft, Check } from 'lucide-react';
 import { getProxiedImageUrl } from '../../utils/api';
@@ -67,15 +67,34 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
     const isCustomCover = !!(quest?.coverUrl && quest.coverUrl !== "");
     const finalCover = isCustomCover ? quest.coverUrl : (media?.coverImage?.extraLarge || media?.coverImage?.large || quest?.coverUrl || "");
 
-    console.log("ManhwaDetail Quest:", quest);
+    // Same-class entries from the library, used by the SIMILAR_RECORDS row far below.
+    //
+    // This must be computed HERE, above the `if (!isOpen || !quest) return null` guard.
+    // It previously lived inline in the JSX as a React.useMemo, which meant the hook ran
+    // only when the modal was open — the hook count changed between renders, and React
+    // throws "Rendered more hooks than during the previous render" as soon as a parent
+    // keeps this component mounted across the isOpen transition.
+    const similarQuests = useMemo(() => {
+        if (!quest) return [];
+        return (allQuests || [])
+            .filter(q => q.classType === quest.classType && q.id !== quest.id)
+            .slice(0, 10);
+    }, [allQuests, quest]);
 
     // Fetch Details on Open
+    //
+    // Keyed on the title rather than the quest object: the library hands down a fresh
+    // object on every progress update, so depending on `quest` re-ran the whole AniList
+    // lookup each time a chapter was logged.
     useEffect(() => {
-        if (isOpen && quest) {
+        if (isOpen && quest?.title) {
             setMedia(null);
             fetchDetails(quest.title);
         }
-    }, [isOpen, quest]);
+        // fetchDetails is stable for a given title and intentionally excluded; including
+        // it would require memoising MANUAL_METADATA, which closes over `quest` and `media`.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isOpen, quest?.title]);
 
     // Manual Data for OEL/Missing Titles
     const MANUAL_METADATA: Record<string, AniListMedia> = {
@@ -467,18 +486,8 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                     ) : null}
 
                     {/* SIMILAR RECORDS (PURELY DATABASE DRIVEN) */}
-                    {React.useMemo(() => {
-                        if (!quest) return null;
-
-                        // 1. Strictly internal library similarity
-                        const similarQuests = (allQuests || [])
-                            .filter(q => q.classType === quest.classType && q.id !== quest.id)
-                            .slice(0, 10); // Increased limit since it's the main discovery row now
-
-                        if (similarQuests.length === 0) return null;
-
-                        return (
-                            <motion.div variants={itemVariants} className="mt-8">
+                    {similarQuests.length > 0 && (
+                        <motion.div variants={itemVariants} className="mt-8">
                                 <div className="flex items-center justify-between mb-6 px-2 opacity-60">
                                     <div className="flex items-center gap-2">
                                         <Share2 size={16} className="text-white" />
@@ -507,9 +516,8 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                         </div>
                                     ))}
                                 </div>
-                            </motion.div>
-                        );
-                    }, [allQuests, quest?.classType, quest?.id, theme.highlightText, onSetActive])}
+                        </motion.div>
+                    )}
                 </motion.div>
             </div>
 

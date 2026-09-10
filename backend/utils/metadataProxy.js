@@ -133,7 +133,6 @@ const fetchMangaDex = async (title) => {
             // 2. Check if the search term perfectly encapsulates the title or vice versa
             // This helps with titles like "The Beginning After The End" vs "The Beginning After The End (Official)"
             return titles.some(t => {
-                const words = t.split(/\s+/);
                 const searchWords = searchLower.split(/\s+/);
                 if (searchWords.length > 3) { // Only do partial match for longer titles to stay precise
                     return t.includes(searchLower) || searchLower.includes(t);

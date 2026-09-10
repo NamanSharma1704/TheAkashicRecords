@@ -7,11 +7,21 @@ const { initDatabase } = require('./config/init');
 const { getModel } = require('./models/modelFactory');
 const { fetchAniList, fetchMangaDex, fetchJikan, fetchBest, fetchGenresOnly } = require('./utils/metadataProxy');
 const User = require('./models/User');
-const { hashPassword, comparePassword, generateToken, verifyToken, JWT_SECRET } = require('./utils/auth');
+const {
+    hashPassword, comparePassword, generateToken, verifyToken, JWT_SECRET,
+    getTokenTtlMs, setAuthCookie, clearAuthCookie, readAuthCookie
+} = require('./utils/auth');
+const { DOCUMENT_CSP, API_CSP } = require('./utils/securityHeaders');
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 const app = express();
+
+// Vercel terminates TLS and forwards through exactly one proxy hop. Without this,
+// req.ip is the proxy's address for every caller and the rate limiter below shares
+// a single bucket across all clients. A numeric hop count (rather than `true`) keeps
+// express-rate-limit's permissive-trust-proxy validator satisfied.
+app.set('trust proxy', 1);
 
 const getTodayStr = () => new Date().toISOString().split('T')[0];
 
@@ -31,6 +41,29 @@ const sendError = (res, status, publicMessage, internalErr = null) => {
  */
 const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
+// ─── SECURITY HEADERS ─────────────────────────────────────────────────────────
+// Applied by the app so they hold in local development and under any host. On Vercel the
+// SPA shell is served from the CDN and never reaches this middleware, which is why
+// vercel.json carries a matching set for static routes.
+app.use((req, res, next) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('Referrer-Policy', 'no-referrer');
+    res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=(), payment=(), usb=()');
+    res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+    res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
+
+    if (process.env.NODE_ENV === 'production') {
+        res.setHeader('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload');
+    }
+
+    // The API gets the locked-down policy; anything else is the SPA shell and needs the
+    // document policy. Applying the API policy to the document would block its own
+    // stylesheet, favicon and bundle.
+    res.setHeader('Content-Security-Policy', req.path.startsWith('/api') ? API_CSP : DOCUMENT_CSP);
+    next();
+});
+
 // ─── CORS ─────────────────────────────────────────────────────────────────────
 const ALLOWED_ORIGINS = [
     'https://the-akashic-records.vercel.app',
@@ -40,17 +73,21 @@ const ALLOWED_ORIGINS = [
 
 app.use(cors({
     origin: (origin, callback) => {
-        // Allow server-to-server (no origin) and known origins
-        if (!origin || ALLOWED_ORIGINS.includes(origin)) {
-            callback(null, true);
-        } else {
-            callback(new Error(`CORS: Origin "${origin}" not permitted.`));
-        }
+        // Allow same-origin/server-to-server (no Origin header) and known origins.
+        //
+        // An unknown origin is refused by declining to emit the CORS headers, NOT by
+        // raising. Throwing here surfaced as a 500 on every request from that origin —
+        // including the SPA's own document and assets when served by this app — and the
+        // error path bypassed the header middleware above. Declining leaves the browser
+        // to block the cross-origin read, which is the actual intent.
+        callback(null, !origin || ALLOWED_ORIGINS.includes(origin));
     },
     credentials: true
 }));
 
-app.use(express.json());
+// Cap the body size. Nothing this API accepts is large, and the default 100kb is more
+// room than any quest payload needs.
+app.use(express.json({ limit: '64kb' }));
 
 // ─── RATE LIMITING ────────────────────────────────────────────────────────────
 const authLimiter = rateLimit({
@@ -63,6 +100,43 @@ const authLimiter = rateLimit({
 
 // Apply rate limit to all auth routes
 app.use('/api/auth', authLimiter);
+
+// Password guessing gets a much tighter ceiling than the rest of the auth surface.
+// There is exactly one real account, so a legitimate human never approaches 10 attempts
+// in a quarter hour, while an online brute force is reduced to a crawl.
+const loginLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 10,
+    standardHeaders: true,
+    legacyHeaders: false,
+    skipSuccessfulRequests: true, // only failed attempts count against the budget
+    message: { message: 'Too many failed attempts. Protocol throttled.' }
+});
+app.use('/api/auth/login', loginLimiter);
+
+// Guest provisioning creates a database per call, so it gets its own ceiling. A visitor
+// arriving from the portfolio clicks it once; 10 an hour leaves generous headroom for
+// retries and shared IPs while removing the unbounded-provisioning vector.
+const guestLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000, // 1 hour
+    max: 10,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { message: 'Guest capacity reached for now. Please try again shortly.' }
+});
+app.use('/api/auth/guest', guestLimiter);
+
+// The image proxy is reachable without a token (browsers cannot attach an Authorization
+// header to an <img> tag), so it gets its own ceiling. Sized for real library browsing —
+// a full Spire scroll is well under this — while capping bulk abuse.
+const imageProxyLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 600,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { message: 'Image relay saturated. Protocol throttled.' }
+});
+app.use('/api/proxy/image', imageProxyLimiter);
 
 // ─── SSRF BLOCKLIST (Permissive for Public Images) ───────────────────────────
 const isInternalHostname = (hostname) => {
@@ -101,30 +175,57 @@ const resilientPurge = async (dbConn, dbName) => {
 };
 
 const authenticate = async (req, res, next) => {
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    // The httpOnly cookie is the browser's path. The Bearer header stays supported for
+    // local scripts and curl — a browser never attaches it automatically, so it carries
+    // no CSRF exposure of its own.
+    let token = readAuthCookie(req);
+    if (!token) {
+        const authHeader = req.headers.authorization;
+        if (authHeader && authHeader.startsWith('Bearer ')) {
+            token = authHeader.split(' ')[1];
+        }
+    }
+
+    if (!token) {
         return res.status(401).json({ message: 'Authentication Protocol Terminated: No Token Provided.' });
     }
 
-    const token = authHeader.split(' ')[1];
     const decoded = verifyToken(token);
-
     if (!decoded) {
+        clearAuthCookie(res);
         return res.status(401).json({ message: 'Authentication Protocol Terminated: Invalid Token.' });
     }
 
     try {
-        // --- ZERO-DB AUTHENTICATION ---
-        // Trust the token's payload for role-based routing and multi-tenancy.
-        // This eliminates one DB lookup per request.
         req.user = {
             _id: decoded.id,
             username: decoded.username,
             role: decoded.role
         };
 
+        // --- SOVEREIGN RE-VERIFICATION ---
+        // SOVEREIGN is the only role that reaches the live archive, so its claim is
+        // re-read from the database rather than trusted from the token. Guests keep the
+        // zero-lookup path: their tenant is a disposable sandbox keyed to their own id,
+        // so a forged guest claim grants access to nothing but an empty database.
+        if (req.user.role === 'SOVEREIGN') {
+            await connectDB();
+            const dbUser = await User.findById(decoded.id).select('role passwordChangedAt');
+
+            if (!dbUser || dbUser.role !== 'SOVEREIGN') {
+                clearAuthCookie(res);
+                return res.status(401).json({ message: 'Authentication Protocol Terminated: Authority Revoked.' });
+            }
+
+            // A password change invalidates every session issued before it.
+            if (dbUser.passwordChangedAt && decoded.iat * 1000 < dbUser.passwordChangedAt.getTime()) {
+                clearAuthCookie(res);
+                return res.status(401).json({ message: 'Authentication Protocol Terminated: Session Superseded.' });
+            }
+        }
+
         // --- MULTI-TENANCY LOGIC ---
-        // SOVEREIGN -> akashic_records, GUEST -> test_records
+        // SOVEREIGN -> akashic_records, GUEST -> gsb_<id>
         const dbName = req.user.role === 'SOVEREIGN' ? 'akashic_records' : `gsb_${req.user._id}`;
         req.dbConn = await getTenantDb(dbName);
 
@@ -165,35 +266,65 @@ app.get('/api/health', async (req, res) => {
             timestamp: new Date().toISOString()
         });
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        return sendError(res, 500, 'Health probe failed: archive link unavailable.', err);
     }
 });
 
 // --- AUTH ROUTES ---
 
-// POST /api/auth/register - Create a new hunter (Limited use recommended)
+// POST /api/auth/register - Create a new hunter
+//
+// Disabled by default. This deployment is single-owner: the app has no registration UI,
+// the owner's account is provisioned through /api/auth/upsert-sovereign, and visitors use
+// guest mode. Left open, this route lets anyone mint accounts whose private tenant
+// databases the sandbox reaper does not match and therefore never reclaims.
+// Set ALLOW_REGISTRATION=true to re-enable it.
 app.post('/api/auth/register', async (req, res) => {
-    try {
-        await connectDB();
-        const { username, password, role } = req.body;
+    if (process.env.ALLOW_REGISTRATION !== 'true') {
+        return res.status(403).json({ message: 'Registration is closed. Use guest access to explore the archive.' });
+    }
 
-        const existing = await User.findOne({ username });
+    try {
+        // `role` is deliberately NOT read from the body. authenticate() trusts the role
+        // inside the JWT, so a client-supplied role here would mint a SOVEREIGN token and
+        // route the caller to the live akashic_records tenant. Elevation has exactly one
+        // legitimate path: POST /api/auth/upsert-sovereign, gated on SYSTEM_ADMIN_SECRET.
+        const { username, password } = req.body || {};
+
+        // Validate before touching the database — a malformed payload should not cost a connection.
+        if (typeof username !== 'string' || !username.trim()) {
+            return res.status(400).json({ message: 'Username is required.' });
+        }
+        if (typeof password !== 'string' || password.length < 8) {
+            return res.status(400).json({ message: 'Password must be at least 8 characters.' });
+        }
+
+        await connectDB();
+        const trimmedUsername = username.trim();
+
+        // Login resolves usernames case-insensitively, so registration must reject
+        // case-variant collisions — otherwise "Hunter" and "hunter" both exist but only
+        // one of them can ever authenticate.
+        const existing = await User.findOne({
+            username: { $regex: new RegExp(`^${escapeRegex(trimmedUsername)}$`, 'i') }
+        });
         if (existing) return res.status(409).json({ message: 'Archive Collision: Username already registered.' });
 
         const passwordHash = await hashPassword(password);
         const user = await User.create({
-            username,
+            username: trimmedUsername,
             passwordHash,
-            role: role || 'GUEST'
+            role: 'GUEST'
         });
 
         const token = generateToken(user);
+        setAuthCookie(res, token, user.role);
         res.status(201).json({
-            token,
-            user: { id: user._id, username: user.username, role: user.role }
+            user: { id: user._id, username: user.username, role: user.role },
+            expiresAt: Date.now() + getTokenTtlMs(user.role)
         });
     } catch (err) {
-        res.status(500).json({ message: err.message });
+        return sendError(res, 500, 'Registration failed. Please try again.', err);
     }
 });
 
@@ -214,14 +345,17 @@ app.post('/api/auth/upsert-sovereign', async (req, res) => {
             {
                 username,
                 passwordHash,
-                role: 'SOVEREIGN'
+                role: 'SOVEREIGN',
+                // Rotating the Sovereign password through this route also retires any
+                // session that was already outstanding.
+                passwordChangedAt: new Date(Date.now() - 1000)
             },
             { upsert: true, returnDocument: 'after' }
         );
 
         res.json({ message: 'Sovereign Identity Synchronized.', username: user.username });
     } catch (err) {
-        res.status(500).json({ message: err.message });
+        return sendError(res, 500, 'Sovereign synchronization failed.', err);
     }
 });
 
@@ -253,18 +387,63 @@ app.post('/api/auth/login', async (req, res) => {
         await user.save();
 
         const token = generateToken(user);
+        setAuthCookie(res, token, user.role);
         res.json({
-            token,
-            user: { id: user._id, username: user.username, role: user.role }
+            user: { id: user._id, username: user.username, role: user.role },
+            expiresAt: Date.now() + getTokenTtlMs(user.role)
         });
     } catch (err) {
         return sendError(res, 500, 'Authentication system fault. Please try again.', err);
     }
 });
 
+// ─── GUEST SANDBOX CAPACITY ───────────────────────────────────────────────────
+// Guest mode is a public portfolio demo and must stay frictionless, so these bounds are
+// set well above real demand: they exist to cap a flood, not to gate a visitor.
+const SANDBOX_SOFT_THRESHOLD = 25; // reap opportunistically from here
+const SANDBOX_HARD_CAP = 60;       // refuse new sandboxes beyond this
+
+/**
+ * Count live guest sandboxes. Returns null if the cluster will not report them, in which
+ * case the caller proceeds without a cap — a demo visitor is never blocked by the
+ * bookkeeping failing.
+ */
+const countGuestSandboxes = async () => {
+    try {
+        const admin = mongoose.connection.db.admin();
+        const { databases } = await admin.listDatabases();
+        return databases.filter(d => d.name.startsWith('gsb_')).length;
+    } catch (err) {
+        console.warn('[GUEST_INIT] Sandbox census unavailable, proceeding uncapped:', err.message);
+        return null;
+    }
+};
+
 // POST /api/auth/guest - Access Sandbox Environment (Cloned from test_records)
 app.post('/api/auth/guest', async (req, res) => {
     try {
+        await connectDB();
+
+        // Clear out expired sandboxes before counting, so a visitor is only ever turned
+        // away by genuinely concurrent demand rather than by accumulated debris.
+        let sandboxCount = await countGuestSandboxes();
+        if (sandboxCount !== null && sandboxCount >= SANDBOX_SOFT_THRESHOLD) {
+            console.log(`[GUEST_INIT] ${sandboxCount} sandboxes live; running an opportunistic reap.`);
+            try {
+                await purgeStaleSandboxes();
+                sandboxCount = await countGuestSandboxes();
+            } catch (reapErr) {
+                console.warn('[GUEST_INIT] Opportunistic reap failed:', reapErr.message);
+            }
+        }
+
+        if (sandboxCount !== null && sandboxCount >= SANDBOX_HARD_CAP) {
+            console.warn(`[GUEST_INIT] Hard cap reached (${sandboxCount}). Refusing new sandbox.`);
+            return res.status(503).json({
+                message: 'Demo capacity is full right now. Please try again in a few minutes.'
+            });
+        }
+
         // Use timestamp in guestId to allow the Reaper to track session age
         const guestId = `g_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 7)}`;
         const guestUser = {
@@ -277,14 +456,15 @@ app.post('/api/auth/guest', async (req, res) => {
         // Every guest gets a fresh copy of the 'test_records' database.
         const sandboxConn = await getTenantDb(`gsb_${guestId}`);
         const templateConn = await getTenantDb('test_records');
-        
+
         // Populate the sandbox immediately
         await initDatabase(() => sandboxConn, templateConn);
 
         const token = generateToken(guestUser);
+        setAuthCookie(res, token, guestUser.role);
         res.json({
-            token,
-            user: { id: guestUser._id, username: guestUser.username, role: guestUser.role }
+            user: { id: guestUser._id, username: guestUser.username, role: guestUser.role },
+            expiresAt: Date.now() + getTokenTtlMs(guestUser.role)
         });
     } catch (err) {
         console.error('[GUEST_INIT] Failure:', err.message);
@@ -299,10 +479,14 @@ app.post('/api/auth/logout', authenticate, async (req, res) => {
             console.log(`[AUTH] Purging sandbox for guest: ${req.user._id}`);
             await resilientPurge(req.dbConn, `gsb_${req.user._id}`);
         }
+        clearAuthCookie(res);
         res.json({ message: 'Identity Purged.' });
     } catch (err) {
         console.error('[AUTH] Logout Failure:', err.message);
-        res.status(500).json({ message: 'Purge protocol failed.' });
+        // Drop the session even if the sandbox purge failed — a stuck sandbox is the
+        // reaper's problem, but a session that survives logout is a security problem.
+        clearAuthCookie(res);
+        return sendError(res, 500, 'Purge protocol failed.', err);
     }
 });
 
@@ -329,18 +513,28 @@ app.put('/api/auth/update', authenticate, async (req, res) => {
         }
 
         if (newPassword) {
+            if (typeof newPassword !== 'string' || newPassword.length < 8) {
+                return res.status(400).json({ message: 'New password must be at least 8 characters.' });
+            }
             user.passwordHash = await hashPassword(newPassword);
+            // Retires every session issued before this instant, on every other device.
+            // Backdated one second because a JWT's `iat` is floored to whole seconds —
+            // without the slack, the replacement token issued below would fail its own
+            // freshness check and log the caller straight back out.
+            user.passwordChangedAt = new Date(Date.now() - 1000);
         }
 
         await user.save();
 
+        // Issue the replacement session so the caller's own device stays signed in.
         const token = generateToken(user);
+        setAuthCookie(res, token, user.role);
         res.json({
-            token,
-            user: { id: user._id, username: user.username, role: user.role }
+            user: { id: user._id, username: user.username, role: user.role },
+            expiresAt: Date.now() + getTokenTtlMs(user.role)
         });
     } catch (err) {
-        res.status(500).json({ message: err.message });
+        return sendError(res, 500, 'Failed to update hunter credentials.', err);
     }
 });
 
@@ -399,7 +593,7 @@ app.get('/api/boot/initial-data', authenticate, async (req, res) => {
         console.log(`[PERF] Total Initial Data Duration: ${Date.now() - start}ms`);
     } catch (err) {
         console.error(`[PERF] Initial Data Failure (${Date.now() - start}ms):`, err.message);
-        res.status(500).json({ message: err.message });
+        return sendError(res, 500, 'Failed to load initial archive data.', err);
     }
 });
 
@@ -444,7 +638,7 @@ app.get('/api/user/state', authenticate, async (req, res) => {
         console.log(`[PERF] Total User State Duration: ${Date.now() - start}ms`);
     } catch (err) {
         console.error(`[PERF] User State Failure (${Date.now() - start}ms):`, err.message);
-        res.status(500).json({ message: err.message });
+        return sendError(res, 500, 'Failed to load hunter state.', err);
     }
 });
 
@@ -469,7 +663,7 @@ app.get('/api/quests', authenticate, async (req, res) => {
         res.json(quests);
     } catch (err) {
         console.error('[API] Error fetching quests:', err.message);
-        res.status(500).json({ message: err.message });
+        return sendError(res, 500, 'Failed to retrieve quest records.', err);
     }
 });
 
@@ -762,83 +956,157 @@ app.get('/api/proxy/metadata', authenticate, async (req, res) => {
     }
 });
 
-// GET /api/proxy/image - Image proxy (SSRF-protected via allowlist)
+// ─── IMAGE PROXY GUARDS ───────────────────────────────────────────────────────
+
+// Only bitmap types are relayed. image/svg+xml is deliberately excluded: the proxy is
+// same-origin with the SPA, and an SVG can carry <script>, which would run against the
+// app's own origin and reach the token in localStorage.
+const ALLOWED_IMAGE_TYPES = /^image\/(jpeg|jpg|pjpeg|png|gif|webp|avif|bmp|tiff|x-icon|vnd\.microsoft\.icon)$/i;
+const MAX_IMAGE_BYTES = 8 * 1024 * 1024; // 8 MB
+const MAX_IMAGE_REDIRECTS = 3;
+
+/**
+ * Parse a URL and assert it points at a public http(s) host.
+ * Applied to the initial target AND to every redirect hop — checking only the first
+ * URL lets an attacker-controlled public host 302 the fetch into the private network.
+ */
+const assertPublicHttpUrl = (raw) => {
+    const parsed = new URL(raw);
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+        throw new Error(`Unsupported protocol "${parsed.protocol}"`);
+    }
+    if (isInternalHostname(parsed.hostname.toLowerCase())) {
+        throw new Error(`Internal hostname "${parsed.hostname}" blocked`);
+    }
+    return parsed;
+};
+
+// GET /api/proxy/image - Image relay (SSRF-guarded, type-restricted, size-capped)
 app.get('/api/proxy/image', async (req, res) => {
     const { url } = req.query;
-    if (!url) return res.status(400).send("URL required");
+    if (!url || typeof url !== 'string') return res.status(400).send("URL required");
 
-    // --- SSRF PROTECTION: Block Internal/Private Subnets, Allow Public Internet ---
-    try {
-        const parsed = new URL(url);
-        const hostname = parsed.hostname.toLowerCase();
-        
-        // Prevent SSRF into internal networks, AWS metadata, and localhost
-        if (isInternalHostname(hostname)) {
-            console.warn(`[ImageProxy] SSRF BLOCKED: Rejected internal hostname "${hostname}"`);
-            return res.status(403).send('Image origin located on internal/restricted network. Blocked.');
-        }
-    } catch {
-        return res.status(400).send('Invalid URL format.');
+    // Block use as an open proxy from other sites. Browsers label a same-page <img>
+    // request "same-origin"; a hotlink from an attacker's page is labelled "cross-site".
+    // The header is absent on non-browser clients and very old browsers, so only an
+    // explicit cross-site label is rejected — the rate limiter covers the rest.
+    if (req.headers['sec-fetch-site'] === 'cross-site') {
+        return res.status(403).send('Image relay is not available to third-party origins.');
     }
 
-    const fetchWithTimeout = async (targetUrl, timeoutMs, customReferer) => {
+    try {
+        assertPublicHttpUrl(url);
+    } catch (err) {
+        console.warn(`[ImageProxy] REJECTED: ${err.message}`);
+        return res.status(403).send('Image origin rejected: invalid or restricted target.');
+    }
+
+    const buildReferer = (targetUrl, customReferer) => {
+        if (customReferer) return customReferer;
+        const h = new URL(targetUrl).hostname.toLowerCase();
+        if (h.includes('mangabuddy') || h.includes('mbcdns')) return 'https://mangabuddy.com/';
+        if (h.includes('asurascans')) return 'https://asurascans.com/';
+        if (h.includes('mgeko')) return 'https://www.mgeko.cc/';
+        return new URL(targetUrl).origin + '/';
+    };
+
+    const fetchOnce = async (targetUrl, timeoutMs, customReferer) => {
         const controller = new AbortController();
         const timer = setTimeout(() => controller.abort(), timeoutMs);
         try {
-            const response = await fetch(targetUrl, {
+            return await fetch(targetUrl, {
                 signal: controller.signal,
                 headers: {
                     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36',
-                    'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+                    'Accept': 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
                     'Accept-Language': 'en-US,en;q=0.9',
                     'Sec-Fetch-Dest': 'image',
                     'Sec-Fetch-Mode': 'no-cors',
                     'Sec-Fetch-Site': 'cross-site',
-                    'Referer': customReferer || (() => {
-                        const h = new URL(targetUrl).hostname.toLowerCase();
-                        if (h.includes('mangabuddy') || h.includes('mbcdns')) return 'https://mangabuddy.com/';
-                        if (h.includes('asurascans')) return 'https://asurascans.com/';
-                        if (h.includes('mgeko')) return 'https://www.mgeko.cc/';
-                        return new URL(targetUrl).origin + '/';
-                    })(),
-
+                    'Referer': buildReferer(targetUrl, customReferer)
                 },
-                redirect: 'follow'
+                // Manual, so each hop can be re-validated against the SSRF guard.
+                redirect: 'manual'
             });
-            return response;
         } finally {
             clearTimeout(timer);
         }
     };
 
+    /**
+     * Follow redirects by hand, re-running the public-host assertion on every Location.
+     */
+    const fetchFollowingSafeRedirects = async (startUrl, timeoutMs, customReferer) => {
+        let currentUrl = startUrl;
+        for (let hop = 0; hop <= MAX_IMAGE_REDIRECTS; hop++) {
+            const response = await fetchOnce(currentUrl, timeoutMs, customReferer);
+
+            const isRedirect = response.status >= 300 && response.status < 400;
+            if (!isRedirect) return { response, finalUrl: currentUrl };
+
+            const location = response.headers.get('location');
+            if (!location) return { response, finalUrl: currentUrl };
+
+            // Resolve relative Location values against the current hop.
+            currentUrl = assertPublicHttpUrl(new URL(location, currentUrl).toString()).toString();
+        }
+        throw new Error(`Exceeded ${MAX_IMAGE_REDIRECTS} redirects`);
+    };
+
     try {
-        let response;
+        let result;
         try {
-            response = await fetchWithTimeout(url, 6000, req.query.referer);
+            result = await fetchFollowingSafeRedirects(url, 6000, req.query.referer);
         } catch (firstErr) {
+            // A blocked redirect target is a decision, not a transient fault — do not retry it.
+            if (/blocked|Unsupported protocol|Exceeded/.test(firstErr.message)) {
+                console.warn(`[ImageProxy] SSRF BLOCKED on redirect: ${firstErr.message}`);
+                return res.status(403).send('Image origin rejected: restricted redirect target.');
+            }
             // Retry once on timeout or network error
             console.warn(`[ImageProxy] First attempt failed (${firstErr.message}), retrying: ${url}`);
-            response = await fetchWithTimeout(url, 7000, req.query.referer);
+            result = await fetchFollowingSafeRedirects(url, 7000, req.query.referer);
         }
+
+        const { response } = result;
 
         if (!response.ok) {
             console.error(`[ImageProxy] Upstream Error: ${response.status} for ${url}`);
             return res.status(response.status).send(`Upstream server returned ${response.status}`);
         }
 
-        const contentType = response.headers.get('content-type');
-        if (contentType) res.setHeader('Content-Type', contentType);
+        // Refuse anything that is not a bitmap image. Without this the relay will echo
+        // attacker-controlled text/html back on the app's own origin.
+        const contentType = (response.headers.get('content-type') || '').split(';')[0].trim();
+        if (!ALLOWED_IMAGE_TYPES.test(contentType)) {
+            console.warn(`[ImageProxy] BLOCKED non-image content-type "${contentType}" from ${url}`);
+            return res.status(415).send('Upstream response was not a supported image type.');
+        }
+
+        // Bail before buffering when the upstream declares an oversized body.
+        const declaredLength = Number(response.headers.get('content-length'));
+        if (Number.isFinite(declaredLength) && declaredLength > MAX_IMAGE_BYTES) {
+            return res.status(413).send('Upstream image exceeds the relay size limit.');
+        }
+
+        const arrayBuffer = await response.arrayBuffer();
+        if (arrayBuffer.byteLength > MAX_IMAGE_BYTES) {
+            return res.status(413).send('Upstream image exceeds the relay size limit.');
+        }
+
+        res.setHeader('Content-Type', contentType);
+        // Content-Type is now allowlisted; nosniff stops the browser second-guessing it.
+        res.setHeader('X-Content-Type-Options', 'nosniff');
 
         // Browser: 24h cache. Vercel CDN edge: 1h (s-maxage).
         // stale-while-revalidate serves cached content while silently refreshing.
         res.setHeader('Cache-Control', 'public, max-age=86400, s-maxage=3600, stale-while-revalidate=86400');
         res.setHeader('Vary', 'Accept');
 
-        const arrayBuffer = await response.arrayBuffer();
         res.send(Buffer.from(arrayBuffer));
     } catch (err) {
         console.error("[ImageProxy] Critical Failure:", err.message, url);
-        res.status(504).json({ error: "Failed to proxy image", message: err.message });
+        return sendError(res, 504, 'Failed to relay image from origin.', err);
     }
 });
 
@@ -1027,37 +1295,85 @@ const inferClassFromTitle = (title) => {
 // ─── STALE SANDBOX REAPER ─────────────────────────────────────────────────────
 
 /**
- * Identifies and drops guest_sandbox_* databases older than 2 hours.
+ * Identifies and drops gsb_* guest sandbox databases older than 2 hours.
+ * Returns a summary so the caller can report what it did.
  */
 const purgeStaleSandboxes = async () => {
-    try {
-        console.log('[REAPER] Starting maintenance check...');
-        const admin = mongoose.connection.db.admin();
-        const { databases } = await admin.listDatabases();
-        const now = Date.now();
-        const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
+    console.log('[REAPER] Starting maintenance check...');
+    await connectDB();
 
-        for (const dbInfo of databases) {
-            if (dbInfo.name.startsWith('gsb_')) {
-                const parts = dbInfo.name.split('_');
-                // parts[0] = gsb, parts[1] = g, parts[2] = <base36_timestamp>
-                const timestamp = parseInt(parts[2], 36);
-                
-                if (!isNaN(timestamp) && (now - timestamp) > TWO_HOURS_MS) {
-                    console.log(`[REAPER] Purging stale sandbox: ${dbInfo.name}`);
-                    const conn = await getTenantDb(dbInfo.name);
-                    await resilientPurge(conn, dbInfo.name);
-                }
+    const admin = mongoose.connection.db.admin();
+    const { databases } = await admin.listDatabases();
+    const now = Date.now();
+    const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
+
+    let inspected = 0;
+    let purged = 0;
+
+    for (const dbInfo of databases) {
+        if (dbInfo.name.startsWith('gsb_')) {
+            inspected++;
+            const parts = dbInfo.name.split('_');
+            // parts[0] = gsb, parts[1] = g, parts[2] = <base36_timestamp>
+            const timestamp = parseInt(parts[2], 36);
+
+            if (!isNaN(timestamp) && (now - timestamp) > TWO_HOURS_MS) {
+                console.log(`[REAPER] Purging stale sandbox: ${dbInfo.name}`);
+                const conn = await getTenantDb(dbInfo.name);
+                await resilientPurge(conn, dbInfo.name);
+                purged++;
             }
         }
-    } catch (err) {
-        console.error('[REAPER] Maintenance Failure:', err.message);
     }
+
+    console.log(`[REAPER] Cycle complete. Inspected ${inspected}, purged ${purged}.`);
+    return { inspected, purged };
 };
 
-// Run Reaper every 30 minutes
-setInterval(purgeStaleSandboxes, 30 * 60 * 1000);
-// Also run on startup after a short delay to ensure DB is connected
-setTimeout(purgeStaleSandboxes, 10000);
+// POST /api/admin/reap-sandboxes - Invoked by the scheduled workflow.
+//
+// This used to be a module-scope setInterval. On Vercel the process is created per
+// request and frozen between invocations, so that timer effectively never fired and the
+// 2-hour guest TTL was enforced only by the browser. Driving it from an external
+// schedule is the only thing that actually reaps a serverless deployment.
+app.post('/api/admin/reap-sandboxes', async (req, res) => {
+    const SYSTEM_ADMIN_SECRET = process.env.SYSTEM_ADMIN_SECRET;
+    const provided = req.headers['x-system-secret'];
+
+    if (!SYSTEM_ADMIN_SECRET || provided !== SYSTEM_ADMIN_SECRET) {
+        return res.status(403).json({ message: 'Forbidden: System Authority Refused.' });
+    }
+
+    try {
+        const summary = await purgeStaleSandboxes();
+        res.json({ message: 'Reaper cycle complete.', ...summary });
+    } catch (err) {
+        return sendError(res, 500, 'Reaper cycle failed.', err);
+    }
+});
+
+// ─── TERMINAL ERROR HANDLER ───────────────────────────────────────────────────
+// Last line of defence. Without this, anything thrown outside a route's own try/catch
+// (a malformed JSON body, for instance) reaches Express's default handler, which returns
+// the message — and in development the stack — straight to the client.
+//
+// Registered last so it sits behind every route. Express identifies an error handler by
+// its four-argument signature, so `next` must stay in the list even though it is unused.
+// eslint-disable-next-line no-unused-vars
+app.use((err, req, res, next) => {
+    console.error('[UNHANDLED]', err.stack || err.message || err);
+
+    if (res.headersSent) return;
+
+    // Body-parser failures are the client's fault; report them as such.
+    if (err.type === 'entity.too.large') {
+        return res.status(413).json({ message: 'Payload too large.' });
+    }
+    if (err.status === 400 && err.type === 'entity.parse.failed') {
+        return res.status(400).json({ message: 'Malformed request body.' });
+    }
+
+    res.status(500).json({ message: 'System fault. The archive could not complete that request.' });
+});
 
 module.exports = app;

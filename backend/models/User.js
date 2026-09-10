@@ -19,6 +19,12 @@ const UserSchema = new mongoose.Schema({
     lastLogin: {
         type: Date,
         default: Date.now
+    },
+    // Sessions issued before this moment are refused. Changing the password bumps it,
+    // which logs out every other device without needing a token blocklist.
+    passwordChangedAt: {
+        type: Date,
+        default: null
     }
 }, {
     timestamps: true

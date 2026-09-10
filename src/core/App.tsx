@@ -19,7 +19,7 @@ import { InfinitePortalIcon, CalibratedPlusIcon, CalibratedMinusIcon } from '../
 import { getProxiedImageUrl } from '../utils/api';
 import { saveAuthData, performLogout, systemFetch, isAuthenticated, getStoredUser } from '../utils/auth';
 import LoginScreen from '../components/system/LoginScreen';
-import { User } from './types';
+import { AuthResponse } from './types';
 
 const API_URL = '/api/quests';
 
@@ -502,8 +502,9 @@ const App: React.FC = () => {
         setSysNote(prev => ({ ...prev, isOpen: false }));
     };
 
-    const handleLoginSuccess = (user: User, token: string) => {
-        saveAuthData({ user, token });
+    const handleLoginSuccess = (auth: AuthResponse) => {
+        // The session cookie is already set by the server; this only records display state.
+        saveAuthData(auth);
         setIsAuth(true);
         // Data fetching will be triggered by useEffect
     };
@@ -571,18 +572,17 @@ const App: React.FC = () => {
         }
     }, [isAuth]);
 
-    // Handle Tab Close Cleanup
-    useEffect(() => {
-        const handleUnload = () => {
-            const user = getStoredUser();
-            if (user && user.role === 'GUEST') {
-                // Best effort to drop DB on tab close
-                navigator.sendBeacon('/api/auth/logout');
-            }
-        };
-        window.addEventListener('beforeunload', handleUnload);
-        return () => window.removeEventListener('beforeunload', handleUnload);
-    }, []);
+    // Guest sandbox cleanup is deliberately NOT tied to page unload.
+    //
+    // There used to be a `beforeunload` beacon to POST /api/auth/logout. It never
+    // actually did anything: sendBeacon cannot set an Authorization header, so the call
+    // was rejected. Once the session moved to a cookie the browser started attaching it
+    // automatically, which made the beacon work — and `beforeunload` fires on an ordinary
+    // refresh, so a visitor reloading the page silently lost their sandbox mid-demo.
+    //
+    // Sandboxes are reclaimed by explicit logout, by the 2-hour token lifetime, and by
+    // the reaper the scheduled workflow drives. A refresh now keeps the guest signed in,
+    // which is how the demo behaved before.
 
     const handleViewDetails = (id: string) => {
         const item = library.find(q => q.id === id);

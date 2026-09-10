@@ -62,24 +62,71 @@ To initialize The System in your local environment, follow these mandates.
    ```env
    PORT=5000
    MONGODB_URI=your_mongodb_connection_string
+   JWT_SECRET=a_long_random_string
+   SYSTEM_ADMIN_SECRET=another_long_random_string
    NODE_ENV=development
    ```
 
+   `JWT_SECRET` is mandatory — the Archive Engine throws at startup without it rather
+   than falling back to a default. `SYSTEM_ADMIN_SECRET` gates the two administrative
+   routes (`/api/auth/upsert-sovereign` and `/api/admin/reap-sandboxes`); omit it and
+   both simply refuse every caller.
+
+   One optional flag: `ALLOW_REGISTRATION=true` re-opens `POST /api/auth/register`,
+   which is closed by default. The app ships no registration UI — the owner account is
+   created through `upsert-sovereign` and visitors use guest mode — so leaving it closed
+   is correct for a single-owner deployment.
+
+   For deployment, set the same values as Vercel environment variables, and add
+   `SYSTEM_ADMIN_SECRET` as a GitHub Actions repository secret so the scheduled
+   workflow can drive the guest-sandbox reaper.
+
+---
+
+## 🔐 Security posture
+
+The deployment is single-owner with a public guest demo. What that means concretely:
+
+| Area | Behaviour |
+|---|---|
+| **Sessions** | The JWT is issued as an `httpOnly`, `SameSite=Strict`, `Secure` cookie. Page scripts cannot read it, so injected code has no reusable credential to steal, and `SameSite=Strict` is what defends state-changing routes against CSRF. |
+| **Lifetimes** | Sovereign sessions last 7 days; guest sessions last 2 hours, matching the sandbox TTL so a token can never outlive the database it points at. |
+| **Revocation** | Changing the Sovereign password stamps `passwordChangedAt`, and any session issued earlier is refused on its next request. |
+| **Role integrity** | `SOVEREIGN` is re-read from the database on every request rather than trusted from the token. Guests keep the zero-lookup path — their tenant is a disposable sandbox keyed to their own id. |
+| **Accounts** | Registration is closed. Role is never accepted from a request body. |
+| **Tenancy** | Guests get a physically separate database, not a filtered collection, so cross-tenant reads are impossible by construction. |
+| **Guest demo** | Deliberately frictionless. Bounded by a per-IP rate limit and a concurrent-sandbox cap that reaps expired sandboxes before it ever refuses anyone, and which fails open if the cluster will not report counts. |
+| **Brute force** | Failed logins are limited to 10 per 15 minutes per IP; successful ones do not count against the budget. |
+| **Headers** | Strict CSP (no `unsafe-eval`, no inline script), HSTS, `frame-ancestors 'none'`, `nosniff`, `no-referrer`, and a Permissions-Policy denying device APIs. The document policy lives in both `vercel.json` and `backend/utils/securityHeaders.js`; a test asserts the two never drift apart. |
+| **Image relay** | `/api/proxy/image` re-validates every redirect hop against the SSRF guard, serves only bitmap content types, caps responses at 8 MB, and refuses third-party hotlinking. |
+| **Third-party text** | Synopses are sanitized through an allowlist before rendering. |
+
+> [!NOTE]
+> `npm audit` reports two advisories against `vite`/`esbuild`. Both affect the **development
+> server only** and require a Vite major upgrade to clear. Nothing vulnerable ships in the
+> production bundle or the serverless function.
+
 ### Running The System
 
-The project requires both the Archive Engine (Backend) and the Frontend Cortex to be active.
+Both halves run together from the repository root:
 
-**Start the Archive Engine:**
 ```bash
-npm run dev-backend
+npm run dev
 ```
 
-**Start the Frontend Cortex:**
+That starts the Archive Engine (`backend/server.js`, port 5000) and the Frontend Cortex
+(Vite, port 5173) concurrently, with `/api` proxied from Vite to the backend. To run
+them separately, use `npm run dev-backend` and `npm run dev-frontend`.
+
+**Checks:**
+```bash
+npm run type-check
+npm run lint
+```
+
+**Production bundle:**
 ```bash
 npm run build
-# Then navigate to the system directory to serve
-cd system
-npm run dev
 ```
 
 ---

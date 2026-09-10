@@ -56,6 +56,7 @@ export interface User {
 }
 
 export interface AuthResponse {
-    token: string;
     user: User;
+    /** Epoch ms at which the session cookie lapses. Used only to avoid a login flash. */
+    expiresAt?: number;
 }

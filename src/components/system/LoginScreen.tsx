@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { Theme, User } from '../../core/types';
+import { Theme, AuthResponse } from '../../core/types';
 import ScrambleText from './ScrambleText';
 import OmniscientField from '../fx/OmniscientField';
 import { Shield, Terminal, Key, Cpu, Zap, Fingerprint } from 'lucide-react';
 
 interface LoginScreenProps {
-    onLoginSuccess: (user: User, token: string) => void;
+    /** The session itself arrives as an httpOnly cookie; this carries only display state. */
+    onLoginSuccess: (auth: AuthResponse) => void;
     theme: Theme;
 }
 
@@ -24,13 +25,15 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
             const res = await fetch('/api/auth/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
+                // Required so the browser stores the session cookie the server sets.
+                credentials: 'same-origin',
                 body: JSON.stringify({ username, password })
             });
 
             const data = await res.json();
 
             if (res.ok) {
-                onLoginSuccess(data.user, data.token);
+                onLoginSuccess(data);
             } else {
                 setError(data.message || 'AUTHENTICATION_PROTOCOL_FAILURE');
             }
@@ -46,11 +49,14 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
         setError(null);
 
         try {
-            const res = await fetch('/api/auth/guest', { method: 'POST' });
+            const res = await fetch('/api/auth/guest', {
+                method: 'POST',
+                credentials: 'same-origin'
+            });
             const data = await res.json();
 
             if (res.ok) {
-                onLoginSuccess(data.user, data.token);
+                onLoginSuccess(data);
             } else {
                 setError(data.message || 'GUEST_PROTO_FAILURE');
             }

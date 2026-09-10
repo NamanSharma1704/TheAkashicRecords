@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 import { X, Users, Share2, Zap, Edit2, Target, AlignLeft, Check } from 'lucide-react';
 import { getProxiedImageUrl } from '../../utils/api';
 import { systemFetch } from '../../utils/auth';
+import { sanitizeHtml } from '../../utils/sanitize';
 
 import { Theme, Quest } from '../../core/types';
 import ScrambleText from '../system/ScrambleText';
@@ -400,7 +401,9 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                             ) : (
                                 <div
                                     className={`text-sm md:text-base leading-loose font-sans ${theme.isDark ? 'text-white/80' : 'text-slate-700'}`}
-                                    dangerouslySetInnerHTML={{ __html: quest.synopsis || media?.description || "No synopsis available." }}
+                                    // Synopsis text is third-party (AniList/MangaDex/MAL) and may contain
+                                    // markup; sanitizeHtml keeps <br>/<i>/<b> and strips everything else.
+                                    dangerouslySetInnerHTML={{ __html: sanitizeHtml(quest.synopsis || media?.description || "No synopsis available.") }}
                                 />
                             )}
                         </div>

@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 import { Theme, Quest, Rank } from '../../core/types';
 import { Fingerprint, BookOpen } from 'lucide-react';
 import { getProxiedImageUrl } from '../../utils/api';
+import RankSigil from './RankSigil';
 
 interface DivineMonolithProps {
     item: Quest;
@@ -55,19 +56,9 @@ const QuestCard = React.memo<DivineMonolithProps>(({ item, onClick, index, id, t
                 </div>
                 <div className={`absolute inset-0 border-2 ${rankStyle.border} opacity-0 group-hover:opacity-100 transition-opacity duration-500 shadow-[inset_0_0_30px_currentColor]`} />
 
-                {/* --- SPINNING RUNIC DIAMOND RANK ICON --- */}
+                {/* --- UNIQUE PER-RANK SIGIL --- */}
                 <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-all duration-700 delay-100 z-40">
-                    <div className="relative w-10 h-10 flex items-center justify-center">
-                        {/* Spinning outer runic diamond border */}
-                        <div className={`absolute inset-0 border border-dashed ${rankStyle.border} rotate-45 animate-[spin_8s_linear_infinite] opacity-60 transition-colors duration-700`} />
-                        {/* Static central diamond base */}
-                        <div className={`w-7 h-7 rotate-45 border ${rankStyle.border} ${theme.isDark ? 'bg-black/90' : 'bg-white/90'} shadow-[0_0_15px_currentColor] flex items-center justify-center transition-colors duration-700`}>
-                            {/* Counter-rotated text so it stays upright */}
-                            <div className="-rotate-45 flex items-center justify-center w-full h-full">
-                                <span className={`text-[10px] font-black font-mono ${rankStyle.color}`}>{rankStyle.name[0]}</span>
-                            </div>
-                        </div>
-                    </div>
+                    <RankSigil rank={rankStyle} theme={theme} />
                 </div>
 
                 <div className="absolute inset-0 z-30 p-6 flex flex-col justify-end translate-y-4 group-hover:translate-y-0 transition-transform duration-500">

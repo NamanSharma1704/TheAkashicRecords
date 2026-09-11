@@ -106,56 +106,66 @@ function generateStars(count: number): StarData[] {
 
 const STAR_DATA = generateStars(140);
 
-/**
- * Asterisms as small 3D constellations.
- *
- * Each star carries a depth (z) as well as a position, and the whole shape is projected
- * through a perspective camera while it slowly sways. Because near stars then travel
- * further across the screen than far ones, and the outline foreshortens as it turns, the
- * constellation reads as an object suspended in space rather than a decal on the glass.
- * The geometry is still Cassiopeia's W and the Plough; the in-fiction names are unchanged.
- */
 type Star3D = { x: number; y: number; z: number; mag: number };
 type Asterism3D = {
     label: string;
     center: [number, number];   // where the constellation's midpoint sits in the 1600x900 field
     stars: Star3D[];
     edges: [number, number][];
+    field?: Star3D[];           // scattered, unconnected stars that sit around the shape
     yawAmp: number; yawPeriod: number;   // radians, seconds
     tiltAmp: number; tiltPeriod: number;
     phase: number;
 };
 
+/**
+ * Two constellations invented for this archive rather than borrowed from the sky.
+ *
+ * The Sovereign's Crown is a crown of peaks with a tall central spire — the highest rank
+ * the System grants. The Ascendant Gate is a diamond gateway crowned by a spire, echoing
+ * the diamond halo of this very screen and the Divine Spire: a gate you open and a tower
+ * you climb. Each carries a few loose field stars so it reads as part of a real sky, not
+ * a figure drawn on the glass.
+ */
 const ASTERISMS: Asterism3D[] = [
     {
-        // Cassiopeia's W. Depth alternates with the zigzag so it folds in z as well.
-        label: "The Monarch's Crown",
+        label: "The Sovereign's Crown",
         center: [300, 545],
         stars: [
-            { x: 0,   y: 74, z:  45, mag: 2.2 },
-            { x: 64,  y: 16, z: -55, mag: 2.3 },
-            { x: 132, y: 66, z:  20, mag: 2.5 },
-            { x: 202, y: 8,  z: -65, mag: 2.7 },
-            { x: 268, y: 78, z:  60, mag: 3.4 },
+            { x: 0,   y: 46,  z:  42, mag: 2.6 },  // left base
+            { x: 44,  y: 2,   z: -28, mag: 2.2 },  // left peak
+            { x: 86,  y: 30,  z:  16, mag: 2.9 },  // left dip
+            { x: 128, y: -34, z: -62, mag: 1.5 },  // central spire — the sovereign star
+            { x: 170, y: 30,  z:  16, mag: 2.9 },  // right dip
+            { x: 212, y: 2,   z: -28, mag: 2.2 },  // right peak
+            { x: 256, y: 46,  z:  42, mag: 2.6 },  // right base
         ],
-        edges: [[0, 1], [1, 2], [2, 3], [3, 4]],
-        yawAmp: 0.62, yawPeriod: 19, tiltAmp: 0.20, tiltPeriod: 25, phase: 0,
+        edges: [[0, 1], [1, 2], [2, 3], [3, 4], [4, 5], [5, 6]],
+        field: [
+            { x: 22,  y: 68,  z:  25, mag: 3.6 },
+            { x: 234, y: 66,  z: -18, mag: 3.8 },
+            { x: 128, y: -58, z:  30, mag: 3.9 },
+        ],
+        yawAmp: 0.58, yawPeriod: 21, tiltAmp: 0.20, tiltPeriod: 27, phase: 0,
     },
     {
-        // Ursa Major's Plough. Bowl up front, handle receding into depth.
-        label: "The Gatekeeper's Eye",
-        center: [1205, 250],
+        label: "The Ascendant Gate",
+        center: [1200, 250],
         stars: [
-            { x: 0,   y: 0,  z: -45, mag: 1.8 },  // Dubhe
-            { x: 6,   y: 58, z: -25, mag: 2.4 },  // Merak
-            { x: 66,  y: 66, z:   5, mag: 2.4 },  // Phecda
-            { x: 60,  y: 20, z:  -5, mag: 3.3 },  // Megrez
-            { x: 118, y: 10, z:  35, mag: 1.8 },  // Alioth
-            { x: 176, y: 22, z:  60, mag: 2.2 },  // Mizar
-            { x: 232, y: 56, z:  85, mag: 1.9 },  // Alkaid
+            { x: 0,   y: -102, z: -52, mag: 1.5 },  // 0 spire tip — the summit above the gate
+            { x: 0,   y: -54,  z: -26, mag: 2.3 },  // 1 gate top (keystone)
+            { x: -58, y: 6,    z:  34, mag: 2.6 },  // 2 left post
+            { x: 58,  y: 6,    z:  34, mag: 2.6 },  // 3 right post
+            { x: 0,   y: 66,   z: -26, mag: 2.2 },  // 4 gate foot
+            { x: 0,   y: 6,    z:   6, mag: 3.0 },  // 5 threshold, inside the arch
         ],
-        edges: [[0, 1], [1, 2], [2, 3], [3, 0], [3, 4], [4, 5], [5, 6]],
-        yawAmp: 0.55, yawPeriod: 23, tiltAmp: 0.24, tiltPeriod: 18, phase: 1.7,
+        edges: [[0, 1], [1, 2], [2, 4], [4, 3], [3, 1], [1, 5], [5, 4]],
+        field: [
+            { x: -78, y: -28, z:  28, mag: 3.7 },
+            { x: 74,  y: 50,  z: -20, mag: 3.9 },
+            { x: 0,   y: 96,  z:  40, mag: 3.9 },
+        ],
+        yawAmp: 0.52, yawPeriod: 24, tiltAmp: 0.24, tiltPeriod: 19, phase: 1.7,
     },
 ];
 
@@ -196,18 +206,21 @@ const project = (
 const Constellations3D: React.FC<{ p: BootPalette }> = ({ p }) => {
     const { accent: gold, ink: white } = p;
 
-    // Centroid-relative geometry, computed once so each shape rotates about its own middle.
+    // Centroid-relative geometry, computed once. The centroid comes from the connected
+    // stars only, so field stars keep their offset around the same pivot.
     const model = useMemo(() => ASTERISMS.map(a => {
         const n = a.stars.length;
         const mx = a.stars.reduce((s, v) => s + v.x, 0) / n;
         const my = a.stars.reduce((s, v) => s + v.y, 0) / n;
         const mz = a.stars.reduce((s, v) => s + v.z, 0) / n;
-        return { ...a, local: a.stars.map(s => ({ x: s.x - mx, y: s.y - my, z: s.z - mz, mag: s.mag })) };
+        const rebase = (s: Star3D) => ({ x: s.x - mx, y: s.y - my, z: s.z - mz, mag: s.mag });
+        return { ...a, local: a.stars.map(rebase), fieldLocal: (a.field ?? []).map(rebase) };
     }), []);
 
     const dotRefs = useRef<(SVGCircleElement | null)[][]>(model.map(() => []));
     const haloRefs = useRef<(SVGCircleElement | null)[][]>(model.map(() => []));
     const lineRefs = useRef<(SVGLineElement | null)[][]>(model.map(() => []));
+    const fieldRefs = useRef<(SVGCircleElement | null)[][]>(model.map(() => []));
 
     useAnimationFrame(() => {
         const t = performance.now() / 1000;
@@ -249,6 +262,16 @@ const Constellations3D: React.FC<{ p: BootPalette }> = ({ p }) => {
                     halo.setAttribute('opacity', (0.09 * pr.scale).toFixed(3));
                 }
             });
+
+            a.fieldLocal.forEach((s, si) => {
+                const pr = project(s.x, s.y, s.z, yaw, tilt, cx, cy);
+                const el = fieldRefs.current[ai][si];
+                if (!el) return;
+                el.setAttribute('cx', pr.sx.toFixed(1));
+                el.setAttribute('cy', pr.sy.toFixed(1));
+                el.setAttribute('r', (magRadius(s.mag) * pr.scale).toFixed(2));
+                el.setAttribute('opacity', (0.4 * Math.min(1, pr.scale)).toFixed(3));
+            });
         });
     });
 
@@ -256,6 +279,7 @@ const Constellations3D: React.FC<{ p: BootPalette }> = ({ p }) => {
         <>
             {model.map((a, ai) => {
                 const p0 = a.local.map(s => project(s.x, s.y, s.z, 0, 0, a.center[0], a.center[1]));
+                const f0 = a.fieldLocal.map(s => project(s.x, s.y, s.z, 0, 0, a.center[0], a.center[1]));
                 return (
                     <g key={a.label} opacity={0.9}>
                         {a.edges.map(([from, to], ei) => (
@@ -265,6 +289,14 @@ const Constellations3D: React.FC<{ p: BootPalette }> = ({ p }) => {
                                 x1={p0[from].sx} y1={p0[from].sy}
                                 x2={p0[to].sx} y2={p0[to].sy}
                                 stroke={gold} strokeWidth="0.6" opacity="0.25"
+                            />
+                        ))}
+                        {a.fieldLocal.map((s, si) => (
+                            <circle
+                                key={`f${si}`}
+                                ref={el => { fieldRefs.current[ai][si] = el; }}
+                                cx={f0[si].sx} cy={f0[si].sy} r={magRadius(s.mag) * f0[si].scale}
+                                fill={white} opacity="0.4"
                             />
                         ))}
                         {a.local.map((s, si) => {

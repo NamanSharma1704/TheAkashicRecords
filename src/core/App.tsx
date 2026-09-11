@@ -319,7 +319,11 @@ const DimensionalRiftOverlay: React.FC<{ isActive: boolean; accentColor: string;
 
 // --- APP ---
 const App: React.FC = () => {
-    const [booting, setBooting] = useState<boolean>(true);
+    // The awakening boot sequence plays for a visitor who is not signed in. Once a session
+    // exists, a refresh skips it and lands straight on the dashboard — the intro is a first
+    // impression, not a toll booth on every reload. (This is also reused as a full-screen
+    // loader during CSV import via setBooting(true); that path is unaffected.)
+    const [booting, setBooting] = useState<boolean>(() => !isAuthenticated());
     const [isMobile, setIsMobile] = useState(false);
 
     useEffect(() => {

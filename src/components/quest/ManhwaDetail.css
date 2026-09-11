@@ -6,20 +6,18 @@
     --detail-base-radial: radial-gradient(ellipse 80% 60% at 70% 20%, rgba(245,158,11,0.18) 0%, transparent 60%), radial-gradient(ellipse 60% 50% at 20% 80%, rgba(234,179,8,0.12) 0%, transparent 55%), radial-gradient(ellipse 100% 100% at 50% 50%, rgba(2,2,2,0.7) 0%, rgba(2,2,2,0.95) 100%);
     --detail-aura-opacity: 0.25;
     --detail-vignette-radial: radial-gradient(ellipse at 50% 50%, transparent 20%, rgba(0,0,0,0.75) 100%);
-    --detail-orb-tr-gradient: radial-gradient(circle, rgba(245,158,11,0.22) 0%, rgba(234,179,8,0.08) 60%, transparent 100%);
-    --detail-orb-bl-gradient: radial-gradient(circle, rgba(161,98,7,0.20) 0%, rgba(120,53,15,0.08) 60%, transparent 100%);
-    --detail-orb-tl-color: rgba(251,191,36,0.10);
+    --detail-star-color: rgba(255,255,255,0.9);
+    --detail-grid-color: rgba(245,158,11,0.05);
 }
 
 /* THEME: LIGHT */
 [data-theme='light'].manhwa-detail-backdrop {
-    --detail-bg-gradient: linear-gradient(135deg, #e0f7ff 0%, #f0f9ff 25%, #eef2ff 55%, #f5f3ff 80%, #e0f2fe 100%);
-    --detail-base-radial: radial-gradient(ellipse 80% 60% at 70% 15%, rgba(6,182,212,0.25) 0%, transparent 60%), radial-gradient(ellipse 60% 50% at 15% 80%, rgba(99,102,241,0.20) 0%, transparent 55%), radial-gradient(ellipse 100% 100% at 50% 50%, rgba(224,242,254,0.4) 0%, rgba(238,242,255,0.65) 100%);
-    --detail-aura-opacity: 0.12;
-    --detail-vignette-radial: radial-gradient(ellipse at 50% 50%, transparent 20%, rgba(224,242,254,0.5) 100%);
-    --detail-orb-tr-gradient: radial-gradient(circle, rgba(6,182,212,0.30) 0%, rgba(14,165,233,0.12) 60%, transparent 100%);
-    --detail-orb-bl-gradient: radial-gradient(circle, rgba(99,102,241,0.25) 0%, rgba(139,92,246,0.10) 60%, transparent 100%);
-    --detail-orb-tl-color: rgba(56,189,248,0.18);
+    --detail-bg-gradient: linear-gradient(135deg, #b7c1d2 0%, #c6cede 25%, #c1c7da 55%, #c6c3da 80%, #b3bed0 100%);
+    --detail-base-radial: radial-gradient(ellipse 80% 60% at 70% 15%, rgba(6,182,212,0.22) 0%, transparent 60%), radial-gradient(ellipse 60% 50% at 15% 80%, rgba(99,102,241,0.18) 0%, transparent 55%), radial-gradient(ellipse 100% 100% at 50% 50%, rgba(148,163,184,0.12) 0%, rgba(71,85,105,0.30) 100%);
+    --detail-aura-opacity: 0.18;
+    --detail-vignette-radial: radial-gradient(ellipse at 50% 50%, transparent 25%, rgba(30,41,59,0.28) 100%);
+    --detail-star-color: rgba(226,232,240,0.92);
+    --detail-grid-color: rgba(30,64,175,0.13);
 }
 
 .manhwa-detail-backdrop {
@@ -38,34 +36,39 @@
     background: var(--detail-vignette-radial);
 }
 
-.manhwa-detail-orb-top-right {
-    top: -15%;
-    right: -10%;
-    width: 65%;
-    height: 65%;
-    border-radius: 50%;
-    filter: blur(120px);
-    background: var(--detail-orb-tr-gradient);
+.manhwa-detail-grid {
+    background-image:
+        linear-gradient(var(--detail-grid-color) 1px, transparent 1px),
+        linear-gradient(90deg, var(--detail-grid-color) 1px, transparent 1px);
+    background-size: 40px 40px;
+    -webkit-mask-image: radial-gradient(circle at 50% 35%, #000, transparent 82%);
+    mask-image: radial-gradient(circle at 50% 35%, #000, transparent 82%);
 }
 
-.manhwa-detail-orb-bottom-left {
-    bottom: -15%;
-    left: -10%;
-    width: 60%;
-    height: 60%;
-    border-radius: 50%;
-    filter: blur(120px);
-    background: var(--detail-orb-bl-gradient);
+.manhwa-detail-star {
+    background: var(--detail-star-color);
+    box-shadow: 0 0 3px var(--detail-star-color);
 }
 
-.manhwa-detail-orb-top-left {
-    top: 10%;
-    left: 5%;
-    width: 30%;
-    height: 30%;
-    border-radius: 50%;
-    filter: blur(90px);
-    background: var(--detail-orb-tl-color);
+.manhwa-detail-cover-scan {
+    animation: manhwa-detail-cover-sweep 4s ease-in-out infinite;
+}
+
+@keyframes manhwa-detail-cover-sweep {
+    0% { top: 0; opacity: 0; }
+    15% { opacity: 0.7; }
+    85% { opacity: 0.7; }
+    100% { top: 100%; opacity: 0; }
+}
+
+.manhwa-detail-spine {
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .manhwa-detail-star,
+    .manhwa-detail-cover-scan { animation: none; }
 }
 
 .manhwa-detail-scroll-container {
@@ -80,9 +83,4 @@
 [data-theme='dark'].manhwa-detail-scroll-container {
     --scrollbar-thumb: #f59e0b;
     --scrollbar-thumb-hover: #d97706;
-}
-
-.manhwa-detail-progress-bar-fill {
-    transform: scaleX(var(--detail-progress-scale, 0));
-    width: 100%;
 }

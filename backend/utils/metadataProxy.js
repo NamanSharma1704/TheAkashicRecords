@@ -40,8 +40,8 @@ const fetchAniList = async (title) => {
             role
             node {
               id
-              name { full }
-              image { large }
+              name { full native }
+              image { large medium }
             }
           }
         }
@@ -208,6 +208,37 @@ const fetchMangaDex = async (title) => {
     }
 };
 
+// Best-effort character fetch from Jikan (MyAnimeList). Serves as a second character
+// source so the row survives an AniList outage — AniList is otherwise the only provider,
+// and it periodically goes dark (e.g. HTTP 403 "temporarily disabled"). Shaped to match
+// the AniList character node so downstream merge/render logic is source-agnostic.
+const fetchJikanCharacters = async (malId) => {
+    try {
+        const res = await fetchWithTimeout(`https://api.jikan.moe/v4/manga/${malId}/characters`, {}, 4000);
+        if (res.status !== 200) return [];
+        const data = await res.json();
+        return (data.data || [])
+            // Main cast first, then by MAL favourites so the strip leads with the leads.
+            .sort((a, b) => {
+                const rank = (r) => (r === 'Main' ? 0 : 1);
+                return rank(a.role) - rank(b.role) || (b.favorites || 0) - (a.favorites || 0);
+            })
+            .slice(0, 12)
+            .map(e => {
+                const img = e.character?.images?.jpg?.image_url || "";
+                return {
+                    id: e.character?.mal_id,
+                    name: { full: e.character?.name || "Unknown", native: "" },
+                    image: { large: img, medium: img },
+                    role: (e.role || "").toUpperCase()
+                };
+            })
+            .filter(c => c.id != null);
+    } catch {
+        return []; // best-effort — never let a character miss sink the whole lookup
+    }
+};
+
 const fetchJikan = async (title) => {
     try {
         const searchUrl = `https://api.jikan.moe/v4/manga?q=${encodeURIComponent(title)}&limit=1&sfw=false`;
@@ -221,6 +252,10 @@ const fetchJikan = async (title) => {
 
         if (data.data && data.data.length > 0) {
             const manga = data.data[0];
+            // Small spacer before the follow-up call — Jikan rate-limits ~3 req/s.
+            await new Promise(r => setTimeout(r, 400));
+            const charNodes = await fetchJikanCharacters(manga.mal_id);
+            if (charNodes.length) console.log(`[Jikan] ${charNodes.length} entities detected for "${manga.title}"`);
             return {
                 id: manga.mal_id,
                 title: {
@@ -237,7 +272,7 @@ const fetchJikan = async (title) => {
                 status: manga.status ? manga.status.toUpperCase() : "UNKNOWN",
                 genres: (manga.genres || []).map(g => g.name),
                 siteUrl: manga.url,
-                characters: { nodes: [] },
+                characters: { nodes: charNodes },
                 recommendations: { nodes: [] }
             };
         }
@@ -262,7 +297,7 @@ const fetchBest = async (title) => {
     const [aniResult, mdResult, jkResult] = await Promise.all([
         Promise.race([fetchAniList(title).catch(() => null), hardTimeout(11000)]),
         Promise.race([fetchMangaDex(title).catch(() => null), hardTimeout(11000)]),
-        Promise.race([fetchJikan(title).catch(() => null), hardTimeout(8000)]),  // Jikan gets less time — it rate-limits hardest
+        Promise.race([fetchJikan(title).catch(() => null), hardTimeout(11000)]),  // search + character follow-up; still within the batch's existing 11s ceiling
     ]);
 
     const results = [

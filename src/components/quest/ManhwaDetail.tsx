@@ -1,12 +1,14 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion } from 'motion/react';
-import { X, Users, Share2, Zap, Edit2, Target, AlignLeft, Check } from 'lucide-react';
+import { X, Users, Share2, Zap, Edit2, Target, AlignLeft, Check, Activity, ExternalLink } from 'lucide-react';
 import { getProxiedImageUrl, cleanDescription } from '../../utils/api';
 import { systemFetch } from '../../utils/auth';
 import { sanitizeHtml } from '../../utils/sanitize';
 
 import { Theme, Quest } from '../../core/types';
 import ScrambleText from '../system/ScrambleText';
+import RankSigil from './RankSigil';
+import { getQuestRankObj } from '../../utils/ranks';
 import './ManhwaDetail.css';
 
 
@@ -29,16 +31,6 @@ interface AniListCharacter {
     role: string;
 }
 
-interface AniListRecommendation {
-    id: number;
-    mediaRecommendation: {
-        id: number;
-        title: { english: string; romaji: string };
-        coverImage: { large: string };
-        averageScore: number;
-    };
-}
-
 interface AniListMedia {
     id: number;
     title: { english: string; romaji: string; native: string };
@@ -47,15 +39,55 @@ interface AniListMedia {
     bannerImage: string;
     genres: string[];
     averageScore: number;
-    meanScore: number;
     status: string;
     seasonYear: number;
-    episodes: number;
     chapters: number;
     characters: { nodes: AniListCharacter[] };
-    recommendations: { nodes: AniListRecommendation[] };
     siteUrl: string;
 }
+
+// Character avatar with graceful fallback: AniList (and the manual metadata) can hand
+// back a missing, placeholder, or 404 image. Rather than show the browser's broken-image
+// glyph, fall back to the character's initial in a themed circle. Prefers the smaller
+// `medium` asset for these 60px avatars, dropping to `large` only when medium is absent.
+const CharacterAvatar: React.FC<{ char: AniListCharacter; theme: Theme }> = ({ char, theme }) => {
+    const [failed, setFailed] = useState(false);
+    const src = getProxiedImageUrl(char.image?.medium || char.image?.large);
+    const initial = (char.name?.full?.trim()?.[0] || '?').toUpperCase();
+    const showImg = !!src && !failed;
+    return (
+        <div className={`w-[60px] h-[60px] rounded-full overflow-hidden border border-white/20 group-hover:border-white/50 transition-colors flex items-center justify-center ${theme.isDark ? 'bg-white/5' : 'bg-slate-200/60'}`}>
+            {showImg ? (
+                <img
+                    src={src}
+                    alt={char.name.full}
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                    referrerPolicy="no-referrer"
+                    loading="lazy"
+                    onError={() => setFailed(true)}
+                />
+            ) : (
+                <span className={`text-lg font-black font-mono ${theme.isDark ? 'text-white/70' : 'text-slate-600'}`}>{initial}</span>
+            )}
+        </div>
+    );
+};
+
+// Unified numbered section header: index chip + icon + label + fading rule, with an
+// optional right-aligned action (e.g. the synopsis MODIFY button, a scanning indicator).
+const SectionHeader: React.FC<{ index: string; icon: React.ReactNode; label: string; theme: Theme; children?: React.ReactNode }> = ({ index, icon, label, theme, children }) => {
+    const accent = theme.id === 'LIGHT' ? 'text-sky-400' : 'text-amber-400';
+    const rule = theme.id === 'LIGHT' ? 'from-sky-400/40' : 'from-amber-400/40';
+    return (
+        <div className="flex items-center gap-3 mb-6 px-1">
+            <span className={`text-[11px] font-black font-mono ${accent}`}>{index}</span>
+            <span className="opacity-60 flex items-center">{icon}</span>
+            <span className={`text-[10px] font-mono tracking-[0.3em] font-bold uppercase ${theme.isDark ? 'text-white/80' : 'text-slate-700'}`}>{label}</span>
+            <span className={`flex-1 h-px bg-gradient-to-r ${rule} to-transparent`} />
+            {children}
+        </div>
+    );
+};
 
 // --- COMPONENT ---
 const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, theme, allQuests, onSetActive, onUpdate, onEdit }) => {
@@ -80,6 +112,15 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
             .filter(q => q.classType === quest.classType && q.id !== quest.id)
             .slice(0, 10);
     }, [allQuests, quest]);
+
+    // Ambient starfield for the backdrop — matches the Boot/Login constellation motif.
+    // Generated once; positions are stable across re-renders (e.g. chapter logging).
+    const STARS = useMemo(() => Array.from({ length: 110 }, () => ({
+        left: +(Math.random() * 100).toFixed(2),
+        top: +(Math.random() * 100).toFixed(2),
+        size: +(Math.random() * 2 + 1.2).toFixed(2),
+        opacity: +(Math.random() * 0.45 + 0.45).toFixed(2),
+    })), []);
 
     // Fetch Details on Open
     //
@@ -113,29 +154,28 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
             bannerImage: "", // Use cover as fallback in UI
             genres: ["Fantasy", "Action", "Adventure", "Isekai"],
             averageScore: 95,
-            meanScore: 90,
             status: "RELEASING",
             seasonYear: 2018,
-            episodes: 0,
             chapters: 175,
             siteUrl: "https://tapas.io/series/tbate-comic/info",
             characters: {
                 nodes: [
                     {
                         id: 1,
+                        // No verified art asset for these; left blank so CharacterAvatar
+                        // renders the initial instead of firing a doomed image request.
                         name: { full: "Arthur Leywin", native: "Arthur Leywin" },
-                        image: { medium: "https://s4.anilist.co/file/anilistcdn/character/large/b123652-32X1i8I9N9n9.png", large: "https://s4.anilist.co/file/anilistcdn/character/large/b123652-32X1i8I9N9n9.png" }, // Placeholder or use generically if possible, but hardcoding for now
+                        image: { medium: "", large: "" },
                         role: "MAIN"
                     },
                     {
                         id: 2,
                         name: { full: "Sylvie", native: "Sylvie" },
-                        image: { medium: "https://s4.anilist.co/file/anilistcdn/character/large/b132895-j7W8F3x1y2z3.png", large: "https://s4.anilist.co/file/anilistcdn/character/large/b132895-j7W8F3x1y2z3.png" },
+                        image: { medium: "", large: "" },
                         role: "MAIN"
                     }
                 ]
-            },
-            recommendations: { nodes: [] }
+            }
         }
     };
 
@@ -196,6 +236,30 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
         visible: { opacity: 1, y: 0, transition: { duration: 0.6 } }
     };
 
+    // Shared surface + label styles for the right-hand data column.
+    const panelClass = theme.isDark ? 'bg-black/30 border-white/5' : 'bg-white/70 border-slate-200/60';
+    const labelClass = `text-[10px] font-mono tracking-widest uppercase ${theme.isDark ? 'text-white/40' : 'text-slate-500'}`;
+    const metricCellClass = `flex flex-col gap-1 p-3 rounded-lg border ${theme.isDark ? 'bg-white/5 border-white/5' : 'bg-slate-100/60 border-slate-200/60'}`;
+
+    // Theme accent shorthands + this quest's rank sigil.
+    const accentBorder = theme.id === 'LIGHT' ? 'border-sky-400' : 'border-amber-400';
+    const accentBg = theme.id === 'LIGHT' ? 'bg-sky-400' : 'bg-amber-400';
+    const rank = getQuestRankObj(quest);
+
+    // Theme-aware text so nothing goes white-on-light in LIGHT mode.
+    const strongText = theme.isDark ? 'text-white' : 'text-slate-900';
+    const faintText = theme.isDark ? 'text-white/40' : 'text-slate-500';
+    const iconText = theme.isDark ? 'text-white' : 'text-slate-700';
+    const chipBtn = theme.isDark
+        ? 'bg-white/5 hover:bg-white/10 border-white/10 text-white hover:border-white/30'
+        : 'bg-slate-900/5 hover:bg-slate-900/10 border-slate-300 text-slate-700 hover:border-slate-500';
+
+    // EXP-style progress readout.
+    const totalCh = quest.totalChapters || 0;
+    const progress = totalCh > 0 ? Math.min(1, quest.currentChapter / totalCh) : 0;
+    const TICKS = 40;
+    const filledTicks = Math.round(TICKS * progress);
+
     return (
 
         <div className={`fixed inset-0 z-[400] flex animate-in fade-in duration-500 manhwa-detail-backdrop`}
@@ -220,14 +284,19 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                 {/* DEPTH VIGNETTE */}
                 <div className="absolute inset-0 z-[2] pointer-events-none manhwa-detail-vignette" />
 
-                {/* LARGE AMBIENT ORB — TOP RIGHT */}
-                <div className="absolute pointer-events-none z-[3] manhwa-detail-orb-top-right" />
+                {/* HUD GRID OVERLAY (Boot/Login consistency) */}
+                <div className="absolute inset-0 z-[2] pointer-events-none manhwa-detail-grid" />
 
-                {/* LARGE AMBIENT ORB — BOTTOM LEFT */}
-                <div className="absolute pointer-events-none z-[3] manhwa-detail-orb-bottom-left" />
-
-                {/* SECONDARY ACCENT ORB — TOP LEFT */}
-                <div className="absolute pointer-events-none z-[3] manhwa-detail-orb-top-left" />
+                {/* AMBIENT STARFIELD */}
+                <div className="absolute inset-0 z-[3] pointer-events-none">
+                    {STARS.map((s, i) => (
+                        <span
+                            key={i}
+                            className="absolute rounded-full manhwa-detail-star"
+                            style={{ left: `${s.left}%`, top: `${s.top}%`, width: s.size, height: s.size, opacity: s.opacity }}
+                        />
+                    ))}
+                </div>
             </div>
 
             {/* TOP NAVIGATION BAR */}
@@ -255,36 +324,59 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
 
                     {/* HERO SECTION: COVER + TITLE + STATS */}
                     <motion.div variants={itemVariants} className="flex flex-col md:flex-row gap-8 md:gap-12 items-start md:items-start">
-                        {/* COVER ART */}
-                        <div className="shrink-0 w-[180px] md:w-[240px] lg:w-[280px] aspect-[2/3] rounded-lg overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.5)] border border-white/10 relative group mx-auto md:mx-0">
-                            <motion.img
-                                layoutId={`cover-${quest.id}`}
-                                src={getProxiedImageUrl(finalCover)}
-                                alt={quest.title}
-                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
-                                referrerPolicy="no-referrer"
-                            />
-                            <div className="absolute inset-0 border-2 border-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 mix-blend-overlay pointer-events-none" />
+                        {/* COVER ART — SCANNED ARTIFACT */}
+                        <div className="shrink-0 w-[180px] md:w-[240px] lg:w-[280px] relative group mx-auto md:mx-0">
+                            {/* Data spine */}
+                            <div className="hidden md:flex flex-col justify-between items-center absolute top-4 bottom-4 -left-5 z-20">
+                                {[`CH ${quest.currentChapter}`, `${Math.round(progress * 100)}%`, quest.status].map((s, i) => (
+                                    <span key={i} className={`manhwa-detail-spine text-[7px] font-mono tracking-[0.15em] ${theme.id === 'LIGHT' ? 'text-sky-500/70' : 'text-amber-500/70'}`}>{s}</span>
+                                ))}
+                            </div>
+
+                            {/* Bracketed frame */}
+                            <div className={`relative p-[3px] border ${accentBorder} border-opacity-30`}>
+                                <span className={`absolute -top-px -left-px w-3 h-3 border-t-2 border-l-2 ${accentBorder} z-20`} />
+                                <span className={`absolute -top-px -right-px w-3 h-3 border-t-2 border-r-2 ${accentBorder} z-20`} />
+                                <span className={`absolute -bottom-px -left-px w-3 h-3 border-b-2 border-l-2 ${accentBorder} z-20`} />
+                                <span className={`absolute -bottom-px -right-px w-3 h-3 border-b-2 border-r-2 ${accentBorder} z-20`} />
+                                <div className="relative aspect-[2/3] rounded-md overflow-hidden border border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.5)]">
+                                    <motion.img
+                                        layoutId={`cover-${quest.id}`}
+                                        src={getProxiedImageUrl(finalCover)}
+                                        alt={quest.title}
+                                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
+                                        referrerPolicy="no-referrer"
+                                    />
+                                    {/* Scanline sweep */}
+                                    <div className={`absolute left-0 right-0 h-[2px] ${accentBg} opacity-70 pointer-events-none manhwa-detail-cover-scan`} />
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
+                                </div>
+                            </div>
                         </div>
 
                         {/* TITLE & METADATA */}
                         <div className="flex-1 min-w-0 flex flex-col items-center md:items-start text-center md:text-left">
+                            {/* Rank emblem */}
+                            <div className="flex items-center gap-3 mb-4">
+                                <RankSigil rank={rank} theme={theme} size={44} />
+                                <span className={`text-[10px] font-mono tracking-[0.25em] uppercase font-bold ${theme.id === 'LIGHT' ? 'text-sky-600' : 'text-amber-400'}`}>RANK {rank.name}</span>
+                            </div>
                             <div className="flex flex-wrap gap-2 justify-center md:justify-start mb-4">
                                 {media?.status && (
                                     <span className={`px-2 py-0.5 border text-[9px] font-bold tracking-widest uppercase ${getStatusColor(media.status)}`}>
                                         {media.status.replace('_', ' ')}
                                     </span>
                                 )}
-                                <span className={`px-2 py-0.5 border border-white/10 bg-white/5 text-white/70 text-[9px] font-mono tracking-widest uppercase`}>
+                                <span className={`px-2 py-0.5 border text-[9px] font-mono tracking-widest uppercase ${theme.isDark ? 'border-white/10 bg-white/5 text-white/70' : 'border-slate-300 bg-slate-900/5 text-slate-600'}`}>
                                     CLASS: {quest.classType}
                                 </span>
                             </div>
 
-                            <h1 className="text-3xl md:text-4xl lg:text-6xl font-black text-white mb-2 leading-tight tracking-tighter drop-shadow-xl uppercase break-words">
+                            <h1 className={`text-3xl md:text-4xl lg:text-6xl font-black ${strongText} mb-2 leading-tight tracking-tighter drop-shadow-xl uppercase break-words`}>
                                 {quest.title || media?.title?.english || media?.title?.romaji}
                             </h1>
                             {media?.title?.native && (
-                                <h2 className="text-xl md:text-2xl text-white/50 font-medium mb-8">
+                                <h2 className={`text-xl md:text-2xl font-medium mb-8 ${theme.isDark ? 'text-white/50' : 'text-slate-500'}`}>
                                     {media.title.native}
                                 </h2>
                             )}
@@ -306,7 +398,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                 )}
                                 <button
                                     onClick={() => quest && onEdit && onEdit(quest)}
-                                    className={`px-6 py-3 rounded-sm border bg-white/5 hover:bg-white/10 border-white/10 text-white font-bold transition-all flex items-center gap-3 group/edit hover:border-white/30`}
+                                    className={`px-6 py-3 rounded-sm border ${chipBtn} font-bold transition-all flex items-center gap-3 group/edit`}
                                 >
                                     <Edit2 size={16} className="opacity-70 group-hover/edit:opacity-100 transition-opacity" />
                                     <span className="text-[10px] tracking-[0.2em] font-orbitron">EDIT_ARTIFACT</span>
@@ -318,7 +410,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                             onClose();
                                         }
                                     }}
-                                    className={`px-6 py-3 rounded-sm border bg-white/5 hover:bg-white/10 border-white/10 text-white font-bold transition-all flex items-center gap-3 group/active hover:border-white/30`}
+                                    className={`px-6 py-3 rounded-sm border ${chipBtn} font-bold transition-all flex items-center gap-3 group/active`}
                                 >
                                     <Target size={16} className="opacity-70 group-hover/active:opacity-100 transition-opacity" />
                                     <span className="text-[10px] tracking-[0.2em] font-orbitron">MARK_TARGET</span>
@@ -339,33 +431,35 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                         <div className={`w-1.5 h-1.5 rounded-full ${theme.id === 'LIGHT' ? 'bg-sky-400' : 'bg-amber-400'} animate-pulse shadow-[0_0_10px_currentColor]`} />
                                         <div className={`text-[10px] font-mono font-bold tracking-[0.4em] ${theme.highlightText} uppercase`}>SYNCHRONIZATION_THREAD</div>
                                     </div>
-                                    <div className="text-[10px] font-mono text-white/40 tracking-widest uppercase">
+                                    <div className={`text-[10px] font-mono ${faintText} tracking-widest uppercase`}>
                                         STATUS: {quest.status}
                                     </div>
                                 </div>
 
                                 {/* Numeric Readouts */}
                                 <div className="flex items-baseline gap-2 mb-2">
-                                    <span className="text-5xl font-black text-white tabular-nums tracking-tighter drop-shadow-md">
+                                    <span className={`text-5xl font-black ${strongText} tabular-nums tracking-tighter drop-shadow-md`}>
                                         {quest.currentChapter}
                                     </span>
-                                    <span className="text-xl font-medium text-white/30 tracking-widest">
+                                    <span className={`text-xl font-medium tracking-widest ${theme.isDark ? 'text-white/30' : 'text-slate-400'}`}>
                                         / {(quest.totalChapters || 0) > 0 ? quest.totalChapters : '∞'}
                                     </span>
                                     <span className={`ml-auto text-sm font-mono font-bold ${theme.highlightText}`}>
-                                        {((quest.totalChapters || 0) > 0) ? Math.min(100, Math.round((quest.currentChapter / quest.totalChapters) * 100)) : 0}%
+                                        {Math.round(progress * 100)}% SYNC
                                     </span>
                                 </div>
 
-                                {/* The Thread */}
-                                <div className="h-1 w-full bg-white/10 rounded-full overflow-hidden relative shadow-inner">
-                                    <motion.div
-                                        className={`absolute top-0 left-0 h-full bg-gradient-to-r ${theme.gradient} transition-transform duration-1000 ease-out origin-left manhwa-detail-progress-bar-fill`}
-                                        initial={{ scaleX: 0 }}
-                                        animate={{ scaleX: Math.min(1, (quest.totalChapters || 0) > 0 ? (quest.currentChapter / quest.totalChapters) : 0) }}
-                                    >
-                                        <div className="absolute right-0 top-0 h-full w-8 bg-white opacity-50 blur-sm" />
-                                    </motion.div>
+                                {/* The Thread — segmented EXP/sync readout */}
+                                <div className="flex gap-[2px] h-2 items-stretch">
+                                    {Array.from({ length: TICKS }).map((_, i) => (
+                                        <motion.div
+                                            key={i}
+                                            className={`flex-1 rounded-[1px] ${i < filledTicks ? accentBg : (theme.isDark ? 'bg-white/10' : 'bg-black/10')}`}
+                                            initial={{ opacity: 0, scaleY: 0.4 }}
+                                            animate={{ opacity: 1, scaleY: 1 }}
+                                            transition={{ duration: 0.4, delay: i < filledTicks ? i * 0.015 : 0 }}
+                                        />
+                                    ))}
                                 </div>
                             </div>
                         </div>
@@ -375,11 +469,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                     <motion.div variants={itemVariants} className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-4">
                         {/* LEFT: Synopsis */}
                         <div className={`lg:col-span-2 relative p-4 md:p-8 backdrop-blur-xl rounded-xl group/synopsis border ${theme.isDark ? 'bg-black/30 border-white/5' : 'bg-white/70 border-slate-200/60'}`}>
-                            <div className="flex items-center justify-between mb-6">
-                                <div className="flex items-center gap-2 opacity-60">
-                                    <AlignLeft size={16} className={theme.isDark ? 'text-white' : 'text-slate-700'} />
-                                    <span className={`text-[10px] font-mono tracking-[0.3em] font-bold uppercase ${theme.isDark ? 'text-white' : 'text-slate-700'}`}>ARCHIVE_SYNOPSIS</span>
-                                </div>
+                            <SectionHeader index="01" icon={<AlignLeft size={16} className={theme.isDark ? 'text-white' : 'text-slate-700'} />} label="ARCHIVE_SYNOPSIS" theme={theme}>
                                 <button
                                     onClick={() => {
                                         if (isEditingSynopsis) {
@@ -389,11 +479,11 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                         }
                                         setIsEditingSynopsis(!isEditingSynopsis);
                                     }}
-                                    className={`px-3 py-1 rounded border border-white/10 hover:border-white/30 text-white/50 hover:text-white text-[9px] font-mono tracking-widest uppercase transition-colors flex items-center gap-2`}
+                                    className={`shrink-0 px-3 py-1 rounded border text-[9px] font-mono tracking-widest uppercase transition-colors flex items-center gap-2 ${theme.isDark ? 'border-white/10 hover:border-white/30 text-white/50 hover:text-white' : 'border-slate-300 hover:border-slate-500 text-slate-500 hover:text-slate-800'}`}
                                 >
                                     {isEditingSynopsis ? <><Check size={12} /> SAVE_OVERRIDE</> : <><Edit2 size={12} /> MODIFY</>}
                                 </button>
-                            </div>
+                            </SectionHeader>
 
                             {isEditingSynopsis ? (
                                 <textarea
@@ -415,84 +505,170 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                             )}
                         </div>
 
-                        {/* RIGHT: Quick Stats / Tags */}
+                        {/* RIGHT: System Metrics + Genres */}
                         <div className="flex flex-col gap-4">
-                            <div className={`p-6 backdrop-blur-xl rounded-xl flex flex-col gap-4 border ${theme.isDark ? 'bg-black/30 border-white/5' : 'bg-white/70 border-slate-200/60'}`}>
-                                <span className={`text-[10px] font-mono tracking-widest uppercase ${theme.isDark ? 'text-white/40' : 'text-slate-500'}`}>Genres</span>
+                            {/* RECORD METRICS (AniList-derived: score, year, chapters, source) */}
+                            {(isLoadingMedia || media) && (
+                                <div className={`p-6 backdrop-blur-xl rounded-xl flex flex-col gap-5 border ${panelClass}`}>
+                                    <div className="flex items-center gap-2 opacity-60">
+                                        <Activity size={16} className={theme.isDark ? 'text-white' : 'text-slate-700'} />
+                                        <span className={`text-[10px] font-mono tracking-[0.3em] font-bold uppercase ${theme.isDark ? 'text-white' : 'text-slate-700'}`}>RECORD_METRICS</span>
+                                    </div>
+
+                                    {isLoadingMedia ? (
+                                        <div className="flex flex-col gap-4 animate-pulse">
+                                            <div className="h-2 w-full bg-white/10 rounded" />
+                                            <div className="grid grid-cols-2 gap-3">
+                                                <div className="h-16 bg-white/5 rounded-lg" />
+                                                <div className="h-16 bg-white/5 rounded-lg" />
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            {/* Resonance score */}
+                                            {media?.averageScore ? (
+                                                <div className="flex flex-col gap-2">
+                                                    <div className="flex justify-between items-baseline">
+                                                        <span className={labelClass}>RESONANCE</span>
+                                                        <span className={`font-mono font-bold ${theme.highlightText}`}>
+                                                            {media.averageScore}<span className="text-white/30 text-xs">/100</span>
+                                                        </span>
+                                                    </div>
+                                                    <div className="h-1.5 w-full bg-white/10 rounded-full overflow-hidden shadow-inner">
+                                                        <motion.div
+                                                            className={`h-full bg-gradient-to-r ${theme.gradient} rounded-full origin-left`}
+                                                            initial={{ scaleX: 0 }}
+                                                            animate={{ scaleX: Math.min(1, media.averageScore / 100) }}
+                                                            transition={{ duration: 1, ease: 'easeOut' }}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            ) : null}
+
+                                            {/* Year / Depth */}
+                                            {(media?.seasonYear || media?.chapters) ? (
+                                                <div className="grid grid-cols-2 gap-3">
+                                                    {media?.seasonYear ? (
+                                                        <div className={metricCellClass}>
+                                                            <span className={labelClass}>ORIGIN</span>
+                                                            <span className={`text-lg font-black ${strongText} tabular-nums leading-none`}>{media.seasonYear}</span>
+                                                        </div>
+                                                    ) : null}
+                                                    {media?.chapters ? (
+                                                        <div className={metricCellClass}>
+                                                            <span className={labelClass}>DEPTH</span>
+                                                            <span className={`text-lg font-black ${strongText} tabular-nums leading-none`}>
+                                                                {media.chapters}<span className={`text-xs ml-1 ${theme.isDark ? 'text-white/30' : 'text-slate-400'}`}>CH</span>
+                                                            </span>
+                                                        </div>
+                                                    ) : null}
+                                                </div>
+                                            ) : null}
+
+                                            {/* Source link */}
+                                            {media?.siteUrl ? (
+                                                <a
+                                                    href={media.siteUrl}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className={`flex items-center justify-between px-3 py-2 rounded-lg border transition-colors group/src ${theme.isDark ? 'border-white/10 hover:border-white/30 text-white/60 hover:text-white' : 'border-slate-300 hover:border-slate-500 text-slate-500 hover:text-slate-800'}`}
+                                                    title="Open source record"
+                                                >
+                                                    <span className="text-[9px] font-mono tracking-widest uppercase">VIEW_SOURCE</span>
+                                                    <ExternalLink size={12} className="opacity-60 group-hover/src:opacity-100 transition-opacity" />
+                                                </a>
+                                            ) : null}
+                                        </>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* GENRES */}
+                            <div className={`p-6 backdrop-blur-xl rounded-xl flex flex-col gap-4 border ${panelClass}`}>
+                                <span className={labelClass}>GENRES</span>
                                 <div className="flex flex-wrap gap-2">
                                     {media?.genres?.length ? media.genres.map(genre => (
                                         <span key={genre} className={`px-3 py-1 text-[10px] font-mono rounded-full border ${theme.isDark ? 'border-white/10 bg-white/5 text-white/70' : 'border-slate-300 bg-slate-100 text-slate-600'}`}>
                                             {genre}
                                         </span>
-                                    )) : <span className={`text-xs ${theme.isDark ? 'text-white/20' : 'text-slate-400'}`}>UNKNOWN</span>}
+                                    )) : <span className={`text-xs ${theme.isDark ? 'text-white/20' : 'text-slate-400'}`}>{isLoadingMedia ? 'SCANNING...' : 'UNKNOWN'}</span>}
                                 </div>
                             </div>
                         </div>
                     </motion.div>
 
                     {/* CHARACTERS ROW (API DRIVEN) */}
-                    {(isLoadingMedia || media?.characters?.nodes?.length) ? (
+                    {(isLoadingMedia || media) && (
                         <motion.div variants={itemVariants} className="mt-8">
-                            <div className="flex items-center justify-between mb-6 opacity-60 px-2">
-                                <div className="flex items-center gap-2">
-                                    <Users size={16} className="text-white" />
-                                    <span className="text-[10px] font-mono tracking-[0.3em] text-white font-bold uppercase">ENTITIES_DETECTED</span>
-                                </div>
+                            <SectionHeader index="02" icon={<Users size={16} className={iconText} />} label="ENTITIES_DETECTED" theme={theme}>
                                 {isLoadingMedia && (
-                                    <div className="flex items-center gap-2">
+                                    <div className="shrink-0 flex items-center gap-2">
                                         <div className={`w-2 h-2 rounded-full ${theme.id === 'LIGHT' ? 'bg-sky-500' : 'bg-amber-500'} animate-ping`} />
                                         <span className="text-[8px] font-mono tracking-widest text-white/40">SCANNING_ARCHIVES...</span>
                                     </div>
                                 )}
-                            </div>
+                            </SectionHeader>
 
-                            <div className="flex overflow-x-auto gap-4 pb-4 custom-scrollbar snap-x min-h-[140px]">
-                                {isLoadingMedia ? (
-                                    // SKELETON LOADERS
-                                    Array(6).fill(0).map((_, i) => (
-                                        <div key={i} className="w-[100px] shrink-0 animate-pulse flex flex-col items-center gap-3 p-4 bg-white/5 rounded-lg border border-white/5">
-                                            <div className="w-[60px] h-[60px] rounded-full bg-white/10" />
-                                            <div className="h-2 w-12 bg-white/10 rounded" />
-                                            <div className="h-1.5 w-8 bg-white/5 rounded" />
-                                        </div>
-                                    ))
-                                ) : (
-                                    media?.characters?.nodes?.map(char => (
-                                        <div key={char.id} className="w-[100px] shrink-0 snap-start flex flex-col items-center gap-3 group cursor-pointer p-4 bg-black/20 backdrop-blur-md rounded-lg border border-white/5 hover:bg-white/5 transition-colors">
-                                            <div className="w-[60px] h-[60px] rounded-full overflow-hidden border border-white/20 group-hover:border-white/50 transition-colors">
-                                                <img src={getProxiedImageUrl(char.image.medium || char.image.large)} alt={char.name.full} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" referrerPolicy="no-referrer" />
+                            {(!isLoadingMedia && !media?.characters?.nodes?.length) ? (
+                                // Loaded, but the character source returned nothing (usually the
+                                // external archive — AniList / MAL — being unreachable). Show an
+                                // honest offline state instead of silently hiding the section.
+                                <div className={`flex items-center gap-4 px-5 py-8 rounded-xl border border-dashed ${theme.isDark ? 'border-white/10 bg-black/10' : 'border-slate-300 bg-slate-900/5'}`}>
+                                    <div className={`w-10 h-10 rounded-full border flex items-center justify-center shrink-0 ${theme.isDark ? 'border-white/10' : 'border-slate-300'}`}>
+                                        <Users size={18} className={theme.isDark ? 'text-white/30' : 'text-slate-400'} />
+                                    </div>
+                                    <div className="flex flex-col gap-1">
+                                        <span className={`text-[10px] font-mono tracking-[0.3em] uppercase ${theme.isDark ? 'text-white/50' : 'text-slate-600'}`}>No entities on record</span>
+                                        <span className={`text-[9px] font-mono tracking-widest uppercase ${theme.isDark ? 'text-white/30' : 'text-slate-400'}`}>External archive link unavailable — retry later</span>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="flex overflow-x-auto gap-4 pb-4 custom-scrollbar snap-x min-h-[140px]">
+                                    {isLoadingMedia ? (
+                                        // SKELETON LOADERS
+                                        Array(6).fill(0).map((_, i) => (
+                                            <div key={i} className="w-[100px] shrink-0 animate-pulse flex flex-col items-center gap-3 p-4 bg-white/5 rounded-lg border border-white/5">
+                                                <div className="w-[60px] h-[60px] rounded-full bg-white/10" />
+                                                <div className="h-2 w-12 bg-white/10 rounded" />
+                                                <div className="h-1.5 w-8 bg-white/5 rounded" />
                                             </div>
-                                            <div className="text-center w-full">
-                                                <div className="text-[10px] font-bold text-white truncate w-full">{char.name.full}</div>
-                                                <div className="text-[8px] text-white/40 uppercase truncate w-full mt-1">{char.role}</div>
+                                        ))
+                                    ) : (
+                                        media?.characters?.nodes?.map(char => (
+                                            <div key={char.id} className="w-[100px] shrink-0 snap-start flex flex-col items-center gap-3 group cursor-pointer p-4 bg-black/20 backdrop-blur-md rounded-lg border border-white/5 hover:bg-white/5 transition-colors">
+                                                <CharacterAvatar char={char} theme={theme} />
+                                                <div className="text-center w-full">
+                                                    <div className="text-[10px] font-bold text-white truncate w-full" title={char.name.full}>{char.name.full}</div>
+                                                    <div className="text-[8px] text-white/40 uppercase truncate w-full mt-1">{char.role}</div>
+                                                </div>
                                             </div>
-                                        </div>
-                                    ))
-                                )}
-                            </div>
+                                        ))
+                                    )}
+                                </div>
+                            )}
                         </motion.div>
-                    ) : null}
+                    )}
 
                     {/* SIMILAR RECORDS (PURELY DATABASE DRIVEN) */}
                     {similarQuests.length > 0 && (
                         <motion.div variants={itemVariants} className="mt-8">
-                                <div className="flex items-center justify-between mb-6 px-2 opacity-60">
-                                    <div className="flex items-center gap-2">
-                                        <Share2 size={16} className="text-white" />
-                                        <span className="text-[10px] font-mono tracking-[0.3em] text-white font-bold uppercase">
-                                            SIMILAR_RECORDS_FOUND
-                                        </span>
-                                    </div>
-                                    <span className="text-[9px] font-mono tracking-widest uppercase border border-white/20 px-2 py-0.5 rounded text-white">
+                                <SectionHeader index="03" icon={<Share2 size={16} className={iconText} />} label="SIMILAR_RECORDS" theme={theme}>
+                                    <span className={`shrink-0 text-[9px] font-mono tracking-widest uppercase border px-2 py-0.5 rounded ${theme.isDark ? 'border-white/20 text-white' : 'border-slate-300 text-slate-600'}`}>
                                         DATABASE_SYNC: {quest.classType}
                                     </span>
-                                </div>
+                                </SectionHeader>
 
                                 <div className="flex overflow-x-auto gap-4 pb-4 custom-scrollbar snap-x">
-                                    {similarQuests.map((rec) => (
+                                    {similarQuests.map((rec) => {
+                                        const recRank = getQuestRankObj(rec);
+                                        return (
                                         <div key={rec.id} onClick={() => onSetActive && onSetActive(rec.id)} className="w-[160px] shrink-0 snap-start group relative aspect-[2/3] rounded-lg overflow-hidden cursor-pointer shadow-lg border border-white/5">
                                             <img src={getProxiedImageUrl(rec.coverUrl)} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" referrerPolicy="no-referrer" alt={rec.title} title={rec.title} />
                                             <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/20 to-transparent opacity-80 group-hover:opacity-100 transition-opacity duration-300" />
+                                            {/* Rank chip (Floor-view language) */}
+                                            <span className={`absolute top-2 right-2 z-20 w-6 h-6 flex items-center justify-center text-[11px] font-black font-mono border ${recRank.border} ${recRank.color} bg-black/60 backdrop-blur-sm`}>
+                                                {recRank.name}
+                                            </span>
                                             <div className="absolute bottom-0 w-full p-4 transform translate-y-2 group-hover:translate-y-0 transition-transform duration-300">
                                                 <div className="text-[10px] font-bold truncate text-white uppercase">
                                                     {rec.title}
@@ -502,7 +678,8 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                                 </div>
                                             </div>
                                         </div>
-                                    ))}
+                                        );
+                                    })}
                                 </div>
                         </motion.div>
                     )}

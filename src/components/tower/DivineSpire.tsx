@@ -89,13 +89,6 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
         setSearch(''); // Clear search when going back
     };
 
-    // Auto-switch to floor if searching
-    useEffect(() => {
-        if (search.length > 0 && viewMode === 'TOWER') {
-            setViewMode('FLOOR');
-        }
-    }, [search, viewMode]);
-
     // KEYBOARD NAVIGATION FOR CAROUSEL
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -174,7 +167,7 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
 
 
                         {/* Search Bar HUD */}
-                        <div className="relative z-20 shrink-0 w-full max-w-xl mx-auto px-4">
+                        <div className="relative z-20 shrink-0 w-full max-w-xl mx-auto px-4 mb-4 md:mb-5">
                             <div className="relative group">
                                 <div className={`absolute -inset-1 bg-gradient-to-r ${theme.gradient} opacity-20 blur-md group-focus-within:opacity-40 transition-all duration-500 rounded-full`} />
                                 <div className={`relative ${theme.isDark ? 'bg-black/60' : 'bg-white/60'} backdrop-blur-xl border border-white/10 rounded-full px-4 py-3 flex items-center shadow-2xl transition-all duration-700`}>

@@ -506,7 +506,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                             <img src={getProxiedImageUrl(rec.coverUrl)} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" referrerPolicy="no-referrer" alt={rec.title} title={rec.title} />
                                             <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/20 to-transparent opacity-80 group-hover:opacity-100 transition-opacity duration-300" />
                                             <div className="absolute bottom-0 w-full p-4 transform translate-y-2 group-hover:translate-y-0 transition-transform duration-300">
-                                                <div className="text-[10px] font-bold truncate text-white uppercase group-hover:textShadow-glow">
+                                                <div className="text-[10px] font-bold truncate text-white uppercase">
                                                     {rec.title}
                                                 </div>
                                                 <div className={`text-[8px] font-mono mt-1 uppercase ${theme.highlightText}`}>

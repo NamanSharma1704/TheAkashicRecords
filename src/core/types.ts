@@ -46,9 +46,6 @@ export interface Quest {
     synopsis?: string; // ADDED
 }
 
-export type UserRank = Rank;
-export type ManhwaRank = Rank;
-
 export interface User {
     id: string;
     username: string;

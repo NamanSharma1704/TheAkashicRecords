@@ -227,11 +227,4 @@
         filter: drop-shadow(0 0 10px var(--bloom-color, currentColor));
         will-change: filter;
     }
-
-    .gpu-accelerated {
-        transform: translateZ(0);
-        backface-visibility: hidden;
-        perspective: 1000px;
-        will-change: transform;
-    }
 }

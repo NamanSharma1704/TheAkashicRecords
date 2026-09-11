@@ -2,12 +2,11 @@ import React, { useRef, useEffect } from 'react';
 
 interface OmniscientFieldProps {
     isDivineMode?: boolean;
-    forceAmber?: boolean;
     isPaused?: boolean;
     isMobile?: boolean;
 }
 
-const OmniscientField: React.FC<OmniscientFieldProps> = ({ isDivineMode, forceAmber = false, isPaused = false, isMobile = false }) => {
+const OmniscientField: React.FC<OmniscientFieldProps> = ({ isDivineMode, isPaused = false, isMobile = false }) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const requestRef = useRef<number>();
 
@@ -40,9 +39,9 @@ const OmniscientField: React.FC<OmniscientFieldProps> = ({ isDivineMode, forceAm
             }
             ctx.clearRect(0, 0, width, height);
 
-            // COLOR LOGIC: Boot is Amber/Cyan, Dashboard is theme-aware
-            const glowColor = forceAmber || isDivineMode ? '245, 158, 11' : '139, 92, 246'; // Gold vs Violet
-            const regColor = forceAmber ? '34, 211, 238' : (isDivineMode ? '245, 158, 11' : '139, 92, 246'); // More vibrant Cyan (#22d3ee)
+            // Gold in divine (light) mode, violet otherwise.
+            const glowColor = isDivineMode ? '245, 158, 11' : '139, 92, 246';
+            const regColor = isDivineMode ? '245, 158, 11' : '139, 92, 246';
 
             // 1. Update positions
             stars.forEach(star => {
@@ -114,7 +113,7 @@ const OmniscientField: React.FC<OmniscientFieldProps> = ({ isDivineMode, forceAm
             window.removeEventListener('mousemove', handleMouse);
             if (requestRef.current) cancelAnimationFrame(requestRef.current);
         };
-    }, [isDivineMode, forceAmber, isPaused, isMobile]);
+    }, [isDivineMode, isPaused, isMobile]);
 
     return <canvas ref={canvasRef} className="fixed inset-0 z-0 pointer-events-none opacity-60" />;
 };

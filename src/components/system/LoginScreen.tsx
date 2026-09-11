@@ -13,6 +13,8 @@ interface LoginScreenProps {
     theme: Theme;
     /** Mirrors the in-app header toggle so the entry screen is not locked to one palette. */
     onToggleTheme?: () => void;
+    /** Drops the two heaviest ambient layers on small screens, as the dashboard does. */
+    isMobile?: boolean;
 }
 
 /**
@@ -28,7 +30,7 @@ const SectionLabel: React.FC<{ theme: Theme; children: React.ReactNode }> = ({ t
     </div>
 );
 
-const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, theme, onToggleTheme }) => {
+const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, theme, onToggleTheme, isMobile = false }) => {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
@@ -92,8 +94,9 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, theme, onTogg
 
     return (
         <div className={`fixed inset-0 z-[200] ${theme.appBg} font-mono overflow-y-auto hide-scrollbar transition-colors duration-700`}>
-            {/* Same ambient stack the dashboard uses, rather than a one-off field. */}
-            <BackgroundController theme={theme} />
+            {/* Same ambient stack the dashboard uses, rather than a one-off field. isMobile is
+                passed through so phones skip the ring and ripple layers here too. */}
+            <BackgroundController theme={theme} isMobile={isMobile} />
 
             {/* Theme toggle, positioned like the in-app header control. */}
             {onToggleTheme && (
@@ -120,6 +123,13 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, theme, onTogg
                         variant="full"
                         surfaceClass={theme.isDark ? 'bg-black/20' : 'bg-white/50'}
                     >
+                        {/* animate-scanning: a faint band that sweeps down the glass. This effect
+                            was on the original login panel; the colour is inline so it resolves
+                            (the old one used an interpolated class that was never emitted). */}
+                        <div
+                            className="absolute inset-0 pointer-events-none animate-scanning"
+                            style={{ background: `linear-gradient(to bottom, transparent, ${theme.accentColor}14, transparent)` }}
+                        />
                         <div className="p-8 md:p-10 space-y-8">
 
                             {/* ── IDENTITY MARK ── */}
@@ -128,8 +138,10 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, theme, onTogg
                                     generic icon — the same figure greets you before sign-in and after. */}
                                 <div className="flex justify-center">
                                     <div className="relative">
+                                        {/* animate-aura: a slow breathing bloom behind the figure,
+                                            where this was previously a static blur. */}
                                         <div
-                                            className="absolute -inset-3 blur-2xl opacity-25 rounded-full pointer-events-none"
+                                            className="absolute -inset-3 rounded-full pointer-events-none animate-aura"
                                             style={{ backgroundColor: theme.accentColor }}
                                         />
                                         <EntityAvatar theme={theme} size={96} className="relative z-10 drop-shadow-2xl" />

@@ -71,7 +71,10 @@ const TowerHUD: React.FC<TowerHUDProps> = ({ items, theme, onActivate, isFocused
 
                 {/* LEFT WING: PLAYER METRICS & RANK */}
                 <aside className={`hidden lg:flex flex-col gap-3 xl:gap-8 pointer-events-auto w-[26%] xl:w-[22%] min-w-[180px] lg:min-w-[200px] xl:min-w-[320px] max-w-[360px] xl:max-w-[440px] transition-all duration-1000 ease-in-out ${isFocused ? 'translate-x-0' : 'translate-x-0 opacity-100'}`}>
-                    <SystemFrame variant="brackets" theme={theme} className="bg-transparent shadow-none w-full">
+                    {/* frosted={false}: brackets only, no panel. This frame always asked for a
+                        transparent background via className, but that lands on the outer wrapper
+                        and the solid inner surface still painted — frosted is the switch for it. */}
+                    <SystemFrame variant="brackets" theme={theme} frosted={false} className="shadow-none w-full">
                         <div className="p-1 md:p-3 lg:p-4 space-y-3 lg:space-y-4">
                             <div className="flex flex-col border-b border-gray-500/20 pb-2 gap-1 lg:gap-2 w-full">
                                 <div className="flex items-center gap-2">
@@ -127,7 +130,7 @@ const TowerHUD: React.FC<TowerHUDProps> = ({ items, theme, onActivate, isFocused
                             </div>
 
                             {/* TITLES DISCOVERED + DIVINE MANDATE — bracketed box */}
-                            <SystemFrame variant="brackets" theme={theme} className="bg-transparent shadow-none w-full">
+                            <SystemFrame variant="brackets" theme={theme} frosted={false} className="shadow-none w-full">
                                 <div className="p-3 lg:p-4 space-y-3">
                                     {/* TITLES DISCOVERED */}
                                     <div className="space-y-1.5">

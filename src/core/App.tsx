@@ -19,6 +19,7 @@ import { InfinitePortalIcon, CalibratedPlusIcon, CalibratedMinusIcon } from '../
 import { getProxiedImageUrl, unproxyImageUrl } from '../utils/api';
 import { saveAuthData, performLogout, systemFetch, isAuthenticated, getStoredUser } from '../utils/auth';
 import LoginScreen from '../components/system/LoginScreen';
+import GlitchOverlay from '../components/fx/GlitchOverlay';
 import { AuthResponse } from './types';
 
 const API_URL = '/api/quests';
@@ -630,12 +631,19 @@ const App: React.FC = () => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isAuth]);
 
+    // Brief RGB-split flash for abrupt, destructive moments: a record purged, a session cut.
+    const [glitchActive, setGlitchActive] = useState(false);
+    // Stable, so GlitchOverlay's timer effect is not restarted on every render.
+    const endGlitch = useCallback(() => setGlitchActive(false), []);
+
     // Listen for server-side 401s (expired/invalid token) and clean up gracefully
     useEffect(() => {
         const handleSessionExpired = () => {
             setIsAuth(false);
             setLibrary([]);
             setActiveId(null);
+            // The session was severed, not ended by the user — mark the drop to the login screen.
+            setGlitchActive(true);
         };
         window.addEventListener('akashic:session-expired', handleSessionExpired);
         return () => window.removeEventListener('akashic:session-expired', handleSessionExpired);
@@ -925,6 +933,8 @@ const App: React.FC = () => {
                 await systemFetch(`${API_URL}/${editingItem.id}`, { method: 'DELETE' });
                 setLibrary(prev => prev.filter(i => i.id !== editingItem.id));
                 setIsModalOpen(false);
+                // A purge is irreversible; the glitch marks it as such.
+                setGlitchActive(true);
             } catch (e) {
                 console.error("Deletion failure", e);
                 showSystemNotification("PURGE_PROTOCOL_FAILED. ARCHIVE CORE STABLE.", "ERROR");
@@ -1135,7 +1145,8 @@ const App: React.FC = () => {
                             <div className="hidden md:flex flex-col items-start justify-center gap-4 md:gap-6 xl:gap-10 self-stretch flex-1 basis-0 min-w-0 shrink">
                                 <div className="flex flex-col items-start w-max max-w-none">
                                     <div className={`text-[10px] font-mono ${theme.mutedText} tracking-[0.3em] uppercase mb-1`}>SEQUENCE DATA</div>
-                                    <div className={`text-5xl xl:text-[70px] font-black font-mono tabular-nums leading-none text-left transition-colors duration-700 text-[var(--accent-color)]`}>
+                                    {/* text-bloom: the accent glow the hero numeral is the natural home for. */}
+                                    <div className={`text-5xl xl:text-[70px] font-black font-mono tabular-nums leading-none text-left transition-colors duration-700 text-[var(--accent-color)] text-bloom`}>
                                         {String(activeQuest.currentChapter).padStart(3, '0')}
                                     </div>
                                     <div className={`text-[11px] font-mono tracking-widest mt-2 ${theme.mutedText}`}>
@@ -1184,7 +1195,9 @@ const App: React.FC = () => {
                                     <span style={{ color: theme.accentColor }}>{progressPercent}%</span>
                                 </div>
                                 <div className={`h-1.5 ${theme.isDark ? 'bg-gray-900/40' : 'bg-gray-300/40'} w-full relative overflow-hidden backdrop-blur-md rounded-full shadow-inner`}>
-                                    <div className="h-full transition-transform duration-700 ease-out origin-left [background:linear-gradient(90deg,var(--accent-glow),var(--accent-color))] [box-shadow:0_0_12px_var(--accent-glow)]"
+                                    {/* animate-gradient-x drifts a highlight along the fill; the gradient
+                                        is glow → colour → glow so the sweep reads as moving light. */}
+                                    <div className="h-full transition-transform duration-700 ease-out origin-left [background:linear-gradient(90deg,var(--accent-glow),var(--accent-color),var(--accent-glow))] [box-shadow:0_0_12px_var(--accent-glow)] animate-gradient-x"
                                         style={{ transform: `scaleX(${progressPercent / 100})` }} />
                                 </div>
                             </div>
@@ -1315,7 +1328,14 @@ const App: React.FC = () => {
 
     if (booting) return <BootScreen onComplete={finishBooting} theme={theme} />;
 
-    if (!isAuth) return <LoginScreen onLoginSuccess={handleLoginSuccess} theme={theme} onToggleTheme={toggleTheme} />;
+    if (!isAuth) return (
+        <>
+            <LoginScreen onLoginSuccess={handleLoginSuccess} theme={theme} onToggleTheme={toggleTheme} isMobile={isMobile} />
+            {/* Rendered here as well: session expiry flips straight to this branch, so the
+                flash has to live in whichever tree is on screen when it fires. */}
+            <GlitchOverlay isActive={glitchActive} onComplete={endGlitch} />
+        </>
+    );
 
     return (
         <div 
@@ -1327,7 +1347,14 @@ const App: React.FC = () => {
                 '--accent-faint': `${theme.accentColor}22`
             } as React.CSSProperties}
         >
-            <BackgroundController theme={theme} isPaused={isModalOpen} isMobile={isMobile} />
+            {/* Paused whenever a full-screen view covers it. It used to pause only for the
+                gate modal, so it kept animating behind the Detail, Profile and Spire — and the
+                Profile mounts its own particle field, so two canvases ran at once. */}
+            <BackgroundController
+                theme={theme}
+                isPaused={isModalOpen || isDetailOpen || isProfileOpen || isSpireOpen}
+                isMobile={isMobile}
+            />
             {/* BACKGROUND GRADIENT FIX */}
             <div className="absolute inset-0 pointer-events-none z-0 bg-[radial-gradient(circle,transparent_50%,rgba(0,0,0,0.4)_100%)] opacity-50" />
 
@@ -1572,6 +1599,8 @@ const App: React.FC = () => {
                 onClose={handleSysNoteClose}
                 theme={theme}
             />
+
+            <GlitchOverlay isActive={glitchActive} onComplete={endGlitch} />
         </div>
     );
 };

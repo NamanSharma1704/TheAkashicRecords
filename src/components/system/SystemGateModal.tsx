@@ -3,7 +3,7 @@ import { motion } from 'motion/react';
 import { Theme, Quest } from '../../core/types';
 import SystemFrame from './SystemFrame';
 import { X, RefreshCw, AlertCircle, CheckCircle, Database, Search, Activity, Trash2 } from 'lucide-react';
-import { fetchMangadex, fetchAuto, fetchAnilistCover, fetchJikanCover, getProxiedImageUrl } from '../../utils/api';
+import { fetchMangadex, fetchAuto, fetchAnilistCover, fetchJikanCover, getProxiedImageUrl, cleanDescription } from '../../utils/api';
 
 interface SystemGateModalProps {
     isOpen: boolean;
@@ -92,7 +92,8 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
                 title: prev.title && prev.title !== "" ? prev.title : newTitle,
                 coverUrl: result.coverImage?.extraLarge || prev.coverUrl,
                 totalChapters: result.chapters || prev.totalChapters,
-                synopsis: result.description || prev.synopsis,
+                // Cleaned before it is stored, so link blocks and markdown never reach the database.
+                synopsis: result.description ? cleanDescription(result.description) : prev.synopsis,
                 classType: prev.classType === 'UNKNOWN' ? inferClassFromTitle(newTitle) : prev.classType
             }));
             setScanStatus("SUCCESS");
@@ -190,7 +191,7 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
                 classType: prev.classType && prev.classType !== 'UNKNOWN' ? prev.classType : inferClassFromTitle(inferredTitle),
                 coverUrl: fetchedData?.coverImage?.extraLarge || prev.coverUrl,
                 totalChapters: fetchedData?.chapters || prev.totalChapters,
-                synopsis: fetchedData?.description || prev.synopsis,
+                synopsis: fetchedData?.description ? cleanDescription(fetchedData.description) : prev.synopsis,
                 currentChapter: prev.currentChapter === 0 ? 1 : prev.currentChapter
             }));
             setScanStatus("SUCCESS");
@@ -244,12 +245,14 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
                 exit={{ scaleX: 0, opacity: 0, filter: 'brightness(2) blur(10px)' }}
                 transition={{ type: 'spring', damping: 20, stiffness: 120 }}
             >
-                {/* Scanline Effect Overlay */}
-                <motion.div 
-                    initial={{ top: '-100%' }}
-                    animate={{ top: '100%' }}
-                    transition={{ repeat: Infinity, duration: 4, ease: "linear" }}
-                    className={`absolute left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-${theme.primary}-500/50 to-transparent z-40 pointer-events-none`}
+                {/* Scanline Effect Overlay.
+                    Previously a motion.div coloured with `via-${theme.primary}-500/50` — an
+                    interpolated class the Tailwind scanner never emits, so the line was drawn
+                    in transparent and never visible. The shared .animate-scanning utility does
+                    the sweep; the colour is inline so it always resolves. */}
+                <div
+                    className="absolute left-0 right-0 top-0 h-0.5 z-40 pointer-events-none animate-scanning"
+                    style={{ background: `linear-gradient(90deg, transparent, ${theme.accentColor}80, transparent)` }}
                 />
                 <div className="flex flex-col h-full overflow-hidden">
 
@@ -307,6 +310,14 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
                                     className={`w-full ${theme.inputBg} border-b-2 ${theme.borderSubtle} ${theme.isDark ? 'focus:border-amber-500/80' : 'focus:border-cyan-500/80'} pr-28 pl-3 py-2.5 ${theme.baseText} outline-none transition-colors duration-150 font-mono text-[10px] placeholder:opacity-25`}
                                 />
                                 <div className={`absolute bottom-0 left-0 h-[2px] w-0 bg-gradient-to-r ${theme.gradient} group-focus-within:w-[calc(100%-7rem)] transition-all duration-150`} />
+                                {/* Horizontal sweep along the field while SCAN_CORE is resolving the
+                                    link, so the wait reads as work in progress rather than a freeze. */}
+                                {isScanning && (
+                                    <div
+                                        className="absolute bottom-0 h-[2px] w-1/4 pointer-events-none animate-scan-h"
+                                        style={{ background: `linear-gradient(90deg, transparent, ${theme.accentColor}, transparent)` }}
+                                    />
+                                )}
                                 <button
                                     type="button"
                                     onClick={handleScan}

@@ -14,10 +14,13 @@ interface StatBoxProps {
 }
 
 const StatBox: React.FC<StatBoxProps> = ({ value, label, icon: Icon, color, theme, className = "", index = 0 }) => (
-    <SystemFrame 
-        variant="brackets" 
-        theme={theme} 
-        className={`w-full aspect-square md:aspect-[2/1] lg:aspect-[16/7] xl:aspect-[16/9] ${theme.isDark ? 'bg-black/40' : 'bg-white/40'} ${className} transition-colors duration-700`}
+    <SystemFrame
+        variant="brackets"
+        theme={theme}
+        // The translucent fill goes through surfaceClass: set on className it landed on the
+        // frame's outer wrapper, hidden behind the solid inner panel, and never showed.
+        surfaceClass={theme.isDark ? 'bg-black/40' : 'bg-white/40'}
+        className={`w-full aspect-square md:aspect-[2/1] lg:aspect-[16/7] xl:aspect-[16/9] ${className} transition-colors duration-700`}
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: index * 0.1, duration: 0.5, ease: "easeOut" }}

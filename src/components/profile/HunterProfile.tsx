@@ -4,6 +4,7 @@ import { Theme, Quest } from '../../core/types';
 import SystemLogo from '../system/SystemLogo';
 import SystemFrame from '../system/SystemFrame';
 import EntityAvatar from '../system/EntityAvatar';
+import StatBox from '../system/StatBox';
 import { X, Database, Layers, Target, Download, Upload, RefreshCw, LogOut, Terminal, Edit2, KeyRound, User2, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { USER_RANKS } from '../../utils/ranks';
 import { getProxiedImageUrl } from '../../utils/api';
@@ -616,20 +617,25 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                             <Database size={13} />
                             <span className="text-[10px] font-mono font-bold tracking-[0.3em] uppercase">Combat Metrics</span>
                         </div>
-                        <div className={`border ${theme.borderSubtle} ${theme.isDark ? 'bg-black/40' : 'bg-white/80'} shadow-sm backdrop-blur-md rounded-md p-3 w-full`}>
-                            <div className={`grid grid-cols-2 md:grid-cols-4 gap-y-3 md:gap-y-0 md:divide-x ${theme.isDark ? 'divide-white/10' : 'divide-black/5'}`}>
-                                {[
-                                    { label: 'TOTAL TITLES', value: totalManhwa, color: theme.headingText },
-                                    { label: 'CONQUERED', value: conquered, color: theme.highlightText },
-                                    { label: 'IN PROGRESS', value: active, color: theme.highlightText },
-                                    { label: 'CH ABSORBED', value: totalChapters.toLocaleString(), color: theme.highlightText },
-                                ].map((stat, idx) => (
-                                    <div key={stat.label} className={`flex flex-col justify-center px-4 py-1 ${(idx === 0 || idx === 2) ? 'pl-2 md:pl-4' : ''}`}>
-                                        <div className={`text-[9px] font-mono ${theme.mutedText} font-bold uppercase tracking-widest mb-1`}>{stat.label}</div>
-                                        <div className={`text-2xl lg:text-3xl font-black italic ${stat.color} leading-none`}>{stat.value}</div>
-                                    </div>
-                                ))}
-                            </div>
+                        {/* Four bracketed stat tiles — the shared StatBox, the same framed tile
+                            vocabulary as the rest of the profile, with a staggered entrance. */}
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                            {[
+                                { label: 'Total Titles', value: totalManhwa, icon: Layers },
+                                { label: 'Conquered', value: conquered, icon: Target },
+                                { label: 'In Progress', value: active, icon: RefreshCw },
+                                { label: 'Ch Absorbed', value: totalChapters.toLocaleString(), icon: Database },
+                            ].map((stat, idx) => (
+                                <StatBox
+                                    key={stat.label}
+                                    value={stat.value}
+                                    label={stat.label}
+                                    icon={stat.icon}
+                                    color={theme.highlightText}
+                                    theme={theme}
+                                    index={idx}
+                                />
+                            ))}
                         </div>
                     </div>
                 </motion.div>

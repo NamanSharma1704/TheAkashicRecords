@@ -1,11 +1,47 @@
 import { systemFetch } from './auth';
 
-export const cleanDescription = (desc: string): string => {
-    if (!desc) return "No description available.";
-    return desc
-        .replace(/(?:---|\*\*\*)\s*(?:\*\*|\[b\])?(?:Original Webcomic|Official Translations|Links)(?:\*\*|\[\/b\])?[\s\S]*$/i, '')
-        .split(/\s*-{3,}\s*$/)[0]
-        .trim();
+/**
+ * Normalise a synopsis pulled from AniList / MangaDex / MAL into the small HTML subset
+ * sanitizeHtml renders.
+ *
+ * The sources disagree on format: AniList sends HTML (<br>, <i>), MangaDex sends
+ * markdown, and both append link blocks and source credits that are noise in a reading
+ * tracker. This is the single copy — ManhwaDetail used to keep its own stricter version
+ * while this one sat unused, and the add/edit modal stored descriptions uncleaned, which
+ * is how "(Source: [YenPress](https://…))" and literal ** ended up on the detail page.
+ *
+ * Idempotent: running it on already-cleaned text changes nothing.
+ */
+export const cleanDescription = (desc: string | null | undefined, fallback = "No description available."): string => {
+    if (!desc || !desc.trim()) return fallback;
+
+    let text = desc
+        // Trailing link block: a "---" rule followed by Original / Official / Links, etc.
+        .replace(/\s*---[\s\S]*?(?:Original|Official|Translations|Links|Webtoon)[\s\S]*$/i, '')
+        // The same block without a rule, introduced by a line break.
+        .replace(/(?:\n|<br\s*\/?>)\s*(?:\*\*|\[b\])?(?:Original Webcomic|Original Webtoon|Official Translations|Links)(?:\*\*|\[\/b\])?[\s\S]*$/i, '')
+        // A bare trailing horizontal rule.
+        .split(/\s*-{3,}\s*$/)[0];
+
+    // Markdown links keep their label and drop the URL. Allows one level of parentheses
+    // inside the URL, which real links contain.
+    text = text.replace(/\[([^\]]+)\]\((?:[^()]|\([^)]*\))*\)/g, '$1');
+
+    // Source credits: "(Source: YenPress)", "(Source: MU)".
+    text = text.replace(/\s*\(\s*Source\s*:[^)]*\)/gi, '');
+
+    // Markdown emphasis → the two emphasis tags sanitizeHtml keeps.
+    text = text
+        .replace(/\*\*(.+?)\*\*/g, '<b>$1</b>')
+        .replace(/__(.+?)__/g, '<b>$1</b>')
+        .replace(/(^|[^*\w])\*(?=\S)([^*\n]+?)(?<=\S)\*(?!\w)/g, '$1<i>$2</i>');
+
+    // Plain-text paragraphs. Only when the source isn't already HTML, so AniList's
+    // "<br>\n" pairs don't double up.
+    if (!/<br\s*\/?>/i.test(text)) text = text.replace(/\r?\n/g, '<br>');
+
+    text = text.trim();
+    return text || fallback;
 };
 
 const PROXY_URL = "/api/proxy/metadata";

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion } from 'motion/react';
 import { X, Users, Share2, Zap, Edit2, Target, AlignLeft, Check } from 'lucide-react';
-import { getProxiedImageUrl } from '../../utils/api';
+import { getProxiedImageUrl, cleanDescription } from '../../utils/api';
 import { systemFetch } from '../../utils/auth';
 import { sanitizeHtml } from '../../utils/sanitize';
 
@@ -139,18 +139,6 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
         }
     };
 
-    // --- HELPERS ---
-    const cleanDescription = (desc: string): string => {
-        if (!desc) return "No description available.";
-        return desc
-            // Remove the block starting with --- and containing Original/Official Translation links
-            .replace(/\s*---[\s\S]*?(?:Original|Official|Translations|Links|Webtoon)[\s\S]*$/i, '')
-            // Replace legacy formatted chunks just in case
-            .replace(/(?:\n|<br\s*\/?>)\s*(?:\*\*|\[b\])?(?:Original Webcomic|Original Webtoon|Official Translations|Links)(?:\*\*|\[\/b\])?[\s\S]*$/i, '')
-            .split(/\s*-{3,}\s*$/)[0] // Remove trailing horizontal rules
-            .trim();
-    };
-
     // --- PROXY API FETCH ---
     const fetchFromProxy = async (title: string): Promise<AniListMedia | null> => {
         try {
@@ -180,11 +168,8 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
 
         try {
             const data = await fetchFromProxy(cleanTitle);
-            if (data) {
-                // Apply description cleaning (redundant but safe)
-                data.description = cleanDescription(data.description);
-                setMedia(data);
-            }
+            // Description cleaning happens once, at render, so stored synopses get it too.
+            if (data) setMedia(data);
         } catch (e) {
             console.error("Proxy Fetch Failed", e);
         } finally {
@@ -420,9 +405,12 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                             ) : (
                                 <div
                                     className={`text-sm md:text-base leading-loose font-sans ${theme.isDark ? 'text-white/80' : 'text-slate-700'}`}
-                                    // Synopsis text is third-party (AniList/MangaDex/MAL) and may contain
-                                    // markup; sanitizeHtml keeps <br>/<i>/<b> and strips everything else.
-                                    dangerouslySetInnerHTML={{ __html: sanitizeHtml(quest.synopsis || media?.description || "No synopsis available.") }}
+                                    // Synopsis text is third-party (AniList/MangaDex/MAL). cleanDescription
+                                    // turns markdown and credit blocks into the small HTML subset, and
+                                    // sanitizeHtml then keeps <br>/<i>/<b> and strips everything else.
+                                    // Cleaning here rather than at fetch time also repairs synopses that
+                                    // were saved before cleaning existed.
+                                    dangerouslySetInnerHTML={{ __html: sanitizeHtml(cleanDescription(quest.synopsis || media?.description, "No synopsis available.")) }}
                                 />
                             )}
                         </div>

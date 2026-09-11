@@ -1,5 +1,5 @@
 ﻿import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { motion } from 'motion/react';
+import { motion, useAnimationFrame } from 'motion/react';
 import { Theme } from '../../core/types';
 import AkashicCoreLogo from './AkashicCoreLogo';
 
@@ -107,58 +107,198 @@ function generateStars(count: number): StarData[] {
 const STAR_DATA = generateStars(140);
 
 /**
- * Asterisms drawn from real star patterns.
+ * Asterisms as small 3D constellations.
  *
- * The originals were arbitrary closed polygons joined by dashed technical lines, which
- * read as HUD wireframe rather than as sky. These use the geometry of actual asterisms â€”
- * Cassiopeia's W and the Plough â€” with per-star magnitudes, so the shapes are ones the
- * eye already recognises as constellations. The in-fiction names are unchanged.
+ * Each star carries a depth (z) as well as a position, and the whole shape is projected
+ * through a perspective camera while it slowly sways. Because near stars then travel
+ * further across the screen than far ones, and the outline foreshortens as it turns, the
+ * constellation reads as an object suspended in space rather than a decal on the glass.
+ * The geometry is still Cassiopeia's W and the Plough; the in-fiction names are unchanged.
  */
-type Asterism = {
+type Star3D = { x: number; y: number; z: number; mag: number };
+type Asterism3D = {
     label: string;
-    at: [number, number];
-    stars: { x: number; y: number; mag: number }[];
+    center: [number, number];   // where the constellation's midpoint sits in the 1600x900 field
+    stars: Star3D[];
     edges: [number, number][];
+    yawAmp: number; yawPeriod: number;   // radians, seconds
+    tiltAmp: number; tiltPeriod: number;
+    phase: number;
 };
 
-const ASTERISMS: Asterism[] = [
+const ASTERISMS: Asterism3D[] = [
     {
-        // Cassiopeia â€” the W.
+        // Cassiopeia's W. Depth alternates with the zigzag so it folds in z as well.
         label: "The Monarch's Crown",
-        at: [150, 500],
+        center: [300, 545],
         stars: [
-            { x: 0, y: 74, mag: 2.2 },
-            { x: 64, y: 16, mag: 2.3 },
-            { x: 132, y: 66, mag: 2.5 },
-            { x: 202, y: 8, mag: 2.7 },
-            { x: 268, y: 78, mag: 3.4 },
+            { x: 0,   y: 74, z:  45, mag: 2.2 },
+            { x: 64,  y: 16, z: -55, mag: 2.3 },
+            { x: 132, y: 66, z:  20, mag: 2.5 },
+            { x: 202, y: 8,  z: -65, mag: 2.7 },
+            { x: 268, y: 78, z:  60, mag: 3.4 },
         ],
         edges: [[0, 1], [1, 2], [2, 3], [3, 4]],
+        yawAmp: 0.62, yawPeriod: 19, tiltAmp: 0.20, tiltPeriod: 25, phase: 0,
     },
     {
-        // Ursa Major's Plough â€” closed bowl, trailing handle.
+        // Ursa Major's Plough. Bowl up front, handle receding into depth.
         label: "The Gatekeeper's Eye",
-        at: [1080, 210],
+        center: [1205, 250],
         stars: [
-            { x: 0, y: 0, mag: 1.8 },     // Dubhe
-            { x: 6, y: 58, mag: 2.4 },    // Merak
-            { x: 66, y: 66, mag: 2.4 },   // Phecda
-            { x: 60, y: 20, mag: 3.3 },   // Megrez
-            { x: 118, y: 10, mag: 1.8 },  // Alioth
-            { x: 176, y: 22, mag: 2.2 },  // Mizar
-            { x: 232, y: 56, mag: 1.9 },  // Alkaid
+            { x: 0,   y: 0,  z: -45, mag: 1.8 },  // Dubhe
+            { x: 6,   y: 58, z: -25, mag: 2.4 },  // Merak
+            { x: 66,  y: 66, z:   5, mag: 2.4 },  // Phecda
+            { x: 60,  y: 20, z:  -5, mag: 3.3 },  // Megrez
+            { x: 118, y: 10, z:  35, mag: 1.8 },  // Alioth
+            { x: 176, y: 22, z:  60, mag: 2.2 },  // Mizar
+            { x: 232, y: 56, z:  85, mag: 1.9 },  // Alkaid
         ],
         edges: [[0, 1], [1, 2], [2, 3], [3, 0], [3, 4], [4, 5], [5, 6]],
+        yawAmp: 0.55, yawPeriod: 23, tiltAmp: 0.24, tiltPeriod: 18, phase: 1.7,
     },
 ];
 
-/** Brighter stars (lower magnitude) render larger, as they do in a star chart. */
+/** Base star radius from magnitude (brighter = larger), before the depth scale. */
 const magRadius = (mag: number) => Math.max(1.1, 3.9 - mag * 0.65);
+
+// Perspective strength. Larger flattens; this gives clear parallax without the nearer
+// stars ballooning as the shape turns edge-on.
+const FOCAL = 540;
+
+type Projected = { sx: number; sy: number; scale: number };
+
+/** Rotate a centroid-relative point by yaw (about Y) then tilt (about X), and project it. */
+const project = (
+    lx: number, ly: number, lz: number,
+    yaw: number, tilt: number, cx: number, cy: number
+): Projected => {
+    const sinY = Math.sin(yaw), cosY = Math.cos(yaw);
+    const rx = lx * cosY + lz * sinY;
+    const rz = -lx * sinY + lz * cosY;
+    const sinX = Math.sin(tilt), cosX = Math.cos(tilt);
+    const ry = ly * cosX - rz * sinX;
+    const rz2 = ly * sinX + rz * cosX;
+    const scale = FOCAL / (FOCAL + rz2);
+    return { sx: cx + rx * scale, sy: cy + ry * scale, scale };
+};
+
+/**
+ * Renders the asterisms with a live perspective projection.
+ *
+ * The projection is recomputed each frame from performance.now() and written straight to
+ * the SVG elements through refs, so there is no per-frame React render. Using absolute
+ * time (not accumulated frames) means a tab returning from the background lands on the
+ * correct pose instead of catching up. rAF is suspended while hidden, so the shape simply
+ * holds its last pose there; the initial attributes below are the yaw=0/tilt=0 front view,
+ * which is what shows before the first frame and in a frozen tab.
+ */
+const Constellations3D: React.FC<{ p: BootPalette }> = ({ p }) => {
+    const { accent: gold, ink: white } = p;
+
+    // Centroid-relative geometry, computed once so each shape rotates about its own middle.
+    const model = useMemo(() => ASTERISMS.map(a => {
+        const n = a.stars.length;
+        const mx = a.stars.reduce((s, v) => s + v.x, 0) / n;
+        const my = a.stars.reduce((s, v) => s + v.y, 0) / n;
+        const mz = a.stars.reduce((s, v) => s + v.z, 0) / n;
+        return { ...a, local: a.stars.map(s => ({ x: s.x - mx, y: s.y - my, z: s.z - mz, mag: s.mag })) };
+    }), []);
+
+    const dotRefs = useRef<(SVGCircleElement | null)[][]>(model.map(() => []));
+    const haloRefs = useRef<(SVGCircleElement | null)[][]>(model.map(() => []));
+    const lineRefs = useRef<(SVGLineElement | null)[][]>(model.map(() => []));
+
+    useAnimationFrame(() => {
+        const t = performance.now() / 1000;
+        model.forEach((a, ai) => {
+            const yaw = a.yawAmp * Math.sin((t / a.yawPeriod) * Math.PI * 2 + a.phase);
+            const tilt = a.tiltAmp * Math.sin((t / a.tiltPeriod) * Math.PI * 2 + a.phase * 1.3);
+            const cx = a.center[0] + Math.sin(t / 8 + a.phase) * 5;
+            const cy = a.center[1] + Math.sin(t / 6 + a.phase * 2) * 4;
+
+            const proj = a.local.map(s => project(s.x, s.y, s.z, yaw, tilt, cx, cy));
+
+            a.edges.forEach(([from, to], ei) => {
+                const el = lineRefs.current[ai][ei];
+                if (!el) return;
+                const pa = proj[from], pb = proj[to];
+                el.setAttribute('x1', pa.sx.toFixed(1));
+                el.setAttribute('y1', pa.sy.toFixed(1));
+                el.setAttribute('x2', pb.sx.toFixed(1));
+                el.setAttribute('y2', pb.sy.toFixed(1));
+                const avg = (pa.scale + pb.scale) / 2;
+                el.setAttribute('opacity', (0.10 + Math.max(0, avg - 0.75) * 0.42).toFixed(3));
+            });
+
+            a.local.forEach((s, si) => {
+                const pr = proj[si];
+                const r = magRadius(s.mag) * pr.scale;
+                const dot = dotRefs.current[ai][si];
+                if (dot) {
+                    dot.setAttribute('cx', pr.sx.toFixed(1));
+                    dot.setAttribute('cy', pr.sy.toFixed(1));
+                    dot.setAttribute('r', r.toFixed(2));
+                    dot.setAttribute('opacity', Math.min(1, Math.max(0.3, (pr.scale - 0.7) / 0.55)).toFixed(3));
+                }
+                const halo = haloRefs.current[ai][si];
+                if (halo) {
+                    halo.setAttribute('cx', pr.sx.toFixed(1));
+                    halo.setAttribute('cy', pr.sy.toFixed(1));
+                    halo.setAttribute('r', (r * 2.6).toFixed(2));
+                    halo.setAttribute('opacity', (0.09 * pr.scale).toFixed(3));
+                }
+            });
+        });
+    });
+
+    return (
+        <>
+            {model.map((a, ai) => {
+                const p0 = a.local.map(s => project(s.x, s.y, s.z, 0, 0, a.center[0], a.center[1]));
+                return (
+                    <g key={a.label} opacity={0.9}>
+                        {a.edges.map(([from, to], ei) => (
+                            <line
+                                key={ei}
+                                ref={el => { lineRefs.current[ai][ei] = el; }}
+                                x1={p0[from].sx} y1={p0[from].sy}
+                                x2={p0[to].sx} y2={p0[to].sy}
+                                stroke={gold} strokeWidth="0.6" opacity="0.25"
+                            />
+                        ))}
+                        {a.local.map((s, si) => {
+                            const r0 = magRadius(s.mag) * p0[si].scale;
+                            return (
+                                <g key={si}>
+                                    {s.mag < 2.0 && (
+                                        <circle
+                                            ref={el => { haloRefs.current[ai][si] = el; }}
+                                            cx={p0[si].sx} cy={p0[si].sy} r={r0 * 2.6}
+                                            fill={gold} opacity="0.09"
+                                        />
+                                    )}
+                                    <circle
+                                        ref={el => { dotRefs.current[ai][si] = el; }}
+                                        cx={p0[si].sx} cy={p0[si].sy} r={r0}
+                                        fill={s.mag < 2.1 ? white : gold}
+                                        filter="url(#nodeGlow)"
+                                    />
+                                </g>
+                            );
+                        })}
+                    </g>
+                );
+            })}
+        </>
+    );
+};
 
 // --- CELESTIAL & HUD COMPONENTS ---
 
 const MythicalConstellations: React.FC<{ p: BootPalette }> = ({ p }) => {
-    const { accent: gold, ink: white } = p;
+    // The starfield uses only the ink colour; the asterisms are drawn by Constellations3D.
+    const { ink: white } = p;
     return (
         /*
          * viewBox="0 0 1600 900" with preserveAspectRatio="xMidYMid slice" keeps the
@@ -205,48 +345,7 @@ const MythicalConstellations: React.FC<{ p: BootPalette }> = ({ p }) => {
                 />
             ))}
 
-            {/* ── ASTERISMS ── drawn from the ASTERISMS table above */}
-            {ASTERISMS.map((a, ai) => (
-                <motion.g
-                    key={a.label}
-                    animate={ai === 0 ? { x: [0, 10, 0], y: [0, 6, 0] } : { x: [0, -12, 0], y: [0, 8, 0] }}
-                    transition={{ duration: ai === 0 ? 25 : 22, repeat: Infinity, ease: "easeInOut" }}
-                    opacity={0.85}
-                    style={{ willChange: 'transform' }}
-                >
-                    <g transform={`translate(${a.at[0]}, ${a.at[1]})`}>
-                        {/* Links between stars: thin, solid, unadorned — a star chart draws
-                            plain lines. The dashed technical strokes here previously read as
-                            engineering diagram rather than sky. */}
-                        {a.edges.map(([from, to], ei) => (
-                            <line
-                                key={ei}
-                                x1={a.stars[from].x} y1={a.stars[from].y}
-                                x2={a.stars[to].x}   y2={a.stars[to].y}
-                                stroke={gold}
-                                strokeWidth="0.6"
-                                opacity="0.3"
-                            />
-                        ))}
-
-                        {/* Stars, sized by magnitude. */}
-                        {a.stars.map((s, si) => (
-                            <g key={si}>
-                                <circle
-                                    cx={s.x} cy={s.y}
-                                    r={magRadius(s.mag)}
-                                    fill={s.mag < 2.1 ? white : gold}
-                                    filter="url(#nodeGlow)"
-                                />
-                                {/* The brightest few get a faint halo, as on a chart. */}
-                                {s.mag < 2.0 && (
-                                    <circle cx={s.x} cy={s.y} r={magRadius(s.mag) * 2.6} fill={gold} opacity="0.09" />
-                                )}
-                            </g>
-                        ))}
-                    </g>
-                </motion.g>
-            ))}
+            <Constellations3D p={p} />
         </svg>
     );
 };

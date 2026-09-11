@@ -16,11 +16,18 @@ interface TowerStructureProps {
 const TowerStructure: React.FC<TowerStructureProps> = ({ onSelectFloor, theme, onFocus, items = [], itemsPerFloor = 5, isPaused = false }) => {
     const mountRef = useRef<HTMLDivElement>(null);
     const onSelectFloorRef = useRef(onSelectFloor);
+    // isPaused must be read through a ref: the scene effect below is scoped to [theme], so a
+    // value captured in its closure would freeze at mount. (The original comment claimed this
+    // was already the case for isPaused; it was not — the loop read the stale closure value.)
+    const isPausedRef = useRef(isPaused);
 
-    // Keep ref in sync with prop
+    // Keep refs in sync with props
     useEffect(() => {
         onSelectFloorRef.current = onSelectFloor;
     }, [onSelectFloor]);
+    useEffect(() => {
+        isPausedRef.current = isPaused;
+    }, [isPaused]);
 
     useEffect(() => {
         const mount = mountRef.current;
@@ -606,13 +613,20 @@ const TowerStructure: React.FC<TowerStructureProps> = ({ onSelectFloor, theme, o
         // --- ANIMATION ---
         const clock = new THREE.Clock();
         let frameId: number;
-        const AUTO_SPIN_SPEED = 0.05; // Radians per second
+        // Auto-spin is disabled for viewers who ask for reduced motion; drag still works.
+        const reduceMotion = typeof window.matchMedia === 'function'
+            && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        const AUTO_SPIN_SPEED = reduceMotion ? 0 : 0.05; // Radians per second
         const tempVec = new THREE.Vector3();
 
         const animate = () => {
             frameId = requestAnimationFrame(animate);
-            if (isPaused) return;
-            const dt = clock.getDelta(); // Get delta time
+            // Clamp so a tab returning from the background (rAF suspended while hidden) does not
+            // jump the spin forward by the whole hidden interval.
+            const dt = Math.min(clock.getDelta(), 0.1);
+            // Read the pause flag through the ref (the closure value would be stale), and skip
+            // work when the tab is hidden.
+            if (isPausedRef.current || document.hidden) return;
 
             // Rotation (Unified Model)
             // 1. Auto-rotate pushes the target

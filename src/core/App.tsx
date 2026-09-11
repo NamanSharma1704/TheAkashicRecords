@@ -1145,8 +1145,7 @@ const App: React.FC = () => {
                             <div className="hidden md:flex flex-col items-start justify-center gap-4 md:gap-6 xl:gap-10 self-stretch flex-1 basis-0 min-w-0 shrink">
                                 <div className="flex flex-col items-start w-max max-w-none">
                                     <div className={`text-[10px] font-mono ${theme.mutedText} tracking-[0.3em] uppercase mb-1`}>SEQUENCE DATA</div>
-                                    {/* text-bloom: the accent glow the hero numeral is the natural home for. */}
-                                    <div className={`text-5xl xl:text-[70px] font-black font-mono tabular-nums leading-none text-left transition-colors duration-700 text-[var(--accent-color)] text-bloom`}>
+                                    <div className={`text-5xl xl:text-[70px] font-black font-mono tabular-nums leading-none text-left transition-colors duration-700 text-[var(--accent-color)]`}>
                                         {String(activeQuest.currentChapter).padStart(3, '0')}
                                     </div>
                                     <div className={`text-[11px] font-mono tracking-widest mt-2 ${theme.mutedText}`}>

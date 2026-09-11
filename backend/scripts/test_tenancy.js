@@ -1,43 +1,36 @@
 const http = require('http');
+const { sessionTokenFrom } = require('./scriptEnv');
 
 async function testTenancy() {
     console.log("--- Akashic Tenancy Verification Protocol ---");
 
-    // 1. Register a GUEST user
-    const guestData = JSON.stringify({
-        username: "Guest_Hunter",
-        password: "guest-password-2026",
-        role: "GUEST"
-    });
-
-    const registerOptions = {
-        hostname: 'localhost',
-        port: 5000,
-        path: '/api/auth/register',
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Content-Length': guestData.length
-        }
-    };
-
-    const registerRequest = () => new Promise((resolve, reject) => {
-        const req = http.request(registerOptions, (res) => {
+    // 1. Open a GUEST session.
+    //
+    // This used to register a user through /api/auth/register, passing role: "GUEST" in the
+    // body. Registration is closed now and role is never read from a request, so the
+    // equivalent identity is a guest session — which is what provisions an isolated
+    // sandbox, the thing this script exists to verify.
+    const guestRequest = () => new Promise((resolve, reject) => {
+        const req = http.request({
+            hostname: 'localhost',
+            port: 5000,
+            path: '/api/auth/guest',
+            method: 'POST'
+        }, (res) => {
             let body = '';
             res.on('data', chunk => body += chunk);
-            res.on('end', () => resolve({ status: res.statusCode, body: JSON.parse(body) }));
+            res.on('end', () => resolve({ status: res.statusCode, body: JSON.parse(body), token: sessionTokenFrom(res) }));
         });
         req.on('error', reject);
-        req.write(guestData);
         req.end();
     });
 
     try {
-        console.log("[1/3] Registering GUEST user...");
-        const regRes = await registerRequest();
-        if (regRes.status !== 201) throw new Error(`Registration failed: ${regRes.body.message}`);
-        const token = regRes.body.token;
-        console.log("SUCCESS: GUEST identity registered.");
+        console.log("[1/3] Opening GUEST session...");
+        const guestRes = await guestRequest();
+        if (guestRes.status !== 200 || !guestRes.token) throw new Error(`Guest session failed: ${guestRes.body.message}`);
+        const token = guestRes.token;
+        console.log(`SUCCESS: GUEST identity ${guestRes.body.user.username} issued.`);
 
         // 2. Fetch quests as GUEST (should trigger lazy-seeding in test_records)
         const fetchOptions = {

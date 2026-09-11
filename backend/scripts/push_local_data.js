@@ -1,15 +1,12 @@
 const https = require('https');
+// Loads backend/.env. (This used to load backend/scripts/.env, which does not exist.)
+const { adminCredentials, sessionTokenFrom } = require('./scriptEnv');
 const { getTenantDb } = require('../config/db');
 const { getModel } = require('../models/modelFactory');
-const path = require('path');
-require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 const PRODUCTION_URL = "the-akashic-records.vercel.app";
 
-const loginData = JSON.stringify({
-    username: "Naman",
-    password: "Naman@1704"
-});
+const loginData = JSON.stringify(adminCredentials());
 
 const loginOptions = {
     hostname: PRODUCTION_URL,
@@ -40,8 +37,9 @@ async function migrate() {
             let body = '';
             res.on('data', d => body += d);
             res.on('end', () => {
-                const data = JSON.parse(body);
-                resolve(data.token);
+                const token = sessionTokenFrom(res);
+                if (!token) return reject(new Error(`Login failed (${res.statusCode}): ${body.slice(0, 120)}`));
+                resolve(token);
             });
         });
         req.on('error', reject);

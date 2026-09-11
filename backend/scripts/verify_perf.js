@@ -1,14 +1,12 @@
 const https = require('https');
+const { adminCredentials, sessionTokenFrom } = require('./scriptEnv');
 
 const PRODUCTION_URL = "the-akashic-records.vercel.app";
 const LOCAL_URL = "localhost";
 const PORT = process.argv.includes('--local') ? 5000 : 443;
 const HOST = process.argv.includes('--local') ? LOCAL_URL : PRODUCTION_URL;
 
-const loginData = JSON.stringify({
-    username: "Naman",
-    password: "Naman@1704"
-});
+const loginData = JSON.stringify(adminCredentials());
 
 const loginOptions = {
     hostname: HOST,
@@ -35,8 +33,9 @@ async function verify() {
                 res.on('data', d => body += d);
                 res.on('end', () => {
                     if (res.statusCode !== 200) return reject(new Error(`Login Failed: ${res.statusCode}`));
-                    const data = JSON.parse(body);
-                    resolve(data.token);
+                    const token = sessionTokenFrom(res);
+                    if (!token) return reject(new Error('Login succeeded but no session cookie was set'));
+                    resolve(token);
                 });
             });
             req.on('error', reject);

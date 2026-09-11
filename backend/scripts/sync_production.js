@@ -1,11 +1,13 @@
 const https = require('https');
+const { requireEnv, adminCredentials } = require('./scriptEnv');
 
 const PRODUCTION_URL = "the-akashic-records.vercel.app";
 
+// Secret and credentials come from backend/.env. They were literals here, in a public
+// repository — treat any value that was ever committed to this file as compromised.
 const adminData = JSON.stringify({
-    systemSecret: "akashic-secret-key-system-override-v1",
-    username: "Naman",
-    password: "Naman@1704"
+    systemSecret: requireEnv('SYSTEM_ADMIN_SECRET'),
+    ...adminCredentials()
 });
 
 const options = {
@@ -15,7 +17,7 @@ const options = {
     method: 'POST',
     headers: {
         'Content-Type': 'application/json',
-        'Content-Length': adminData.length
+        'Content-Length': Buffer.byteLength(adminData)
     }
 };
 

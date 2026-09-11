@@ -1,19 +1,23 @@
 const mongoose = require('mongoose');
+// Loads backend/.env (the previous path pointed at backend/scripts/.env, which does not exist).
+const { adminCredentials } = require('./scriptEnv');
 const { hashPassword } = require('../utils/auth');
-const path = require('path');
-require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 const UserSchema = new mongoose.Schema({
     username: String,
     passwordHash: String,
-    role: String
+    role: String,
+    // Declared so strict mode keeps it on the update below.
+    passwordChangedAt: Date
 });
 
 async function standardize() {
     console.log("--- Sovereign Identity Standardization Protocol ---");
     const uri = process.env.MONGODB_URI;
     const baseUri = uri.substring(0, uri.lastIndexOf('/'));
-    const passwordHash = await hashPassword("Naman@1704");
+    // From backend/.env. The username and password were literals here, in a public repo.
+    const { username, password } = adminCredentials();
+    const passwordHash = await hashPassword(password);
 
     const dbs = ['neo-scrolls', 'akashic_records'];
 
@@ -23,11 +27,13 @@ async function standardize() {
             const User = conn.model('User', UserSchema);
 
             await User.findOneAndUpdate(
-                { username: 'Naman' },
+                { username },
                 {
-                    username: 'Naman',
+                    username,
                     passwordHash: passwordHash,
-                    role: 'SOVEREIGN'
+                    role: 'SOVEREIGN',
+                    // Retire any session issued before this reset (see authenticate()).
+                    passwordChangedAt: new Date(Date.now() - 1000)
                 },
                 { upsert: true, returnDocument: 'after' }
             );

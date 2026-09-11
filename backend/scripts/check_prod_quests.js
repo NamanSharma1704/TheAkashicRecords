@@ -1,11 +1,9 @@
 const https = require('https');
+const { adminCredentials, sessionTokenFrom } = require('./scriptEnv');
 
 const PRODUCTION_URL = "the-akashic-records.vercel.app";
 
-const loginData = JSON.stringify({
-    username: "Naman",
-    password: "Naman@1704"
-});
+const loginData = JSON.stringify(adminCredentials());
 
 const loginOptions = {
     hostname: PRODUCTION_URL,
@@ -26,8 +24,9 @@ async function check() {
             let body = '';
             res.on('data', d => body += d);
             res.on('end', () => {
-                const data = JSON.parse(body);
-                resolve(data.token);
+                const token = sessionTokenFrom(res);
+                if (!token) return reject(new Error(`Login failed (${res.statusCode}): ${body.slice(0, 120)}`));
+                resolve(token);
             });
         });
         req.on('error', reject);

@@ -1,4 +1,5 @@
 const http = require('http');
+const { sessionTokenFrom } = require('./scriptEnv');
 
 async function testGuestQuests() {
     console.log("--- Akashic Sandbox Access Verification ---");
@@ -13,17 +14,18 @@ async function testGuestQuests() {
         }, (res) => {
             let body = '';
             res.on('data', chunk => body += chunk);
-            res.on('end', () => resolve({ status: res.statusCode, body: JSON.parse(body) }));
+            res.on('end', () => resolve({ status: res.statusCode, body: JSON.parse(body), token: sessionTokenFrom(res) }));
         });
         req.end();
     });
 
-    if (guestRes.status !== 200) {
+    if (guestRes.status !== 200 || !guestRes.token) {
         console.error("Failed to get guest token");
         return;
     }
 
-    const token = guestRes.body.token;
+    // The session arrives as a cookie now; the JSON body only carries the user.
+    const token = guestRes.token;
     console.log("Guest Token Obtained.");
 
     // 2. Fetch Quests

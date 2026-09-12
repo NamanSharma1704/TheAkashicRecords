@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { motion } from 'motion/react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { motion, useReducedMotion } from 'motion/react';
 import { X, Users, Share2, Zap, Edit2, Target, AlignLeft, Check, Activity, ExternalLink } from 'lucide-react';
 import { getProxiedImageUrl, cleanDescription } from '../../utils/api';
 import { systemFetch } from '../../utils/auth';
@@ -61,6 +61,8 @@ const CharacterAvatar: React.FC<{ char: AniListCharacter; theme: Theme }> = ({ c
                 <img
                     src={src}
                     alt={char.name.full}
+                    width={60}
+                    height={60}
                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                     referrerPolicy="no-referrer"
                     loading="lazy"
@@ -81,8 +83,8 @@ const SectionHeader: React.FC<{ index: string; icon: React.ReactNode; label: str
     return (
         <div className="flex items-center gap-3 mb-6 px-1">
             <span className={`text-[11px] font-black font-mono ${accent}`}>{index}</span>
-            <span className="opacity-60 flex items-center">{icon}</span>
-            <span className={`text-[10px] font-mono tracking-[0.3em] font-bold uppercase ${theme.isDark ? 'text-white/80' : 'text-slate-700'}`}>{label}</span>
+            <span className="opacity-60 flex items-center" aria-hidden="true">{icon}</span>
+            <h2 className={`text-[10px] font-mono tracking-[0.3em] font-bold uppercase ${theme.isDark ? 'text-white/80' : 'text-slate-700'}`}>{label}</h2>
             <span className={`flex-1 h-px bg-gradient-to-r ${rule} to-transparent`} />
             {children}
         </div>
@@ -95,6 +97,44 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
     const [isEditingSynopsis, setIsEditingSynopsis] = useState(false);
     const [draftSynopsis, setDraftSynopsis] = useState("");
     const [isLoadingMedia, setIsLoadingMedia] = useState(false);
+    const dialogRef = useRef<HTMLDivElement>(null);
+    const prefersReduced = useReducedMotion();
+
+    // Dialog behaviour: focus the panel on open, trap Tab inside it, close on Escape,
+    // and restore focus to whatever was focused before it opened.
+    useEffect(() => {
+        if (!isOpen) return;
+        const node = dialogRef.current;
+        const previouslyFocused = document.activeElement as HTMLElement | null;
+        node?.focus();
+        const handleKey = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') {
+                e.stopPropagation();
+                onClose();
+                return;
+            }
+            if (e.key === 'Tab' && node) {
+                const focusables = node.querySelectorAll<HTMLElement>(
+                    'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])'
+                );
+                if (focusables.length === 0) return;
+                const first = focusables[0];
+                const last = focusables[focusables.length - 1];
+                if (e.shiftKey && document.activeElement === first) {
+                    e.preventDefault();
+                    last.focus();
+                } else if (!e.shiftKey && document.activeElement === last) {
+                    e.preventDefault();
+                    first.focus();
+                }
+            }
+        };
+        document.addEventListener('keydown', handleKey);
+        return () => {
+            document.removeEventListener('keydown', handleKey);
+            previouslyFocused?.focus?.();
+        };
+    }, [isOpen, onClose]);
 
     const isCustomCover = !!(quest?.coverUrl && quest.coverUrl !== "");
     const finalCover = isCustomCover ? quest.coverUrl : (media?.coverImage?.extraLarge || media?.coverImage?.large || quest?.coverUrl || "");
@@ -219,21 +259,29 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
 
     if (!isOpen || !quest) return null;
 
-    // Determine Status Color
+    // Status badge colour. Uses LITERAL class strings (never string-interpolated) so
+    // Tailwind actually compiles them, and stays on the amber/sky theme palette. The
+    // previous `bg-${theme.accent}-500/10` form built classes Tailwind never generated
+    // (accent = yellow/indigo, absent from safelist and source), so every badge except
+    // FINISHED rendered with no colour at all.
     const getStatusColor = (status: string) => {
-        if (status === 'RELEASING') return `bg-${theme.accent}-500/10 text-${theme.accent}-500 border-${theme.accent}-500/20`;
-        if (status === 'FINISHED') return 'bg-sky-500/10 text-sky-500 border-sky-500/20';
-        return `bg-${theme.accent}-500/10 text-${theme.accent}-500 border-${theme.accent}-500/20`;
+        const finished = ['FINISHED', 'COMPLETED'].includes((status || '').toUpperCase());
+        if (finished) return theme.isDark
+            ? 'bg-cyan-500/10 text-cyan-400 border-cyan-500/30'
+            : 'bg-indigo-500/10 text-indigo-600 border-indigo-500/30';
+        return theme.isDark
+            ? 'bg-amber-500/10 text-amber-400 border-amber-500/30'
+            : 'bg-sky-500/10 text-sky-600 border-sky-500/30';
     };
 
     const containerVariants = {
-        hidden: { opacity: 0 },
-        visible: { opacity: 1, transition: { staggerChildren: 0.1 } }
+        hidden: { opacity: prefersReduced ? 1 : 0 },
+        visible: { opacity: 1, transition: { staggerChildren: prefersReduced ? 0 : 0.1 } }
     };
 
     const itemVariants = {
-        hidden: { opacity: 0, y: 30 },
-        visible: { opacity: 1, y: 0, transition: { duration: 0.6 } }
+        hidden: prefersReduced ? { opacity: 1, y: 0 } : { opacity: 0, y: 30 },
+        visible: { opacity: 1, y: 0, transition: { duration: prefersReduced ? 0 : 0.6 } }
     };
 
     // Shared surface + label styles for the right-hand data column. In LIGHT mode the
@@ -266,6 +314,11 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
 
         <div className={`fixed inset-0 z-[400] flex animate-in fade-in duration-500 manhwa-detail-backdrop`}
             data-theme={theme.isDark ? 'dark' : 'light'}
+            ref={dialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="manhwa-detail-title"
+            tabIndex={-1}
         >
             {/* FULL-BLEED CINEMATIC BACKDROP */}
             <div className="absolute inset-0 z-0 overflow-hidden">
@@ -279,7 +332,8 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                         src={getProxiedImageUrl(quest?.coverUrl || media?.bannerImage || finalCover)}
                         className="w-full h-full object-cover blur-3xl scale-125 transform-gpu manhwa-detail-aura"
                         referrerPolicy="no-referrer"
-                        alt="Background Aura"
+                        alt=""
+                        aria-hidden="true"
                     />
                 ) : null}
 
@@ -319,7 +373,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
 
             {/* MAIN SCROLLABLE CONTENT (CENTERED COLUMN) */}
             <div
-                className="relative z-30 w-full h-full overflow-y-auto custom-scrollbar pt-16 sm:pt-24 pb-32 px-4 sm:px-8 md:px-16 manhwa-detail-scroll-container"
+                className="relative z-30 w-full h-full overflow-y-auto overscroll-contain custom-scrollbar pt-16 sm:pt-24 pb-32 px-4 sm:px-8 md:px-16 manhwa-detail-scroll-container"
                 data-theme={theme.isDark ? 'dark' : 'light'}
             >
                 <motion.div variants={containerVariants} initial="hidden" animate="visible" className="max-w-6xl mx-auto flex flex-col gap-6 md:gap-12">
@@ -331,7 +385,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                             {/* Data spine */}
                             <div className="hidden md:flex flex-col justify-between items-center absolute top-4 bottom-4 -left-5 z-20">
                                 {[`CH ${quest.currentChapter}`, `${Math.round(progress * 100)}%`, quest.status].map((s, i) => (
-                                    <span key={i} className={`manhwa-detail-spine text-[7px] font-mono tracking-[0.15em] ${theme.id === 'LIGHT' ? 'text-sky-500/70' : 'text-amber-500/70'}`}>{s}</span>
+                                    <span key={i} className={`manhwa-detail-spine text-[9px] font-mono tracking-[0.15em] ${theme.id === 'LIGHT' ? 'text-sky-600/80' : 'text-amber-400/80'}`}>{s}</span>
                                 ))}
                             </div>
 
@@ -345,7 +399,9 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                     <motion.img
                                         layoutId={`cover-${quest.id}`}
                                         src={getProxiedImageUrl(finalCover)}
-                                        alt={quest.title}
+                                        alt={`Cover art for ${quest.title}`}
+                                        width={280}
+                                        height={420}
                                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
                                         referrerPolicy="no-referrer"
                                     />
@@ -374,7 +430,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                 </span>
                             </div>
 
-                            <h1 className={`text-3xl md:text-4xl lg:text-6xl font-black ${strongText} mb-2 leading-tight tracking-tighter drop-shadow-xl uppercase break-words`}>
+                            <h1 id="manhwa-detail-title" className={`text-3xl md:text-4xl lg:text-6xl font-black ${strongText} mb-2 leading-tight tracking-tighter drop-shadow-xl uppercase break-words`}>
                                 {quest.title || media?.title?.english || media?.title?.romaji}
                             </h1>
                             {media?.title?.native && (
@@ -390,7 +446,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                         href={quest.link}
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        className={`px-8 py-3 rounded-sm border ${theme.isDark ? 'bg-amber-500/25 hover:bg-amber-500/40 border-amber-500/60 shadow-[0_0_20px_rgba(245,158,11,0.35)]' : 'bg-sky-500/25 hover:bg-sky-500/40 border-sky-500/60 shadow-[0_0_20px_rgba(14,165,233,0.35)]'} ${theme.highlightText} font-bold transition-all flex items-center gap-3 group/dive hover:scale-105 active:scale-95 cursor-pointer`}
+                                        className={`px-8 py-3 rounded-sm border ${theme.isDark ? 'bg-amber-500/25 hover:bg-amber-500/40 border-amber-500/60 shadow-[0_0_20px_rgba(245,158,11,0.35)]' : 'bg-sky-500/25 hover:bg-sky-500/40 border-sky-500/60 shadow-[0_0_20px_rgba(14,165,233,0.35)]'} ${theme.highlightText} font-bold transition flex items-center gap-3 group/dive hover:scale-105 active:scale-95 cursor-pointer`}
                                         title="Enter Portal"
                                         aria-label="Enter Portal"
                                     >
@@ -400,7 +456,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                 )}
                                 <button
                                     onClick={() => quest && onEdit && onEdit(quest)}
-                                    className={`px-6 py-3 rounded-sm border ${chipBtn} font-bold transition-all flex items-center gap-3 group/edit`}
+                                    className={`px-6 py-3 rounded-sm border ${chipBtn} font-bold transition flex items-center gap-3 group/edit`}
                                 >
                                     <Edit2 size={16} className="opacity-70 group-hover/edit:opacity-100 transition-opacity" />
                                     <span className="text-[10px] tracking-[0.2em] font-orbitron">EDIT_ARTIFACT</span>
@@ -412,7 +468,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                             onClose();
                                         }
                                     }}
-                                    className={`px-6 py-3 rounded-sm border ${chipBtn} font-bold transition-all flex items-center gap-3 group/active`}
+                                    className={`px-6 py-3 rounded-sm border ${chipBtn} font-bold transition flex items-center gap-3 group/active`}
                                 >
                                     <Target size={16} className="opacity-70 group-hover/active:opacity-100 transition-opacity" />
                                     <span className="text-[10px] tracking-[0.2em] font-orbitron">MARK_TARGET</span>
@@ -457,9 +513,9 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                         <motion.div
                                             key={i}
                                             className={`flex-1 rounded-[1px] ${i < filledTicks ? accentBg : (theme.isDark ? 'bg-white/10' : 'bg-black/10')}`}
-                                            initial={{ opacity: 0, scaleY: 0.4 }}
+                                            initial={prefersReduced ? false : { opacity: 0, scaleY: 0.4 }}
                                             animate={{ opacity: 1, scaleY: 1 }}
-                                            transition={{ duration: 0.4, delay: i < filledTicks ? i * 0.015 : 0 }}
+                                            transition={{ duration: prefersReduced ? 0 : 0.4, delay: prefersReduced ? 0 : (i < filledTicks ? i * 0.015 : 0) }}
                                         />
                                     ))}
                                 </div>
@@ -481,7 +537,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                         }
                                         setIsEditingSynopsis(!isEditingSynopsis);
                                     }}
-                                    className={`shrink-0 px-3 py-1 rounded border text-[9px] font-mono tracking-widest uppercase transition-colors flex items-center gap-2 ${theme.isDark ? 'border-white/10 hover:border-white/30 text-white/50 hover:text-white' : 'border-slate-300 hover:border-slate-500 text-slate-500 hover:text-slate-800'}`}
+                                    className={`shrink-0 min-h-[28px] px-3 py-1.5 rounded border text-[9px] font-mono tracking-widest uppercase transition-colors flex items-center gap-2 ${theme.isDark ? 'border-white/10 hover:border-white/30 text-white/50 hover:text-white' : 'border-slate-300 hover:border-slate-500 text-slate-500 hover:text-slate-800'}`}
                                 >
                                     {isEditingSynopsis ? <><Check size={12} /> SAVE_OVERRIDE</> : <><Edit2 size={12} /> MODIFY</>}
                                 </button>
@@ -491,8 +547,9 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                 <textarea
                                     value={draftSynopsis}
                                     onChange={(e) => setDraftSynopsis(e.target.value)}
-                                    className={`w-full h-48 bg-black/40 border border-white/10 rounded-lg p-4 text-sm font-sans text-white/90 focus:outline-none focus:border-white/30 transition-colors resize-y shadow-inner`}
-                                    placeholder="Enter custom synopsis override..."
+                                    className={`w-full h-48 rounded-lg p-4 text-sm font-sans resize-y shadow-inner transition-colors focus:outline-none focus-visible:ring-2 ${theme.isDark ? 'bg-black/40 border border-white/10 text-white/90 focus-visible:ring-amber-400/60' : 'bg-white/60 border border-slate-300 text-slate-800 focus-visible:ring-sky-400/60'}`}
+                                    placeholder="Enter custom synopsis override…"
+                                    aria-label="Custom synopsis override"
                                 />
                             ) : (
                                 <div
@@ -539,9 +596,9 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                                     <div className="h-1.5 w-full bg-white/10 rounded-full overflow-hidden shadow-inner">
                                                         <motion.div
                                                             className={`h-full bg-gradient-to-r ${theme.gradient} rounded-full origin-left`}
-                                                            initial={{ scaleX: 0 }}
+                                                            initial={prefersReduced ? false : { scaleX: 0 }}
                                                             animate={{ scaleX: Math.min(1, media.averageScore / 100) }}
-                                                            transition={{ duration: 1, ease: 'easeOut' }}
+                                                            transition={{ duration: prefersReduced ? 0 : 1, ease: 'easeOut' }}
                                                         />
                                                     </div>
                                                 </div>
@@ -606,26 +663,26 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                 {isLoadingMedia && (
                                     <div className="shrink-0 flex items-center gap-2">
                                         <div className={`w-2 h-2 rounded-full ${theme.id === 'LIGHT' ? 'bg-sky-500' : 'bg-amber-500'} animate-ping`} />
-                                        <span className="text-[8px] font-mono tracking-widest text-white/40">SCANNING_ARCHIVES...</span>
+                                        <span className={`text-[8px] font-mono tracking-widest ${theme.isDark ? 'text-white/40' : 'text-slate-500'}`}>SCANNING_ARCHIVES…</span>
                                     </div>
                                 )}
                             </SectionHeader>
 
                             {(!isLoadingMedia && !media?.characters?.nodes?.length) ? (
                                 // Loaded, but the character source returned nothing (usually the
-                                // external archive — AniList / MAL — being unreachable). Show an
+                                // external archive (AniList / MAL) being unreachable). Show an
                                 // honest offline state instead of silently hiding the section.
-                                <div className={`flex items-center gap-4 px-5 py-8 rounded-xl border border-dashed ${theme.isDark ? 'border-white/10 bg-black/10' : 'border-slate-300 bg-slate-900/5'}`}>
-                                    <div className={`w-10 h-10 rounded-full border flex items-center justify-center shrink-0 ${theme.isDark ? 'border-white/10' : 'border-slate-300'}`}>
-                                        <Users size={18} className={theme.isDark ? 'text-white/30' : 'text-slate-400'} />
+                                <div className={`flex items-center gap-4 px-5 py-8 rounded-xl border border-dashed ${theme.isDark ? 'border-white/10 bg-black/10' : 'border-slate-400/40 bg-slate-900/5'}`}>
+                                    <div className={`w-10 h-10 rounded-full border flex items-center justify-center shrink-0 ${theme.isDark ? 'border-white/10' : 'border-slate-400/50'}`}>
+                                        <Users size={18} className={theme.isDark ? 'text-white/30' : 'text-slate-500'} aria-hidden="true" />
                                     </div>
                                     <div className="flex flex-col gap-1">
                                         <span className={`text-[10px] font-mono tracking-[0.3em] uppercase ${theme.isDark ? 'text-white/50' : 'text-slate-600'}`}>No entities on record</span>
-                                        <span className={`text-[9px] font-mono tracking-widest uppercase ${theme.isDark ? 'text-white/30' : 'text-slate-400'}`}>External archive link unavailable — retry later</span>
+                                        <span className={`text-[9px] font-mono tracking-widest uppercase ${theme.isDark ? 'text-white/40' : 'text-slate-500'}`}>External archive link unavailable, retry later</span>
                                     </div>
                                 </div>
                             ) : (
-                                <div className="flex overflow-x-auto gap-4 pb-4 custom-scrollbar snap-x min-h-[140px]">
+                                <div className="flex overflow-x-auto overscroll-x-contain gap-4 pb-4 custom-scrollbar snap-x min-h-[140px]" aria-live="polite" aria-busy={isLoadingMedia}>
                                     {isLoadingMedia ? (
                                         // SKELETON LOADERS
                                         Array(6).fill(0).map((_, i) => (
@@ -637,10 +694,10 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                         ))
                                     ) : (
                                         media?.characters?.nodes?.map(char => (
-                                            <div key={char.id} className="w-[100px] shrink-0 snap-start flex flex-col items-center gap-3 group cursor-pointer p-4 bg-black/20 backdrop-blur-md rounded-lg border border-white/5 hover:bg-white/5 transition-colors">
+                                            <div key={char.id} className="w-[100px] shrink-0 snap-start flex flex-col items-center gap-3 group p-4 bg-black/20 backdrop-blur-md rounded-lg border border-white/5">
                                                 <CharacterAvatar char={char} theme={theme} />
                                                 <div className="text-center w-full">
-                                                    <div className="text-[10px] font-bold text-white truncate w-full" title={char.name.full}>{char.name.full}</div>
+                                                    <div className={`text-[10px] font-bold truncate w-full ${theme.isDark ? 'text-white' : 'text-slate-100'}`} title={char.name.full}>{char.name.full}</div>
                                                     <div className="text-[8px] text-white/40 uppercase truncate w-full mt-1">{char.role}</div>
                                                 </div>
                                             </div>
@@ -660,12 +717,18 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                     </span>
                                 </SectionHeader>
 
-                                <div className="flex overflow-x-auto gap-4 pb-4 custom-scrollbar snap-x">
+                                <div className="flex overflow-x-auto overscroll-x-contain gap-4 pb-4 custom-scrollbar snap-x">
                                     {similarQuests.map((rec) => {
                                         const recRank = getQuestRankObj(rec);
                                         return (
-                                        <div key={rec.id} onClick={() => onSetActive && onSetActive(rec.id)} className="w-[160px] shrink-0 snap-start group relative aspect-[2/3] rounded-lg overflow-hidden cursor-pointer shadow-lg border border-white/5">
-                                            <img src={getProxiedImageUrl(rec.coverUrl)} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" referrerPolicy="no-referrer" alt={rec.title} title={rec.title} />
+                                        <button
+                                            type="button"
+                                            key={rec.id}
+                                            onClick={() => onSetActive && onSetActive(rec.id)}
+                                            aria-label={`Open ${rec.title}`}
+                                            className="w-[160px] shrink-0 snap-start group relative aspect-[2/3] rounded-lg overflow-hidden cursor-pointer shadow-lg border border-white/5 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
+                                        >
+                                            <img src={getProxiedImageUrl(rec.coverUrl)} width={160} height={240} loading="lazy" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" referrerPolicy="no-referrer" alt="" />
                                             <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/20 to-transparent opacity-80 group-hover:opacity-100 transition-opacity duration-300" />
                                             {/* Rank chip (Floor-view language) */}
                                             <span className={`absolute top-2 right-2 z-20 w-6 h-6 flex items-center justify-center text-[11px] font-black font-mono border ${recRank.border} ${recRank.color} bg-black/60 backdrop-blur-sm`}>
@@ -679,7 +742,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                                     {rec.status}
                                                 </div>
                                             </div>
-                                        </div>
+                                        </button>
                                         );
                                     })}
                                 </div>

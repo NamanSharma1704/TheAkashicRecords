@@ -60,7 +60,7 @@ const TowerStructure: React.FC<TowerStructureProps> = ({ onSelectFloor, theme, o
         const isDark = theme.isDark;
         const PRIMARY_COLOR = isDark ? 0xf59e0b : 0x06b6d4; // amber-500 / cyan-500 (accentColor)
         const HOVER_COLOR = isDark ? 0xffffff : 0x0e7490;   // white / cyan-700
-        const BODY_COLOR = isDark ? 0x6b4410 : 0x155e6b;    // dim amber / dim teal (translucent body)
+        const BODY_COLOR = isDark ? 0xd6891a : 0x0e9ec4;    // rich amber / vibrant cyan platform fill
         const EDGE_COLOR = isDark ? 0xfbbf24 : 0x22d3ee;    // amber-400 / cyan-400 (bright hologram edge)
         const RIM_COLOR = isDark ? 0xfacc15 : 0x06b6d4;     // yellow-400 / cyan-500 (neon rim)
         const HOT_COLOR = isDark ? 0xfff7e0 : 0xcffafe;     // pale amber / cyan-100 (hot core)
@@ -87,7 +87,9 @@ const TowerStructure: React.FC<TowerStructureProps> = ({ onSelectFloor, theme, o
         group.position.y = 0;
 
         // --- MATERIALS (holographic: translucent bodies + bright wireframe edges) ---
-        const bodyMat = new THREE.MeshBasicMaterial({ color: BODY_COLOR, transparent: true, opacity: 0.68, depthWrite: false });
+        // Fully opaque so platforms read solid (writes depth to occlude their own back faces);
+        // polygonOffset pushes faces back a touch so the bright wireframe edges sit cleanly on top.
+        const bodyMat = new THREE.MeshBasicMaterial({ color: BODY_COLOR, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 });
         const edgeMat = new THREE.LineBasicMaterial({ color: EDGE_COLOR, transparent: true, opacity: 0.7 });
         const edgeHoverMat = new THREE.LineBasicMaterial({ color: HOVER_COLOR, transparent: true, opacity: 1.0 });
         const padMat = new THREE.MeshBasicMaterial({ color: PRIMARY_COLOR, transparent: true, opacity: 0.9 });
@@ -290,7 +292,7 @@ const TowerStructure: React.FC<TowerStructureProps> = ({ onSelectFloor, theme, o
             if (x) { const g = x.createRadialGradient(16, 16, 0, 16, 16, 16); g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = g; x.fillRect(0, 0, 32, 32); }
             return new THREE.CanvasTexture(cv);
         })();
-        const moteMat = new THREE.PointsMaterial({ size: 1.6, map: moteTex, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0.7, color: PRIMARY_COLOR });
+        const moteMat = new THREE.PointsMaterial({ size: 1.9, map: moteTex, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0.9, color: isDark ? 0xffbe3d : 0x2fd6ec });
         const motes = new THREE.Points(moteGeo, moteMat);
         group.add(motes);
         disposables.push(moteGeo, moteTex, moteMat);

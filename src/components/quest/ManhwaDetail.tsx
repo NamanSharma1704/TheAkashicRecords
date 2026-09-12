@@ -236,10 +236,12 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
         visible: { opacity: 1, y: 0, transition: { duration: 0.6 } }
     };
 
-    // Shared surface + label styles for the right-hand data column.
-    const panelClass = theme.isDark ? 'bg-black/30 border-white/5' : 'bg-white/70 border-slate-200/60';
-    const labelClass = `text-[10px] font-mono tracking-widest uppercase ${theme.isDark ? 'text-white/40' : 'text-slate-500'}`;
-    const metricCellClass = `flex flex-col gap-1 p-3 rounded-lg border ${theme.isDark ? 'bg-white/5 border-white/5' : 'bg-slate-100/60 border-slate-200/60'}`;
+    // Shared surface + label styles for the right-hand data column. In LIGHT mode the
+    // panels are soft frosted cards (not bright white) so they don't glare — mirroring
+    // how dark mode's panels are subtle recesses rather than high-contrast blocks.
+    const panelClass = theme.isDark ? 'bg-black/30 border-white/5' : 'bg-white/35 border-white/40';
+    const labelClass = `text-[10px] font-mono tracking-widest uppercase ${theme.isDark ? 'text-white/40' : 'text-slate-600'}`;
+    const metricCellClass = `flex flex-col gap-1 p-3 rounded-lg border ${theme.isDark ? 'bg-white/5 border-white/5' : 'bg-white/45 border-white/40'}`;
 
     // Theme accent shorthands + this quest's rank sigil.
     const accentBorder = theme.id === 'LIGHT' ? 'border-sky-400' : 'border-amber-400';
@@ -388,7 +390,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                         href={quest.link}
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        className={`px-8 py-3 rounded-sm border ${theme.isDark ? 'bg-amber-500/10 hover:bg-amber-500/20 border-amber-500/30 shadow-[0_0_15px_rgba(245,158,11,0.2)]' : 'bg-sky-500/10 hover:bg-sky-500/20 border-sky-500/30 shadow-[0_0_15px_rgba(14,165,233,0.2)]'} ${theme.highlightText} font-bold transition-all flex items-center gap-3 group/dive hover:scale-105 active:scale-95 cursor-pointer`}
+                                        className={`px-8 py-3 rounded-sm border ${theme.isDark ? 'bg-amber-500/25 hover:bg-amber-500/40 border-amber-500/60 shadow-[0_0_20px_rgba(245,158,11,0.35)]' : 'bg-sky-500/25 hover:bg-sky-500/40 border-sky-500/60 shadow-[0_0_20px_rgba(14,165,233,0.35)]'} ${theme.highlightText} font-bold transition-all flex items-center gap-3 group/dive hover:scale-105 active:scale-95 cursor-pointer`}
                                         title="Enter Portal"
                                         aria-label="Enter Portal"
                                     >
@@ -421,7 +423,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
 
                     {/* PROGRESS HUD: THE RUNIC THREAD */}
                     <motion.div variants={itemVariants} className="w-full relative group mt-4">
-                        <div className={`relative rounded-xl p-4 md:p-8 backdrop-blur-2xl shadow-2xl overflow-hidden border ${theme.isDark ? 'bg-black/40 border-white/10' : 'bg-white/60 border-slate-200/80'}`}>
+                        <div className={`relative rounded-xl p-4 md:p-8 backdrop-blur-2xl shadow-2xl overflow-hidden border ${theme.isDark ? 'bg-black/40 border-white/10' : 'bg-white/35 border-white/40'}`}>
                             {/* Ambient internal glow */}
                             <div className={`absolute inset-0 bg-gradient-to-r ${theme.gradient} opacity-5 blur-xl pointer-events-none`} />
 
@@ -468,7 +470,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                     {/* TWO COLUMN DATA: SYNOPSIS & METADATA */}
                     <motion.div variants={itemVariants} className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-4">
                         {/* LEFT: Synopsis */}
-                        <div className={`lg:col-span-2 relative p-4 md:p-8 backdrop-blur-xl rounded-xl group/synopsis border ${theme.isDark ? 'bg-black/30 border-white/5' : 'bg-white/70 border-slate-200/60'}`}>
+                        <div className={`lg:col-span-2 relative p-4 md:p-8 backdrop-blur-xl rounded-xl group/synopsis border ${theme.isDark ? 'bg-black/30 border-white/5' : 'bg-white/35 border-white/40'}`}>
                             <SectionHeader index="01" icon={<AlignLeft size={16} className={theme.isDark ? 'text-white' : 'text-slate-700'} />} label="ARCHIVE_SYNOPSIS" theme={theme}>
                                 <button
                                     onClick={() => {
@@ -588,7 +590,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                 <span className={labelClass}>GENRES</span>
                                 <div className="flex flex-wrap gap-2">
                                     {media?.genres?.length ? media.genres.map(genre => (
-                                        <span key={genre} className={`px-3 py-1 text-[10px] font-mono rounded-full border ${theme.isDark ? 'border-white/10 bg-white/5 text-white/70' : 'border-slate-300 bg-slate-100 text-slate-600'}`}>
+                                        <span key={genre} className={`px-3 py-1 text-[10px] font-mono rounded-full border ${theme.isDark ? 'border-white/10 bg-white/5 text-white/70' : 'border-white/40 bg-white/40 text-slate-700'}`}>
                                             {genre}
                                         </span>
                                     )) : <span className={`text-xs ${theme.isDark ? 'text-white/20' : 'text-slate-400'}`}>{isLoadingMedia ? 'SCANNING...' : 'UNKNOWN'}</span>}

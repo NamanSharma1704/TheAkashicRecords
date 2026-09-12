@@ -12,12 +12,12 @@
 
 /* THEME: LIGHT */
 [data-theme='light'].manhwa-detail-backdrop {
-    --detail-bg-gradient: linear-gradient(135deg, #b7c1d2 0%, #c6cede 25%, #c1c7da 55%, #c6c3da 80%, #b3bed0 100%);
-    --detail-base-radial: radial-gradient(ellipse 80% 60% at 70% 15%, rgba(6,182,212,0.22) 0%, transparent 60%), radial-gradient(ellipse 60% 50% at 15% 80%, rgba(99,102,241,0.18) 0%, transparent 55%), radial-gradient(ellipse 100% 100% at 50% 50%, rgba(148,163,184,0.12) 0%, rgba(71,85,105,0.30) 100%);
-    --detail-aura-opacity: 0.18;
-    --detail-vignette-radial: radial-gradient(ellipse at 50% 50%, transparent 25%, rgba(30,41,59,0.28) 100%);
-    --detail-star-color: rgba(226,232,240,0.92);
-    --detail-grid-color: rgba(30,64,175,0.13);
+    --detail-bg-gradient: linear-gradient(135deg, #98a2b5 0%, #a6aec0 25%, #a1a9bd 55%, #a5a2bd 80%, #949db0 100%);
+    --detail-base-radial: radial-gradient(ellipse 80% 60% at 70% 15%, rgba(6,182,212,0.12) 0%, transparent 60%), radial-gradient(ellipse 60% 50% at 15% 80%, rgba(99,102,241,0.10) 0%, transparent 55%), radial-gradient(ellipse 100% 100% at 50% 50%, rgba(71,85,105,0.10) 0%, rgba(30,41,59,0.35) 100%);
+    --detail-aura-opacity: 0.09;
+    --detail-vignette-radial: radial-gradient(ellipse at 50% 50%, transparent 25%, rgba(15,23,42,0.38) 100%);
+    --detail-star-color: rgba(241,245,249,0.92);
+    --detail-grid-color: rgba(30,58,138,0.10);
 }
 
 .manhwa-detail-backdrop {

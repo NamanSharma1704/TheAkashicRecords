@@ -1,8 +1,12 @@
 import React, { useRef, useEffect } from 'react';
 import * as THREE from 'three';
 
-// Tower 7.0: Holographic Schematic based on user reference
-// Reference: Amber wireframe, grid floors, floating panels, vertical spine.
+// Divine Spire 8.0: Holographic ascending isles.
+// A spiral of translucent faceted islands (bright wireframe edges) climbing toward a
+// radiant System core, over a faint HUD ground grid — the reference "Tower of God" spire
+// rendered in the site's amber (dark) / cyan (light) hologram language.
+// Each island's glowing hex pad is a clickable floor; all mechanics from the previous
+// tower (raycast focus/open, drag-rotate, wheel, pause, reduced-motion) are preserved.
 
 interface TowerStructureProps {
     onSelectFloor: (floorIndex: number) => void;
@@ -17,8 +21,7 @@ const TowerStructure: React.FC<TowerStructureProps> = ({ onSelectFloor, theme, o
     const mountRef = useRef<HTMLDivElement>(null);
     const onSelectFloorRef = useRef(onSelectFloor);
     // isPaused must be read through a ref: the scene effect below is scoped to [theme], so a
-    // value captured in its closure would freeze at mount. (The original comment claimed this
-    // was already the case for isPaused; it was not — the loop read the stale closure value.)
+    // value captured in its closure would freeze at mount.
     const isPausedRef = useRef(isPaused);
 
     // Keep refs in sync with props
@@ -35,14 +38,13 @@ const TowerStructure: React.FC<TowerStructureProps> = ({ onSelectFloor, theme, o
         // ---- VERTICAL SCALE SYSTEM (Responsive Tower Spacing) ----
         const h = mount.clientHeight;
 
-        // Vertical density based on actual screen height
         const FLOOR_SPACING =
-            h < 700 ? 11 :
-                h < 900 ? 12 :
-                    13;
+            h < 700 ? 12 :
+                h < 900 ? 13 :
+                    14;
 
-        const TOWER_HEIGHT = FLOOR_SPACING * 7;
         const TOWER_OFFSET = FLOOR_SPACING * 3;
+        const SPIRAL_ANG = 2.4; // radians of turn per floor (shared by build + focus math)
         const disposables: (THREE.Material | THREE.BufferGeometry | THREE.Texture | { dispose: () => void })[] = [];
         const mouse = new THREE.Vector2();
         const raycaster = new THREE.Raycaster();
@@ -54,41 +56,24 @@ const TowerStructure: React.FC<TowerStructureProps> = ({ onSelectFloor, theme, o
         let hoveredFloor: THREE.Object3D | null = null;
         let isHoveringTower = false;
 
-        // --- THEME ---
+        // --- THEME (matched to the site's accent tokens: amber-500 #f59e0b / cyan-500 #06b6d4) ---
         const isDark = theme.isDark;
-
-        // Dark Mode: Bright Gold/Amber Hologram on Black
-        // Light Mode: Cyan Hologram on White
-        const PRIMARY_COLOR = isDark ? 0xffd700 : 0x0ea5e9; // Gold (Bright) vs Sky-500
-        const SECONDARY_COLOR = isDark ? 0xffed4a : 0x38bdf8; // Yellow-300 vs Sky-400
-        const HOVER_COLOR = isDark ? 0xffffff : 0x0284c7; // White vs Sky-600
+        const PRIMARY_COLOR = isDark ? 0xf59e0b : 0x06b6d4; // amber-500 / cyan-500 (accentColor)
+        const HOVER_COLOR = isDark ? 0xffffff : 0x0e7490;   // white / cyan-700
+        const BODY_COLOR = isDark ? 0x6b4410 : 0x155e6b;    // dim amber / dim teal (translucent body)
+        const EDGE_COLOR = isDark ? 0xfbbf24 : 0x22d3ee;    // amber-400 / cyan-400 (bright hologram edge)
+        const RIM_COLOR = isDark ? 0xfacc15 : 0x06b6d4;     // yellow-400 / cyan-500 (neon rim)
+        const HOT_COLOR = isDark ? 0xfff7e0 : 0xcffafe;     // pale amber / cyan-100 (hot core)
 
         // --- SCENE ---
         const scene = new THREE.Scene();
-        scene.background = null; // Transparent background to show app layers
-        // Fog removed for transparency
-
-        // --- LIGHTING ---
-        // Boosted Saturation for "THE DIVINE" Reference
-        const ambientLight = new THREE.AmbientLight(isDark ? 0xffaa00 : 0xffffff, isDark ? 2.0 : 1.5); // Amber Ambient in Dark Mode
-        scene.add(ambientLight);
-
-        const dirLight = new THREE.DirectionalLight(0xffffff, isDark ? 3.0 : 2.0); // White Highlights on Gold
-        dirLight.position.set(10, 20, 10);
-        scene.add(dirLight);
-
-        const pointLight = new THREE.PointLight(isDark ? 0xff8800 : 0x0ea5e9, isDark ? 4.0 : 1.5, 100); // Deep Orange Core Glow
-        pointLight.position.set(0, 10, 10);
-        scene.add(pointLight);
+        scene.background = null; // Transparent to show app layers behind
 
         // --- CAMERA ---
         const camera = new THREE.PerspectiveCamera(60, mount.clientWidth / mount.clientHeight, 0.1, 1000);
-        // Center camera to tower middle
-        const INITIAL_CENTER = -2; // Because floors are offset using TOWER_OFFSET
-
+        const INITIAL_CENTER = -2;
         camera.position.set(0, INITIAL_CENTER, 100);
         camera.lookAt(0, INITIAL_CENTER, 0);
-
 
         const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, powerPreference: "high-performance" });
         renderer.setSize(mount.clientWidth, mount.clientHeight);
@@ -97,263 +82,115 @@ const TowerStructure: React.FC<TowerStructureProps> = ({ onSelectFloor, theme, o
 
         const group = new THREE.Group();
         scene.add(group);
-        // Re-center tower vertically
-        group.position.y = (TOWER_OFFSET - (TOWER_HEIGHT / 2)) - 7;
+        // No vertical offset: floor local Y == world Y, so camera focus-scroll (which targets
+        // floorY) lands exactly on the isle's height.
+        group.position.y = 0;
 
-        // --- TEXTURES ---
-        const generateGradientTexture = (dark: boolean) => {
-            const canvas = document.createElement('canvas');
-            canvas.width = 64; canvas.height = 64;
-            const ctx = canvas.getContext('2d');
-            if (!ctx) return new THREE.Texture();
+        // --- MATERIALS (holographic: translucent bodies + bright wireframe edges) ---
+        const bodyMat = new THREE.MeshBasicMaterial({ color: BODY_COLOR, transparent: true, opacity: 0.68, depthWrite: false });
+        const edgeMat = new THREE.LineBasicMaterial({ color: EDGE_COLOR, transparent: true, opacity: 0.7 });
+        const edgeHoverMat = new THREE.LineBasicMaterial({ color: HOVER_COLOR, transparent: true, opacity: 1.0 });
+        const padMat = new THREE.MeshBasicMaterial({ color: PRIMARY_COLOR, transparent: true, opacity: 0.9 });
+        const padHoverMat = new THREE.MeshBasicMaterial({ color: HOVER_COLOR, transparent: true, opacity: 1.0 });
+        const rimMat = new THREE.MeshBasicMaterial({ color: RIM_COLOR });
+        const hotMat = new THREE.MeshBasicMaterial({ color: HOT_COLOR });
+        disposables.push(bodyMat, edgeMat, edgeHoverMat, padMat, padHoverMat, rimMat, hotMat);
 
-            const gradient = ctx.createLinearGradient(0, 64, 0, 0); // Bottom to Top
-
-            if (dark) {
-                // Dark Mode: MATCH REFERENCE IMAGE "THE DIVINE"
-                // Deep Orange/Copper -> Rich Amber -> Vibrant Yellow (NO WHITE)
-                gradient.addColorStop(0, '#ea580c'); // Orange-600 (Deep Copper Base)
-                gradient.addColorStop(0.4, '#f59e0b'); // Amber-500 (Rich Gold)
-                gradient.addColorStop(0.8, '#facc15'); // Yellow-400 (Bright Gold)
-                gradient.addColorStop(1, '#fde047'); // Yellow-300 (Vibrant Tip - NO WHITE)
-            } else {
-                // Light Mode Text Gradient: from-sky-600 via-cyan-400 to-indigo-200
-                gradient.addColorStop(0, '#0284c7'); // Sky-600
-                gradient.addColorStop(0.5, '#22d3ee'); // Cyan-400
-                gradient.addColorStop(1, '#c7d2fe'); // Indigo-200
+        // --- HELPERS ---
+        const jitter = (g: THREE.BufferGeometry, a: number) => {
+            const p = g.attributes.position;
+            for (let k = 0; k < p.count; k++) {
+                p.setXYZ(k, p.getX(k) + (Math.random() - 0.5) * a, p.getY(k) + (Math.random() - 0.5) * a, p.getZ(k) + (Math.random() - 0.5) * a);
             }
-
-            ctx.fillStyle = gradient;
-            ctx.fillRect(0, 0, 64, 64);
-
-            const tex = new THREE.CanvasTexture(canvas);
-            tex.colorSpace = THREE.SRGBColorSpace; // Ensure vibrant colors
-            tex.needsUpdate = true;
-            return tex;
+            return g;
         };
-
-        const gradientTex = generateGradientTexture(isDark);
-        disposables.push(gradientTex);
-
-        // --- MATERIALS ---
-        const wireMat = new THREE.MeshBasicMaterial({
-            color: 0xffffff, // White base
-            map: gradientTex,
-            wireframe: true,
-            transparent: true,
-            opacity: 0.5,
-            depthWrite: false,
-            polygonOffset: true,
-            polygonOffsetFactor: -1, // Pull forward
-            polygonOffsetUnits: -1,
-        });
-
-        // 1. SIDE/GRADIENT MATERIAL (Bright Phong)
-        const solidMat = new THREE.MeshPhongMaterial({
-            color: 0xffffff,
-            map: gradientTex,
-            transparent: false,
-            opacity: 1.0,
-            side: THREE.FrontSide, // Solid object
-            emissive: isDark ? 0xaa4400 : 0x000000,
-            emissiveIntensity: isDark ? 0.6 : 0.0,
-            specular: isDark ? 0xffc107 : 0x444444,
-            shininess: isDark ? 80 : 30,
-            flatShading: false,
-            depthWrite: true, // Ensure it occludes objects behind it
-        });
-
-        // 2. CAP MATERIAL (Solid Gold Top/Bottom - No Texture)
-        const capMat = new THREE.MeshPhongMaterial({
-            color: isDark ? 0xffd700 : 0xbae6fd, // Gold vs Sky
-            transparent: false,
-            opacity: 1.0,
-            side: THREE.FrontSide,
-            emissive: isDark ? 0xaa4400 : 0x000000, // Matching Glow
-            emissiveIntensity: 0.6,
-            specular: isDark ? 0xffffff : 0x444444,
-            shininess: 60,
-            flatShading: false,
-            depthWrite: true, // Ensure it occludes objects behind it
-        });
-
-        // 3. PANEL MATERIALS (Split for Inside/Outside control)
-        // INNER SIDE (FrontSide looking at 0,0,0) -> Make it DARKER
-        const panelMatInner = new THREE.MeshPhongMaterial({
-            color: 0x888888, // Darker base
-            map: gradientTex,
-            transparent: false,
-            opacity: 1.0,
-            side: THREE.FrontSide,
-            emissive: isDark ? 0xaa4400 : 0x000000,
-            emissiveIntensity: isDark ? 0.2 : 0.0, // Low emission inside
-            specular: 0x111111, // Low specular
-            shininess: 10,
-            flatShading: false,
-        });
-
-        // OUTER SIDE (BackSide facing away) -> Make it BRIGHTER
-        const panelMatOuter = new THREE.MeshPhongMaterial({
-            color: 0xffffff,
-            map: gradientTex,
-            transparent: false,
-            opacity: 1.0,
-            side: THREE.BackSide,
-            emissive: isDark ? 0xffaa00 : 0x000000,
-            emissiveIntensity: isDark ? 1.5 : 0.0, // High emission outside
-            specular: isDark ? 0xffea00 : 0x444444,
-            shininess: 100, // High shine
-            flatShading: false,
-        });
-
-        const activeWireMat = new THREE.MeshBasicMaterial({
-            color: HOVER_COLOR,
-            wireframe: true,
-            transparent: true,
-            opacity: 1.0,
-            depthWrite: false,
-            polygonOffset: true,
-            polygonOffsetFactor: -1,
-            polygonOffsetUnits: -1,
-        });
-
-        const pillarMat = new THREE.MeshPhongMaterial({
-            color: 0xffffff,
-            map: gradientTex,
-            transparent: false,
-            opacity: 1.0,
-            side: THREE.FrontSide,
-            emissive: isDark ? 0xaa4400 : 0x000000,
-            emissiveIntensity: 0.6,
-            specular: isDark ? 0xffc107 : 0xffffff,
-            shininess: isDark ? 80 : 100,
-            flatShading: false
-        });
-
-        disposables.push(wireMat, solidMat, capMat, panelMatInner, panelMatOuter, activeWireMat, pillarMat);
-
-        // --- 1. SPINE (Central Column) ---
-        const spineGeo = new THREE.CylinderGeometry(
-            2,
-            2,
-            TOWER_HEIGHT,
-            64,
-            1,
-            false
-        ); // Smoother Spine // Reduced height from 120
-        const spine = new THREE.Mesh(spineGeo, pillarMat);
-        const spineWireMat = new THREE.MeshBasicMaterial({ color: PRIMARY_COLOR, wireframe: true, transparent: true, opacity: 0.1 });
-        const spineWire = new THREE.Mesh(spineGeo, spineWireMat);
-        spine.add(spineWire);
-        group.add(spine);
-
-        const coreGeo = new THREE.CylinderGeometry(
-            0.5,
-            0.5,
-            TOWER_HEIGHT,
-            16
-        ); // Smoother Core // Reduced height from 120
-        const core = new THREE.Mesh(coreGeo, new THREE.MeshBasicMaterial({ color: PRIMARY_COLOR, opacity: 0.5, transparent: true }));
-        group.add(core);
-
-        disposables.push(spineGeo, coreGeo, spineWireMat, core.material);
-
-        // --- 2. FLOORS (Grids) ---
+        // Faceted floating-rock chunk: flattened icosahedron pinched to a point underneath.
+        const rockGeo = (s: number) => {
+            const g = new THREE.IcosahedronGeometry(s, 1);
+            g.scale(1.55, 0.62, 1.55);
+            const p = g.attributes.position;
+            const maxD = 0.62 * s;
+            for (let k = 0; k < p.count; k++) {
+                const y = p.getY(k);
+                if (y < -0.05 * s) {
+                    const f = Math.max(0, 1 - (-y / maxD) * 0.95);
+                    p.setX(k, p.getX(k) * f);
+                    p.setZ(k, p.getZ(k) * f);
+                    p.setY(k, y * 2.1 - 0.3 * s);
+                }
+            }
+            jitter(g, 0.28 * s);
+            g.computeVertexNormals();
+            return g;
+        };
+        // --- 1. THE ISLES (one per floor, on an ascending spiral) ---
         const floorObjects: {
             hitbox: THREE.Mesh;
-            plat: THREE.Mesh;
-            fill: THREE.Mesh;
-            panels: THREE.Mesh[];
+            edges: THREE.LineSegments[];
+            pad: THREE.Mesh;
+            glyph: THREE.Mesh;
             label: THREE.Sprite;
+            isle: THREE.Group;
             originalY: number;
             isEmpty: boolean;
         }[] = [];
 
+        const isMobile = window.innerWidth < 768;
+
         for (let i = 0; i < 8; i++) {
-            const floorGroup = new THREE.Group();
-            const yPos = (i * FLOOR_SPACING) - TOWER_OFFSET;
-            floorGroup.position.y = yPos;
+            const t = i / 7;
+            const yPos = (i * FLOOR_SPACING) - TOWER_OFFSET; // keep floor Y identical to old tower (focus-scroll math depends on it)
+            const ang = i * SPIRAL_ANG;       // turn per floor -> reads as a spiral
+            const rad = (1 - t) * 18 + 6;     // wide orbit so isles clearly swing around the spiral
+            const s = 5.6 * (1.3 - t * 0.3);  // bigger isles; gentler taper so the top stays large
 
-            const baseRadius = 8;
-            const floorRadius = baseRadius + (Math.log(i + 1) * 6);
+            const isle = new THREE.Group();
+            isle.position.set(Math.cos(ang) * rad, yPos, Math.sin(ang) * rad);
+            isle.rotation.y = Math.random() * Math.PI;
 
-            const floorItemsCount = items.slice(i * itemsPerFloor, (i + 1) * itemsPerFloor).length;
-            const isEmpty = floorItemsCount === 0;
+            const isEmpty = items.slice(i * itemsPerFloor, (i + 1) * itemsPerFloor).length === 0;
+            const edges: THREE.LineSegments[] = [];
 
-            // Solid High-Tech Floors (Height 0.8)
-            const platGeo = new THREE.CylinderGeometry(floorRadius, floorRadius, 0.8, 64, 1);
+            // main floating rock
+            const rGeo = rockGeo(s);
+            isle.add(new THREE.Mesh(rGeo, bodyMat));
+            const rEdgeGeo = new THREE.EdgesGeometry(rGeo, 22);
+            const rEdge = new THREE.LineSegments(rEdgeGeo, edgeMat);
+            isle.add(rEdge); edges.push(rEdge);
+            disposables.push(rGeo, rEdgeGeo);
 
-            // Material Array: [Side(Gradient), Top(Solid Gold), Bottom(Solid Gold)]
-            const fill = new THREE.Mesh(platGeo, [solidMat, capMat, capMat]);
+            // glowing hex pad (the clickable floor marker) + rim + floating glyph
+            const padGeo = new THREE.CylinderGeometry(s * 0.42, s * 0.5, 0.5, 6);
+            const pad = new THREE.Mesh(padGeo, padMat); pad.position.y = s * 0.55; isle.add(pad);
+            const ringGeo = new THREE.TorusGeometry(s * 0.5, 0.09, 6, 6);
+            const ring = new THREE.Mesh(ringGeo, rimMat); ring.rotation.x = Math.PI / 2; ring.position.y = s * 0.62; isle.add(ring);
+            const glyphGeo = new THREE.TorusGeometry(s * 0.22, 0.07, 6, 6);
+            const glyph = new THREE.Mesh(glyphGeo, hotMat); glyph.rotation.x = Math.PI / 2; glyph.position.y = s * 0.95; isle.add(glyph);
+            disposables.push(padGeo, ringGeo, glyphGeo);
 
-            // WIREFRAME OVERLAY for Floor (Same technique as Panels)
-            const floorWire = new THREE.Mesh(platGeo, wireMat);
-
-            // Glowing Rims for Definition (Top & Bottom Highlighting)
-            const rimGeo = new THREE.TorusGeometry(floorRadius, 0.05, 8, 128);
-            const rimMat = new THREE.MeshBasicMaterial({
-                color: isDark ? 0xffea00 : 0x0ea5e9
-            }); // Bright Neon Rim
-
-            const rimTop = new THREE.Mesh(rimGeo, rimMat);
-            rimTop.rotation.x = Math.PI / 2;
-            rimTop.position.y = 0.4; // Top Edge
-
-            const rimBottom = new THREE.Mesh(rimGeo, rimMat);
-            rimBottom.rotation.x = Math.PI / 2;
-            rimBottom.position.y = -0.4; // Bottom Edge
-
-            // Add Solid Body + Wireframe Overlay + Neon Rims
-            floorGroup.add(fill, floorWire, rimTop, rimBottom);
-
-            const panelGeo = new THREE.PlaneGeometry(4, 6);
-            const panels = [];
-            const panelRadius = floorRadius + 2;
-
-            for (let p = 0; p < 8; p++) {
-                const angle = (p / 8) * Math.PI * 2;
-
-                // 1. Wireframe Overlay
-                const panel = new THREE.Mesh(panelGeo, wireMat);
-                panel.position.set(Math.cos(angle) * panelRadius, 0, Math.sin(angle) * panelRadius);
-                panel.lookAt(0, 0, 0);
-                panel.rotateX(-Math.PI / 4);
-
-                // 2. Solid Backing (Split into Inner/Outer for lighting control)
-
-                // Inner (FrontSide)
-                const panelInner = new THREE.Mesh(panelGeo, panelMatInner);
-                panelInner.position.copy(panel.position);
-                panelInner.rotation.copy(panel.rotation);
-
-                // Outer (BackSide)
-                const panelOuter = new THREE.Mesh(panelGeo, panelMatOuter);
-                panelOuter.position.copy(panel.position);
-                panelOuter.rotation.copy(panel.rotation);
-
-                floorGroup.add(panel, panelInner, panelOuter);
-
-                // Track components for hover effects
-                // Store distinct references if needed, or just push both to panels for generic hover logic
-                // For now, pushing both means both will get hover effect applied
-                panels.push(panel, panelInner, panelOuter);
+            // debris shards
+            for (let d = 0; d < 3; d++) {
+                const dGeo = jitter(new THREE.TetrahedronGeometry(s * 0.14 + Math.random() * s * 0.16), s * 0.1);
+                dGeo.computeVertexNormals();
+                const da = Math.random() * Math.PI * 2, dr = s * 1.05 + Math.random() * s * 0.7;
+                const dPos = new THREE.Vector3(Math.cos(da) * dr, (Math.random() - 0.4) * s * 0.9, Math.sin(da) * dr);
+                const dMesh = new THREE.Mesh(dGeo, bodyMat); dMesh.position.copy(dPos); isle.add(dMesh);
+                const dEdgeGeo = new THREE.EdgesGeometry(dGeo);
+                const dEdge = new THREE.LineSegments(dEdgeGeo, edgeMat); dEdge.position.copy(dPos); isle.add(dEdge); edges.push(dEdge);
+                disposables.push(dGeo, dEdgeGeo);
             }
 
-            const hitGeo = new THREE.CylinderGeometry(panelRadius + 2, panelRadius + 2, 4, 32); // Smoother Hitbox
+            // invisible hitbox around the isle (raycast target)
+            const hitGeo = new THREE.SphereGeometry(s * 1.35, 12, 12);
             const hitMat = new THREE.MeshBasicMaterial({ visible: false });
             const hitbox = new THREE.Mesh(hitGeo, hitMat);
             hitbox.userData = { type: 'floor', index: i };
+            isle.add(hitbox);
+            disposables.push(hitGeo, hitMat);
 
-            const labelDist = panelRadius + 4; // Start right after panels
-
-            // Unused vars removed
-            // (floorItems/isEmpty logic removed)
-
-            const floorIndex = i;
-            const sectorNum = ((floorIndex || 0) + 1).toString().padStart(2, '0');
+            // --- SECTOR label sprite ---
+            const sectorNum = (i + 1).toString().padStart(2, '0');
             const text = `SECTOR ${sectorNum}`;
-
-            // Measure text to tightly wrap the canvas width
             const tempCanvas = document.createElement('canvas');
             const tempCtx = tempCanvas.getContext('2d');
             let textWidth = 4000;
@@ -362,28 +199,21 @@ const TowerStructure: React.FC<TowerStructureProps> = ({ onSelectFloor, theme, o
                 tempCtx.letterSpacing = "20px";
                 textWidth = tempCtx.measureText(text).width;
             }
-
             const canvas = document.createElement('canvas');
-            canvas.width = textWidth + 100; // Tight wrap with minor padding
-            canvas.height = 1024; // Keep standard height
-
+            canvas.width = textWidth + 100;
+            canvas.height = 1024;
             const drawLabel = (tex?: THREE.CanvasTexture) => {
                 const ctx = canvas.getContext('2d');
                 if (!ctx) return;
-
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 ctx.imageSmoothingEnabled = true;
                 ctx.imageSmoothingQuality = 'high';
-
                 ctx.font = '900 400px "Orbitron", sans-serif';
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
                 ctx.letterSpacing = "20px";
-
-                const themeColor = isDark ? '#ffaa00' : '#0369a1';
-
+                const themeColor = isDark ? '#f59e0b' : '#0e7490';
                 if (isDark) {
-                    // Dark Mode: Theme Outline, White Fill
                     ctx.lineWidth = 15;
                     ctx.strokeStyle = themeColor;
                     ctx.shadowColor = 'rgba(0,0,0,0.5)';
@@ -391,107 +221,106 @@ const TowerStructure: React.FC<TowerStructureProps> = ({ onSelectFloor, theme, o
                     ctx.shadowOffsetX = 4;
                     ctx.shadowOffsetY = 4;
                     ctx.strokeText(text, canvas.width / 2, 512);
-
                     ctx.fillStyle = '#ffffff';
-                    ctx.shadowBlur = 0; // Clear shadow for fill to keep it crisp
-                    ctx.shadowOffsetX = 0;
-                    ctx.shadowOffsetY = 0;
-                    ctx.fillText(text, canvas.width / 2, 512);
-                } else {
-                    // Light Mode: Solid Theme Color, No Stroke, No Glare
-                    ctx.fillStyle = themeColor;
-                    ctx.shadowColor = 'transparent';
                     ctx.shadowBlur = 0;
                     ctx.shadowOffsetX = 0;
                     ctx.shadowOffsetY = 0;
                     ctx.fillText(text, canvas.width / 2, 512);
+                } else {
+                    ctx.fillStyle = themeColor;
+                    ctx.shadowColor = 'transparent';
+                    ctx.shadowBlur = 0;
+                    ctx.fillText(text, canvas.width / 2, 512);
                 }
-
                 if (tex) tex.needsUpdate = true;
             };
-
-            // Initial Draw
             drawLabel();
-
             const labelTex = new THREE.CanvasTexture(canvas);
-
-            // Texture High-Quality Settings
             labelTex.minFilter = THREE.LinearFilter;
             labelTex.magFilter = THREE.LinearFilter;
             labelTex.anisotropy = renderer.capabilities.getMaxAnisotropy();
-
-            document.fonts.ready.then(() => {
-                drawLabel(labelTex);
-            });
-
+            document.fonts.ready.then(() => { drawLabel(labelTex); });
             const labelMat = new THREE.SpriteMaterial({ map: labelTex, transparent: true, opacity: 1.0, depthWrite: false });
             const label = new THREE.Sprite(labelMat);
-
             label.center.set(0, 0.5);
-            label.position.set(labelDist, 0, 0);
-
-            // Dynamically scale width based on calculated texture ratio
-            const isMobile = window.innerWidth < 768;
-            const scaleY = isMobile ? 3.5 : 5; // Smaller labels on mobile
+            label.position.set(s * 1.35 + 3, s * 0.4, 0);
+            const scaleY = isMobile ? 3.5 : 5;
             label.scale.set(scaleY * (canvas.width / canvas.height), scaleY, 1);
+            isle.add(label);
+            disposables.push(labelMat, labelTex);
 
-            floorGroup.add(hitbox, label);
-            group.add(floorGroup);
-            floorObjects.push({
-                hitbox,
-                plat: fill,
-                fill,
-                panels,
-                label,
-                originalY: yPos,
-                isEmpty
-            });
-
-            disposables.push(platGeo, panelGeo, hitGeo, hitMat, labelMat, labelTex);
+            group.add(isle);
+            floorObjects.push({ hitbox, edges, pad, glyph, label, isle, originalY: yPos, isEmpty });
         }
 
-        // --- 3. CONNECTING RODS (Between floors) ---
-        // Vertical lines connecting the panels for that "structure" look
-        const rodGeo = new THREE.CylinderGeometry(0.1, 0.1, 12, 4);
-        const rodMat = new THREE.MeshBasicMaterial({ color: SECONDARY_COLOR });
-
-        for (let i = 0; i < 7; i++) { // Between 8 floors -> 7 gaps
-            const yPos = (i * FLOOR_SPACING) - (TOWER_OFFSET - FLOOR_SPACING / 2); // Midpoint
-            for (let p = 0; p < 4; p++) { // Only 4 rods, not 8, to keep it clean
-                const angle = (p / 4) * Math.PI * 2;
-                const rod = new THREE.Mesh(rodGeo, rodMat);
-                rod.position.set(Math.cos(angle) * 5, yPos, Math.sin(angle) * 5); // Reduce rod radius to 5 to fit inside 8
-                group.add(rod);
-            }
+        // --- 2. HUD GROUND GRID (radar disc) ---
+        const gridGroup = new THREE.Group(); gridGroup.position.y = -TOWER_OFFSET - 12; group.add(gridGroup);
+        for (let c = 1; c <= 5; c++) {
+            const g2 = new THREE.TorusGeometry(c * 8, 0.06, 6, 80);
+            const m2 = new THREE.MeshBasicMaterial({ color: EDGE_COLOR, transparent: true, opacity: Math.max(0.03, 0.16 - c * 0.025) });
+            const rr = new THREE.Mesh(g2, m2); rr.rotation.x = Math.PI / 2; gridGroup.add(rr);
+            disposables.push(g2, m2);
         }
-        disposables.push(rodGeo, rodMat);
+        const gridLineMat = new THREE.LineBasicMaterial({ color: EDGE_COLOR, transparent: true, opacity: 0.05 });
+        for (let s2 = 0; s2 < 12; s2++) {
+            const a = (s2 / 12) * Math.PI * 2;
+            const lg = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 0, 0), new THREE.Vector3(Math.cos(a) * 40, 0, Math.sin(a) * 40)]);
+            gridGroup.add(new THREE.Line(lg, gridLineMat));
+            disposables.push(lg);
+        }
+        disposables.push(gridLineMat);
+
+        // --- 4. RISING DATA-MOTES ---
+        const MOTE_COUNT = 90;
+        const moteGeo = new THREE.BufferGeometry();
+        const motePos = new Float32Array(MOTE_COUNT * 3);
+        const moteSpeeds: number[] = [];
+        const moteTopY = (7 * FLOOR_SPACING) - TOWER_OFFSET + 10;
+        const moteBotY = -TOWER_OFFSET - 6;
+        for (let k = 0; k < MOTE_COUNT; k++) {
+            motePos[k * 3] = (Math.random() - 0.5) * 60;
+            motePos[k * 3 + 1] = moteBotY + Math.random() * (moteTopY - moteBotY);
+            motePos[k * 3 + 2] = (Math.random() - 0.5) * 40;
+            moteSpeeds.push(2 + Math.random() * 4);
+        }
+        moteGeo.setAttribute('position', new THREE.BufferAttribute(motePos, 3));
+        const moteTex = (() => {
+            const cv = document.createElement('canvas'); cv.width = cv.height = 32;
+            const x = cv.getContext('2d');
+            if (x) { const g = x.createRadialGradient(16, 16, 0, 16, 16, 16); g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = g; x.fillRect(0, 0, 32, 32); }
+            return new THREE.CanvasTexture(cv);
+        })();
+        const moteMat = new THREE.PointsMaterial({ size: 1.6, map: moteTex, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0.7, color: PRIMARY_COLOR });
+        const motes = new THREE.Points(moteGeo, moteMat);
+        group.add(motes);
+        disposables.push(moteGeo, moteTex, moteMat);
 
         // --- SCROLL / CAMERA LOGIC ---
-        let scrollY = -3; // Center the camera vertically (-3 for better focus)
-        const minScroll = -50;
-        const maxScroll = 50;
-        let targetScrollY = -3;
+        // Camera pans between the base grid and the apex core; starts centred on the isles.
+        const centerY = (7 * FLOOR_SPACING - 2 * TOWER_OFFSET) / 2;
+        let scrollY = centerY;
+        const minScroll = -TOWER_OFFSET - 10;
+        const maxScroll = (7 * FLOOR_SPACING) - TOWER_OFFSET + 12;
+        let targetScrollY = centerY;
 
-        let zPos = 110; // Finer zoom balance for 1080p
-        let targetZ = 110;
-        const ZOOM_CLOSE = 50; // Focused zoom
-        const ZOOM_FAR = 110;   // Base zoom (optimal distance)
+        let zPos = 120;
+        let targetZ = 120;
+        const ZOOM_CLOSE = 54;
+        const ZOOM_FAR = 120;
 
-        let focusedFloorIndex = -1; // Track focused floor
+        let focusedFloorIndex = -1;
 
         const handleWheel = (e: WheelEvent) => {
             e.preventDefault();
             targetScrollY -= e.deltaY * 0.05;
             targetScrollY = Math.max(minScroll, Math.min(maxScroll, targetScrollY));
-
             if (focusedFloorIndex !== -1) {
-                focusedFloorIndex = -1; // Reset focus on manual scroll
+                focusedFloorIndex = -1;
                 if (onFocus) onFocus(false);
-                targetZ = ZOOM_FAR;     // Zoom out on manual scroll
+                targetZ = ZOOM_FAR;
             }
         };
 
-        // --- EVENTS ---
         const handleDown = (e: MouseEvent) => {
             isDragging = true;
             startX = e.clientX;
@@ -503,26 +332,26 @@ const TowerStructure: React.FC<TowerStructureProps> = ({ onSelectFloor, theme, o
             const dist = Math.sqrt(Math.pow(e.clientX - startX, 2) + Math.pow(e.clientY - startY, 2));
             if (dist < 5) {
                 if (hoveredFloor) {
-                    // FOCUS LOGIC: Scroll camera to align with the selected floor's Y position
                     const floorIndex = hoveredFloor.userData.index;
                     const floorY = (floorIndex * FLOOR_SPACING) - TOWER_OFFSET;
-
                     if (focusedFloorIndex === floorIndex) {
-                        // ALREADY FOCUSED -> OPEN
                         onSelectFloorRef.current(floorIndex);
                     } else {
-                        // OBJECTIVE: FOCUS & ZOOM
                         targetScrollY = floorY;
                         focusedFloorIndex = floorIndex;
-                        targetZ = ZOOM_CLOSE; // Zoom In
+                        targetZ = ZOOM_CLOSE;
+                        // Rotate this isle to front-centre (world x≈0, nearest the camera) so the
+                        // zoom lands on it instead of the empty central axis.
+                        let want = Math.PI / 2 - (floorIndex * SPIRAL_ANG);
+                        want += Math.round((currentRotY - want) / (Math.PI * 2)) * (Math.PI * 2);
+                        targetRotationY = want;
                         if (onFocus) onFocus(true, floorIndex);
                     }
                 } else {
-                    // Clicked background or non-floor -> RESET FOCUS
                     if (focusedFloorIndex !== -1) {
                         focusedFloorIndex = -1;
                         if (onFocus) onFocus(false);
-                        targetZ = ZOOM_FAR; // Zoom out
+                        targetZ = ZOOM_FAR;
                     }
                 }
             }
@@ -530,81 +359,55 @@ const TowerStructure: React.FC<TowerStructureProps> = ({ onSelectFloor, theme, o
         let lastMoveTime = 0;
         const handleMove = (e: MouseEvent) => {
             const now = performance.now();
-            if (now - lastMoveTime < 16) return; // Throttle to ~60fps for raycasting
+            if (now - lastMoveTime < 16) return;
             lastMoveTime = now;
-
-            const mount = mountRef.current;
-            if (!mount) return;
-            const rect = mount.getBoundingClientRect();
+            const m = mountRef.current;
+            if (!m) return;
+            const rect = m.getBoundingClientRect();
             mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
             mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
-
             if (isDragging) {
-                // X movement -> Rotation
                 targetRotationY += e.movementX * 0.005;
-
-                // Y movement -> Pan Camera (Scroll)
                 targetScrollY += e.movementY * 0.1;
                 targetScrollY = Math.max(minScroll, Math.min(maxScroll, targetScrollY));
-
                 if (Math.abs(e.movementY) > 0) {
                     if (focusedFloorIndex !== -1 && onFocus) onFocus(false);
-                    focusedFloorIndex = -1; // Reset focus on drag
-                    targetZ = ZOOM_FAR;     // Zoom out on drag
+                    focusedFloorIndex = -1;
+                    targetZ = ZOOM_FAR;
                 }
             }
         };
 
         const handleTouchStart = () => { isDragging = true; };
         const handleTouchEnd = () => { isDragging = false; };
+        const handleBlur = () => { isDragging = false; };
 
-        // Define canvasEl after renderer is initialized
         const canvasEl = renderer.domElement;
-
-        // Attach event listeners
         canvasEl.addEventListener('wheel', handleWheel, { passive: false });
         canvasEl.addEventListener('mousedown', handleDown);
-        window.addEventListener('mouseup', handleUp);
-        window.addEventListener('mousemove', handleMove);
+        // Capture phase: these fire before any overlay panel can stopPropagation, so a drag
+        // continues over the side panels and a mouseup ALWAYS clears the drag (no stuck drag).
+        window.addEventListener('mouseup', handleUp, true);
+        window.addEventListener('mousemove', handleMove, true);
         canvasEl.addEventListener('touchstart', handleTouchStart, { passive: true });
         window.addEventListener('touchend', handleTouchEnd);
+        window.addEventListener('blur', handleBlur);
 
         const handleResize = () => {
             if (!mountRef.current || !renderer || !camera) return;
             const w = mountRef.current.clientWidth;
-            const h = mountRef.current.clientHeight;
-            const aspect = w / h;
-
-            renderer.setSize(w, h);
+            const hh = mountRef.current.clientHeight;
+            const aspect = w / hh;
+            renderer.setSize(w, hh);
             camera.aspect = aspect;
-
-            // Responsive Logic 2.0: Aspect-Ratio & Width aware
             if (w < 768) {
-                // Mobile (Portrait & Landscape)
-                if (aspect < 1) {
-                    // Mobile Portrait
-                    camera.fov = 75;
-                    targetZ = 160;
-                } else {
-                    // Mobile Landscape
-                    camera.fov = 50;
-                    targetZ = 120;
-                }
+                if (aspect < 1) { camera.fov = 75; targetZ = 172; }
+                else { camera.fov = 50; targetZ = 130; }
             } else if (w < 1280) {
-                // Tablet / Small Laptop
-                if (aspect < 1) {
-                    // Tablet Portrait — wide FOV so full tower fits
-                    camera.fov = 80;
-                    targetZ = 165;
-                } else {
-                    // Tablet Landscape
-                    camera.fov = 66;
-                    targetZ = 115;
-                }
+                if (aspect < 1) { camera.fov = 80; targetZ = 178; }
+                else { camera.fov = 66; targetZ = 124; }
             } else {
-                // Desktop
-                camera.fov = 65;
-                targetZ = 110;
+                camera.fov = 65; targetZ = 120;
             }
             camera.updateProjectionMatrix();
         };
@@ -613,108 +416,69 @@ const TowerStructure: React.FC<TowerStructureProps> = ({ onSelectFloor, theme, o
         // --- ANIMATION ---
         const clock = new THREE.Clock();
         let frameId: number;
-        // Auto-spin is disabled for viewers who ask for reduced motion; drag still works.
         const reduceMotion = typeof window.matchMedia === 'function'
             && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-        const AUTO_SPIN_SPEED = reduceMotion ? 0 : 0.05; // Radians per second
+        const AUTO_SPIN_SPEED = reduceMotion ? 0 : 0.05;
         const tempVec = new THREE.Vector3();
 
         const animate = () => {
             frameId = requestAnimationFrame(animate);
-            // Clamp so a tab returning from the background (rAF suspended while hidden) does not
-            // jump the spin forward by the whole hidden interval.
             const dt = Math.min(clock.getDelta(), 0.1);
-            // Read the pause flag through the ref (the closure value would be stale), and skip
-            // work when the tab is hidden.
             if (isPausedRef.current || document.hidden) return;
 
-            // Rotation (Unified Model)
-            // 1. Auto-rotate pushes the target
-            if (!isDragging) {
-                targetRotationY += AUTO_SPIN_SPEED * dt;
-            }
-
-            // 2. Smoothly damp towards target (Manual or Auto)
+            // Rotation (auto + damped). Auto-spin halts while a floor is focused so the
+            // centred isle stays put and stays clickable.
+            if (!isDragging && focusedFloorIndex === -1) targetRotationY += AUTO_SPIN_SPEED * dt;
             const damp = Math.min(1.0, dt * 4.0);
             currentRotY += (targetRotationY - currentRotY) * damp;
-
-            // 3. Apply
             group.rotation.y = currentRotY;
 
-            // Camera Scroll & Zoom Smoothing
+            // Camera scroll & zoom
             scrollY += (targetScrollY - scrollY) * damp;
             zPos += (targetZ - zPos) * damp;
-
             camera.position.y = scrollY;
             camera.position.z = zPos;
-            camera.lookAt(0, scrollY, 0); // Always look straight ahead at the current level
+            camera.lookAt(0, scrollY, 0);
 
-            // Hover Effects
-            // Hover Effects
+            // Ambient life (skipped under reduced motion)
+            if (!reduceMotion) {
+                const et = clock.getElapsedTime();
+                floorObjects.forEach((obj, k) => {
+                    obj.isle.position.y = obj.originalY + Math.sin(et * 0.6 + k) * 0.8;
+                    obj.glyph.rotation.z += dt * 0.5;
+                });
+                const mp = motes.geometry.attributes.position;
+                for (let k = 0; k < MOTE_COUNT; k++) {
+                    let y = mp.getY(k) + moteSpeeds[k] * dt;
+                    if (y > moteTopY) y = moteBotY;
+                    mp.setY(k, y);
+                }
+                mp.needsUpdate = true;
+            }
+
+            // Hover styling
             floorObjects.forEach((obj) => {
                 const isHover = (obj.hitbox === hoveredFloor);
-
-                // HOVER LOGIC FIX: Do NOT replace the solid floor material with wireframe!
-                // Instead, just brighten the panels or handle the floor glow if needed.
-
-                // 1. Panels (Floating screens)
-                obj.panels.forEach(p => {
-                    if (p.material instanceof THREE.MeshPhongMaterial) {
-                        // Solid Panel: Boost Glow
-                        p.material.emissiveIntensity = isHover ? 1.0 : 0.6;
-                    } else {
-                        // Wireframe Overlay: Swap Color
-                        p.material = isHover ? activeWireMat : wireMat;
-                    }
-                });
-
-                // 2. Floor Body (Solid) - Optional Emissive Boost (Safe Way)
-                // Accessing the material array safely
-                if (Array.isArray(obj.plat.material)) {
-                    obj.plat.material.forEach(m => {
-                        if (m instanceof THREE.MeshPhongMaterial) {
-                            // Boost emissive on hover
-                            m.emissiveIntensity = isHover ? 1.0 : (isDark ? 0.6 : 0.0);
-                        }
-                    });
-                } else if (obj.plat.material instanceof THREE.MeshPhongMaterial) {
-                    obj.plat.material.emissiveIntensity = isHover ? 1.0 : (isDark ? 0.6 : 0.0);
-                }
-
-                // Label pop - Hover only opacity, NO SCALE/ZOOM
+                obj.edges.forEach(e => { e.material = isHover ? edgeHoverMat : edgeMat; });
+                obj.pad.material = isHover ? padHoverMat : padMat;
                 obj.label.material.opacity = isHover ? 1 : 0.8;
-
-                // Dynamic pivot to prevent clipping into the tower when on the left side
                 obj.label.getWorldPosition(tempVec);
                 const anchorX = Math.max(0, Math.min(1, 0.5 - (tempVec.x / 36)));
                 obj.label.center.set(anchorX, 0.5);
             });
 
             // Raycast
-            // Raycast
             raycaster.setFromCamera(mouse, camera);
-
-            // 1. Check Floor Hover (specific for selection)
             const floorIntersects = raycaster.intersectObjects(floorObjects.map(f => f.hitbox));
-            hoveredFloor = null;
-            if (floorIntersects.length > 0) {
-                hoveredFloor = floorIntersects[0].object;
-            }
-
-            // 2. Check General Tower Hover (for drag availability)
+            hoveredFloor = floorIntersects.length > 0 ? floorIntersects[0].object : null;
             const towerIntersects = raycaster.intersectObjects(group.children, true);
             isHoveringTower = towerIntersects.length > 0;
 
             if (mountRef.current) {
-                if (isDragging) {
-                    mountRef.current.style.cursor = 'grabbing';
-                } else if (hoveredFloor) {
-                    mountRef.current.style.cursor = 'pointer'; // Clickable floor
-                } else if (isHoveringTower) {
-                    mountRef.current.style.cursor = 'grab'; // Draggable tower
-                } else {
-                    mountRef.current.style.cursor = 'default';
-                }
+                if (isDragging) mountRef.current.style.cursor = 'grabbing';
+                else if (hoveredFloor) mountRef.current.style.cursor = 'pointer';
+                else if (isHoveringTower) mountRef.current.style.cursor = 'grab';
+                else mountRef.current.style.cursor = 'default';
             }
 
             renderer.render(scene, camera);
@@ -723,39 +487,29 @@ const TowerStructure: React.FC<TowerStructureProps> = ({ onSelectFloor, theme, o
 
         return () => {
             cancelAnimationFrame(frameId);
-
-            window.removeEventListener('mouseup', handleUp);
-            window.removeEventListener('mousemove', handleMove);
+            window.removeEventListener('mouseup', handleUp, true);
+            window.removeEventListener('mousemove', handleMove, true);
             window.removeEventListener('resize', handleResize);
-
             if (renderer && renderer.domElement) {
                 renderer.domElement.removeEventListener('mousedown', handleDown);
                 renderer.domElement.removeEventListener('wheel', handleWheel);
                 renderer.domElement.removeEventListener('touchstart', handleTouchStart);
-                renderer.domElement.removeEventListener('touchend', handleTouchEnd);
             }
-
+            window.removeEventListener('touchend', handleTouchEnd);
+            window.removeEventListener('blur', handleBlur);
             if (mount && renderer.domElement && mount.contains(renderer.domElement)) {
                 mount.removeChild(renderer.domElement);
             }
-
             disposables.forEach(d => {
-                if ('dispose' in d && typeof d.dispose === 'function') {
-                    d.dispose();
-                }
+                if ('dispose' in d && typeof d.dispose === 'function') d.dispose();
             });
-
-            // 🔥 CRITICAL: Force WebGL Context Release
             renderer.forceContextLoss();
             renderer.dispose();
-
             // @ts-expect-error deliberately clearing a non-nullable field to release the canvas
             renderer.domElement = null;
         };
-        // Scoped to `theme` on purpose. This effect builds and tears down the entire
-        // Three.js scene; adding items/itemsPerFloor/isPaused/onFocus would destroy and
-        // rebuild the WebGL context every time the library or a callback identity changed.
-        // Those values are read through refs inside the render loop instead.
+        // Scoped to `theme` on purpose — rebuilding the whole WebGL scene on every
+        // items/callback change would thrash the context. Those are read via refs/closures.
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [theme]);
 

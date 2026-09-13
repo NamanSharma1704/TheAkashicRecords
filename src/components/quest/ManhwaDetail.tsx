@@ -319,6 +319,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
             aria-modal="true"
             aria-labelledby="manhwa-detail-title"
             tabIndex={-1}
+            style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}
         >
             {/* FULL-BLEED CINEMATIC BACKDROP */}
             <div className="absolute inset-0 z-0 overflow-hidden">
@@ -356,7 +357,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
             </div>
 
             {/* TOP NAVIGATION BAR */}
-            <div className="absolute top-0 left-0 w-full h-20 flex justify-between items-center px-8 z-50 pointer-events-none">
+            <div className="absolute top-0 left-0 w-full h-20 flex justify-between items-center px-4 sm:px-8 z-50 pointer-events-none" style={{ paddingTop: 'max(16px, env(safe-area-inset-top))' }}>
                 <div className="flex items-center gap-3">
                     <div className={`w-1 h-8 ${theme.id === 'LIGHT' ? 'bg-sky-500' : 'bg-amber-500'} shadow-[0_0_15px_currentColor]`} />
                     <div className={`font-mono text-[10px] tracking-[0.4em] ${theme.highlightText} font-bold uppercase`}>SYSTEM.ARCHIVE_INSPECTION</div>
@@ -373,7 +374,8 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
 
             {/* MAIN SCROLLABLE CONTENT (CENTERED COLUMN) */}
             <div
-                className="relative z-30 w-full h-full overflow-y-auto overscroll-contain custom-scrollbar pt-16 sm:pt-24 pb-32 px-4 sm:px-8 md:px-16 manhwa-detail-scroll-container"
+                className="relative z-30 w-full h-full overflow-y-auto overscroll-contain custom-scrollbar pb-32 px-4 sm:px-8 md:px-16 manhwa-detail-scroll-container"
+                style={{ paddingTop: 'calc(max(80px, env(safe-area-inset-top) + 64px) + 8px)' }}
                 data-theme={theme.isDark ? 'dark' : 'light'}
             >
                 <motion.div variants={containerVariants} initial="hidden" animate="visible" className="max-w-6xl mx-auto flex flex-col gap-6 md:gap-12">

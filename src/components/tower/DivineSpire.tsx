@@ -158,20 +158,20 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
             </div>
 
             {/* MAIN CONTENT AREA */}
-            <div className={`relative z-10 flex-1 overflow-hidden flex flex-col ${viewMode === 'TOWER' ? 'pointer-events-none' : ''}`}>
+            <div className={`relative z-10 flex-1 min-h-0 overflow-hidden flex flex-col ${viewMode === 'TOWER' ? 'pointer-events-none' : ''}`}>
 
                 {/* VIEW MODE: FLOOR (CINEMATIC CAROUSEL) */}
                 {viewMode === 'FLOOR' && (
-                    <div className="w-full h-full flex flex-col animate-in slide-in-from-bottom-10 duration-500 pointer-events-auto">
+                    <div className="flex-1 min-h-0 flex flex-col w-full animate-in slide-in-from-bottom-10 duration-500 pointer-events-auto overflow-hidden">
 
 
 
                         {/* Search Bar HUD */}
-                        <div className="relative z-20 shrink-0 w-full max-w-xl mx-auto px-4 mb-4 md:mb-5">
+                        <div className="relative z-20 shrink-0 w-full max-w-xl mx-auto px-4 mb-2 md:mb-4">
                             <div className="relative group">
                                 <div className={`absolute -inset-1 bg-gradient-to-r ${theme.gradient} opacity-20 blur-md group-focus-within:opacity-40 transition-all duration-500 rounded-full`} />
-                                <div className={`relative ${theme.isDark ? 'bg-black/60' : 'bg-white/60'} backdrop-blur-xl border border-white/10 rounded-full px-4 py-3 flex items-center shadow-2xl transition-all duration-700`}>
-                                    <Search size={20} className={`${theme.highlightText} mr-3 opacity-70`} />
+                                <div className={`relative ${theme.isDark ? 'bg-black/60' : 'bg-white/60'} backdrop-blur-xl border border-white/10 rounded-full px-3 py-2 md:px-4 md:py-3 flex items-center shadow-2xl transition-all duration-700`}>
+                                    <Search size={18} className={`${theme.highlightText} mr-2 md:mr-3 opacity-70 shrink-0`} />
                                     <input
                                         type="text"
                                         placeholder="SEARCH ARCHIVES..."
@@ -192,66 +192,63 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
                             </div>
                         </div>
 
-                        <div className="shrink-0 flex flex-col relative w-full z-[60] group/carousel">
+                        {/* HUD HEADER: Floor / Sector info (Hidden when searching) */}
+                        {!search && floors.length > 0 && floors[selectedFloorIndex] && (
+                            <div className="shrink-0 z-[60] flex flex-col items-center drop-shadow-2xl mb-1 md:mb-2 relative group/carousel">
+                                <div className={`font-mono text-[9px] tracking-[0.4em] ${theme.highlightText} font-bold uppercase mb-1 opacity-80 pointer-events-none`}>SYSTEM.SECTOR_INTERFACE</div>
+                                <div className="relative flex items-center gap-2 md:gap-4 px-3 py-1 md:px-6 md:py-2 rounded-full border border-white/10 bg-black/40 backdrop-blur-md pointer-events-auto">
+                                    <button disabled={selectedFloorIndex <= 0} onClick={() => setSelectedFloorIndex(i => i - 1)} className={`${theme.mutedText} hover:${theme.highlightText} disabled:opacity-30 transition-colors`}><ChevronLeft size={14} /></button>
+                                    <button onClick={() => setIsFilterOpen(!isFilterOpen)} className={`font-black text-lg md:text-2xl font-orbitron tracking-widest ${theme.headingText} hover:text-white transition-colors flex items-center gap-1.5 outline-none`}>
+                                        LAYER {selectedFloorIndex + 1}
+                                        <ChevronDown size={16} className={`transition-transform duration-300 ${isFilterOpen ? 'rotate-180 text-white' : ''}`} />
+                                    </button>
+                                    <div className="w-1 h-1 rounded-full bg-white/30" />
+                                    <span className={`font-mono text-[9px] md:text-xs ${theme.mutedText} tracking-widest`}>SECTOR {floors[selectedFloorIndex].range}</span>
+                                    <button disabled={selectedFloorIndex >= floors.length - 1} onClick={() => setSelectedFloorIndex(i => i + 1)} className={`${theme.mutedText} hover:${theme.highlightText} disabled:opacity-30 transition-colors`}><ChevronRight size={14} /></button>
 
-                            {/* HUD HEADER: Floor / Sector info (Hidden when searching) */}
-                            {!search && floors.length > 0 && floors[selectedFloorIndex] && (
-                                <div className="z-[60] flex flex-col items-center drop-shadow-2xl mb-1">
-                                    <div className={`font-mono text-[9px] md:text-[10px] tracking-[0.4em] ${theme.highlightText} font-bold uppercase mb-1 opacity-80 pointer-events-none`}>SYSTEM.SECTOR_INTERFACE</div>
-                                    <div className="relative flex items-center gap-4 px-4 py-1.5 md:px-6 md:py-2 rounded-full border border-white/10 bg-black/40 backdrop-blur-md pointer-events-auto">
-                                        <button disabled={selectedFloorIndex <= 0} onClick={() => setSelectedFloorIndex(i => i - 1)} className={`${theme.mutedText} hover:${theme.highlightText} disabled:opacity-30 transition-colors`}><ChevronLeft size={14} className="md:w-4 md:h-4" /></button>
-                                        <button onClick={() => setIsFilterOpen(!isFilterOpen)} className={`font-black text-xl md:text-2xl font-orbitron tracking-widest ${theme.headingText} hover:text-white transition-colors flex items-center gap-2 group outline-none`}>
-                                            LAYER {selectedFloorIndex + 1}
-                                            <ChevronDown size={18} className={`transition-transform duration-300 ${isFilterOpen ? 'rotate-180 text-white' : 'group-hover:translate-y-0.5'}`} />
-                                        </button>
-                                        <div className="w-1.5 h-1.5 rounded-full bg-white/30" />
-                                        <span className={`font-mono text-[10px] md:text-xs ${theme.mutedText} tracking-widest`}>SECTOR {floors[selectedFloorIndex].range}</span>
-                                        <button disabled={selectedFloorIndex >= floors.length - 1} onClick={() => setSelectedFloorIndex(i => i + 1)} className={`${theme.mutedText} hover:${theme.highlightText} disabled:opacity-30 transition-colors`}><ChevronRight size={14} className="md:w-4 md:h-4" /></button>
-                                        
-                                        {/* Dropdown Filter Menu */}
-                                        {isFilterOpen && (
-                                            <div className={`absolute top-full left-1/2 -translate-x-1/2 mt-4 p-5 rounded-xl border border-white/10 ${theme.isDark ? 'bg-black/95' : 'bg-black/90'} backdrop-blur-3xl min-w-[320px] shadow-2xl flex flex-col gap-5 animate-in fade-in zoom-in-95 duration-200 z-[70]`}>
-                                                {/* Class Filter */}
-                                                <div>
-                                                    <div className={`text-[10px] font-mono ${theme.mutedText} tracking-widest mb-2 uppercase flex items-center gap-1.5`}><Filter size={10} /> Classification Protocol</div>
-                                                    <div className="flex flex-wrap gap-2">
-                                                        <button onClick={() => setFilterClass('ALL')} className={`px-3 py-1 text-xs font-mono rounded border ${filterClass === 'ALL' ? `border-${theme.primary}-500 bg-${theme.primary}-500/20 text-white` : `border-white/10 text-white/50 hover:border-white/30 hover:text-white/80`} transition-all`}>ALL</button>
-                                                        {availableClasses.map(c => (
-                                                            <button key={c} onClick={() => setFilterClass(c)} className={`px-3 py-1 text-xs font-mono rounded border ${filterClass === c ? `border-${theme.primary}-500 bg-${theme.primary}-500/20 text-white` : `border-white/10 text-white/50 hover:border-white/30 hover:text-white/80`} transition-all uppercase`}>{c}</button>
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                                {/* Status Filter */}
-                                                <div>
-                                                    <div className={`text-[10px] font-mono ${theme.mutedText} tracking-widest mb-2 uppercase flex items-center gap-1.5`}><Filter size={10} /> Operational Status</div>
-                                                    <div className="flex flex-wrap gap-2">
-                                                        <button onClick={() => setFilterStatus('ALL')} className={`px-3 py-1 text-xs font-mono rounded border ${filterStatus === 'ALL' ? `border-${theme.primary}-500 bg-${theme.primary}-500/20 text-white` : `border-white/10 text-white/50 hover:border-white/30 hover:text-white/80`} transition-all`}>ALL</button>
-                                                        {availableStatuses.map(s => (
-                                                            <button key={s} onClick={() => setFilterStatus(s)} className={`px-3 py-1 text-xs font-mono rounded border ${filterStatus === s ? `border-${theme.primary}-500 bg-${theme.primary}-500/20 text-white` : `border-white/10 text-white/50 hover:border-white/30 hover:text-white/80`} transition-all uppercase`}>{s}</button>
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                                {/* Floor Jump */}
-                                                <div>
-                                                    <div className={`text-[10px] font-mono ${theme.mutedText} tracking-widest mb-2 uppercase border-t border-white/5 pt-3 mt-1`}>Direct Access Layer</div>
-                                                    <div className="grid grid-cols-5 gap-2 max-h-[140px] overflow-y-auto hide-scrollbar">
-                                                        {floors.map((f, i) => (
-                                                            <button key={f.index} onClick={() => { setSelectedFloorIndex(i); setIsFilterOpen(false); }} className={`p-2 text-xs font-black font-orbitron rounded border ${selectedFloorIndex === i ? `border-white text-white bg-white/10` : `border-white/5 text-white/40 hover:border-white/30 hover:text-white/80 bg-white/5`} transition-all flex items-center justify-center`}>
-                                                                {i + 1}
-                                                            </button>
-                                                        ))}
-                                                    </div>
+                                    {/* Dropdown Filter Menu */}
+                                    {isFilterOpen && (
+                                        <div className={`absolute top-full left-1/2 -translate-x-1/2 mt-3 p-4 rounded-xl border border-white/10 ${theme.isDark ? 'bg-black/95' : 'bg-black/90'} backdrop-blur-3xl min-w-[280px] md:min-w-[320px] shadow-2xl flex flex-col gap-4 animate-in fade-in zoom-in-95 duration-200 z-[70]`}>
+                                            {/* Class Filter */}
+                                            <div>
+                                                <div className={`text-[10px] font-mono ${theme.mutedText} tracking-widest mb-2 uppercase flex items-center gap-1.5`}><Filter size={10} /> Classification Protocol</div>
+                                                <div className="flex flex-wrap gap-2">
+                                                    <button onClick={() => setFilterClass('ALL')} className={`px-3 py-1 text-xs font-mono rounded border ${filterClass === 'ALL' ? `border-${theme.primary}-500 bg-${theme.primary}-500/20 text-white` : `border-white/10 text-white/50 hover:border-white/30 hover:text-white/80`} transition-all`}>ALL</button>
+                                                    {availableClasses.map(c => (
+                                                        <button key={c} onClick={() => setFilterClass(c)} className={`px-3 py-1 text-xs font-mono rounded border ${filterClass === c ? `border-${theme.primary}-500 bg-${theme.primary}-500/20 text-white` : `border-white/10 text-white/50 hover:border-white/30 hover:text-white/80`} transition-all uppercase`}>{c}</button>
+                                                    ))}
                                                 </div>
                                             </div>
-                                        )}
-                                    </div>
+                                            {/* Status Filter */}
+                                            <div>
+                                                <div className={`text-[10px] font-mono ${theme.mutedText} tracking-widest mb-2 uppercase flex items-center gap-1.5`}><Filter size={10} /> Operational Status</div>
+                                                <div className="flex flex-wrap gap-2">
+                                                    <button onClick={() => setFilterStatus('ALL')} className={`px-3 py-1 text-xs font-mono rounded border ${filterStatus === 'ALL' ? `border-${theme.primary}-500 bg-${theme.primary}-500/20 text-white` : `border-white/10 text-white/50 hover:border-white/30 hover:text-white/80`} transition-all`}>ALL</button>
+                                                    {availableStatuses.map(s => (
+                                                        <button key={s} onClick={() => setFilterStatus(s)} className={`px-3 py-1 text-xs font-mono rounded border ${filterStatus === s ? `border-${theme.primary}-500 bg-${theme.primary}-500/20 text-white` : `border-white/10 text-white/50 hover:border-white/30 hover:text-white/80`} transition-all uppercase`}>{s}</button>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                            {/* Floor Jump */}
+                                            <div>
+                                                <div className={`text-[10px] font-mono ${theme.mutedText} tracking-widest mb-2 uppercase border-t border-white/5 pt-3 mt-1`}>Direct Access Layer</div>
+                                                <div className="grid grid-cols-5 gap-2 max-h-[130px] overflow-y-auto hide-scrollbar">
+                                                    {floors.map((f, i) => (
+                                                        <button key={f.index} onClick={() => { setSelectedFloorIndex(i); setIsFilterOpen(false); }} className={`p-2 text-xs font-black font-orbitron rounded border ${selectedFloorIndex === i ? `border-white text-white bg-white/10` : `border-white/5 text-white/40 hover:border-white/30 hover:text-white/80 bg-white/5`} transition-all flex items-center justify-center`}>
+                                                            {i + 1}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
-                            )}
-                        </div>
+                            </div>
+                        )}
 
-                        {/* Carousel Area */}
-                        <div className="relative flex-1 w-full min-h-0">
-                            {/* FLOATING NAVIGATION CONTROLS */}
+                        {/* Carousel Area — flex-1 so it fills all remaining vertical space naturally */}
+                        <div className="relative flex-1 min-h-0 w-full group/carousel">
+                            {/* FLOATING NAVIGATION CONTROLS (desktop only) */}
                             {!search && (
                                 <>
                                     <button
@@ -269,9 +266,9 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
                                 </>
                             )}
 
-                            {/* THE CAROUSEL - Search results */}
+                            {/* THE CAROUSEL — uses h-full + overflow-x-auto so it stays within the flex-1 bounds */}
                             {search.length > 0 ? (
-                                <div ref={carouselRef} onWheel={handleWheel} className="absolute inset-0 flex items-center overflow-x-auto hide-scrollbar snap-x snap-mandatory px-3 sm:px-6 md:px-12 pt-4 pb-10 gap-6 md:gap-10">
+                                <div ref={carouselRef} onWheel={handleWheel} className="absolute inset-0 flex items-center overflow-x-auto hide-scrollbar snap-x snap-mandatory px-3 sm:px-6 md:px-12 py-4 gap-4 sm:gap-6 md:gap-10">
                                     {filteredItems.length === 0 ? (
                                         <div className="w-full h-full flex flex-col items-center justify-center">
                                             <AlertCircle size={48} className={`${theme.mutedText} mb-4 opacity-50`} />
@@ -281,13 +278,13 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
                                         filteredItems.map((item, index) => {
                                             const rawRank = getQuestRankObj(item);
                                             return (
-                                                <div key={item.id} className="w-[240px] sm:w-[280px] md:w-[280px] lg:w-[320px] xl:w-[360px] aspect-[3/4] shrink-0 snap-center transition-all duration-700 hover:scale-105 group relative mt-2 md:mt-4">
-                                                    {/* Floor Reflection Glow */}
-                                                    <div className={`absolute -bottom-8 left-1/2 -translate-x-1/2 w-3/4 h-8 bg-gradient-to-t from-${theme.primary}-500/40 to-transparent blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-700`} />
-                                                    {/* Backdrop Ambient Lighting */}
-                                                    <div className={`absolute -inset-8 bg-${theme.primary}-500/10 blur-[50px] rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none`} />
-
-                                                    <QuestCard id={`item-${item.id}`} item={item} onClick={onActivate} index={index} theme={theme} rankStyle={rawRank} />
+                                                <div key={item.id} className="h-full max-h-[55vh] sm:max-h-[60vh] md:max-h-[65vh] aspect-[3/4] shrink-0 snap-center transition-all duration-700 hover:scale-[1.03] group relative">
+                                                    {/* Reflection Glow */}
+                                                    <div className={`absolute -bottom-6 left-1/2 -translate-x-1/2 w-3/4 h-6 bg-gradient-to-t from-${theme.primary}-500/40 to-transparent blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-700`} />
+                                                    <div className={`absolute -inset-6 bg-${theme.primary}-500/10 blur-[40px] rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none`} />
+                                                    <div className="relative z-10 w-full h-full">
+                                                        <QuestCard id={`item-${item.id}`} item={item} onClick={onActivate} index={index} theme={theme} rankStyle={rawRank} />
+                                                    </div>
                                                 </div>
                                             );
                                         })
@@ -295,17 +292,16 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
                                 </div>
                             ) : (
                                 floors.length > 0 && floors[selectedFloorIndex] ? (
-                                    <div ref={carouselRef} onWheel={handleWheel} className="absolute inset-0 flex items-center overflow-x-auto hide-scrollbar snap-x snap-mandatory px-3 sm:px-6 md:px-12 pt-4 pb-10 md:pb-6 gap-8 md:gap-10">
+                                    <div ref={carouselRef} onWheel={handleWheel} className="absolute inset-0 flex items-center overflow-x-auto hide-scrollbar snap-x snap-mandatory px-3 sm:px-6 md:px-12 py-4 gap-4 sm:gap-6 md:gap-8 lg:gap-10">
                                         {floors[selectedFloorIndex].items.map((item, index) => {
                                             const rawRank = getQuestRankObj(item);
                                             return (
-                                                <div key={item.id} className="w-[260px] sm:w-[280px] md:w-[280px] lg:w-[320px] xl:w-[360px] aspect-[3/4] shrink-0 snap-center transition-all duration-700 hover:scale-[1.03] group relative mt-0 md:mt-2">
-                                                    {/* Floor Reflection Glow */}
-                                                    <div className={`absolute -bottom-8 left-1/2 -translate-x-1/2 w-3/4 h-8 bg-gradient-to-t ${theme.id === 'LIGHT' ? 'from-sky-500/40' : 'from-amber-500/40'} to-transparent blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-all duration-700`} />
+                                                <div key={item.id} className="h-full max-h-[55vh] sm:max-h-[60vh] md:max-h-[65vh] aspect-[3/4] shrink-0 snap-center transition-all duration-700 hover:scale-[1.03] group relative">
+                                                    {/* Reflection Glow */}
+                                                    <div className={`absolute -bottom-6 left-1/2 -translate-x-1/2 w-3/4 h-6 bg-gradient-to-t ${theme.id === 'LIGHT' ? 'from-sky-500/40' : 'from-amber-500/40'} to-transparent blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-all duration-700`} />
                                                     {/* Backdrop Ambient Lighting */}
-                                                    <div className={`absolute -inset-8 ${theme.id === 'LIGHT' ? 'bg-sky-500/10' : 'bg-amber-500/10'} blur-[50px] rounded-full opacity-0 group-hover:opacity-100 transition-all duration-700 pointer-events-none`} />
-
-                                                    <div className="relative z-10">
+                                                    <div className={`absolute -inset-6 ${theme.id === 'LIGHT' ? 'bg-sky-500/10' : 'bg-amber-500/10'} blur-[40px] rounded-full opacity-0 group-hover:opacity-100 transition-all duration-700 pointer-events-none`} />
+                                                    <div className="relative z-10 w-full h-full">
                                                         <QuestCard id={`item-${item.id}`} item={item} onClick={onActivate} index={index} theme={theme} rankStyle={rawRank} />
                                                     </div>
                                                 </div>
@@ -313,7 +309,7 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
                                         })}
                                     </div>
                                 ) : (
-                                    <div className={`w-full h-full flex flex-col items-center justify-center ${theme.mutedText}`}>
+                                    <div className={`absolute inset-0 flex flex-col items-center justify-center ${theme.mutedText}`}>
                                         <AlertCircle size={48} className="mb-4 opacity-50" />
                                         <p className="font-mono text-sm tracking-widest">LAYER EMPTY / LOCKED</p>
                                     </div>

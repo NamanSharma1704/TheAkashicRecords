@@ -183,7 +183,7 @@ const TowerStructure: React.FC<TowerStructureProps> = ({ onSelectFloor, theme, o
             }
 
             // invisible hitbox around the isle (raycast target)
-            const hitGeo = new THREE.SphereGeometry(s * 1.35, 12, 12);
+            const hitGeo = new THREE.SphereGeometry(s * 1.45, 12, 12);
             const hitMat = new THREE.MeshBasicMaterial({ visible: false });
             const hitbox = new THREE.Mesh(hitGeo, hitMat);
             hitbox.userData = { type: 'floor', index: i };
@@ -246,6 +246,7 @@ const TowerStructure: React.FC<TowerStructureProps> = ({ onSelectFloor, theme, o
             const label = new THREE.Sprite(labelMat);
             label.center.set(0, 0.5);
             label.position.set(s * 1.35 + 3, s * 0.4, 0);
+            label.userData = { type: 'floor', index: i };
             const scaleY = isMobile ? 3.5 : 5;
             label.scale.set(scaleY * (canvas.width / canvas.height), scaleY, 1);
             isle.add(label);
@@ -297,7 +298,29 @@ const TowerStructure: React.FC<TowerStructureProps> = ({ onSelectFloor, theme, o
         group.add(motes);
         disposables.push(moteGeo, moteTex, moteMat);
 
-        // --- SCROLL / CAMERA LOGIC ---
+        // --- SCROLL / CAMERA / TOUCH LOGIC ---
+        const getZoomLevels = () => {
+            const w = mountRef.current?.clientWidth || window.innerWidth;
+            const hh = mountRef.current?.clientHeight || window.innerHeight;
+            const aspect = w / hh;
+            if (w < 768) {
+                return {
+                    far: aspect < 1 ? 172 : 130,
+                    close: aspect < 1 ? 82 : 62,
+                };
+            } else if (w < 1280) {
+                return {
+                    far: aspect < 1 ? 178 : 124,
+                    close: aspect < 1 ? 76 : 58,
+                };
+            } else {
+                return {
+                    far: 120,
+                    close: 54,
+                };
+            }
+        };
+
         // Camera pans between the base grid and the apex core; starts centred on the isles.
         const centerY = (7 * FLOOR_SPACING - 2 * TOWER_OFFSET) / 2;
         let scrollY = centerY;
@@ -305,21 +328,64 @@ const TowerStructure: React.FC<TowerStructureProps> = ({ onSelectFloor, theme, o
         const maxScroll = (7 * FLOOR_SPACING) - TOWER_OFFSET + 12;
         let targetScrollY = centerY;
 
-        let zPos = 120;
-        let targetZ = 120;
-        const ZOOM_CLOSE = 54;
-        const ZOOM_FAR = 120;
+        const initialZoom = getZoomLevels();
+        let zPos = initialZoom.far;
+        let targetZ = initialZoom.far;
+        camera.position.set(0, centerY, initialZoom.far);
+        camera.lookAt(0, centerY, 0);
 
         let focusedFloorIndex = -1;
 
+        // Reusable floor detection at any viewport point (used by mouse and touch)
+        const getFloorAtPoint = (clientX: number, clientY: number): THREE.Object3D | null => {
+            const m = mountRef.current;
+            if (!m) return null;
+            const rect = m.getBoundingClientRect();
+            const nx = ((clientX - rect.left) / rect.width) * 2 - 1;
+            const ny = -((clientY - rect.top) / rect.height) * 2 + 1;
+            const pt = new THREE.Vector2(nx, ny);
+            raycaster.setFromCamera(pt, camera);
+            const targets: THREE.Object3D[] = [];
+            floorObjects.forEach(f => {
+                targets.push(f.hitbox);
+                targets.push(f.label);
+            });
+            const intersects = raycaster.intersectObjects(targets);
+            return intersects.length > 0 ? intersects[0].object : null;
+        };
+
+        const selectOrFocusFloor = (floorIndex: number) => {
+            const floorY = (floorIndex * FLOOR_SPACING) - TOWER_OFFSET;
+            if (focusedFloorIndex === floorIndex) {
+                onSelectFloorRef.current(floorIndex);
+            } else {
+                targetScrollY = floorY;
+                focusedFloorIndex = floorIndex;
+                targetZ = getZoomLevels().close;
+                // Rotate this isle to front-centre (world x≈0, nearest the camera) so the
+                // zoom lands on it instead of the empty central axis.
+                let want = Math.PI / 2 - (floorIndex * SPIRAL_ANG);
+                want += Math.round((currentRotY - want) / (Math.PI * 2)) * (Math.PI * 2);
+                targetRotationY = want;
+                if (onFocus) onFocus(true, floorIndex);
+            }
+        };
+
+        const unfocus = () => {
+            if (focusedFloorIndex !== -1) {
+                focusedFloorIndex = -1;
+                if (onFocus) onFocus(false);
+                targetZ = getZoomLevels().far;
+            }
+        };
+
+        // --- MOUSE HANDLERS ---
         const handleWheel = (e: WheelEvent) => {
             e.preventDefault();
             targetScrollY -= e.deltaY * 0.05;
             targetScrollY = Math.max(minScroll, Math.min(maxScroll, targetScrollY));
             if (focusedFloorIndex !== -1) {
-                focusedFloorIndex = -1;
-                if (onFocus) onFocus(false);
-                targetZ = ZOOM_FAR;
+                unfocus();
             }
         };
 
@@ -328,36 +394,21 @@ const TowerStructure: React.FC<TowerStructureProps> = ({ onSelectFloor, theme, o
             startX = e.clientX;
             startY = e.clientY;
         };
+
         const handleUp = (e: MouseEvent) => {
             if (!isDragging) return;
             isDragging = false;
-            const dist = Math.sqrt(Math.pow(e.clientX - startX, 2) + Math.pow(e.clientY - startY, 2));
-            if (dist < 5) {
-                if (hoveredFloor) {
-                    const floorIndex = hoveredFloor.userData.index;
-                    const floorY = (floorIndex * FLOOR_SPACING) - TOWER_OFFSET;
-                    if (focusedFloorIndex === floorIndex) {
-                        onSelectFloorRef.current(floorIndex);
-                    } else {
-                        targetScrollY = floorY;
-                        focusedFloorIndex = floorIndex;
-                        targetZ = ZOOM_CLOSE;
-                        // Rotate this isle to front-centre (world x≈0, nearest the camera) so the
-                        // zoom lands on it instead of the empty central axis.
-                        let want = Math.PI / 2 - (floorIndex * SPIRAL_ANG);
-                        want += Math.round((currentRotY - want) / (Math.PI * 2)) * (Math.PI * 2);
-                        targetRotationY = want;
-                        if (onFocus) onFocus(true, floorIndex);
-                    }
+            const dist = Math.hypot(e.clientX - startX, e.clientY - startY);
+            if (dist < 6) {
+                const hitFloor = hoveredFloor || getFloorAtPoint(e.clientX, e.clientY);
+                if (hitFloor) {
+                    selectOrFocusFloor(hitFloor.userData.index);
                 } else {
-                    if (focusedFloorIndex !== -1) {
-                        focusedFloorIndex = -1;
-                        if (onFocus) onFocus(false);
-                        targetZ = ZOOM_FAR;
-                    }
+                    unfocus();
                 }
             }
         };
+
         let lastMoveTime = 0;
         const handleMove = (e: MouseEvent) => {
             const now = performance.now();
@@ -373,47 +424,170 @@ const TowerStructure: React.FC<TowerStructureProps> = ({ onSelectFloor, theme, o
                 targetScrollY += e.movementY * 0.1;
                 targetScrollY = Math.max(minScroll, Math.min(maxScroll, targetScrollY));
                 if (Math.abs(e.movementY) > 0) {
-                    if (focusedFloorIndex !== -1 && onFocus) onFocus(false);
-                    focusedFloorIndex = -1;
-                    targetZ = ZOOM_FAR;
+                    if (focusedFloorIndex !== -1) unfocus();
                 }
             }
         };
 
-        const handleTouchStart = () => { isDragging = true; };
-        const handleTouchEnd = () => { isDragging = false; };
-        const handleBlur = () => { isDragging = false; };
+        // --- TOUCH HANDLERS (Phones & iPads) ---
+        let isTouchDragging = false;
+        let isPinching = false;
+        let touchStartX = 0;
+        let touchStartY = 0;
+        let lastTouchX = 0;
+        let lastTouchY = 0;
+        let touchStartTime = 0;
+        let lastPinchDist = 0;
+        let lastPinchMidY = 0;
+
+        const handleTouchStart = (e: TouchEvent) => {
+            if (e.touches.length === 1) {
+                const t = e.touches[0];
+                isTouchDragging = true;
+                isPinching = false;
+                touchStartX = t.clientX;
+                touchStartY = t.clientY;
+                lastTouchX = t.clientX;
+                lastTouchY = t.clientY;
+                touchStartTime = performance.now();
+            } else if (e.touches.length === 2) {
+                isPinching = true;
+                isTouchDragging = false;
+                const dx = e.touches[0].clientX - e.touches[1].clientX;
+                const dy = e.touches[0].clientY - e.touches[1].clientY;
+                lastPinchDist = Math.hypot(dx, dy);
+                lastPinchMidY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+            }
+        };
+
+        const handleTouchMove = (e: TouchEvent) => {
+            if (isPinching && e.touches.length === 2) {
+                if (e.cancelable) e.preventDefault();
+                const dx = e.touches[0].clientX - e.touches[1].clientX;
+                const dy = e.touches[0].clientY - e.touches[1].clientY;
+                const dist = Math.hypot(dx, dy);
+                const pinchDelta = dist - lastPinchDist;
+                lastPinchDist = dist;
+
+                const zoomLevels = getZoomLevels();
+                // Pinch spread (dist increases) -> zoom closer (targetZ decreases)
+                // Pinch together (dist decreases) -> zoom farther (targetZ increases)
+                targetZ -= pinchDelta * 0.45;
+                targetZ = Math.max(zoomLevels.close - 15, Math.min(zoomLevels.far + 40, targetZ));
+
+                // Two-finger vertical pan
+                const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+                const deltaMidY = midY - lastPinchMidY;
+                lastPinchMidY = midY;
+                targetScrollY += deltaMidY * 0.12;
+                targetScrollY = Math.max(minScroll, Math.min(maxScroll, targetScrollY));
+                return;
+            }
+
+            if (isTouchDragging && e.touches.length === 1) {
+                if (e.cancelable) e.preventDefault();
+                const t = e.touches[0];
+                const dx = t.clientX - lastTouchX;
+                const dy = t.clientY - lastTouchY;
+                lastTouchX = t.clientX;
+                lastTouchY = t.clientY;
+
+                // Rotate and scroll
+                targetRotationY += dx * 0.007;
+                targetScrollY += dy * 0.12;
+                targetScrollY = Math.max(minScroll, Math.min(maxScroll, targetScrollY));
+
+                if (Math.abs(dy) > 1.2 && focusedFloorIndex !== -1) {
+                    unfocus();
+                }
+            }
+        };
+
+        const handleTouchEnd = (e: TouchEvent) => {
+            if (isPinching) {
+                if (e.touches.length === 0) {
+                    isPinching = false;
+                } else if (e.touches.length === 1) {
+                    isPinching = false;
+                    isTouchDragging = true;
+                    lastTouchX = e.touches[0].clientX;
+                    lastTouchY = e.touches[0].clientY;
+                }
+                return;
+            }
+
+            if (isTouchDragging) {
+                isTouchDragging = false;
+                const t = e.changedTouches[0];
+                if (!t) return;
+                const totalDist = Math.hypot(t.clientX - touchStartX, t.clientY - touchStartY);
+                const duration = performance.now() - touchStartTime;
+
+                // Tap registered (minimal movement within brief time)
+                if (totalDist < 14 && duration < 600) {
+                    const hitFloor = getFloorAtPoint(t.clientX, t.clientY);
+                    if (hitFloor) {
+                        selectOrFocusFloor(hitFloor.userData.index);
+                    } else {
+                        unfocus();
+                    }
+                }
+            }
+        };
+
+        const handleTouchCancel = () => {
+            isTouchDragging = false;
+            isPinching = false;
+        };
+
+        const handleBlur = () => {
+            isDragging = false;
+            isTouchDragging = false;
+            isPinching = false;
+        };
 
         const canvasEl = renderer.domElement;
+        canvasEl.style.touchAction = 'none';
+        canvasEl.style.userSelect = 'none';
+        canvasEl.style.webkitUserSelect = 'none';
+
         canvasEl.addEventListener('wheel', handleWheel, { passive: false });
         canvasEl.addEventListener('mousedown', handleDown);
         // Capture phase: these fire before any overlay panel can stopPropagation, so a drag
         // continues over the side panels and a mouseup ALWAYS clears the drag (no stuck drag).
         window.addEventListener('mouseup', handleUp, true);
         window.addEventListener('mousemove', handleMove, true);
-        canvasEl.addEventListener('touchstart', handleTouchStart, { passive: true });
-        window.addEventListener('touchend', handleTouchEnd);
+
+        canvasEl.addEventListener('touchstart', handleTouchStart, { passive: false });
+        window.addEventListener('touchmove', handleTouchMove, { passive: false });
+        window.addEventListener('touchend', handleTouchEnd, { passive: false });
+        window.addEventListener('touchcancel', handleTouchCancel, { passive: true });
         window.addEventListener('blur', handleBlur);
 
         const handleResize = () => {
             if (!mountRef.current || !renderer || !camera) return;
-            const w = mountRef.current.clientWidth;
-            const hh = mountRef.current.clientHeight;
+            const w = mountRef.current.clientWidth || window.innerWidth;
+            const hh = mountRef.current.clientHeight || window.innerHeight;
             const aspect = w / hh;
             renderer.setSize(w, hh);
             camera.aspect = aspect;
+            const zoomLevels = getZoomLevels();
             if (w < 768) {
-                if (aspect < 1) { camera.fov = 75; targetZ = 172; }
-                else { camera.fov = 50; targetZ = 130; }
+                camera.fov = aspect < 1 ? 75 : 50;
             } else if (w < 1280) {
-                if (aspect < 1) { camera.fov = 80; targetZ = 178; }
-                else { camera.fov = 66; targetZ = 124; }
+                camera.fov = aspect < 1 ? 80 : 66;
             } else {
-                camera.fov = 65; targetZ = 120;
+                camera.fov = 65;
+            }
+            if (focusedFloorIndex === -1) {
+                targetZ = zoomLevels.far;
+            } else {
+                targetZ = zoomLevels.close;
             }
             camera.updateProjectionMatrix();
         };
         window.addEventListener('resize', handleResize);
+        handleResize();
 
         // --- ANIMATION ---
         const clock = new THREE.Clock();
@@ -428,9 +602,11 @@ const TowerStructure: React.FC<TowerStructureProps> = ({ onSelectFloor, theme, o
             const dt = Math.min(clock.getDelta(), 0.1);
             if (isPausedRef.current || document.hidden) return;
 
-            // Rotation (auto + damped). Auto-spin halts while a floor is focused so the
+            // Rotation (auto + damped). Auto-spin halts while a floor is focused or dragged so the
             // centred isle stays put and stays clickable.
-            if (!isDragging && focusedFloorIndex === -1) targetRotationY += AUTO_SPIN_SPEED * dt;
+            if (!isDragging && !isTouchDragging && !isPinching && focusedFloorIndex === -1) {
+                targetRotationY += AUTO_SPIN_SPEED * dt;
+            }
             const damp = Math.min(1.0, dt * 4.0);
             currentRotY += (targetRotationY - currentRotY) * damp;
             group.rotation.y = currentRotY;
@@ -458,9 +634,9 @@ const TowerStructure: React.FC<TowerStructureProps> = ({ onSelectFloor, theme, o
                 mp.needsUpdate = true;
             }
 
-            // Hover styling
-            floorObjects.forEach((obj) => {
-                const isHover = (obj.hitbox === hoveredFloor);
+            // Hover styling & focus highlight
+            floorObjects.forEach((obj, idx) => {
+                const isHover = (obj.hitbox === hoveredFloor) || (focusedFloorIndex === idx);
                 obj.edges.forEach(e => { e.material = isHover ? edgeHoverMat : edgeMat; });
                 obj.pad.material = isHover ? padHoverMat : padMat;
                 obj.label.material.opacity = isHover ? 1 : 0.8;
@@ -477,7 +653,7 @@ const TowerStructure: React.FC<TowerStructureProps> = ({ onSelectFloor, theme, o
             isHoveringTower = towerIntersects.length > 0;
 
             if (mountRef.current) {
-                if (isDragging) mountRef.current.style.cursor = 'grabbing';
+                if (isDragging || isTouchDragging) mountRef.current.style.cursor = 'grabbing';
                 else if (hoveredFloor) mountRef.current.style.cursor = 'pointer';
                 else if (isHoveringTower) mountRef.current.style.cursor = 'grab';
                 else mountRef.current.style.cursor = 'default';
@@ -497,7 +673,9 @@ const TowerStructure: React.FC<TowerStructureProps> = ({ onSelectFloor, theme, o
                 renderer.domElement.removeEventListener('wheel', handleWheel);
                 renderer.domElement.removeEventListener('touchstart', handleTouchStart);
             }
+            window.removeEventListener('touchmove', handleTouchMove);
             window.removeEventListener('touchend', handleTouchEnd);
+            window.removeEventListener('touchcancel', handleTouchCancel);
             window.removeEventListener('blur', handleBlur);
             if (mount && renderer.domElement && mount.contains(renderer.domElement)) {
                 mount.removeChild(renderer.domElement);
@@ -515,7 +693,7 @@ const TowerStructure: React.FC<TowerStructureProps> = ({ onSelectFloor, theme, o
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [theme]);
 
-    return <div ref={mountRef} className="w-full h-full min-h-[500px]" />;
+    return <div ref={mountRef} className="absolute inset-0 w-full h-full touch-none select-none overflow-hidden" />;
 };
 
 export default TowerStructure;

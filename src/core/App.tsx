@@ -190,6 +190,35 @@ const HeavyLoader = ({ theme }: { theme: any }) => (
 );
 
 // --- DIMENSIONAL RIFT OVERLAY (Entering a New World - Dimensional Dive) ---
+// Builds a self-contained "dimensional dive" page painted into the freshly-opened tab, which
+// then redirects to the manhwa. The open + write happen inside the click gesture, so Safari's
+// popup blocker (which kills a window.open deferred past the gesture) never trips — and the
+// animation is actually seen, since focus follows the new tab.
+const buildPortalLoader = (href: string, accent: string): string => {
+    const rings = Array.from({ length: 6 }, (_, i) => `<div class="ring" style="animation-delay:${i * 140}ms"></div>`).join('');
+    const streaks = Array.from({ length: 22 }, (_, i) => `<div class="streak" style="--r:${Math.round((i * 360) / 22)}deg;animation-delay:${Math.round(Math.random() * 650)}ms"></div>`).join('');
+    return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Akashic Link</title><style>
+:root{--a:${accent}}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;overflow:hidden;background:#020205}
+.stage{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle at 50% 50%,transparent 28%,#020205 78%);font-family:'Segoe UI',system-ui,-apple-system,sans-serif}
+.ring{position:absolute;border-radius:50%;border:2px solid var(--a);width:38vmin;height:38vmin;opacity:0;box-shadow:0 0 42px 4px var(--a),inset 0 0 22px var(--a);animation:ring 1.25s cubic-bezier(.5,0,.9,1) forwards}
+@keyframes ring{0%{transform:scale(.02);opacity:0}18%{opacity:1}100%{transform:scale(9);opacity:0}}
+.streaks{position:absolute;inset:0;overflow:hidden}
+.streak{position:absolute;left:50%;top:50%;width:2px;height:65vmax;transform-origin:top center;background:linear-gradient(to bottom,transparent,var(--a),#fff);opacity:0;animation:streak 1.15s ease-in infinite}
+@keyframes streak{0%{transform:rotate(var(--r)) scaleY(0);opacity:0}30%{opacity:.85}100%{transform:rotate(var(--r)) scaleY(1);opacity:0}}
+.core{position:absolute;width:58vmin;height:58vmin;border-radius:50%;background:radial-gradient(circle,#fff 0%,var(--a) 38%,transparent 72%);mix-blend-mode:screen;transform:scale(0);filter:blur(1px);animation:core 1.25s cubic-bezier(.6,0,.9,1) forwards}
+@keyframes core{0%{transform:scale(0);opacity:0}45%{transform:scale(.12);opacity:.9}100%{transform:scale(3.6);opacity:1}}
+.txt{position:relative;z-index:5;text-align:center;animation:txt 1.2s ease-in forwards}
+@keyframes txt{0%{transform:scale(.85);opacity:0}35%{transform:scale(1);opacity:1}100%{transform:scale(5);opacity:0}}
+.title{font-weight:800;letter-spacing:.12em;color:#fff;font-size:clamp(20px,5vw,52px);text-shadow:0 0 26px var(--a)}
+.sub{margin-top:14px;font-family:ui-monospace,SFMono-Regular,monospace;letter-spacing:.5em;font-size:clamp(10px,1.6vw,14px);color:var(--a);text-shadow:0 0 10px var(--a)}
+.flash{position:fixed;inset:0;background:#fff;opacity:0;z-index:9;pointer-events:none;animation:flash 1.25s ease-in forwards}
+@keyframes flash{0%,78%{opacity:0}100%{opacity:1}}
+@media (prefers-reduced-motion:reduce){.ring,.streak,.core,.txt,.flash{animation:none}.txt{opacity:1}}
+</style></head><body><div class="stage"><div class="streaks">${streaks}</div><div class="core"></div>${rings}<div class="txt"><div class="title">AKASHIC LINK ESTABLISHED</div><div class="sub">&lt; ENTERING NEW DIMENSION &gt;</div></div><div class="flash"></div></div><script>setTimeout(function(){location.replace(${JSON.stringify(href)})},1150)</script></body></html>`;
+};
+
 const DimensionalRiftOverlay: React.FC<{ isActive: boolean; accentColor: string; isDark: boolean }> = ({ isActive, accentColor, isDark }) => {
     if (!isActive) return null;
     const colorPrimary = isDark ? accentColor : '#0ea5e9'; // sky-500
@@ -365,28 +394,35 @@ const App: React.FC = () => {
 
     const [portalAnimating, setPortalAnimating] = useState(false);
 
-    const portalAnchorRef = useRef<HTMLAnchorElement>(null);
-    const portalPendingUrl = useRef<string>('');
+    const handleEnterPortal = useCallback((rawUrl: string) => {
+        if (!rawUrl || rawUrl === '#' || portalAnimating) return;
+        // Only real web links are portal targets.
+        let target: URL;
+        try { target = new URL(rawUrl); } catch { return; }
+        if (target.protocol !== 'http:' && target.protocol !== 'https:') return;
 
-    const handleEnterPortal = useCallback((url: string) => {
-        if (!url || url === '#' || portalAnimating) return;
-        
-        portalPendingUrl.current = url;
-        setPortalAnimating(true);
-        
-        // After "Dimensional Dive" animation completes (1.5s whiteout), trigger the portal
-        setTimeout(() => {
-            if (portalAnchorRef.current) {
-                portalAnchorRef.current.href = portalPendingUrl.current;
-                portalAnchorRef.current.click();
-            } else {
-                window.open(portalPendingUrl.current, '_blank', 'noopener,noreferrer');
+        // Open the destination tab SYNCHRONOUSLY, inside the click gesture. Safari's popup
+        // blocker kills any window.open deferred past the gesture (e.g. behind a setTimeout),
+        // which is why the old animate-then-open flow silently failed there. We paint the
+        // "dimensional dive" into the new tab itself, which then redirects to the manhwa.
+        const win = window.open('about:blank', '_blank');
+        if (win) {
+            try { win.opener = null; } catch { /* cross-origin guard */ }
+            try {
+                win.document.write(buildPortalLoader(target.href, theme.accentColor));
+                win.document.close();
+            } catch {
+                win.location.href = target.href;
             }
-            
-            setPortalAnimating(false);
-            portalPendingUrl.current = '';
-        }, 1550);
-    }, [portalAnimating]);
+        } else {
+            // Popup blocked outright — fall back to a plain in-gesture open.
+            window.open(target.href, '_blank', 'noopener,noreferrer');
+        }
+
+        // Brief origin-tab flourish for feedback (the primary dive lives in the new tab).
+        setPortalAnimating(true);
+        setTimeout(() => setPortalAnimating(false), 1300);
+    }, [portalAnimating, theme.accentColor]);
 
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isSpireOpen, setIsSpireOpen] = useState(false);
@@ -1589,8 +1625,6 @@ const App: React.FC = () => {
                 )}
             </AnimatePresence>
 
-            {/* Hidden anchor used by portal animation to open new tab after animation completes */}
-            <a ref={portalAnchorRef} href="#" target="_blank" rel="noopener noreferrer" aria-hidden="true" style={{ display: 'none' }} />
 
 
 

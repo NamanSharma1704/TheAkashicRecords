@@ -197,7 +197,11 @@ const HeavyLoader = ({ theme }: { theme: any }) => (
 const buildPortalLoader = (href: string, accent: string): string => {
     const rings = Array.from({ length: 6 }, (_, i) => `<div class="ring" style="animation-delay:${i * 140}ms"></div>`).join('');
     const streaks = Array.from({ length: 22 }, (_, i) => `<div class="streak" style="--r:${Math.round((i * 360) / 22)}deg;animation-delay:${Math.round(Math.random() * 650)}ms"></div>`).join('');
-    return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Akashic Link</title><style>
+    // Redirect with <meta refresh>, NOT an inline <script>: the new tab inherits the site's
+    // CSP (script-src 'self', no unsafe-inline), which blocks inline scripts but never a meta
+    // refresh — that's why the script-based redirect silently failed in every browser.
+    const metaUrl = href.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="1; url=${metaUrl}"><title>Akashic Link</title><style>
 :root{--a:${accent}}
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{height:100%;overflow:hidden;background:#020205}
@@ -216,7 +220,7 @@ html,body{height:100%;overflow:hidden;background:#020205}
 .flash{position:fixed;inset:0;background:#fff;opacity:0;z-index:9;pointer-events:none;animation:flash 1.25s ease-in forwards}
 @keyframes flash{0%,78%{opacity:0}100%{opacity:1}}
 @media (prefers-reduced-motion:reduce){.ring,.streak,.core,.txt,.flash{animation:none}.txt{opacity:1}}
-</style></head><body><div class="stage"><div class="streaks">${streaks}</div><div class="core"></div>${rings}<div class="txt"><div class="title">AKASHIC LINK ESTABLISHED</div><div class="sub">&lt; ENTERING NEW DIMENSION &gt;</div></div><div class="flash"></div></div><script>setTimeout(function(){location.replace(${JSON.stringify(href)})},1150)</script></body></html>`;
+</style></head><body><div class="stage"><div class="streaks">${streaks}</div><div class="core"></div>${rings}<div class="txt"><div class="title">AKASHIC LINK ESTABLISHED</div><div class="sub">&lt; ENTERING NEW DIMENSION &gt;</div></div><div class="flash"></div></div></body></html>`;
 };
 
 const DimensionalRiftOverlay: React.FC<{ isActive: boolean; accentColor: string; isDark: boolean }> = ({ isActive, accentColor, isDark }) => {

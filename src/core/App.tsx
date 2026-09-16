@@ -189,165 +189,47 @@ const HeavyLoader = ({ theme }: { theme: any }) => (
     </div>
 );
 
-// --- DIMENSIONAL RIFT OVERLAY (Entering a New World - Dimensional Dive) ---
+// --- PORTAL DIVE (Entering the gate, travelling to a new world) ---
 // Builds a self-contained "dimensional dive" page painted into the freshly-opened tab, which
 // then redirects to the manhwa. The open + write happen inside the click gesture, so Safari's
 // popup blocker (which kills a window.open deferred past the gesture) never trips — and the
-// animation is actually seen, since focus follows the new tab.
-const buildPortalLoader = (href: string, accent: string): string => {
-    const rings = Array.from({ length: 6 }, (_, i) => `<div class="ring" style="animation-delay:${i * 140}ms"></div>`).join('');
-    const streaks = Array.from({ length: 22 }, (_, i) => `<div class="streak" style="--r:${Math.round((i * 360) / 22)}deg;animation-delay:${Math.round(Math.random() * 650)}ms"></div>`).join('');
-    // Redirect with <meta refresh>, NOT an inline <script>: the new tab inherits the site's
-    // CSP (script-src 'self', no unsafe-inline), which blocks inline scripts but never a meta
-    // refresh — that's why the script-based redirect silently failed in every browser.
+// animation is actually seen, since focus follows the new tab. No inline <script> is used:
+// the tab inherits the site CSP (script-src 'self'), which blocks inline scripts; the redirect
+// is a <meta refresh>, and the ring/streak markup is pre-generated here (parent origin).
+const buildPortalLoader = (href: string, accent: string, accent2: string): string => {
+    const rings = Array.from({ length: 12 }, (_, i) => `<div class="ring" style="animation-delay:${(i * 0.11).toFixed(2)}s"><svg viewBox="0 0 120 120" aria-hidden="true"><polygon points="60,6 111,36 111,84 60,114 9,84 9,36" fill="none" stroke="${accent}" stroke-width="1.4"/><polygon points="60,20 98,42 98,78 60,100 22,78 22,42" fill="none" stroke="${accent2}" stroke-width="0.7" opacity="0.5"/></svg></div>`).join('');
+    const streaks = Array.from({ length: 26 }, (_, i) => `<div class="streak" style="--r:${Math.round((i * 360) / 26)}deg;animation-delay:${(Math.random() * 0.8).toFixed(2)}s"></div>`).join('');
     const metaUrl = href.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="1; url=${metaUrl}"><title>Akashic Link</title><style>
-:root{--a:${accent}}
+    return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="2; url=${metaUrl}"><title>Akashic Link</title><style>
+:root{--a:${accent};--b:${accent2}}
 *{margin:0;padding:0;box-sizing:border-box}
-html,body{height:100%;overflow:hidden;background:#020205}
-.stage{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle at 50% 50%,transparent 28%,#020205 78%);font-family:'Segoe UI',system-ui,-apple-system,sans-serif}
-.ring{position:absolute;border-radius:50%;border:2px solid var(--a);width:38vmin;height:38vmin;opacity:0;box-shadow:0 0 42px 4px var(--a),inset 0 0 22px var(--a);animation:ring 1.25s cubic-bezier(.5,0,.9,1) forwards}
-@keyframes ring{0%{transform:scale(.02);opacity:0}18%{opacity:1}100%{transform:scale(9);opacity:0}}
-.streaks{position:absolute;inset:0;overflow:hidden}
-.streak{position:absolute;left:50%;top:50%;width:2px;height:65vmax;transform-origin:top center;background:linear-gradient(to bottom,transparent,var(--a),#fff);opacity:0;animation:streak 1.15s ease-in infinite}
-@keyframes streak{0%{transform:rotate(var(--r)) scaleY(0);opacity:0}30%{opacity:.85}100%{transform:rotate(var(--r)) scaleY(1);opacity:0}}
-.core{position:absolute;width:58vmin;height:58vmin;border-radius:50%;background:radial-gradient(circle,#fff 0%,var(--a) 38%,transparent 72%);mix-blend-mode:screen;transform:scale(0);filter:blur(1px);animation:core 1.25s cubic-bezier(.6,0,.9,1) forwards}
-@keyframes core{0%{transform:scale(0);opacity:0}45%{transform:scale(.12);opacity:.9}100%{transform:scale(3.6);opacity:1}}
-.txt{position:relative;z-index:5;text-align:center;animation:txt 1.2s ease-in forwards}
-@keyframes txt{0%{transform:scale(.85);opacity:0}35%{transform:scale(1);opacity:1}100%{transform:scale(5);opacity:0}}
-.title{font-weight:800;letter-spacing:.12em;color:#fff;font-size:clamp(20px,5vw,52px);text-shadow:0 0 26px var(--a)}
-.sub{margin-top:14px;font-family:ui-monospace,SFMono-Regular,monospace;letter-spacing:.5em;font-size:clamp(10px,1.6vw,14px);color:var(--a);text-shadow:0 0 10px var(--a)}
-.flash{position:fixed;inset:0;background:#fff;opacity:0;z-index:9;pointer-events:none;animation:flash 1.25s ease-in forwards}
-@keyframes flash{0%,78%{opacity:0}100%{opacity:1}}
-@media (prefers-reduced-motion:reduce){.ring,.streak,.core,.txt,.flash{animation:none}.txt{opacity:1}}
-</style></head><body><div class="stage"><div class="streaks">${streaks}</div><div class="core"></div>${rings}<div class="txt"><div class="title">AKASHIC LINK ESTABLISHED</div><div class="sub">&lt; ENTERING NEW DIMENSION &gt;</div></div><div class="flash"></div></div></body></html>`;
-};
-
-const DimensionalRiftOverlay: React.FC<{ isActive: boolean; accentColor: string; isDark: boolean }> = ({ isActive, accentColor, isDark }) => {
-    if (!isActive) return null;
-    const colorPrimary = isDark ? accentColor : '#0ea5e9'; // sky-500
-    const colorSecondary = isDark ? '#fbbf24' : '#38bdf8'; // amber-400 / sky-400
-
-    return (
-        <motion.div
-            key="dimensional-rift"
-            className="fixed inset-0 z-[9999] flex items-center justify-center overflow-hidden font-orbitron bg-[#020202]"
-            style={{ perspective: '1000px', willChange: 'opacity' }}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.15 }}
-        >
-            {/* 1. WARP SPEED STREAKS (GPU Optimized - Animating scaleY instead of height) */}
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
-                {Array.from({ length: 45 }).map((_, i) => {
-                    const angle = (i * 360) / 45;
-                    return (
-                        <motion.div
-                            key={i}
-                            className="absolute"
-                            style={{
-                                width: '2px',
-                                height: '150vh', // Fixed height prevents Layout Reflow
-                                transformOrigin: 'top center',
-                                rotate: `${angle}deg`,
-                                background: `linear-gradient(to bottom, transparent, ${colorSecondary}88, white)`,
-                                willChange: 'transform, opacity'
-                            }}
-                            animate={{ 
-                                scaleY: [0, 1, 0], // GPU accelerated scaling
-                                y: ['0vh', '150vh'], // Pushes streak outwards
-                                opacity: [0, 1, 0],
-                            }}
-                            transition={{ 
-                                duration: 0.4 + Math.random() * 0.4, 
-                                delay: Math.random() * 0.8, 
-                                ease: "easeIn",
-                                repeat: Infinity
-                            }}
-                        />
-                    );
-                })}
-            </div>
-
-            {/* 2. THE DIMENSIONAL TUNNEL (Pure CSS borders - Zero SVG scaling overhead) */}
-            <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
-                {Array.from({ length: 6 }).map((_, i) => (
-                    <motion.div
-                        key={`ring-${i}`}
-                        className="absolute rounded-full border-[2px] flex items-center justify-center"
-                        style={{
-                            borderColor: i % 2 === 0 ? colorPrimary : 'rgba(255,255,255,0.3)',
-                            borderStyle: i % 2 === 0 ? 'solid' : 'dashed',
-                            boxShadow: `0 0 40px 10px ${colorPrimary}40, inset 0 0 20px ${colorPrimary}20`,
-                            width: '40vmin',
-                            height: '40vmin',
-                            willChange: 'transform, opacity' // Hardware acceleration hint
-                        }}
-                        // GPU-accelerated scaling
-                        animate={{ 
-                            scale: [0.01, 15], 
-                            opacity: [0, 1, 0.1], 
-                            rotate: i % 2 === 0 ? [0, 120] : [0, -120] 
-                        }}
-                        transition={{ 
-                            duration: 1.5, 
-                            delay: i * 0.2, 
-                            ease: "easeIn" 
-                        }}
-                    >
-                        {/* Nested circle for geometric depth (pure CSS, no SVG) */}
-                        <div 
-                            className={`absolute rounded-full border border-white/20 w-[85%] h-[85%] ${i % 2 === 0 ? 'border-dashed' : 'border-solid'}`} 
-                        />
-                    </motion.div>
-                ))}
-            </div>
-
-            {/* 3. CENTER DESTINATION LIGHT (GPU Optimized - Animating scale) */}
-            <motion.div
-                className="absolute z-30 rounded-full flex items-center justify-center pointer-events-none mix-blend-screen"
-                style={{
-                    width: '100vmin', // Fixed dimensions
-                    height: '100vmin', // Fixed dimensions
-                    background: `radial-gradient(circle, #fff 0%, ${colorPrimary} 40%, transparent 80%)`,
-                    boxShadow: `0 0 120px 60px ${colorPrimary}`,
-                    willChange: 'transform, opacity'
-                }}
-                animate={{
-                    scale: [0, 0.05, 4], // GPU-accelerated massive expansion
-                    opacity: [0, 0.8, 1],
-                }}
-                transition={{ duration: 1.55, times: [0, 0.5, 1], ease: "easeIn" }} 
-            />
-
-            {/* 4. ETHEREAL TYPOGRAPHY */}
-            <motion.div
-                className="absolute z-40 flex flex-col items-center justify-center text-center pointer-events-none"
-                style={{ willChange: 'transform, opacity' }}
-                animate={{ 
-                    scale: [0.8, 1.2, 8], 
-                    opacity: [0, 1, 0] 
-                }}
-                transition={{ duration: 1.4, times: [0, 0.4, 1], ease: "easeIn" }}
-            >
-                <div className="font-orbitron font-black text-2xl md:text-5xl uppercase" style={{ color: 'white', textShadow: `0 0 20px ${colorPrimary}` }}>
-                    AKASHIC LINK ESTABLISHED
-                </div>
-                <div className="font-mono tracking-[0.5em] text-xs md:text-sm mt-4 uppercase" style={{ color: colorSecondary, textShadow: `0 0 10px ${colorSecondary}` }}>
-                    &lt; ENTERING NEW DIMENSION &gt;
-                </div>
-            </motion.div>
-            
-            {/* 5. FINAL OVERRIDE WHITEOUT (GPU Optimized opacity) */}
-            <motion.div
-                className="absolute inset-0 bg-white z-[100] pointer-events-none"
-                style={{ willChange: 'opacity' }}
-                animate={{ opacity: [0, 0, 0, 1] }}
-                transition={{ duration: 1.55, times: [0, 0.85, 0.95, 1], ease: "easeIn" }}
-            />
-        </motion.div>
-    );
+html,body{height:100%;overflow:hidden;background:#030205}
+.scene{position:fixed;inset:0;overflow:hidden;perspective:520px;perspective-origin:50% 47%;background:radial-gradient(circle at 50% 47%,#100b16 0%,#060409 55%,#030205 100%);font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.space{position:absolute;inset:0;transform-style:preserve-3d}
+.ring{position:absolute;left:50%;top:47%;width:340px;height:340px;margin:-170px 0 0 -170px;opacity:0;animation:fly 1.3s cubic-bezier(.55,0,.85,1) forwards}
+.ring svg{width:100%;height:100%;display:block;filter:drop-shadow(0 0 6px var(--a))}
+.streaks{position:absolute;inset:0;overflow:hidden;pointer-events:none}
+.streak{position:absolute;left:50%;top:47%;width:2px;height:60vh;transform-origin:top center;background:linear-gradient(to bottom,transparent,var(--b),#fff);opacity:0;animation:warp 1.1s cubic-bezier(.6,0,.9,1) forwards}
+.core{position:absolute;left:50%;top:47%;width:26px;height:26px;margin:-13px 0 0 -13px;border-radius:50%;background:radial-gradient(circle,#fff 0%,var(--b) 34%,var(--a) 58%,transparent 80%);animation:core 2s cubic-bezier(.6,0,.85,1) forwards}
+.cb{position:absolute;width:24px;height:24px;border-color:var(--a);opacity:0;animation:lock 2s ease-out forwards}
+.cb.tl{top:22px;left:22px;border-top:2px solid;border-left:2px solid}
+.cb.tr{top:22px;right:22px;border-top:2px solid;border-right:2px solid}
+.cb.bl{bottom:22px;left:22px;border-bottom:2px solid;border-left:2px solid}
+.cb.br{bottom:22px;right:22px;border-bottom:2px solid;border-right:2px solid}
+.lock{position:absolute;left:50%;top:47%;transform:translate(-50%,-50%);opacity:0;animation:lockr 2s ease-out forwards;filter:drop-shadow(0 0 8px var(--a))}
+.spin{transform-box:fill-box;transform-origin:center;animation:spin 3s linear infinite}
+.cap{position:absolute;left:0;right:0;bottom:76px;text-align:center;font-size:11px;letter-spacing:.42em;color:var(--a);font-weight:700;opacity:0;text-shadow:0 0 12px var(--a);animation:cap 2s ease-out forwards}
+.flash{position:absolute;inset:0;pointer-events:none;background:radial-gradient(circle at 50% 47%,#fff 0%,var(--b) 38%,transparent 74%);opacity:0;animation:flash 2s ease-in forwards}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes fly{0%{transform:translateZ(-1600px) rotate(0);opacity:0}12%{opacity:.95}82%{opacity:.95}100%{transform:translateZ(360px) rotate(14deg);opacity:0}}
+@keyframes warp{0%{transform:rotate(var(--r)) scaleY(0);opacity:0}25%{opacity:.9}100%{transform:rotate(var(--r)) scaleY(1);opacity:0}}
+@keyframes core{0%{transform:scale(.2);opacity:.2}55%{transform:scale(3);opacity:.9}82%{transform:scale(26);opacity:1}95%{transform:scale(46);opacity:1}100%{transform:scale(46);opacity:1}}
+@keyframes flash{0%,70%{opacity:0}88%{opacity:1}100%{opacity:1}}
+@keyframes lock{0%{opacity:0;transform:scale(.7)}4%{opacity:1;transform:scale(1)}14%{opacity:1}22%{opacity:0;transform:scale(1.15)}100%{opacity:0}}
+@keyframes lockr{0%{opacity:0;transform:translate(-50%,-50%) scale(.6)}5%{opacity:1;transform:translate(-50%,-50%) scale(1)}16%{opacity:.9}26%{opacity:0;transform:translate(-50%,-50%) scale(1.5)}100%{opacity:0}}
+@keyframes cap{0%,4%{opacity:0}10%{opacity:1;letter-spacing:.42em}30%{opacity:1}46%{opacity:0;letter-spacing:1.2em}100%{opacity:0}}
+@media (prefers-reduced-motion:reduce){.ring,.streak,.core,.cb,.lock,.spin,.cap{animation:none}.flash{animation:none;opacity:1}}
+</style></head><body><div class="scene"><div class="space">${rings}</div><div class="streaks">${streaks}</div><div class="core"></div><span class="cb tl"></span><span class="cb tr"></span><span class="cb bl"></span><span class="cb br"></span><div class="lock"><svg viewBox="0 0 120 120" width="150" height="150" aria-hidden="true"><g class="spin"><circle cx="60" cy="60" r="52" fill="none" stroke="${accent}" stroke-width="1" stroke-dasharray="2 6"/></g><polygon points="60,18 96.4,39 96.4,81 60,102 23.6,81 23.6,39" fill="none" stroke="${accent}" stroke-width="1.4"/></svg></div><div class="cap">ENTERING THE GATE</div><div class="flash"></div></div></body></html>`;
 };
 
 // --- APP ---
@@ -396,10 +278,8 @@ const App: React.FC = () => {
 
     // Cover-extracted accent color — dynamically sampled per active quest
 
-    const [portalAnimating, setPortalAnimating] = useState(false);
-
     const handleEnterPortal = useCallback((rawUrl: string) => {
-        if (!rawUrl || rawUrl === '#' || portalAnimating) return;
+        if (!rawUrl || rawUrl === '#') return;
         // Only real web links are portal targets.
         let target: URL;
         try { target = new URL(rawUrl); } catch { return; }
@@ -413,7 +293,7 @@ const App: React.FC = () => {
         if (win) {
             try { win.opener = null; } catch { /* cross-origin guard */ }
             try {
-                win.document.write(buildPortalLoader(target.href, theme.accentColor));
+                win.document.write(buildPortalLoader(target.href, theme.accentColor, theme.isDark ? '#fbbf24' : '#67e8f9'));
                 win.document.close();
             } catch {
                 win.location.href = target.href;
@@ -422,11 +302,7 @@ const App: React.FC = () => {
             // Popup blocked outright — fall back to a plain in-gesture open.
             window.open(target.href, '_blank', 'noopener,noreferrer');
         }
-
-        // Brief origin-tab flourish for feedback (the primary dive lives in the new tab).
-        setPortalAnimating(true);
-        setTimeout(() => setPortalAnimating(false), 1300);
-    }, [portalAnimating, theme.accentColor]);
+    }, [theme.accentColor, theme.isDark]);
 
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isSpireOpen, setIsSpireOpen] = useState(false);
@@ -1618,16 +1494,6 @@ const App: React.FC = () => {
                     </AnimatePresence>
                 )}
 
-            {/* DIMENSIONAL RIFT PORTAL TRANSITION */}
-            <AnimatePresence>
-                {portalAnimating && (
-                    <DimensionalRiftOverlay
-                        isActive={portalAnimating}
-                        accentColor={theme.accentColor}
-                        isDark={theme.isDark}
-                    />
-                )}
-            </AnimatePresence>
 
 
 

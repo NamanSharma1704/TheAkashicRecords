@@ -885,7 +885,7 @@ const App: React.FC = () => {
                     animate={{ y: 0, opacity: 1 }}
                     exit={{ y: -100, opacity: 0 }}
                     transition={{ type: 'spring', damping: 20, stiffness: 100 }}
-                    className="fixed top-0 w-full z-40 bg-transparent h-16 px-6 flex items-center justify-between"
+                    className="fixed top-0 w-full z-40 bg-transparent h-16 px-4 flex items-center justify-between"
                 >
                     <div className="flex items-center gap-4">
                         <div className="relative w-12 h-12 flex items-center justify-center">
@@ -931,7 +931,7 @@ const App: React.FC = () => {
     const memoizedMain = useMemo(() => (
         <main id="content-scroll"
             className="relative mt-16 h-[calc(100dvh-104px)] lg:h-[calc(100dvh-100px)] overflow-y-auto lg:overflow-hidden overflow-x-hidden hide-scrollbar px-4 pb-6 lg:pb-2 z-10 flex flex-col">
-            <div className="w-full max-w-[1400px] mx-auto flex-1 min-h-0 flex flex-col lg:flex-row gap-3 lg:gap-4 pt-2 lg:pt-2 pb-0">
+            <div className="w-full max-w-[1400px] ml-auto flex-1 min-h-0 flex flex-col lg:flex-row gap-3 lg:gap-4 pt-2 lg:pt-2 pb-0">
                 {/* LEFT COLUMN: HERO CANVAS */}
                 <div className="flex-none lg:flex-1 flex flex-col lg:h-full order-1 overflow-visible relative">
                     <div className="relative z-10 w-full h-full flex flex-col px-4 md:px-6 lg:px-8 justify-between gap-4 overflow-visible pt-8">

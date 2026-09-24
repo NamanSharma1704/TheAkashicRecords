@@ -22,7 +22,7 @@ const BackgroundController: React.FC<BackgroundControllerProps> = ({ theme, isPa
             {!isMobile && (
                 <>
                     <SanctuaryRing theme={theme} isPaused={isPaused} />
-                    <GoldenRipples colorRGB={theme.starColor} isPaused={isPaused} />
+                    <GoldenRipples colorRGB={theme.starColor} isPaused={isPaused} isDark={theme.isDark} />
                 </>
             )}
             <NoiseOverlay />

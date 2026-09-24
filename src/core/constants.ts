@@ -31,13 +31,12 @@ export const THEMES: Record<ThemeId, Theme> = {
         highlightText: 'text-[#f59e0b]',
         border: 'border-[#f59e0b]',
         borderSubtle: 'border-white/10',
-        shadow: 'shadow-[#f59e0b]/50',
-        glow: 'shadow-[#f59e0b]/50',
         overlay: 'bg-black/80',
         starColor: '255, 255, 255',
         gradient: 'from-[#f59e0b] via-yellow-400 to-white',
-        rayColor: 'rgba(245, 158, 11, 0.08)',
         accentColor: '#f59e0b',
+        accentInk: '#f59e0b',
+        warningInk: '#f59e0b',
         isDark: true
     },
     LIGHT: {
@@ -45,23 +44,26 @@ export const THEMES: Record<ThemeId, Theme> = {
         name: 'Light Mode',
         primary: 'sky',
         accent: 'indigo',
-        appBg: 'bg-slate-50',
+        appBg: 'bg-[#e9eef5]',
         panelBg: 'bg-white',
         modalBg: 'bg-[#f0f9ff]',
         inputBg: 'bg-slate-100',
-        baseText: 'text-slate-600',
+        baseText: 'text-slate-700',
         headingText: 'text-slate-900',
-        mutedText: 'text-slate-400',
-        highlightText: 'text-[#06b6d4]',
+        mutedText: 'text-slate-600',
+        highlightText: 'text-[#155e75]',
         border: 'border-[#06b6d4]',
-        borderSubtle: 'border-slate-200',
-        shadow: 'shadow-[#06b6d4]/20',
-        glow: 'shadow-[#06b6d4]/50',
+        borderSubtle: 'border-slate-300',
         overlay: 'bg-white/80',
-        starColor: '6, 182, 212',
+        // Ink for the background field, not a glow colour. The field draws contour rings
+        // and linework, so on a pale page this has to be slate rather than the accent —
+        // cyan at these alphas over #e9eef5 never resolved into anything.
+        starColor: '71, 85, 105',
         gradient: 'from-[#06b6d4] to-cyan-500',
-        rayColor: 'rgba(6, 182, 212, 0.15)',
         accentColor: '#06b6d4',
+        accentInk: '#155e75',
+        // amber-800. Same meaning as dark's amber-500, four steps down so it survives the page.
+        warningInk: '#92400e',
         isDark: false
     },
 };

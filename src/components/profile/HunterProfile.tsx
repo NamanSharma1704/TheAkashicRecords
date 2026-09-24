@@ -13,6 +13,7 @@ import OmniscientField from '../fx/OmniscientField';
 import NoiseOverlay from '../fx/NoiseOverlay';
 import SanctuaryRing from '../fx/SanctuaryRing';
 import { systemFetch, getStoredUser, saveAuthData } from '../../utils/auth';
+import { accentRGB, elevation, emphasis } from '../../core/depth';
 
 type CalibrationEntry = { processed: number; total: number; title: string; cls: string; changed: boolean };
 type CalibrationState = {
@@ -31,6 +32,23 @@ const CLASS_COLORS: Record<string, string> = {
     IRREGULAR: 'text-orange-400',
     PLAYER: 'text-emerald-400',
 };
+
+/**
+ * The same hues four rungs down, for the light theme. The -400 set above is tuned for
+ * near-black and measures 1.9:1 to 2.5:1 on a white panel; these all clear 4.6:1 while
+ * keeping each class identifiable by colour rather than by position.
+ */
+const CLASS_COLORS_LIGHT: Record<string, string> = {
+    NECROMANCER: 'text-purple-700',
+    CONSTELLATION: 'text-amber-700',
+    MAGE: 'text-blue-700',
+    IRREGULAR: 'text-orange-700',
+    PLAYER: 'text-emerald-700',
+};
+
+/** Class colour for the active theme, falling back to a readable neutral. */
+const classColor = (cls: string, isDark: boolean): string =>
+    (isDark ? CLASS_COLORS[cls] : CLASS_COLORS_LIGHT[cls]) || (isDark ? 'text-gray-400' : 'text-slate-600');
 
 // ── SYSTEM: HIGH-FIDELITY CUSTOM CLASS ARCHETYPES ──
 const ArcaneIcon = ({ className }: { className?: string }) => (
@@ -105,7 +123,7 @@ const ConstellationIcon = ({ className }: { className?: string }) => (
 
 // ── CLASS ICON ENGINE ──
 const ClassIcon = ({ cls, isDark, className }: { cls: string, isDark?: boolean, className?: string }) => {
-    const colorClass = CLASS_COLORS[cls] || 'text-gray-400';
+    const colorClass = classColor(cls, isDark ?? true);
     
     let Icon: React.ElementType = Database;
     if (cls === 'MAGE') Icon = ArcaneIcon;
@@ -406,13 +424,27 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
     const springConfig = { type: "spring" as const, stiffness: 60, damping: 15 };
 
     return (
-        <div className={`fixed inset-0 z-[300] ${theme.isDark ? 'bg-[#020202]' : 'bg-slate-50'} flex flex-col overflow-hidden transition-colors duration-700`}>
+        <div className={`fixed inset-0 z-[300] ${theme.isDark ? 'bg-[#020202]' : 'bg-[#e9eef5]'} flex flex-col overflow-hidden transition-colors duration-700`}
+            style={{ '--elev-1': elevation(theme, 1) } as React.CSSProperties}
+        >
             {/* Background layers */}
             <GalaxyNebula theme={theme} />
             <OmniscientField isDivineMode={theme.id === 'LIGHT'} />
             <SanctuaryRing theme={theme} />
             <NoiseOverlay />
-            <div className="absolute inset-0 pointer-events-none z-0 bg-[radial-gradient(circle_at_30%_20%,transparent_40%,rgba(0,0,0,0.5)_100%)] opacity-60" />
+            {/* Corner falloff. This was a 50%-black radial at 60% opacity in BOTH themes —
+                on the light page it dragged the edges toward grey and undid the drafting
+                field underneath. Light gets a far gentler cool version; only the void can
+                afford to be crushed this hard. */}
+            <div
+                className="absolute inset-0 pointer-events-none z-0"
+                style={{
+                    background: theme.isDark
+                        ? 'radial-gradient(circle at 30% 20%, transparent 40%, rgba(0,0,0,0.5) 100%)'
+                        : 'radial-gradient(circle at 30% 20%, transparent 55%, rgba(15,23,42,0.07) 100%)',
+                    opacity: theme.isDark ? 0.6 : 1,
+                }}
+            />
 
             {/* HEADER */}
             <div className={`relative z-10 h-16 flex items-center justify-between px-6 bg-transparent shrink-0`}>
@@ -427,10 +459,10 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                 </div>
                 <div className="flex items-center gap-2 sm:gap-3">
                     {/* Compact Sys Admin Tools */}
-                    <button onClick={exportToCSV} title="Export Timeline" className={`w-9 h-9 flex items-center justify-center border ${theme.borderSubtle} ${theme.mutedText} hover:${theme.headingText} hover:bg-white/5 transition-colors cursor-pointer`}>
+                    <button onClick={exportToCSV} title="Export Timeline" className={`w-9 h-9 flex items-center justify-center border ${theme.borderSubtle} ${theme.mutedText} hover:${theme.headingText} ${theme.isDark ? 'hover:bg-white/5' : 'hover:bg-black/5'} transition-colors cursor-pointer`}>
                         <Download size={14} />
                     </button>
-                    <label title="Synchronize Timeline" className={`w-9 h-9 flex items-center justify-center border ${theme.borderSubtle} ${theme.mutedText} hover:${theme.headingText} hover:bg-white/5 transition-colors cursor-pointer`}>
+                    <label title="Synchronize Timeline" className={`w-9 h-9 flex items-center justify-center border ${theme.borderSubtle} ${theme.mutedText} hover:${theme.headingText} ${theme.isDark ? 'hover:bg-white/5' : 'hover:bg-black/5'} transition-colors cursor-pointer`}>
                         <input type="file" accept=".csv" onChange={async (e) => {
                             const confirmed = await showNotification("RE-SYNCHRONIZE DATABASE?", "WARNING", true);
                             if (confirmed) handleImport(e);
@@ -438,18 +470,18 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                         }} className="hidden" />
                         <Upload size={14} />
                     </label>
-                    <button onClick={handleRecalibrate} title="System Recalibration" className={`h-9 px-3 hidden sm:flex items-center justify-center gap-2 border ${theme.borderSubtle} ${theme.highlightText} hover:bg-amber-500/10 transition-colors cursor-pointer relative overflow-hidden group`}>
+                    <button onClick={handleRecalibrate} title="System Recalibration" className={`h-9 px-3 hidden sm:flex items-center justify-center gap-2 border ${theme.borderSubtle} ${theme.highlightText} ${theme.isDark ? 'hover:bg-amber-500/10' : 'hover:bg-sky-500/10'} transition-colors cursor-pointer relative overflow-hidden group`}>
                         <div className="absolute inset-0 bg-white/5 group-hover:bg-transparent transition-all" />
                         <RefreshCw size={14} className="relative z-10" />
                         <span className="font-mono text-[10px] tracking-widest uppercase relative z-10">Re-Calibrate</span>
                     </button>
-                    <button onClick={handleRecalibrate} title="System Recalibration" className={`sm:hidden w-9 h-9 flex items-center justify-center border ${theme.borderSubtle} ${theme.highlightText} hover:bg-white/5 transition-colors cursor-pointer`}>
+                    <button onClick={handleRecalibrate} title="System Recalibration" className={`sm:hidden w-9 h-9 flex items-center justify-center border ${theme.borderSubtle} ${theme.highlightText} ${theme.isDark ? 'hover:bg-white/5' : 'hover:bg-black/5'} transition-colors cursor-pointer`}>
                         <RefreshCw size={14} />
                     </button>
 
-                    <div className={`w-px h-5 bg-${theme.isDark ? 'gray-800' : 'gray-300'} mx-0.5 sm:mx-1`} />
+                    <div className={`w-px h-5 ${theme.isDark ? 'bg-gray-800' : 'bg-gray-300'} mx-0.5 sm:mx-1`} />
 
-                    <button onClick={onLogout} title="TERMINATE_SESSION" className={`h-9 px-3 sm:px-4 flex items-center justify-center gap-2 border ${theme.borderSubtle} text-red-500/80 hover:text-red-500 hover:border-red-500 hover:bg-red-500/5 transition-all font-mono text-[10px] tracking-widest uppercase cursor-pointer group`}>
+                    <button onClick={onLogout} title="TERMINATE_SESSION" className={`h-9 px-3 sm:px-4 flex items-center justify-center gap-2 border ${theme.borderSubtle} ${theme.isDark ? 'text-red-400 hover:text-red-300' : 'text-red-700 hover:text-red-800'} hover:border-red-500 hover:bg-red-500/5 transition-all font-mono text-[10px] tracking-widest uppercase cursor-pointer group`}>
                         <LogOut size={14} className="group-hover:-translate-x-1 transition-transform hidden sm:block" />
                         <span className="hidden sm:inline">Logout</span>
                         <LogOut size={14} className="sm:hidden" />
@@ -492,14 +524,14 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                                     >
                                         <span
                                             className="text-[11px] font-mono font-bold overflow-hidden text-ellipsis whitespace-nowrap w-full text-center"
-                                            style={{ color: theme.isDark ? '#f59e0b' : '#06b6d4' }}
+                                            style={{ color: theme.accentInk }}
                                         >{storedUser?.username || 'SOVEREIGN'}</span>
                                     </div>
                                 </div>
                                 {/* Edit Profile button */}
                                 <button
                                     onClick={() => { setAccountStatus(null); setShowAccountModal(true); }}
-                                    className={`flex items-center gap-1 px-3 py-1 border ${theme.isDark ? 'border-amber-500/40 text-amber-500/80 hover:border-amber-500/80 hover:text-amber-400' : 'border-sky-400/50 text-sky-500/80 hover:border-sky-400 hover:text-sky-500'} transition-colors cursor-pointer`}
+                                    className={`flex items-center gap-1 px-3 py-1 border ${theme.isDark ? 'border-amber-500/40 text-amber-500/80 hover:border-amber-500/80 hover:text-amber-400' : 'border-sky-400/50 text-[#155e75] hover:border-sky-500 hover:text-[#0e7490]'} transition-colors cursor-pointer`}
                                 >
                                     <Edit2 size={9} />
                                     <span className="text-[8px] font-mono font-bold uppercase tracking-widest">Edit Profile</span>
@@ -542,13 +574,12 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                                                     const isReached = idx <= currentRankIdx;
                                                     const isCurrent = idx === currentRankIdx;
                                                     const accentColor = theme.isDark ? '#fbbf24' : '#38bdf8';
-                                                    const accentBorder = theme.isDark ? 'amber' : 'sky';
                                                     return (
                                                         <div key={rank.label} className="relative flex flex-col items-center">
                                                             {isCurrent ? (
                                                                 <div
-                                                                    className={`w-4 h-4 lg:w-[18px] lg:h-[18px] rounded-full border-[2.5px] border-${accentBorder}-400 bg-transparent transition-all duration-500`}
-                                                                    style={{ boxShadow: `0 0 12px 4px ${accentColor}60, 0 0 24px 6px ${accentColor}30` }}
+                                                                    className={`w-4 h-4 lg:w-[18px] lg:h-[18px] rounded-full border-[2.5px] bg-transparent transition-all duration-500`}
+                                                                    style={{ borderColor: accentColor, boxShadow: `0 0 12px 4px ${accentColor}60, 0 0 24px 6px ${accentColor}30` }}
                                                                 />
                                                             ) : isReached ? (
                                                                 <div
@@ -559,7 +590,7 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                                                                 <div className={`w-2 h-2 rounded-full transition-all duration-500 ${theme.isDark ? 'bg-white/20' : 'bg-sky-400/30'}`} />
                                                             )}
                                                             <div className={`absolute top-[20px] lg:top-[24px] whitespace-nowrap text-[7px] lg:text-[8px] font-mono tracking-[0.12em] font-bold uppercase transition-all
-                                                                ${isCurrent ? `${theme.highlightText} opacity-100` : isReached ? `${theme.headingText} opacity-75` : `${theme.mutedText} opacity-35`}`}>
+                                                                ${isCurrent ? `${theme.highlightText} opacity-100` : isReached ? `${theme.headingText} opacity-75` : theme.mutedText}`}>
                                                                 {rank.label}
                                                             </div>
                                                         </div>
@@ -598,8 +629,8 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                                         />
                                     </svg>
                                     <div className="absolute inset-0 flex flex-col items-center justify-center text-center gap-0.5">
-                                        <div className={`text-[7px] font-bold tracking-[0.12em] uppercase leading-[1.3] ${theme.isDark ? 'text-slate-300' : 'text-slate-500'}`}>OVERALL<br/>COMPLETION</div>
-                                        <div className={`text-[26px] lg:text-[30px] font-black ${theme.isDark ? 'text-amber-400' : 'text-[#0ea5e9]'} leading-[1] tracking-tight`}>
+                                        <div className={`text-[7px] font-bold tracking-[0.12em] uppercase leading-[1.3] ${theme.isDark ? 'text-slate-300' : 'text-slate-600'}`}>OVERALL<br/>COMPLETION</div>
+                                        <div className={`text-[26px] lg:text-[30px] font-black ${theme.isDark ? 'text-amber-400' : 'text-[#155e75]'} leading-[1] tracking-tight`}>
                                             {Math.round(overallPct)}<span className="text-[12px] font-bold">%</span>
                                         </div>
                                     </div>
@@ -649,7 +680,7 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                             <Database size={13} />
                             <span className="text-[10px] font-mono font-bold tracking-[0.3em] uppercase">Class Distribution</span>
                         </div>
-                        <div className={`border ${theme.borderSubtle} ${theme.isDark ? 'bg-black/40' : 'bg-white/80'} shadow-sm rounded-md backdrop-blur-md px-5 py-5 lg:py-6 flex flex-col flex-1 relative overflow-hidden group hover:-translate-y-0.5 transition-transform duration-300`}>
+                        <div className={`border ${theme.borderSubtle} ${theme.isDark ? 'bg-black/40' : 'bg-white/80'} elev-1 rounded-md backdrop-blur-md px-5 py-5 lg:py-6 flex flex-col flex-1 relative overflow-hidden group hover:-translate-y-0.5 transition-transform duration-300`}>
                             <div className="absolute -right-12 -bottom-12 opacity-[0.03] pointer-events-none mix-blend-screen scale-150 transition-transform duration-1000 group-hover:rotate-12">
                                 <Database size={240} className={theme.highlightText} />
                             </div>
@@ -659,12 +690,12 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                                         <div className="flex justify-between items-center mb-2">
                                             <div className="flex items-center gap-2.5">
                                                 <ClassIcon cls={cls} isDark={theme.isDark} />
-                                                <span className={`text-xs font-mono font-bold tracking-widest ${CLASS_COLORS[cls] || theme.headingText} uppercase`}>{cls}</span>
+                                                <span className={`text-xs font-mono font-bold tracking-widest ${classColor(cls, theme.isDark)} uppercase`}>{cls}</span>
                                             </div>
                                             <span className={`text-xs font-mono font-black ${theme.highlightText}`}>{Math.round((count / totalManhwa) * 100)}%</span>
                                         </div>
                                         <div className={`h-[7px] rounded-full w-full ${theme.isDark ? 'bg-gray-800/80 shadow-inner' : 'bg-gray-200/80 shadow-inner'} overflow-hidden`}>
-                                            <motion.div className={`h-full rounded-full bg-gradient-to-r ${theme.gradient} progress-bloom`} initial={{ width: 0 }} animate={{ width: `${(count / totalManhwa) * 100}%` }} transition={springConfig} style={{ color: theme.id === 'LIGHT' ? '#0ea5e9' : '#fbbf24' }} />
+                                            <motion.div className={`h-full rounded-full bg-gradient-to-r ${theme.gradient}`} initial={{ width: 0 }} animate={{ width: `${(count / totalManhwa) * 100}%` }} transition={springConfig} style={{ boxShadow: emphasis(theme, accentRGB(theme), 0.5) }} />
                                         </div>
                                     </div>
                                 ))}
@@ -678,7 +709,7 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                             <Layers size={13} />
                             <span className="text-[10px] font-mono font-bold tracking-[0.3em] uppercase">Top Series</span>
                         </div>
-                        <div className={`border ${theme.borderSubtle} ${theme.isDark ? 'bg-black/40' : 'bg-white/80'} shadow-sm rounded-md backdrop-blur-md p-4 flex flex-col gap-3 flex-1 relative hover:-translate-y-0.5 transition-transform duration-300`}>
+                        <div className={`border ${theme.borderSubtle} ${theme.isDark ? 'bg-black/40' : 'bg-white/80'} elev-1 rounded-md backdrop-blur-md p-4 flex flex-col gap-3 flex-1 relative hover:-translate-y-0.5 transition-transform duration-300`}>
                             {topSeries.slice(0, 4).map((item, i) => (
                                 <div 
                                     key={item.id} 
@@ -691,12 +722,12 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                                             <img src={getProxiedImageUrl(item.coverUrl)} className="absolute right-0 top-1/2 -translate-y-1/2 w-1/2 h-[150%] object-cover object-center opacity-70 lg:opacity-85 select-none mix-blend-luminosity group-hover:mix-blend-normal group-hover:scale-110 transition-all duration-700" alt="" />
                                         </div>
                                     )}
-                                    <div className={`w-7 h-7 flex items-center justify-center shrink-0 relative z-20 rounded shadow-sm ${theme.isDark ? 'bg-amber-500/20 text-amber-400 border border-amber-400/50' : 'bg-sky-400 text-white shadow-sky-400/30'}`}>
+                                    <div className={`w-7 h-7 flex items-center justify-center shrink-0 relative z-20 rounded shadow-sm ${theme.isDark ? 'bg-amber-500/20 text-amber-400 border border-amber-400/50' : 'bg-sky-400 text-slate-900 shadow-sky-400/30'}`}>
                                         <span className="text-[11px] font-black font-mono">#{i + 1}</span>
                                     </div>
                                     <div className="flex-1 min-w-0 relative z-20">
                                         <div className={`text-xs font-bold truncate tracking-wide ${theme.headingText} drop-shadow-md`}>{item.title}</div>
-                                        <div className={`text-[10px] font-mono mt-0.5 ${theme.highlightText}`}>{item.currentChapter.toLocaleString()} <span className="text-[8px] opacity-40">CN</span></div>
+                                        <div className={`text-[10px] font-mono mt-0.5 ${theme.highlightText}`}>{item.currentChapter.toLocaleString()} <span className="text-[8px]">CN</span></div>
                                     </div>
                                 </div>
                             ))}
@@ -710,7 +741,7 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                         <Target size={13} />
                         <span className="text-[10px] font-mono font-bold tracking-[0.3em] uppercase">Active Progress</span>
                     </div>
-                    <div className={`border ${theme.borderSubtle} ${theme.isDark ? 'bg-black/40' : 'bg-white/80'} shadow-sm rounded-md backdrop-blur-md p-4 relative`}>
+                    <div className={`border ${theme.borderSubtle} ${theme.isDark ? 'bg-black/40' : 'bg-white/80'} elev-1 rounded-md backdrop-blur-md p-4 relative`}>
                         {activeSeries.length === 0 && <div className={`text-xs font-mono ${theme.mutedText}`}>NO ACTIVE SERIES</div>}
                         <div
                             className="flex gap-3 overflow-x-auto hide-scrollbar cursor-grab active:cursor-grabbing select-none"
@@ -734,7 +765,7 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                                     <div className="relative z-10 h-full flex flex-col justify-end p-2.5">
                                         <span className="text-[9px] font-bold text-white leading-tight line-clamp-2 mb-1.5 drop-shadow-lg">{item.title}</span>
                                         <div className="flex items-center gap-1.5">
-                                            <span className={`px-1.5 py-0.5 rounded-[2px] text-[9px] font-black font-mono shrink-0 ${theme.id === 'LIGHT' ? 'bg-sky-500 text-white' : 'bg-amber-500 text-black'}`}>
+                                            <span className={`px-1.5 py-0.5 rounded-[2px] text-[9px] font-black font-mono shrink-0 ${theme.id === 'LIGHT' ? 'bg-sky-500 text-slate-900' : 'bg-amber-500 text-black'}`}>
                                                 {item.pct}%
                                             </span>
                                             <div className="h-[3px] rounded-full flex-1 bg-white/20 overflow-hidden">
@@ -774,7 +805,7 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                                     initial={{ top: '-100%' }}
                                     animate={{ top: '100%' }}
                                     transition={{ repeat: Infinity, duration: 3, ease: "linear" }}
-                                    className={`absolute left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-${theme.id === 'LIGHT' ? 'sky' : 'amber'}-500/50 to-transparent z-40 pointer-events-none`}
+                                    className={`absolute left-0 right-0 h-[1px] bg-gradient-to-r from-transparent ${theme.id === 'LIGHT' ? 'via-sky-500/50' : 'via-amber-500/50'} to-transparent z-40 pointer-events-none`}
                                 />
                             )}
                             <div className="flex flex-col h-[75vh] max-h-[700px] bg-black/50 overflow-hidden">
@@ -867,7 +898,7 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                                                 </div>
                                             ) : (
                                                 calibration.log.map((entry, i) => (
-                                                    <div key={i} className={`flex items-start gap-4 text-[10px] font-mono leading-relaxed px-2 py-1.5 transition-colors ${entry.changed ? `bg-${theme.id === 'LIGHT' ? 'sky' : 'amber'}-500/10` : 'hover:bg-white/5'}`}>
+                                                    <div key={i} className={`flex items-start gap-4 text-[10px] font-mono leading-relaxed px-2 py-1.5 transition-colors ${entry.changed ? (theme.id === 'LIGHT' ? 'bg-sky-500/10' : 'bg-amber-500/10') : 'hover:bg-white/5'}`}>
                                                         <span className={`${theme.mutedText} shrink-0`}>[{String(entry.processed).padStart(2, '0')}/{entry.total}]</span>
                                                         <span className={`flex-1 truncate uppercase tracking-widest ${entry.changed ? theme.headingText : theme.baseText}`}>
                                                             {entry.title}
@@ -887,7 +918,7 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                                 {/* ── FOOTER ── */}
                                 {(calibration.phase === 'done' || calibration.phase === 'error') && (
                                     <div className={`px-5 py-3.5 bg-black/70 backdrop-blur-md border-t ${theme.borderSubtle} shrink-0 relative overflow-hidden flex`}>
-                                        <div className={`absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-${theme.id === 'LIGHT' ? 'sky' : 'amber'}-500/40 to-transparent`} />
+                                        <div className={`absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent ${theme.id === 'LIGHT' ? 'via-sky-500/40' : 'via-amber-500/40'} to-transparent`} />
                                         
                                         <button
                                             onClick={() => setCalibration(null)}
@@ -949,7 +980,7 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                                         value={accountForm.newUsername}
                                         onChange={e => setAccountForm(f => ({ ...f, newUsername: e.target.value }))}
                                         placeholder={storedUser?.username || ''}
-                                        className={`w-full px-3 py-2 text-[11px] font-mono border ${theme.borderSubtle} ${theme.isDark ? 'bg-white/5 text-white placeholder:text-white/20' : 'bg-sky-50 text-gray-900 placeholder:text-gray-400'} rounded-sm outline-none focus:border-${theme.isDark ? 'amber' : 'sky'}-400 transition-colors`}
+                                        className={`w-full px-3 py-2 text-[11px] font-mono border ${theme.borderSubtle} ${theme.isDark ? 'bg-white/5 text-white placeholder:text-white/20' : 'bg-sky-50 text-gray-900 placeholder:text-gray-400'} rounded-sm outline-none focus:${theme.border} transition-colors`}
                                     />
                                 </div>
 
@@ -962,7 +993,7 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                                         value={accountForm.currentPassword}
                                         onChange={e => setAccountForm(f => ({ ...f, currentPassword: e.target.value }))}
                                         placeholder="••••••••"
-                                        className={`w-full px-3 py-2 text-[11px] font-mono border ${theme.borderSubtle} ${theme.isDark ? 'bg-white/5 text-white placeholder:text-white/20' : 'bg-sky-50 text-gray-900 placeholder:text-gray-400'} rounded-sm outline-none focus:border-${theme.isDark ? 'amber' : 'sky'}-400 transition-colors`}
+                                        className={`w-full px-3 py-2 text-[11px] font-mono border ${theme.borderSubtle} ${theme.isDark ? 'bg-white/5 text-white placeholder:text-white/20' : 'bg-sky-50 text-gray-900 placeholder:text-gray-400'} rounded-sm outline-none focus:${theme.border} transition-colors`}
                                     />
                                 </div>
 
@@ -974,7 +1005,7 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                                         value={accountForm.newPassword}
                                         onChange={e => setAccountForm(f => ({ ...f, newPassword: e.target.value }))}
                                         placeholder="••••••••"
-                                        className={`w-full px-3 py-2 text-[11px] font-mono border ${theme.borderSubtle} ${theme.isDark ? 'bg-white/5 text-white placeholder:text-white/20' : 'bg-sky-50 text-gray-900 placeholder:text-gray-400'} rounded-sm outline-none focus:border-${theme.isDark ? 'amber' : 'sky'}-400 transition-colors`}
+                                        className={`w-full px-3 py-2 text-[11px] font-mono border ${theme.borderSubtle} ${theme.isDark ? 'bg-white/5 text-white placeholder:text-white/20' : 'bg-sky-50 text-gray-900 placeholder:text-gray-400'} rounded-sm outline-none focus:${theme.border} transition-colors`}
                                     />
                                 </div>
 
@@ -987,7 +1018,7 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                                             value={accountForm.confirmPassword}
                                             onChange={e => setAccountForm(f => ({ ...f, confirmPassword: e.target.value }))}
                                             placeholder="••••••••"
-                                            className={`w-full px-3 py-2 text-[11px] font-mono border ${theme.borderSubtle} ${theme.isDark ? 'bg-white/5 text-white placeholder:text-white/20' : 'bg-sky-50 text-gray-900 placeholder:text-gray-400'} rounded-sm outline-none focus:border-${theme.isDark ? 'amber' : 'sky'}-400 transition-colors`}
+                                            className={`w-full px-3 py-2 text-[11px] font-mono border ${theme.borderSubtle} ${theme.isDark ? 'bg-white/5 text-white placeholder:text-white/20' : 'bg-sky-50 text-gray-900 placeholder:text-gray-400'} rounded-sm outline-none focus:${theme.border} transition-colors`}
                                         />
                                     </div>
                                 )}
@@ -1011,7 +1042,7 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                                     className={`w-full py-2.5 font-mono font-black text-[11px] uppercase tracking-[0.25em] border transition-all duration-300 rounded-sm relative overflow-hidden group/submit ${
                                         theme.isDark
                                             ? 'border-amber-500/40 text-amber-400 hover:bg-amber-500/10 disabled:opacity-40'
-                                            : 'border-sky-400 text-sky-600 hover:bg-sky-50 disabled:opacity-40'
+                                            : 'border-sky-400 text-[#155e75] hover:bg-sky-50 disabled:opacity-40'
                                     }`}
                                 >
                                     <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover/submit:translate-x-full transition-transform duration-700" />

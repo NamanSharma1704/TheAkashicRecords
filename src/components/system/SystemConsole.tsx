@@ -31,10 +31,10 @@ const SystemConsole: React.FC<SystemConsoleProps> = ({ theme }) => {
   pb-[env(safe-area-inset-bottom)]`}
         >
             <div className="flex items-center gap-3 w-full max-w-[1920px] mx-auto">
-                <Activity size={10} className={`${theme.isDark ? theme.highlightText : 'text-[#0e7490]'} animate-pulse transition-colors duration-700`} />
-                <span className={`${theme.isDark ? theme.highlightText : 'text-[#0e7490]'} font-bold opacity-100 transition-colors duration-700`}>OMNI_LOG //</span>
-                <span className={`truncate ${theme.isDark ? theme.headingText : 'text-black'} font-bold opacity-100 transition-colors duration-700`}>{sysLog.msg}</span>
-                <span className={`hidden sm:block ml-auto ${theme.isDark ? theme.highlightText : 'text-[#0e7490]'} font-bold opacity-100 tracking-widest`}>V.2.1 {theme.id === 'LIGHT' ? 'CELESTIAL.OS' : 'MONARCH.OS'}</span>
+                <Activity size={10} className={`${theme.highlightText} animate-pulse transition-colors duration-700`} />
+                <span className={`${theme.highlightText} font-bold opacity-100 transition-colors duration-700`}>OMNI_LOG //</span>
+                <span className={`truncate ${theme.headingText} font-bold opacity-100 transition-colors duration-700`}>{sysLog.msg}</span>
+                <span className={`hidden sm:block ml-auto ${theme.highlightText} font-bold opacity-100 tracking-widest`}>V.2.1 {theme.id === 'LIGHT' ? 'CELESTIAL.OS' : 'MONARCH.OS'}</span>
             </div>
         </div>
     );

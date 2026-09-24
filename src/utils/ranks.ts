@@ -34,12 +34,12 @@ export const calculateQuestRank = (quest: Quest) => {
 };
 
 export const QUEST_RANKS: Record<string, Rank> = {
-    'S': { name: 'S', threshold: 0, color: 'text-amber-400', bg: 'bg-amber-500/20', border: 'border-amber-500/30', glow: 'shadow-[0_0_15px_rgba(251,191,36,0.5)]' },
-    'A': { name: 'A', threshold: 0, color: 'text-rose-400', bg: 'bg-rose-500/20', border: 'border-rose-500/30' },
-    'B': { name: 'B', threshold: 0, color: 'text-purple-400', bg: 'bg-purple-500/20', border: 'border-purple-500/30' },
-    'C': { name: 'C', threshold: 0, color: 'text-blue-400', bg: 'bg-blue-500/20', border: 'border-blue-500/30' },
-    'D': { name: 'D', threshold: 0, color: 'text-cyan-400', bg: 'bg-cyan-500/20', border: 'border-cyan-500/30' },
-    'E': { name: 'E', threshold: 0, color: 'text-slate-300', bg: 'bg-slate-500/20', border: 'border-slate-500/30' }
+    'S': { name: 'S', threshold: 0, color: 'text-amber-400', colorLight: 'text-amber-700', bg: 'bg-amber-500/20', border: 'border-amber-500/30', glow: 'shadow-[0_0_15px_rgba(251,191,36,0.5)]' },
+    'A': { name: 'A', threshold: 0, color: 'text-rose-400', colorLight: 'text-rose-700', bg: 'bg-rose-500/20', border: 'border-rose-500/30' },
+    'B': { name: 'B', threshold: 0, color: 'text-purple-400', colorLight: 'text-purple-700', bg: 'bg-purple-500/20', border: 'border-purple-500/30' },
+    'C': { name: 'C', threshold: 0, color: 'text-blue-400', colorLight: 'text-blue-700', bg: 'bg-blue-500/20', border: 'border-blue-500/30' },
+    'D': { name: 'D', threshold: 0, color: 'text-cyan-400', colorLight: 'text-cyan-700', bg: 'bg-cyan-500/20', border: 'border-cyan-500/30' },
+    'E': { name: 'E', threshold: 0, color: 'text-slate-300', colorLight: 'text-slate-600', bg: 'bg-slate-500/20', border: 'border-slate-500/30' }
 };
 
 export const getQuestRankObj = (quest: Quest) => {

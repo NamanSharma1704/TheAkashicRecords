@@ -26,8 +26,6 @@ const OmniscientField: React.FC<OmniscientFieldProps> = ({ isDivineMode, isPause
             x: Math.random() * width,
             y: Math.random() * height,
             size: Math.random() * 2,
-            baseX: Math.random() * width,
-            baseY: Math.random() * height,
             speed: Math.random() * 0.05 + 0.01,
             glow: Math.random() > 0.9
         }));
@@ -39,9 +37,18 @@ const OmniscientField: React.FC<OmniscientFieldProps> = ({ isDivineMode, isPause
             }
             ctx.clearRect(0, 0, width, height);
 
-            // Gold in divine (light) mode, violet otherwise.
-            const glowColor = isDivineMode ? '245, 158, 11' : '139, 92, 246';
-            const regColor = isDivineMode ? '245, 158, 11' : '139, 92, 246';
+            // Violet points on the void; dark linework on the drafting table.
+            // Light mode used to draw the same emitted-light constellation in amber, which
+            // on a pale page is both the wrong theme's accent and invisible — there is no
+            // headroom above near-white for a glowing point to occupy. Inverted, the same
+            // geometry reads as a technical field: slate nodes joined by fine contour lines.
+            const glowColor = isDivineMode ? '30, 41, 59' : '139, 92, 246';
+            const regColor = isDivineMode ? '51, 65, 85' : '139, 92, 246';
+            // Dark ink on light needs far less alpha to register than light on dark — but
+            // the links need more, because 0.04 of slate over #e9eef5 is nothing at all.
+            const glowAlpha = isDivineMode ? 0.34 : 0.8;
+            const regAlpha = isDivineMode ? 0.20 : 0.4;
+            const linkAlpha = isDivineMode ? 0.10 : 0.04;
 
             // 1. Update positions
             stars.forEach(star => {
@@ -65,17 +72,17 @@ const OmniscientField: React.FC<OmniscientFieldProps> = ({ isDivineMode, isPause
                 }
             });
 
-            ctx.fillStyle = `rgba(${glowColor}, 0.8)`;
+            ctx.fillStyle = `rgba(${glowColor}, ${glowAlpha})`;
             ctx.fill(glowPath);
 
             // Basic stars with randomized alpha but drawn in bulk for speed
-            ctx.fillStyle = `rgba(${regColor}, 0.4)`;
+            ctx.fillStyle = `rgba(${regColor}, ${regAlpha})`;
             ctx.fill(basicPath);
 
             // 3. Optimized Link Logic (Exactly 1 stroke call, 0 state changes in loop)
             ctx.beginPath();
             ctx.lineWidth = 0.5;
-            ctx.strokeStyle = `rgba(${regColor}, 0.04)`; // Fixed alpha for maximum batching efficiency
+            ctx.strokeStyle = `rgba(${regColor}, ${linkAlpha})`; // Fixed alpha for maximum batching efficiency
             const maxDistSq = 6400; // 80 * 80
 
             for (let i = 0; i < stars.length; i++) {

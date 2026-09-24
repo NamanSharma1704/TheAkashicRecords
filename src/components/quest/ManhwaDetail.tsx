@@ -696,11 +696,13 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                         ))
                                     ) : (
                                         media?.characters?.nodes?.map(char => (
-                                            <div key={char.id} className="w-[100px] shrink-0 snap-start flex flex-col items-center gap-3 group p-4 bg-black/20 backdrop-blur-md rounded-lg border border-white/5">
+                                            <div key={char.id} className={`w-[100px] shrink-0 snap-start flex flex-col items-center gap-3 group p-4 ${theme.isDark ? 'bg-black/20' : 'bg-black/60'} backdrop-blur-md rounded-lg border border-white/5`}>
                                                 <CharacterAvatar char={char} theme={theme} />
                                                 <div className="text-center w-full">
                                                     <div className={`text-[10px] font-bold truncate w-full ${theme.isDark ? 'text-white' : 'text-slate-100'}`} title={char.name.full}>{char.name.full}</div>
-                                                    <div className="text-[8px] text-white/40 uppercase truncate w-full mt-1">{char.role}</div>
+                                                    {/* One value, not a per-theme pair: white/40 measured 3.71:1 on the dark card too, so
+                                                        this was failing in BOTH themes. 60% clears AA on each (7.2 dark, 4.7 light). */}
+                                                    <div className="text-[8px] text-white/60 uppercase truncate w-full mt-1">{char.role}</div>
                                                 </div>
                                             </div>
                                         ))

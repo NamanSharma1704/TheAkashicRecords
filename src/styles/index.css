@@ -228,3 +228,51 @@
         will-change: filter;
     }
 }
+/* Hero card scanlines. The band drifts slowly downward so the projection reads as
+   live signal rather than a static texture. Distance is one 4px band period, so the
+   loop is seamless. Holds still under reduced motion. */
+@keyframes manhwa-holo-scan-drift {
+    from { background-position: 0 0; }
+    to   { background-position: 0 4px; }
+}
+
+.manhwa-holo-scan {
+    animation: manhwa-holo-scan-drift 1.6s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .manhwa-holo-scan { animation: none; }
+}
+
+/* Hero card plate.
+   Written as plain CSS rather than `shadow-[var(--card-rest)]` because Tailwind reads a
+   bare var() in an arbitrary shadow as a shadow COLOUR and emits
+   `--tw-shadow-color: var(--card-rest)`, which resolves to `box-shadow: none`. The two
+   variables are set on the card's container in App.tsx, which is also what scopes the
+   hover: `.group` is that container. */
+.card-plate {
+    box-shadow: var(--card-rest);
+    transition: box-shadow 700ms ease-in-out;
+}
+
+.group:hover .card-plate {
+    box-shadow: var(--card-raised);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .card-plate { transition: none; }
+}
+
+/* Panel elevation for hand-rolled surfaces that are not SystemFrame.
+   Same reason as .card-plate: a box-shadow driven by a custom property cannot go through
+   Tailwind's arbitrary-shadow syntax. The variable is set wherever the panels live, from
+   `elevation(theme, 1)` in src/core/depth.ts, so light and dark each speak their own
+   vocabulary without the call site knowing which. */
+.elev-1 {
+    box-shadow: var(--elev-1);
+    transition: box-shadow 700ms ease-in-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .elev-1 { transition: none; }
+}

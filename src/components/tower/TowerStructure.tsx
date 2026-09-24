@@ -59,7 +59,7 @@ const TowerStructure: React.FC<TowerStructureProps> = ({ onSelectFloor, theme, o
         // --- THEME (matched to the site's accent tokens: amber-500 #f59e0b / cyan-500 #06b6d4) ---
         const isDark = theme.isDark;
         const PRIMARY_COLOR = isDark ? 0xf59e0b : 0x06b6d4; // amber-500 / cyan-500 (accentColor)
-        const HOVER_COLOR = isDark ? 0xffffff : 0x0e7490;   // white / cyan-700
+        const HOVER_COLOR = isDark ? 0xffffff : 0x155e75;   // white / accentInk
         const BODY_COLOR = isDark ? 0xd6891a : 0x0e9ec4;    // rich amber / vibrant cyan platform fill
         const EDGE_COLOR = isDark ? 0xfbbf24 : 0x22d3ee;    // amber-400 / cyan-400 (bright hologram edge)
         const RIM_COLOR = isDark ? 0xfacc15 : 0x06b6d4;     // yellow-400 / cyan-500 (neon rim)
@@ -214,7 +214,7 @@ const TowerStructure: React.FC<TowerStructureProps> = ({ onSelectFloor, theme, o
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
                 ctx.letterSpacing = "20px";
-                const themeColor = isDark ? '#f59e0b' : '#0e7490';
+                const themeColor = isDark ? '#f59e0b' : '#155e75';
                 if (isDark) {
                     ctx.lineWidth = 15;
                     ctx.strokeStyle = themeColor;

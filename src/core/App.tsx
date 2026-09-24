@@ -4,7 +4,7 @@ import { Quest } from './types';
 import SystemFrame from '../components/system/SystemFrame';
 import SystemLogo from '../components/system/SystemLogo';
 import ScrambleText from '../components/system/ScrambleText';
-import { Activity, ExternalLink, Sun, Moon, Plus, Zap, Crown, X, LayoutTemplate, GripVertical } from 'lucide-react';
+import { Activity, ExternalLink, Sun, Moon, Plus, Zap, Crown, X, LayoutTemplate, GripVertical, ChevronLeft, ChevronRight } from 'lucide-react';
 import { getPlayerRank, getThemedRankStyle, calculateQuestRank } from '../utils/ranks';
 import { THEMES, ITEMS_PER_FLOOR, ThemeId } from './constants';
 
@@ -14,6 +14,11 @@ import BackgroundController from '../components/fx/BackgroundController';
 import EntityAvatar from '../components/system/EntityAvatar';
 import SystemNotification from '../components/system/SystemNotification';
 import SystemCompass from '../components/system/SystemCompass';
+// Statically imported on purpose: the wrapper is tiny and defers its own `three`
+// import to idle, so a lazy boundary here would only put a Suspense hole over the hero.
+import HoloDais from '../components/dais/HoloDais';
+import Card3D from '../components/quest/Card3D';
+import { accentRGB, elevation, emphasis } from './depth';
 import { InfinitePortalIcon, CalibratedPlusIcon, CalibratedMinusIcon } from '../components/system/CustomIcons';
 
 import { getProxiedImageUrl, unproxyImageUrl } from '../utils/api';
@@ -906,8 +911,16 @@ const App: React.FC = () => {
                     <div className="flex items-center gap-3">
                         {guestTimeLeft !== null && (
                             <div className="flex flex-col items-end leading-none mr-2">
-                                <span className="text-[7px] font-mono text-amber-500/70 tracking-[0.2em] font-black uppercase">LINK_STABILITY</span>
-                                <span className="text-[14px] font-mono font-black text-amber-500 drop-shadow-[0_0_8px_rgba(245,158,11,0.5)]">
+                                {/* A countdown is a warning, so it stays amber even when the theme is
+                                    cyan — but amber-500 belongs to the dark theme and measures 1.84:1
+                                    on the page. `warningInk` keeps the meaning and drops four steps on
+                                    light. The glow goes with it: there is nothing on a pale page for an
+                                    8px amber spill to brighten. */}
+                                <span className="text-[7px] font-mono tracking-[0.2em] font-black uppercase" style={{ color: theme.warningInk }}>LINK_STABILITY</span>
+                                <span
+                                    className="text-[14px] font-mono font-black"
+                                    style={{ color: theme.warningInk, filter: theme.isDark ? 'drop-shadow(0 0 8px rgba(245,158,11,0.5))' : undefined }}
+                                >
                                     {formatTime(guestTimeLeft)}
                                 </span>
                             </div>
@@ -926,12 +939,38 @@ const App: React.FC = () => {
 
     // Track hero cover image error state — reset whenever the active quest changes
     const [coverImgError, setCoverImgError] = React.useState(false);
+
+    /** True while any full-screen view covers the dashboard. Both the background field
+     *  and the hero dais stop their loops on this rather than rendering behind an overlay. */
+    const overlayOpen = isModalOpen || isDetailOpen || isProfileOpen || isSpireOpen;
+
+    /**
+     * The card's chrome is white/grey, not the accent.
+     *
+     * The card IS the projection, so its edges belong to the same light as the
+     * platform underneath rather than to the HUD around it. Hue-free in both themes;
+     * only the value flips, because white on the light page would be invisible.
+     */
+    const holoEdge = theme.isDark ? '#ffffff' : '#5a6673';
+    const holoSoft = theme.isDark ? '#d8d8de' : '#8d95a1';
+
+    /**
+     * Sidebar collapse. Desktop only — below `lg` the sidebar stacks under the hero
+     * rather than sitting beside it, so there is no width to reclaim there and every
+     * class below is `lg:`-prefixed.
+     */
+    const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+        try { return localStorage.getItem('akashic_sidebar_collapsed') === '1'; } catch { return false; }
+    });
+    useEffect(() => {
+        try { localStorage.setItem('akashic_sidebar_collapsed', sidebarCollapsed ? '1' : '0'); } catch { /* private mode */ }
+    }, [sidebarCollapsed]);
     useEffect(() => { setCoverImgError(false); }, [activeId]);
 
     const memoizedMain = useMemo(() => (
         <main id="content-scroll"
             className="relative mt-16 h-[calc(100dvh-104px)] lg:h-[calc(100dvh-100px)] overflow-y-auto lg:overflow-hidden overflow-x-hidden hide-scrollbar px-4 pb-6 lg:pb-2 z-10 flex flex-col">
-            <div className="w-full max-w-[1400px] ml-auto flex-1 min-h-0 flex flex-col lg:flex-row gap-3 lg:gap-4 pt-2 lg:pt-2 pb-0">
+            <div className={`w-full max-w-[1400px] flex-1 min-h-0 flex flex-col lg:flex-row gap-3 lg:gap-4 pt-2 lg:pt-2 pb-0 ${sidebarCollapsed ? 'lg:mx-auto' : 'lg:ml-auto'}`}>
                 {/* LEFT COLUMN: HERO CANVAS */}
                 <div className="flex-none lg:flex-1 flex flex-col lg:h-full order-1 overflow-visible relative">
                     <div className="relative z-10 w-full h-full flex flex-col px-4 md:px-6 lg:px-8 justify-between gap-4 overflow-visible pt-8">
@@ -944,16 +983,16 @@ const App: React.FC = () => {
                                 <div className="flex flex-col items-end gap-6 xl:gap-8 w-full -mt-[30px]">
                                     <div className="flex flex-col items-end w-max max-w-none">
                                         <div className={`text-[10px] font-mono ${theme.mutedText} tracking-[0.3em] uppercase mb-2 flex items-center justify-end gap-1.5`}>
-                                            <Crown size={10} style={{ color: theme.accentColor }} />
+                                            <Crown size={10} style={{ color: theme.accentInk }} />
                                             <span style={{ marginRight: '-0.3em' }}>RANK ASSESSMENT</span>
                                         </div>
-                                        <div className="text-6xl xl:text-[80px] font-black font-orbitron leading-none transition-colors duration-700 text-right text-[var(--accent-color)] [filter:drop-shadow(0_0_25px_var(--accent-glow))]">
+                                        <div className="text-6xl xl:text-[80px] font-black font-orbitron leading-none transition-colors duration-700 text-right text-[var(--accent-ink)] [filter:drop-shadow(0_0_25px_var(--accent-glow))]">
                                             {calculateQuestRank(activeQuest)}
                                         </div>
                                     </div>
                                     <div className="flex flex-col items-end w-max max-w-none">
                                         <div className={`text-[10px] font-mono ${theme.mutedText} tracking-[0.3em] uppercase mb-1 text-right w-full`}>CLASSIFICATION</div>
-                                        <div className={`text-base lg:text-lg xl:text-2xl font-black font-orbitron tracking-wider whitespace-nowrap text-right transition-colors duration-700 text-[var(--accent-color)]`}>{activeQuest.classType || 'UNKNOWN'}</div>
+                                        <div className={`text-base lg:text-lg xl:text-2xl font-black font-orbitron tracking-wider whitespace-nowrap text-right transition-colors duration-700 text-[var(--accent-ink)]`}>{activeQuest.classType || 'UNKNOWN'}</div>
                                     </div>
                                 </div>
                             </div>
@@ -968,44 +1007,166 @@ const App: React.FC = () => {
                                     }
                                     lastCoverTap.current = now;
                                 }}
-                                className="relative flex-none h-full min-h-0 min-w-0 w-[min(85vw,320px)] md:w-full md:max-w-[45%] lg:w-auto lg:max-h-[85vh] aspect-[72/103] self-center flex items-center justify-center transition-all duration-700 ease-out transform-gpu hover:-translate-y-2 perspective-[1000px] group cursor-pointer"
+                                className="relative flex-none h-full min-h-0 min-w-0 w-[min(85vw,320px)] md:w-full md:max-w-[45%] lg:w-auto lg:max-h-[49vh] aspect-[72/103] self-center flex items-center justify-center transition-all duration-700 ease-out transform-gpu hover:-translate-y-2 perspective-[1000px] group cursor-pointer"
+                                style={{
+                                    // The mat, and the card's two rest states, as variables so the
+                                    // hover transition stays a CSS transition — an inline style
+                                    // cannot express :hover, and the card must not re-render on it.
+                                    //
+                                    // The mat is a spread-only shadow rather than a plate behind the
+                                    // card: it needs no node, changes no layout, and cannot drift
+                                    // out of register with a card whose height is viewport-driven.
+                                    // Cover art is dark and saturated, so on the light page it was a
+                                    // maximum-contrast rectangle punching a hole in the sheet; the
+                                    // mat is deliberately DARKER than the page so the eye steps
+                                    // page -> mat -> art instead of falling straight through. On the
+                                    // void the problem inverts — the art dissolves into the
+                                    // background — so there the mat is a faint light rim instead.
+                                    '--card-mat': theme.isDark ? 'rgba(255,255,255,0.07)' : '#c6d0de',
+                                    '--card-rest': `0 0 0 10px var(--card-mat), ${elevation(theme, 2)}`,
+                                    '--card-raised': `0 0 0 10px var(--card-mat), ${elevation(theme, 3)}`,
+                                } as React.CSSProperties}
                             >
-                                {/* FROSTED GLASS PLATFORM (Sharp Square Base) */}
+
+                                {/* PROJECTION CONE — the light the dais throws upward.
+                                    Rebuilt from stacked radial gradients anchored at the emitter
+                                    rather than a clip-path trapezoid. The old version had three
+                                    straight clip edges and terminated at its brightest point, so it
+                                    read as a white plate laid on the platform; these have no edge
+                                    anywhere, they simply fall off to nothing. White in both themes
+                                    like the platform on dark. On light it composites normally with
+                                    a cool blue wash instead: `screen` only lightens so it was a
+                                    no-op there, and `multiply` against a near-white page was too
+                                    faint to see. A pale page has no headroom above it, so the shaft
+                                    has to read slightly DARKER than the background — and it has to
+                                    be cool rather than neutral grey, or the same value just reads
+                                    as grime instead of light.
+
+                                    The stops matter more than the peak. A peak alpha set at 0%
+                                    only exists at the single centre point; the earlier version was
+                                    already down to 0.20 by 42% of the radius, which composites to
+                                    about RGB(209,221,233) against a ~243 page — a delta of 30,
+                                    which disappears against a background that has its own
+                                    gradients. These hold 0.40 out to a third of the radius so the
+                                    strong part covers real area, not one pixel.
+
+                                    The hue tracks the PLATFORM, never the theme accent — the beam
+                                    is the light that platform emits, so on dark it is white like
+                                    the dais and on light it is the dais's own neutral (#5a6673,
+                                    the same value its tier edges use). A cyan beam was tried and
+                                    rejected: it read as a separate accent element rather than as
+                                    the platform's light.
+
+                                    A neutral has only VALUE to work with, and the light page is
+                                    slate-50 (#f8fafc, ~248), so the alpha has to be high or the
+                                    shaft washes out entirely. At 0.52 it composites to about
+                                    RGB(160,165,177) — a delta near 90, which is the point it
+                                    actually reads.
+
+                                    The small `translate-y` matters: these gradients are anchored at
+                                    the element's BOTTOM, and with the platform lowered that bottom
+                                    sat 24px above the disc, so the brightest part of the beam was
+                                    glowing in the empty gap instead of on the emitter. */}
                                 <div
-                                    className="absolute -inset-4 backdrop-blur-3xl pointer-events-none transition-all duration-700 opacity-100 group-hover:opacity-60"
+                                    className={`absolute left-1/2 -translate-x-1/2 bottom-0 translate-y-[30%] md:translate-y-[35%] [@media(min-width:768px)_and_(min-height:1000px)]:translate-y-[37%] w-[170%] h-[150%] pointer-events-none z-0 opacity-100 transition-opacity duration-700 ${theme.isDark ? 'mix-blend-screen' : ''}`}
                                     style={{
-                                        background: theme.isDark ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.45)',
-                                        border: theme.isDark ? '1px solid rgba(255,255,255,0.3)' : '1px solid rgba(0,0,0,0.1)',
-                                        boxShadow: theme.isDark ? '0 10px 40px rgba(0,0,0,0.2)' : '0 10px 40px rgba(0,0,0,0.08)'
+                                        // Two ellipses sharing the emitter as their origin: a tight
+                                        // bright core at the disc, and a wider dimmer spread above it.
+                                        //
+                                        // HARD RULE: the falloff must complete inside the box on ALL
+                                        // FOUR sides, and that includes the side the origin sits on.
+                                        // For `ellipse <rx>% <ry>% at 50% <oy>%` ending at stop <s>%:
+                                        //   horizontal  rx*s          < 0.50
+                                        //   upward      ry*s          < oy
+                                        //   downward    ry*s          < 1 - oy
+                                        // The origin used to be at `50% 100%` — the element's bottom
+                                        // edge — where alpha is at its MAXIMUM with nothing below to
+                                        // fade into, so the box was cut off hard right where the glow
+                                        // was strongest. Checking only the horizontal term missed it.
+                                        // Now: rx*s = 0.64*0.62 = 0.397 < 0.50, ry*s = 0.52*0.62 =
+                                        // 0.322 < min(0.66, 0.34). The element is positioned so this
+                                        // interior origin lands on the disc.
+                                        // The gradients are radial, so they spill as far DOWN from the emitter
+                                        // as they reach up, which put glow under the platform and across the
+                                        // title. This holds full strength down to the disc (the 66% origin)
+                                        // then fades out over the next 8% — soft enough to leave no edge, and
+                                        // finished inside the element so the box itself still never shows.
+                                        maskImage: 'linear-gradient(to bottom, #000 0%, #000 66%, transparent 74%)',
+                                        WebkitMaskImage: 'linear-gradient(to bottom, #000 0%, #000 66%, transparent 74%)',
+                                        background: theme.isDark
+                                            ? 'radial-gradient(ellipse 30% 40% at 50% 66%, rgba(255,255,255,0.34) 0%, rgba(255,255,255,0.11) 40%, rgba(255,255,255,0) 78%),'
+                                              + 'radial-gradient(ellipse 64% 52% at 50% 66%, rgba(255,255,255,0.13) 0%, rgba(255,255,255,0.05) 34%, rgba(255,255,255,0) 62%)'
+                                            : 'radial-gradient(ellipse 30% 40% at 50% 66%, rgba(45,58,78,0.72) 0%, rgba(45,58,78,0.50) 40%, rgba(45,58,78,0) 78%),'
+                                              + 'radial-gradient(ellipse 64% 52% at 50% 66%, rgba(45,58,78,0.42) 0%, rgba(45,58,78,0.20) 34%, rgba(45,58,78,0) 62%)',
                                     }}
                                 />
 
-                                {/* Outer wrapper: pulsing glow border around the cover (SHARP + PARALLAX FLOAT) */}
-                                <div className="relative w-full h-full shadow-[0_0_20px_rgba(0,0,0,0.3)] transition-all duration-700 group-hover:shadow-[0_30px_60px_rgba(0,0,0,0.5)]">
+                                {/* HOLOGRAPHIC DAIS — the card stands on it.
+                                    Sits after the frosted panel so that panel's backdrop-blur
+                                    never samples it (a blurred canvas under a perspective
+                                    ancestor is what softened the rank sigil), and before the
+                                    cover wrapper so the card still occludes the dais centre.
+                                    Centred on the card's bottom edge: the dais origin projects
+                                    to the middle of its own canvas. */}
+                                <HoloDais
+                                    theme={theme}
+                                    paused={overlayOpen}
+                                    /* Narrower on a phone: the card is nearly the whole
+                                       screen there, so 190% of it overflowed the viewport. */
+                                    className="absolute left-1/2 bottom-0 -translate-x-1/2 translate-y-[26%] w-[118%] aspect-[5/1] z-0 md:translate-y-[56%] md:w-[195%] [@media(min-width:768px)_and_(min-height:1000px)]:translate-y-[68%]"
+                                />
+
+                                {/* Outer wrapper: pulsing glow border around the cover (SHARP + PARALLAX FLOAT).
+                                    Card3D adds the pointer-tracked tilt and sheen; it keeps its own
+                                    state in refs so this memoized subtree never re-renders on move.
+
+                                    The negative `top` lifts the card clear of the platform so its
+                                    base never touches the disc — it hovers over the emitter. It must
+                                    be applied HERE and not on the container: the dais anchors to the
+                                    container's bottom edge, so moving that moves the platform too.
+
+                                    The lift and `max-h` above are solved together, not guessed. The
+                                    disc's back rim projects 0.432 * canvasHeight above the container's
+                                    bottom, and the canvas height scales off the card width, so a taller
+                                    card needs a bigger lift — which at the old 54vh drove the card's
+                                    top under the fixed header. 45vh is the tallest card whose required
+                                    lift still leaves the corner reticles below it. */}
+                                <Card3D className="relative -top-5 lg:-top-[7.4vh] w-full h-full card-plate">
 
                                     {/* Corner Reticles (External Floating Targeting Geometry) */}
-                                    <div className="absolute -top-[16px] -left-[16px] w-8 h-8 border-t-[2px] border-l-[2px] z-30 pointer-events-none opacity-80 transition-colors duration-700" style={{ borderColor: theme.isDark ? '#E2E8F0' : '#475569', filter: theme.isDark ? 'drop-shadow(0 0 4px rgba(255,255,255,0.4))' : 'drop-shadow(0 2px 4px rgba(0,0,0,0.6))' }} />
-                                    <div className="absolute -top-[16px] -right-[16px] w-8 h-8 border-t-[2px] border-r-[2px] z-30 pointer-events-none opacity-80 transition-colors duration-700" style={{ borderColor: theme.isDark ? '#E2E8F0' : '#475569', filter: theme.isDark ? 'drop-shadow(0 0 4px rgba(255,255,255,0.4))' : 'drop-shadow(0 2px 4px rgba(0,0,0,0.6))' }} />
-                                    <div className="absolute -bottom-[16px] -left-[16px] w-8 h-8 border-b-[2px] border-l-[2px] z-30 pointer-events-none opacity-80 transition-colors duration-700" style={{ borderColor: theme.isDark ? '#E2E8F0' : '#475569', filter: theme.isDark ? 'drop-shadow(0 0 4px rgba(255,255,255,0.4))' : 'drop-shadow(0 2px 4px rgba(0,0,0,0.6))' }} />
-                                    <div className="absolute -bottom-[16px] -right-[16px] w-8 h-8 border-b-[2px] border-r-[2px] z-30 pointer-events-none opacity-80 transition-colors duration-700" style={{ borderColor: theme.isDark ? '#E2E8F0' : '#475569', filter: theme.isDark ? 'drop-shadow(0 0 4px rgba(255,255,255,0.4))' : 'drop-shadow(0 2px 4px rgba(0,0,0,0.6))' }} />
+                                    <div className="absolute -top-[16px] -left-[16px] w-8 h-8 border-t-[2px] border-l-[2px] z-30 pointer-events-none opacity-80 transition-colors duration-700" style={{ borderColor: holoEdge, filter: `drop-shadow(0 0 5px ${holoEdge}${theme.isDark ? 'cc' : '88'})` }} />
+                                    <div className="absolute -top-[16px] -right-[16px] w-8 h-8 border-t-[2px] border-r-[2px] z-30 pointer-events-none opacity-80 transition-colors duration-700" style={{ borderColor: holoEdge, filter: `drop-shadow(0 0 5px ${holoEdge}${theme.isDark ? 'cc' : '88'})` }} />
+                                    <div className="absolute -bottom-[16px] -left-[16px] w-8 h-8 border-b-[2px] border-l-[2px] z-30 pointer-events-none opacity-80 transition-colors duration-700" style={{ borderColor: holoEdge, filter: `drop-shadow(0 0 5px ${holoEdge}${theme.isDark ? 'cc' : '88'})` }} />
+                                    <div className="absolute -bottom-[16px] -right-[16px] w-8 h-8 border-b-[2px] border-r-[2px] z-30 pointer-events-none opacity-80 transition-colors duration-700" style={{ borderColor: holoEdge, filter: `drop-shadow(0 0 5px ${holoEdge}${theme.isDark ? 'cc' : '88'})` }} />
 
                                     {/* Pulsing border glow (Unified High-Contrast Chrome - Visible on White) */}
                                     <div
                                         className="absolute -inset-[3.5px] animate-[pulse_3s_ease-in-out_infinite] pointer-events-none z-10"
                                         style={{
-                                            border: theme.isDark ? `1.5px solid rgba(255, 255, 255, 0.95)` : `1.5px solid #475569`,
-                                            outline: theme.isDark ? `0.5px solid rgba(255, 255, 255, 0.1)` : `0.5px solid rgba(0, 0, 0, 0.1)`,
+                                            // An emitted rim rather than a chrome frame: a hard white
+                                            // border is the single strongest cue that this is a solid
+                                            // printed card rather than light standing in the air.
+                                            border: `1px solid ${holoEdge}${theme.isDark ? 'e6' : 'b3'}`,
                                             boxShadow: theme.isDark
-                                                ? `0 0 20px rgba(255, 255, 255, 0.4), 0 0 40px ${theme.accentColor}22, inset 0 0 10px rgba(255, 255, 255, 0.2)`
-                                                : `0 4px 15px rgba(0, 0, 0, 0.15), 0 0 20px ${theme.accentColor}22, inset 0 0 5px rgba(0, 0, 0, 0.2)`
+                                                ? `0 0 14px ${holoEdge}88, 0 0 44px ${holoEdge}33, inset 0 0 22px ${holoEdge}22`
+                                                : `0 0 12px ${holoEdge}66, 0 0 34px ${holoEdge}22, inset 0 0 18px ${holoEdge}1a`
                                         }}
                                     />
                                     {/* Inner cover image container (SHARP + HIGH IMAGE VISIBILITY) */}
                                     <div
                                         className={`w-full h-full overflow-hidden relative transition-all duration-700`}
                                         style={{
-                                            border: theme.isDark ? `1px solid rgba(255, 255, 255, 0.1)` : `1px solid rgba(0, 0, 0, 0.15)`,
-                                            boxShadow: `inset 0 0 15px rgba(0,0,0,0.3)` /* Lighter internal vignette */
+                                            border: `1px solid ${holoEdge}${theme.isDark ? '33' : '2a'}`,
+                                            boxShadow: `inset 0 0 26px ${holoSoft}${theme.isDark ? '26' : '18'}`,
+                                            // Just short of opaque, so the field behind reads faintly
+                                            // through the art. This is the last cue that separates
+                                            // projected light from a printed card; any lower and the
+                                            // cover itself starts to lose definition.
+                                            opacity: theme.isDark ? 0.93 : 0.95,
+                                            // Dissolve the lower edge into the cone so the card has no
+                                            // bottom boundary — it resolves out of the dais light.
+                                            maskImage: 'linear-gradient(to top, transparent 0%, rgba(0,0,0,0.5) 2.5%, #000 8%)',
+                                            WebkitMaskImage: 'linear-gradient(to top, transparent 0%, rgba(0,0,0,0.5) 2.5%, #000 8%)',
                                         }}
                                     >
                                         {/* key=activeQuest.id forces a fresh <img> DOM node on quest change,
@@ -1033,8 +1194,8 @@ const App: React.FC = () => {
                                         <div
                                             className="absolute inset-0 pointer-events-none transition-colors duration-700"
                                             style={{
-                                                backgroundColor: theme.accentColor,
-                                                opacity: theme.isDark ? 0.04 : 0.15,
+                                                backgroundColor: holoSoft,
+                                                opacity: theme.isDark ? 0.04 : 0.12,
                                                 mixBlendMode: theme.isDark ? 'overlay' : 'soft-light'
                                             }}
                                         />
@@ -1046,30 +1207,45 @@ const App: React.FC = () => {
                                             animate={{ x: '100%', y: '100%' }}
                                             transition={{ duration: 4, repeat: Infinity, ease: "linear", repeatDelay: 2 }}
                                             style={{
-                                                background: 'linear-gradient(135deg, transparent 45%, rgba(255,255,255,0.2) 50%, transparent 55%)'
+                                                background: `linear-gradient(135deg, transparent 45%, ${holoEdge}33 50%, transparent 55%)`
                                             }}
                                         />
 
                                         {/* Hover gradient overlay (Initial opacity-0 for immediate full visibility) */}
                                         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
-                                        {/* Bright Bottom Accent Bar */}
+                                        {/* SCANLINES — the readout texture that makes this read as a
+                                            projection rather than print. Kept faint: strong enough to
+                                            see at arm's length, weak enough not to fight the cover art. */}
                                         <div
-                                            className="absolute bottom-0 left-0 w-full h-[4px] z-30 [background:linear-gradient(90deg,transparent,rgba(255,255,255,0.8),transparent)] [box-shadow:0_0_15px_rgba(255,255,255,0.5)]"
+                                            className="absolute inset-0 z-20 pointer-events-none manhwa-holo-scan"
+                                            style={{
+                                                background: `repeating-linear-gradient(to bottom, ${holoSoft}${theme.isDark ? '24' : '18'} 0px, ${holoSoft}${theme.isDark ? '24' : '18'} 1px, transparent 1px, transparent 4px)`,
+                                            }}
+                                        />
+
+                                        {/* Emission line at the base — the edge the projection is
+                                            drawn from, so it is accent-coloured rather than white. */}
+                                        <div
+                                            className="absolute bottom-0 left-0 w-full h-[2px] z-30"
+                                            style={{
+                                                background: `linear-gradient(90deg, transparent, ${holoEdge}, transparent)`,
+                                                boxShadow: `0 0 18px ${holoEdge}, 0 0 38px ${holoEdge}88`,
+                                            }}
                                         />
                                     </div>{/* end inner cover */}
-                                </div>
+                                </Card3D>
                             </div>{/* end outer glow wrapper */}
 
                             {/* Right Column: Sequence & System Log — justify-center mirrors left */}
                             <div className="hidden md:flex flex-col items-start justify-center gap-4 md:gap-6 xl:gap-10 self-stretch flex-1 basis-0 min-w-0 shrink">
                                 <div className="flex flex-col items-start w-max max-w-none">
                                     <div className={`text-[10px] font-mono ${theme.mutedText} tracking-[0.3em] uppercase mb-1`}>SEQUENCE DATA</div>
-                                    <div className={`text-5xl xl:text-[70px] font-black font-mono tabular-nums leading-none text-left transition-colors duration-700 text-[var(--accent-color)]`}>
+                                    <div className={`text-5xl xl:text-[70px] font-black font-mono tabular-nums leading-none text-left transition-colors duration-700 text-[var(--accent-ink)]`}>
                                         {String(activeQuest.currentChapter).padStart(3, '0')}
                                     </div>
                                     <div className={`text-[11px] font-mono tracking-widest mt-2 ${theme.mutedText}`}>
-                                        OF <span className={`font-bold`} style={{ color: theme.accentColor }}>{activeQuest.totalChapters}</span> CHAPTERS
+                                        OF <span className={`font-bold`} style={{ color: theme.accentInk }}>{activeQuest.totalChapters}</span> CHAPTERS
                                     </div>
                                 </div>
 
@@ -1077,14 +1253,19 @@ const App: React.FC = () => {
                                     <div className={`text-[10px] font-mono ${theme.mutedText} tracking-[0.3em] uppercase mb-2 flex items-center gap-1.5 border-b ${theme.borderSubtle} pb-2`}>
                                         <span className={`w-1 h-1 rounded-full animate-ping`} style={{ backgroundColor: theme.accentColor }} /> EVENT_LOG
                                     </div>
-                                    <div className={`flex flex-col gap-1.5 text-[9px] font-mono leading-relaxed tracking-wider mt-2`} style={{ color: `${theme.accentColor}bb` }}>
+                                    {/* Log lines are read, so they take the ink. This was the decorative
+                                        accent at 73% alpha — 2.08:1 — and the timestamps then had
+                                        `opacity-40` on top of that, which landed them near 1.9:1. The
+                                        timestamps are secondary, so they use the muted token rather than
+                                        an alpha knocked out of the ink. */}
+                                    <div className={`flex flex-col gap-1.5 text-[9px] font-mono leading-relaxed tracking-wider mt-2`} style={{ color: theme.accentInk }}>
                                         <div className="flex gap-2">
-                                            <span className="opacity-40 shrink-0">[{new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' })}]</span>
+                                            <span className={`shrink-0 ${theme.mutedText}`}>[{new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' })}]</span>
                                             <span className="whitespace-nowrap">Signal acquired.</span>
                                         </div>
                                         <div className="flex gap-2">
-                                            <span className="opacity-40 shrink-0">[{new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' })}]</span>
-                                            <span className={`font-bold whitespace-nowrap`} style={{ color: theme.accentColor, textShadow: `0 0 10px ${theme.accentColor}` }}>Awaiting directive.</span>
+                                            <span className={`shrink-0 ${theme.mutedText}`}>[{new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' })}]</span>
+                                            <span className={`font-bold whitespace-nowrap`} style={{ color: theme.accentInk, textShadow: theme.isDark ? `0 0 10px ${theme.accentColor}` : undefined }}>Awaiting directive.</span>
                                         </div>
                                     </div>
                                 </div>
@@ -1096,7 +1277,7 @@ const App: React.FC = () => {
                             {/* Title — overflow-visible to prevent last character clipping */}
                             <div className="text-center flex flex-col items-center justify-end px-6 w-full min-h-[3rem] sm:min-h-[4rem] xl:min-h-[5rem] overflow-visible">
                                 <h1
-                                    className={`${activeQuest.title.length > 25 ? 'text-xl sm:text-2xl xl:text-3xl' : 'text-2xl sm:text-3xl xl:text-4xl'} font-black font-orbitron tracking-tighter text-transparent bg-clip-text uppercase leading-[1.15] line-clamp-2 w-full`}
+                                    className={`${activeQuest.title.length > 42 ? 'text-base sm:text-lg xl:text-2xl' : activeQuest.title.length > 25 ? 'text-xl sm:text-2xl xl:text-3xl' : 'text-2xl sm:text-3xl xl:text-4xl'} font-black font-orbitron tracking-tighter text-transparent bg-clip-text uppercase leading-[1.15] line-clamp-2 w-full`}
                                     style={{
                                         backgroundImage: `linear-gradient(90deg, ${theme.accentColor}cc, ${theme.accentColor}, ${theme.accentColor}cc)`,
                                         textTransform: 'uppercase',
@@ -1110,14 +1291,18 @@ const App: React.FC = () => {
                             {/* Progress */}
                             <div className="space-y-1.5 max-w-3xl w-full mx-auto">
                                 <div className={`flex justify-between text-[11px] sm:text-xs font-mono font-bold tracking-widest drop-shadow-md`}>
-                                    <span className={`flex items-center gap-1.5 ${theme.headingText}`}><Zap size={14} style={{ color: theme.accentColor }} /> COMPLETION_RATE</span>
-                                    <span style={{ color: theme.accentColor }}>{progressPercent}%</span>
+                                    <span className={`flex items-center gap-1.5 ${theme.headingText}`}><Zap size={14} style={{ color: theme.accentInk }} /> COMPLETION_RATE</span>
+                                    <span style={{ color: theme.accentInk }}>{progressPercent}%</span>
                                 </div>
                                 <div className={`h-1.5 ${theme.isDark ? 'bg-gray-900/40' : 'bg-gray-300/40'} w-full relative overflow-hidden backdrop-blur-md rounded-full shadow-inner`}>
                                     {/* animate-gradient-x drifts a highlight along the fill; the gradient
                                         is glow → colour → glow so the sweep reads as moving light. */}
-                                    <div className="h-full transition-transform duration-700 ease-out origin-left [background:linear-gradient(90deg,var(--accent-glow),var(--accent-color),var(--accent-glow))] [box-shadow:0_0_12px_var(--accent-glow)] animate-gradient-x"
-                                        style={{ transform: `scaleX(${progressPercent / 100})` }} />
+                                    {/* The bloom is the accent GLOW, which is the one thing a pale page
+                                        cannot show — a 12px cyan spill over #e9eef5 resolved to nothing.
+                                        `emphasis` spends it the way each theme can afford: light out on
+                                        the void, a seated shadow plus a saturated edge on the page. */}
+                                    <div className="h-full transition-transform duration-700 ease-out origin-left [background:linear-gradient(90deg,var(--accent-glow),var(--accent-color),var(--accent-glow))] animate-gradient-x"
+                                        style={{ transform: `scaleX(${progressPercent / 100})`, boxShadow: emphasis(theme, accentRGB(theme), 0.75) }} />
                                 </div>
                             </div>
 
@@ -1134,8 +1319,14 @@ const App: React.FC = () => {
                                     whileTap={{ scale: 0.96 }}
                                     onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleEnterPortal(activeQuest.link || '#'); }}
                                     disabled={!activeQuest.link || activeQuest.link === '#'}
-                                    className={`h-12 flex-1 max-w-[400px] backdrop-blur-md flex items-center justify-center gap-2 transition-all font-mono font-bold tracking-widest text-[12px] group cursor-pointer shadow-lg rounded-sm text-white drop-shadow-md disabled:opacity-40 disabled:cursor-not-allowed`}
-                                    style={{ backgroundColor: theme.accentColor, borderColor: theme.accentColor, boxShadow: `0 0 20px ${theme.accentColor}66` }}
+                                    /* Near-black on the fill, not white. Both accents are mid-luminance
+                                       brights — white measured 2.43:1 on the cyan and 2.15:1 on the
+                                       amber, so the primary CTA failed in BOTH themes. Slate-900 reads
+                                       8.29:1 on amber and 7.33:1 on cyan, and the icon follows because
+                                       it draws in currentColor. `drop-shadow-md` went with the white:
+                                       a dark shadow under dark text only muddies it. */
+                                    className={`h-12 flex-1 max-w-[400px] backdrop-blur-md flex items-center justify-center gap-2 transition-all font-mono font-bold tracking-widest text-[12px] group cursor-pointer rounded-sm text-slate-900 disabled:opacity-40 disabled:cursor-not-allowed`}
+                                    style={{ backgroundColor: theme.accentColor, borderColor: theme.accentColor, boxShadow: emphasis(theme, accentRGB(theme)) }}
                                 >
                                     <InfinitePortalIcon size={18} className="group-hover:rotate-12 transition-transform" /> ENTER PORTAL
                                 </motion.button>
@@ -1152,7 +1343,33 @@ const App: React.FC = () => {
                 </div>
 
                 {/* RIGHT COLUMN: SIDEBAR */}
-                <div className="w-full lg:w-80 xl:w-96 flex flex-col gap-1.5 lg:gap-2 lg:min-h-0 lg:h-full order-2 mb-10 lg:mb-0">
+                <div
+                    id="system-sidebar"
+                    className={`relative w-full flex flex-col gap-1.5 lg:gap-2 lg:min-h-0 lg:h-full order-2 mb-10 lg:mb-0 lg:transition-[width] lg:duration-500 lg:ease-out lg:overflow-visible ${sidebarCollapsed ? 'lg:w-0' : 'lg:w-80 xl:w-96'}`}
+                >
+                    {/* RETRACT HANDLE — a bare glyph at the panel's leading edge, no frame
+                        and no plate. A bordered button here competed with the HUD's own
+                        bracket language instead of sitting inside it. Sits low-contrast
+                        until pointed at. Hidden below lg with the rest of the collapse.
+
+                        Collapsed it goes `fixed` against the viewport edge: the content
+                        row centres itself when the panel is away, so an offset from the
+                        zero-width panel would strand the glyph mid-gutter. */}
+                    <button
+                        type="button"
+                        onClick={() => setSidebarCollapsed((v) => !v)}
+                        aria-expanded={!sidebarCollapsed}
+                        aria-controls="system-sidebar"
+                        aria-label={sidebarCollapsed ? 'Expand system panel' : 'Collapse system panel'}
+                        title={sidebarCollapsed ? 'Expand system panel' : 'Collapse system panel'}
+                        className={`hidden lg:flex top-1/2 -translate-y-1/2 z-30 w-5 h-20 items-center justify-center bg-transparent border-0 opacity-40 hover:opacity-100 focus-visible:opacity-100 transition-opacity duration-300 cursor-pointer outline-none ${sidebarCollapsed ? 'fixed right-1' : 'absolute -left-5'}`}
+                        style={{ color: theme.accentInk }}
+                    >
+                        {sidebarCollapsed ? <ChevronLeft size={18} /> : <ChevronRight size={18} />}
+                    </button>
+
+                    {/* FULL PANEL — always shown below lg, where the sidebar stacks. */}
+                    <div className={`contents ${sidebarCollapsed ? 'lg:hidden' : ''}`}>
                     {/* PLAYER CARD */}
                     <div className="w-full h-auto">
                         <SystemFrame variant="brackets" theme={theme}>
@@ -1186,7 +1403,7 @@ const App: React.FC = () => {
                                         </div>
                                     </div>
                                 </div>
-                                <div className="mt-3"><div className={`flex justify-between text-[8px] font-mono ${theme.highlightText} mb-0.5 transition-colors duration-700 uppercase`}><span>EXP ACQUIRED</span><span>{totalChaptersRead} PTS</span></div><div className={`h-1 w-full ${theme.isDark ? 'bg-gray-800' : 'bg-gray-200'} transition-colors duration-700 overflow-hidden relative`}><div className={`h-full w-full bg-gradient-to-r ${theme.gradient} progress-bloom transition-transform duration-700 origin-left [color:var(--accent-color)]`} style={{ transform: `scaleX(0.6)` }} /></div></div>
+                                <div className="mt-3"><div className={`flex justify-between text-[8px] font-mono ${theme.highlightText} mb-0.5 transition-colors duration-700 uppercase`}><span>EXP ACQUIRED</span><span>{totalChaptersRead} PTS</span></div><div className={`h-1 w-full ${theme.isDark ? 'bg-gray-800' : 'bg-gray-200'} transition-colors duration-700 overflow-hidden relative`}><div className={`h-full w-full bg-gradient-to-r ${theme.gradient} transition-transform duration-700 origin-left`} style={{ transform: `scaleX(0.6)`, boxShadow: emphasis(theme, accentRGB(theme), 0.6) }} /></div></div>
                             </div>
                         </SystemFrame>
                     </div>
@@ -1237,13 +1454,16 @@ const App: React.FC = () => {
                     </div>
 
                     {/* DIVINE SPIRE BUTTON */}
-                    <button aria-label="Open Divine Spire" onClick={() => { setIsSpireOpen(true); }} className={`mt-auto hidden lg:flex w-full h-12 ${theme.isDark ? 'bg-white/5' : 'bg-sky-500/10'} border ${theme.borderSubtle} ${theme.highlightText} hover:bg-${theme.primary}-500 ${theme.isDark ? 'hover:text-black' : 'hover:text-white'} font-mono font-bold tracking-widest uppercase transition-all items-center justify-center gap-2 text-[12px] shrink-0 shadow-sm cursor-pointer duration-700`}><LayoutTemplate size={16} /> DIVINE SPIRE</button>
+                    <button aria-label="Open Divine Spire" onClick={() => { setIsSpireOpen(true); }} className={`mt-auto hidden lg:flex w-full h-12 ${theme.isDark ? 'bg-white/5' : 'bg-sky-500/10'} border ${theme.borderSubtle} ${theme.highlightText} ${theme.isDark ? 'hover:bg-[#f59e0b] hover:text-black' : 'hover:bg-[#155e75] hover:text-white'} font-mono font-bold tracking-widest uppercase transition-all items-center justify-center gap-2 text-[12px] shrink-0 shadow-sm cursor-pointer duration-700`}><LayoutTemplate size={16} /> DIVINE SPIRE</button>
+                    </div>{/* end full panel */}
                 </div>
             </div>
         </main>
-        // activeQuests, currentTheme, isSpireOpen and userState were listed but never read
-        // in this block, so they only forced needless recomputation.
-    ), [theme, activeQuest, progressPercent, activeId, handleLogClick, orderedActiveQuests, handleReorderActiveQuests, totalChaptersRead, playerRank, updateProgress, coverImgError, handleEnterPortal]);
+        // activeQuests, currentTheme and userState were listed but never read in this
+        // block, so they only forced needless recomputation. overlayOpen IS read — the
+        // hero dais pauses on it — and the four flags behind it only change on an
+        // explicit open/close, so recomputing then is correct rather than wasteful.
+    ), [theme, activeQuest, progressPercent, activeId, handleLogClick, orderedActiveQuests, handleReorderActiveQuests, totalChaptersRead, playerRank, updateProgress, coverImgError, handleEnterPortal, overlayOpen, sidebarCollapsed, holoEdge, holoSoft]);
 
     if (booting) return <BootScreen onComplete={finishBooting} theme={theme} />;
 
@@ -1260,10 +1480,17 @@ const App: React.FC = () => {
         <div 
             id="main-scroll-area" 
             className={`relative h-[100dvh] overflow-hidden ${theme.appBg} ${theme.baseText} font-sans selection:bg-amber-500/30 transition-colors duration-700 ease-in-out`}
-            style={{ 
+            style={{
+                // Two accents, deliberately. `--accent-color` and its two derivatives are
+                // decorative — fills, glows and washes, where chroma is the whole point and
+                // nothing has to stay legible on top of them. `--accent-ink` is structural:
+                // anything a reader has to actually read. On the light theme the decorative
+                // cyan measures 2.08:1 against the page, which fails even the 3:1 large-text
+                // floor, so display type reads in the ink and the fills keep the chroma.
                 '--accent-color': theme.accentColor,
                 '--accent-glow': `${theme.accentColor}88`,
-                '--accent-faint': `${theme.accentColor}22`
+                '--accent-faint': `${theme.accentColor}22`,
+                '--accent-ink': theme.accentInk
             } as React.CSSProperties}
         >
             {/* Paused whenever a full-screen view covers it. It used to pause only for the
@@ -1271,7 +1498,7 @@ const App: React.FC = () => {
                 Profile mounts its own particle field, so two canvases ran at once. */}
             <BackgroundController
                 theme={theme}
-                isPaused={isModalOpen || isDetailOpen || isProfileOpen || isSpireOpen}
+                isPaused={overlayOpen}
                 isMobile={isMobile}
             />
             {/* BACKGROUND GRADIENT FIX */}

@@ -107,7 +107,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, theme, onTogg
                         className={`w-8 h-8 flex items-center justify-center border ${theme.borderSubtle} ${theme.isDark ? 'bg-white/5 hover:bg-white/10' : 'bg-black/5 hover:bg-black/10'} rounded transition-colors duration-700`}
                     >
                         {theme.isDark
-                            ? <Moon size={14} className="transition-colors duration-700" style={{ color: theme.accentColor }} />
+                            ? <Moon size={14} className="transition-colors duration-700" style={{ color: theme.accentInk }} />
                             : <Sun size={14} className="text-sky-600 transition-colors duration-700" />}
                     </button>
                 </div>
@@ -173,7 +173,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, theme, onTogg
                                     <div className="space-y-2">
                                         <label
                                             className="text-[10px] tracking-[0.3em] uppercase flex items-center gap-2 font-bold"
-                                            style={{ color: theme.accentColor }}
+                                            style={{ color: theme.accentInk }}
                                         >
                                             <Terminal size={11} /> Hunter_ID
                                         </label>
@@ -193,7 +193,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, theme, onTogg
                                     <div className="space-y-2">
                                         <label
                                             className="text-[10px] tracking-[0.3em] uppercase flex items-center gap-2 font-bold"
-                                            style={{ color: theme.accentColor }}
+                                            style={{ color: theme.accentInk }}
                                         >
                                             <Key size={11} /> Access_Key
                                         </label>
@@ -232,8 +232,13 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, theme, onTogg
                                         type="submit"
                                         disabled={loading}
                                         className={`w-full py-3.5 border font-black tracking-[0.3em] uppercase text-sm transition-all duration-700 relative group overflow-hidden flex items-center justify-center gap-3 ${loading ? 'opacity-50 cursor-wait' : 'cursor-pointer'}`}
+                                        /* Dark is a ghost button — accent text on a 10% accent wash — so it
+                                           reads fine. Light fills solid with the accent, and white on that
+                                           measured 2.43:1: the same failure ENTER PORTAL had. The fill
+                                           carries the weight a primary action wants, so the label goes
+                                           near-black (7.33:1) rather than the button going ghost too. */
                                         style={{
-                                            color: theme.isDark ? theme.accentColor : '#ffffff',
+                                            color: theme.isDark ? theme.accentColor : '#0f172a',
                                             borderColor: theme.accentColor,
                                             backgroundColor: theme.isDark ? `${theme.accentColor}1a` : theme.accentColor
                                         }}
@@ -266,7 +271,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, theme, onTogg
                                 <span>Ver_1.08 [Alpha]</span>
                                 <span className="hidden sm:inline">Encrypted_Channel</span>
                                 <span>
-                                    Node_<span style={{ color: theme.accentColor }} className="animate-pulse">Online</span>
+                                    Node_<span style={{ color: theme.accentInk }} className="animate-pulse">Online</span>
                                 </span>
                             </div>
                         </div>

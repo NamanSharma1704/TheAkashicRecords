@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Theme, Quest } from '../../core/types';
+import { elevation } from '../../core/depth';
 import TowerHUD from './TowerHUD';
 import TowerStructure from './TowerStructure';
 import QuestCard from '../quest/QuestCard';
@@ -119,12 +120,15 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
     if (!isOpen) return null;
 
     return (
-        <div className={`fixed inset-0 z-[60] bg-transparent animate-in fade-in zoom-in-95 duration-500 flex flex-col transition-colors duration-700`}>
+        <div
+            className={`fixed inset-0 z-[60] bg-transparent animate-in fade-in zoom-in-95 duration-500 flex flex-col transition-colors duration-700`}
+            style={{ '--elev-1': elevation(theme, 1) } as React.CSSProperties}
+        >
             {/* AMBIENT BACKGROUND GLOW (Root-level to cover header) */}
             {viewMode === 'FLOOR' && (
                 <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
-                    <div className={`absolute -top-[20%] -right-[20%] w-[60%] h-[60%] ${theme.id === 'LIGHT' ? 'bg-sky-500/10' : `bg-${theme.primary}-500/10`} rounded-full blur-[150px] z-10 mix-blend-screen transition-colors duration-700`} />
-                    <div className={`absolute -bottom-[20%] -left-[20%] w-[60%] h-[60%] ${theme.id === 'LIGHT' ? 'bg-cyan-500/10' : `bg-${theme.accent}-500/10`} rounded-full blur-[150px] z-10 mix-blend-screen transition-colors duration-700`} />
+                    <div className={`absolute -top-[20%] -right-[20%] w-[60%] h-[60%] ${theme.isDark ? 'bg-amber-500/10 mix-blend-screen' : 'bg-sky-500/10 mix-blend-multiply'} rounded-full blur-[150px] z-10 transition-colors duration-700`} />
+                    <div className={`absolute -bottom-[20%] -left-[20%] w-[60%] h-[60%] ${theme.isDark ? 'bg-yellow-500/10 mix-blend-screen' : 'bg-cyan-500/10 mix-blend-multiply'} rounded-full blur-[150px] z-10 transition-colors duration-700`} />
                 </div>
             )}
 
@@ -196,13 +200,13 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
                         {!search && floors.length > 0 && floors[selectedFloorIndex] && (
                             <div className="shrink-0 z-[60] flex flex-col items-center drop-shadow-2xl mb-1 md:mb-2 relative group/carousel">
                                 <div className={`font-mono text-[9px] tracking-[0.4em] ${theme.highlightText} font-bold uppercase mb-1 opacity-80 pointer-events-none`}>SYSTEM.SECTOR_INTERFACE</div>
-                                <div className="relative flex items-center gap-2 md:gap-4 px-3 py-1 md:px-6 md:py-2 rounded-full border border-white/10 bg-black/40 backdrop-blur-md pointer-events-auto">
+                                <div className={`relative flex items-center gap-2 md:gap-4 px-3 py-1 md:px-6 md:py-2 rounded-full border backdrop-blur-md pointer-events-auto ${theme.isDark ? 'border-white/10 bg-black/40' : 'border-slate-300 bg-white/85 elev-1'}`}>
                                     <button disabled={selectedFloorIndex <= 0} onClick={() => setSelectedFloorIndex(i => i - 1)} className={`${theme.mutedText} hover:${theme.highlightText} disabled:opacity-30 transition-colors`}><ChevronLeft size={14} /></button>
-                                    <button onClick={() => setIsFilterOpen(!isFilterOpen)} className={`font-black text-lg md:text-2xl font-orbitron tracking-widest ${theme.headingText} hover:text-white transition-colors flex items-center gap-1.5 outline-none`}>
+                                    <button onClick={() => setIsFilterOpen(!isFilterOpen)} className={`font-black text-lg md:text-2xl font-orbitron tracking-widest ${theme.headingText} ${theme.isDark ? 'hover:text-white' : 'hover:text-[#155e75]'} transition-colors flex items-center gap-1.5 outline-none`}>
                                         LAYER {selectedFloorIndex + 1}
-                                        <ChevronDown size={16} className={`transition-transform duration-300 ${isFilterOpen ? 'rotate-180 text-white' : ''}`} />
+                                        <ChevronDown size={16} className={`transition-transform duration-300 ${isFilterOpen ? `rotate-180 ${theme.isDark ? 'text-white' : 'text-[#155e75]'}` : ''}`} />
                                     </button>
-                                    <div className="w-1 h-1 rounded-full bg-white/30" />
+                                    <div className={`w-1 h-1 rounded-full ${theme.isDark ? 'bg-white/30' : 'bg-slate-400'}`} />
                                     <span className={`font-mono text-[9px] md:text-xs ${theme.mutedText} tracking-widest`}>SECTOR {floors[selectedFloorIndex].range}</span>
                                     <button disabled={selectedFloorIndex >= floors.length - 1} onClick={() => setSelectedFloorIndex(i => i + 1)} className={`${theme.mutedText} hover:${theme.highlightText} disabled:opacity-30 transition-colors`}><ChevronRight size={14} /></button>
 
@@ -211,27 +215,27 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
                                         <div className={`absolute top-full left-1/2 -translate-x-1/2 mt-3 p-4 rounded-xl border border-white/10 ${theme.isDark ? 'bg-black/95' : 'bg-black/90'} backdrop-blur-3xl min-w-[280px] md:min-w-[320px] shadow-2xl flex flex-col gap-4 animate-in fade-in zoom-in-95 duration-200 z-[70]`}>
                                             {/* Class Filter */}
                                             <div>
-                                                <div className={`text-[10px] font-mono ${theme.mutedText} tracking-widest mb-2 uppercase flex items-center gap-1.5`}><Filter size={10} /> Classification Protocol</div>
+                                                <div className={`text-[10px] font-mono text-white/60 tracking-widest mb-2 uppercase flex items-center gap-1.5`}><Filter size={10} /> Classification Protocol</div>
                                                 <div className="flex flex-wrap gap-2">
-                                                    <button onClick={() => setFilterClass('ALL')} className={`px-3 py-1 text-xs font-mono rounded border ${filterClass === 'ALL' ? `border-${theme.primary}-500 bg-${theme.primary}-500/20 text-white` : `border-white/10 text-white/50 hover:border-white/30 hover:text-white/80`} transition-all`}>ALL</button>
+                                                    <button onClick={() => setFilterClass('ALL')} className={`px-3 py-1 text-xs font-mono rounded border ${filterClass === 'ALL' ? `${theme.isDark ? 'border-amber-500 bg-amber-500/20' : 'border-sky-500 bg-sky-500/20'} text-white` : `border-white/10 text-white/50 hover:border-white/30 hover:text-white/80`} transition-all`}>ALL</button>
                                                     {availableClasses.map(c => (
-                                                        <button key={c} onClick={() => setFilterClass(c)} className={`px-3 py-1 text-xs font-mono rounded border ${filterClass === c ? `border-${theme.primary}-500 bg-${theme.primary}-500/20 text-white` : `border-white/10 text-white/50 hover:border-white/30 hover:text-white/80`} transition-all uppercase`}>{c}</button>
+                                                        <button key={c} onClick={() => setFilterClass(c)} className={`px-3 py-1 text-xs font-mono rounded border ${filterClass === c ? `${theme.isDark ? 'border-amber-500 bg-amber-500/20' : 'border-sky-500 bg-sky-500/20'} text-white` : `border-white/10 text-white/50 hover:border-white/30 hover:text-white/80`} transition-all uppercase`}>{c}</button>
                                                     ))}
                                                 </div>
                                             </div>
                                             {/* Status Filter */}
                                             <div>
-                                                <div className={`text-[10px] font-mono ${theme.mutedText} tracking-widest mb-2 uppercase flex items-center gap-1.5`}><Filter size={10} /> Operational Status</div>
+                                                <div className={`text-[10px] font-mono text-white/60 tracking-widest mb-2 uppercase flex items-center gap-1.5`}><Filter size={10} /> Operational Status</div>
                                                 <div className="flex flex-wrap gap-2">
-                                                    <button onClick={() => setFilterStatus('ALL')} className={`px-3 py-1 text-xs font-mono rounded border ${filterStatus === 'ALL' ? `border-${theme.primary}-500 bg-${theme.primary}-500/20 text-white` : `border-white/10 text-white/50 hover:border-white/30 hover:text-white/80`} transition-all`}>ALL</button>
+                                                    <button onClick={() => setFilterStatus('ALL')} className={`px-3 py-1 text-xs font-mono rounded border ${filterStatus === 'ALL' ? `${theme.isDark ? 'border-amber-500 bg-amber-500/20' : 'border-sky-500 bg-sky-500/20'} text-white` : `border-white/10 text-white/50 hover:border-white/30 hover:text-white/80`} transition-all`}>ALL</button>
                                                     {availableStatuses.map(s => (
-                                                        <button key={s} onClick={() => setFilterStatus(s)} className={`px-3 py-1 text-xs font-mono rounded border ${filterStatus === s ? `border-${theme.primary}-500 bg-${theme.primary}-500/20 text-white` : `border-white/10 text-white/50 hover:border-white/30 hover:text-white/80`} transition-all uppercase`}>{s}</button>
+                                                        <button key={s} onClick={() => setFilterStatus(s)} className={`px-3 py-1 text-xs font-mono rounded border ${filterStatus === s ? `${theme.isDark ? 'border-amber-500 bg-amber-500/20' : 'border-sky-500 bg-sky-500/20'} text-white` : `border-white/10 text-white/50 hover:border-white/30 hover:text-white/80`} transition-all uppercase`}>{s}</button>
                                                     ))}
                                                 </div>
                                             </div>
                                             {/* Floor Jump */}
                                             <div>
-                                                <div className={`text-[10px] font-mono ${theme.mutedText} tracking-widest mb-2 uppercase border-t border-white/5 pt-3 mt-1`}>Direct Access Layer</div>
+                                                <div className={`text-[10px] font-mono text-white/60 tracking-widest mb-2 uppercase border-t border-white/5 pt-3 mt-1`}>Direct Access Layer</div>
                                                 <div className="grid grid-cols-5 gap-2 max-h-[130px] overflow-y-auto hide-scrollbar">
                                                     {floors.map((f, i) => (
                                                         <button key={f.index} onClick={() => { setSelectedFloorIndex(i); setIsFilterOpen(false); }} className={`p-2 text-xs font-black font-orbitron rounded border ${selectedFloorIndex === i ? `border-white text-white bg-white/10` : `border-white/5 text-white/40 hover:border-white/30 hover:text-white/80 bg-white/5`} transition-all flex items-center justify-center`}>
@@ -280,8 +284,8 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
                                             return (
                                                 <div key={item.id} className="h-full max-h-[55vh] sm:max-h-[60vh] md:max-h-[65vh] aspect-[3/4] shrink-0 snap-center transition-all duration-700 hover:scale-[1.03] group relative">
                                                     {/* Reflection Glow */}
-                                                    <div className={`absolute -bottom-6 left-1/2 -translate-x-1/2 w-3/4 h-6 bg-gradient-to-t from-${theme.primary}-500/40 to-transparent blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-700`} />
-                                                    <div className={`absolute -inset-6 bg-${theme.primary}-500/10 blur-[40px] rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none`} />
+                                                    <div className={`absolute -bottom-6 left-1/2 -translate-x-1/2 w-3/4 h-6 bg-gradient-to-t ${theme.isDark ? 'from-amber-500/40' : 'from-sky-500/40'} to-transparent blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-700`} />
+                                                    <div className={`absolute -inset-6 ${theme.isDark ? 'bg-amber-500/10' : 'bg-sky-500/10'} blur-[40px] rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none`} />
                                                     <div className="relative z-10 w-full h-full">
                                                         <QuestCard id={`item-${item.id}`} item={item} onClick={onActivate} index={index} theme={theme} rankStyle={rawRank} />
                                                     </div>

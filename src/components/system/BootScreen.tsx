@@ -36,11 +36,17 @@ const TICK_MS = 30;
  * app in Aureic. Deriving them keeps the celestial identity â€” which is the house
  * aesthetic â€” while letting it invert with everything else.
  */
-type BootPalette = { accent: string; ink: string; ground: string; isDark: boolean };
+type BootPalette = { accent: string; accentInk: string; ink: string; ground: string; isDark: boolean };
 
+/**
+ * `accent` is decorative — stars, constellations, the progress fill and its glow.
+ * `accentInk` is for text. They are identical on the void, where amber-400 already reads
+ * at a glance, and diverge on the light ground, where the decorative cyan measured 2.32:1
+ * behind the HUD readouts.
+ */
 const paletteFor = (theme: Theme): BootPalette => theme.isDark
-    ? { accent: '#fbbf24', ink: '#ffffff', ground: '#020202', isDark: true }
-    : { accent: theme.accentColor, ink: '#0f172a', ground: '#f8fafc', isDark: false };
+    ? { accent: '#fbbf24', accentInk: '#fbbf24', ink: '#ffffff', ground: '#020202', isDark: true }
+    : { accent: theme.accentColor, accentInk: theme.accentInk, ink: '#0f172a', ground: '#f8fafc', isDark: false };
 
 // Screen blending only lifts against a dark ground; on the light theme it erases the art.
 const blendFor = (p: BootPalette) => p.isDark ? 'mix-blend-screen' : 'mix-blend-multiply';
@@ -560,15 +566,15 @@ const SovereignHeader: React.FC<{ p: BootPalette }> = ({ p }) => (
         <div className="flex flex-col gap-2 sm:gap-3">
             <div className="flex items-center gap-2 sm:gap-4">
                 <div className="w-1.5 h-1.5 rounded-sm animate-pulse" style={{ backgroundColor: p.accent }} />
-                <span style={{ color: `${p.ink}66` }}>NODE:</span>
-                <span className="font-medium" style={{ color: p.accent }}>[7F:SOVEREIGN]</span>
+                <span style={{ color: `${p.ink}99` }}>NODE:</span>
+                <span className="font-medium" style={{ color: p.accentInk }}>[7F:SOVEREIGN]</span>
             </div>
             <div className="w-32 sm:w-48 md:w-64 h-[1px]" style={{ background: `linear-gradient(to right, ${p.ink}1a, transparent)` }} />
         </div>
         <div className="flex flex-col items-end gap-2 sm:gap-3 text-right">
             <div className="flex items-center gap-2 sm:gap-4">
-                <span style={{ color: `${p.ink}66` }}>ACCESS:</span>
-                <span className="font-medium" style={{ color: p.accent }}>GRANTED</span>
+                <span style={{ color: `${p.ink}99` }}>ACCESS:</span>
+                <span className="font-medium" style={{ color: p.accentInk }}>GRANTED</span>
             </div>
             <div className="w-32 sm:w-48 md:w-64 h-[1px]" style={{ background: `linear-gradient(to left, ${p.ink}1a, transparent)` }} />
         </div>
@@ -724,7 +730,7 @@ const BootScreen: React.FC<BootScreenProps> = ({ onComplete, theme }) => {
                                     animate={{ opacity: 1, x: 0 }}
                                     transition={{ duration: 0.4, ease: "easeOut" }}
                                     className="text-[8px] sm:text-[9px] md:text-[10px] tracking-[0.3em] font-medium uppercase truncate"
-                                    style={{ color: `${p.ink}80` }}
+                                    style={{ color: `${p.ink}b3` }}
                                 >
                                     {AWAKENING_PHASES[phaseIndex]}
                                 </motion.div>
@@ -732,11 +738,11 @@ const BootScreen: React.FC<BootScreenProps> = ({ onComplete, theme }) => {
                                 <div className="flex gap-3 sm:gap-4 items-center text-[8px] sm:text-[9px] md:text-[10px] tracking-[0.3em] uppercase flex-shrink-0">
                                     <span
                                         className={isAwakened ? "animate-pulse" : ""}
-                                        style={{ color: isAwakened ? p.ink : `${p.ink}33` }}
+                                        style={{ color: isAwakened ? p.ink : `${p.ink}99` }}
                                     >
                                         [STABLE]
                                     </span>
-                                    <span className="font-orbitron font-bold tabular-nums" style={{ color: p.accent }}>
+                                    <span className="font-orbitron font-bold tabular-nums" style={{ color: p.accentInk }}>
                                         {Math.floor(progress)}%
                                     </span>
                                 </div>
@@ -768,8 +774,8 @@ const BootScreen: React.FC<BootScreenProps> = ({ onComplete, theme }) => {
                 {/* BOTTOM-LEFT TELEMETRY FOOTER */}
                 <div className="absolute left-4 sm:left-8 md:left-12 bottom-4 sm:bottom-8 md:bottom-12 z-40 text-left text-[7px] sm:text-[9px] md:text-[10px] tracking-[0.3em] leading-[2] uppercase hidden sm:block">
                     <div className="flex gap-4 sm:gap-8">
-                        <span className="font-medium" style={{ color: `${p.ink}66` }}>SEC: <span style={{ color: p.accent }}>57</span></span>
-                        <span className="font-medium" style={{ color: `${p.ink}66` }}>M_ID: <span style={{ color: p.accent }}>6E28</span></span>
+                        <span className="font-medium" style={{ color: `${p.ink}99` }}>SEC: <span style={{ color: p.accentInk }}>57</span></span>
+                        <span className="font-medium" style={{ color: `${p.ink}99` }}>M_ID: <span style={{ color: p.accentInk }}>6E28</span></span>
                     </div>
                 </div>
             </div>

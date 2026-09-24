@@ -4,6 +4,7 @@ interface EntityAvatarProps {
     theme: {
         id: string;
         highlightText: string;
+        accentInk: string;
         border: string;
         isDark: boolean;
         gradient: string;
@@ -172,15 +173,18 @@ const EntityAvatar: React.FC<EntityAvatarProps> = ({ theme, size = 64, className
             <div className="absolute top-2 left-2 flex flex-col items-start pointer-events-none group-hover:translate-x-1 transition-transform">
                 <div className="flex items-center gap-1">
                     <div className="w-1 h-3 bg-current" style={{ color: mainColor }} />
-                    <span className="text-[5px] font-mono font-black tracking-tight" style={{ color: mainColor }}>LVL_99</span>
+                    <span className="text-[5px] font-mono font-black tracking-tight" style={{ color: theme.accentInk }}>LVL_99</span>
                 </div>
-                <span className="text-[4px] font-mono opacity-40 uppercase tracking-widest mt-0.5" style={{ color: mainColor }}>Root.Apostle</span>
+                <span className="text-[4px] font-mono opacity-60 uppercase tracking-widest mt-0.5" style={{ color: theme.accentInk }}>Root.Apostle</span>
             </div>
 
             {/* Bottom Status Ticker (Physical Integration) */}
             <div className="absolute bottom-1 right-2 flex items-center gap-1 opacity-20 group-hover:opacity-100 transition-opacity">
                 <div className="w-[2px] h-[2px] rounded-full bg-white animate-ping" />
-                <span className="text-[4px] font-mono text-white/50 lowercase tracking-widest">Defined_State://True</span>
+                {/* The card is #0a0a0a on dark but #f5f5f5 on light, where white-on-white
+                    erased this decal entirely. It is 4px texture rather than text, so it
+                    stays faint — but faint in both themes, not absent in one. */}
+                <span className={`text-[4px] font-mono ${theme.isDark ? 'text-white/50' : 'text-slate-900/50'} lowercase tracking-widest`}>Defined_State://True</span>
             </div>
 
             {/* Corner Decorative Brackets (Theme Integrated) */}

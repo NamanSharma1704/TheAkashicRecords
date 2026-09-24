@@ -24,10 +24,10 @@ const SystemNotification: React.FC<SystemNotificationProps> = ({
 
     const getIcon = () => {
         switch (type) {
-            case 'SUCCESS': return <CheckCircle className={theme.id === 'LIGHT' ? 'text-sky-500' : 'text-amber-500'} size={24} />;
-            case 'WARNING': return <AlertTriangle className="text-amber-500" size={24} />;
-            case 'ERROR': return <XCircle className="text-red-500" size={24} />;
-            default: return <Info className="text-sky-500" size={24} />;
+            case 'SUCCESS': return <CheckCircle className={theme.isDark ? 'text-amber-500' : 'text-sky-600'} size={24} />;
+            case 'WARNING': return <AlertTriangle style={{ color: theme.warningInk }} size={24} />;
+            case 'ERROR': return <XCircle className={theme.isDark ? 'text-red-500' : 'text-red-600'} size={24} />;
+            default: return <Info className={theme.isDark ? 'text-sky-500' : 'text-sky-600'} size={24} />;
         }
     };
 
@@ -37,12 +37,14 @@ const SystemNotification: React.FC<SystemNotificationProps> = ({
                 <SystemFrame theme={theme} variant="full">
                     <div className="p-6">
                         {/* Header Decoration */}
-                        <div className="flex items-center justify-between mb-6 opacity-60">
+                        <div className="flex items-center justify-between mb-6">
                             <div className="flex items-center gap-2">
                                 <Terminal size={12} className={theme.highlightText} />
-                                <span className="font-mono text-[9px] tracking-[0.3em] font-bold uppercase">System Notification</span>
+                                <span className={`font-mono text-[9px] tracking-[0.3em] font-bold uppercase ${theme.mutedText}`}>System Notification</span>
                             </div>
-                            <div className={`h-[1px] flex-1 mx-4 ${theme.borderSubtle} opacity-30`} />
+                            {/* borderSubtle is a border-COLOUR class, and this div has no border
+                                width — the hairline never rendered. It needs a background. */}
+                            <div className={`h-[1px] flex-1 mx-4 ${theme.isDark ? 'bg-white/10' : 'bg-slate-300'}`} />
                             <div className="flex gap-1">
                                 <div className={`w-1 h-1 rounded-full ${theme.highlightText}`} />
                                 <div className={`w-1 h-1 rounded-full ${theme.highlightText} opacity-50`} />
@@ -69,7 +71,11 @@ const SystemNotification: React.FC<SystemNotificationProps> = ({
                                     
                                     // Subsequent paragraphs are rendered as sleek terminal data feeds
                                     return (
-                                        <p key={index} className={`font-mono text-[10px] sm:text-xs tracking-wide ${paragraph.includes('WARNING:') ? 'text-amber-500 font-bold' : theme.mutedText} leading-loose`}>
+                                        <p
+                                            key={index}
+                                            className={`font-mono text-[10px] sm:text-xs tracking-wide leading-loose ${paragraph.includes('WARNING:') ? 'font-bold' : theme.mutedText}`}
+                                            style={paragraph.includes('WARNING:') ? { color: theme.warningInk } : undefined}
+                                        >
                                             {paragraph}
                                         </p>
                                     );
@@ -82,14 +88,14 @@ const SystemNotification: React.FC<SystemNotificationProps> = ({
                             {confirm && (
                                 <button
                                     onClick={() => onClose(false)}
-                                    className={`px-6 py-2 border ${theme.borderSubtle} ${theme.mutedText} hover:${theme.headingText} hover:bg-white/5 transition-all font-mono text-[10px] tracking-widest uppercase font-bold`}
+                                    className={`px-6 py-2 border ${theme.borderSubtle} ${theme.mutedText} hover:${theme.headingText} ${theme.isDark ? 'hover:bg-white/5' : 'hover:bg-black/5'} transition-all font-mono text-[10px] tracking-widest uppercase font-bold`}
                                 >
                                     Cancel
                                 </button>
                             )}
                             <button
                                 onClick={() => onClose(true)}
-                                className={`px-8 py-2 border ${theme.border} ${theme.isDark ? 'bg-amber-500/10' : 'bg-sky-500/10'} ${theme.highlightText} hover:bg-white/5 transition-all font-mono text-[10px] tracking-widest uppercase font-bold border-l-4`}
+                                className={`px-8 py-2 border ${theme.border} ${theme.isDark ? 'bg-amber-500/10' : 'bg-sky-500/10'} ${theme.highlightText} ${theme.isDark ? 'hover:bg-white/5' : 'hover:bg-black/5'} transition-all font-mono text-[10px] tracking-widest uppercase font-bold border-l-4`}
                             >
                                 {confirm ? 'Execute' : 'Acknowledged'}
                             </button>

@@ -172,12 +172,14 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, theme, onTogg
                                 <div className="space-y-5">
                                     <div className="space-y-2">
                                         <label
+                                            htmlFor="login-username"
                                             className="text-[10px] tracking-[0.3em] uppercase flex items-center gap-2 font-bold"
                                             style={{ color: theme.accentInk }}
                                         >
-                                            <Terminal size={11} /> Hunter_ID
+                                            <Terminal size={11} aria-hidden="true" /> Hunter_ID
                                         </label>
                                         <input
+                                            id="login-username"
                                             type="text"
                                             value={username}
                                             onChange={(e) => setUsername(e.target.value)}
@@ -192,12 +194,14 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, theme, onTogg
 
                                     <div className="space-y-2">
                                         <label
+                                            htmlFor="login-password"
                                             className="text-[10px] tracking-[0.3em] uppercase flex items-center gap-2 font-bold"
                                             style={{ color: theme.accentInk }}
                                         >
-                                            <Key size={11} /> Access_Key
+                                            <Key size={11} aria-hidden="true" /> Access_Key
                                         </label>
                                         <input
+                                            id="login-password"
                                             type="password"
                                             value={password}
                                             onChange={(e) => setPassword(e.target.value)}
@@ -270,8 +274,12 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, theme, onTogg
                             <div className={`pt-5 border-t ${theme.borderSubtle} flex flex-wrap gap-2 justify-between items-center text-[8px] tracking-[0.2em] uppercase font-bold ${theme.mutedText}`}>
                                 <span>Ver_1.08 [Alpha]</span>
                                 <span className="hidden sm:inline">Encrypted_Channel</span>
-                                <span>
-                                    Node_<span style={{ color: theme.accentInk }} className="animate-pulse">Online</span>
+                                {/* The pulse lives on a status dot. On the word itself it faded the
+                                    text to half strength every second, which put it under AA at
+                                    the bottom of each beat (2.6:1 light, 3.1:1 dark). */}
+                                <span className="inline-flex items-center gap-1.5">
+                                    <span aria-hidden="true" className="w-1 h-1 rounded-full animate-pulse" style={{ backgroundColor: theme.accentColor }} />
+                                    Node_<span style={{ color: theme.accentInk }}>Online</span>
                                 </span>
                             </div>
                         </div>

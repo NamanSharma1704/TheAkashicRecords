@@ -1,12 +1,13 @@
 const http = require('http');
+// Credentials come from backend/.env via scriptEnv. This file still carried a literal
+// username and password after the other scripts were cleaned in 03e2834; any value that
+// was ever committed here must be treated as compromised and rotated.
+const { adminCredentials } = require('./scriptEnv');
 
 async function testSovereignLogin() {
     console.log("--- Akashic Sovereign Identity Verification ---");
 
-    const adminData = JSON.stringify({
-        username: "Naman",
-        password: "system-override-2026"
-    });
+    const adminData = JSON.stringify(adminCredentials());
 
     const options = {
         hostname: '127.0.0.1',
@@ -15,7 +16,7 @@ async function testSovereignLogin() {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            'Content-Length': adminData.length
+            'Content-Length': Buffer.byteLength(adminData)
         }
     };
 

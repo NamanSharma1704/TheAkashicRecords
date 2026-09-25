@@ -41,14 +41,20 @@ const HoloDais: React.FC<HoloDaisProps> = ({ theme, paused = false, className = 
 
     // Build once per theme. Colours are baked into the materials, so a theme flip
     // rebuilds rather than mutating uniforms across the whole graph.
+    //
+    // This effect only builds and sizes. It used to start a render loop of its own as
+    // well, and the visibility effect below started a second one the moment `live`
+    // flipped — so the dais rendered twice a frame, its spin and sweep ran at double
+    // speed, and `paused` only ever stopped one of the two. The visibility effect is now
+    // the single owner of the loop.
     useEffect(() => {
         const host = hostRef.current;
         if (!host) return;
 
         let cancelled = false;
-        let frameId = 0;
         let idleId: number | null = null;
         let timerId: number | null = null;
+        let sizeQueued = 0;
         let observer: ResizeObserver | null = null;
 
         const reducedMotion = typeof window.matchMedia === 'function'
@@ -74,10 +80,15 @@ const HoloDais: React.FC<HoloDaisProps> = ({ theme, paused = false, className = 
             // Coalesced into a frame: resizing reallocates the drawing buffer, and a
             // ResizeObserver fires in bursts (a window drag, or the sidebar's width
             // transition next door), so this caps it at one reallocation per frame.
-            let sizeQueued = 0;
+            //
+            // Reallocating also clears the buffer, so each resize repaints once. With the
+            // loop running that is one extra draw; with it stopped — reduced motion, a
+            // modal open, the dais scrolled away — it is the only thing that keeps the
+            // platform from going blank until the next frame is asked for.
             const applySize = () => {
                 const r = host.getBoundingClientRect();
                 handle.resize(Math.round(r.width), Math.round(r.height));
+                handle.frame(0);
             };
             const queueSize = () => {
                 if (sizeQueued) return;
@@ -90,19 +101,6 @@ const HoloDais: React.FC<HoloDaisProps> = ({ theme, paused = false, className = 
             }
 
             if (!cancelled) setLive(true);
-
-            if (reducedMotion) {
-                handle.frame(0);
-                return;
-            }
-            let last = performance.now();
-            const loop = (now: number) => {
-                const dt = Math.min((now - last) / 1000, 0.05);
-                last = now;
-                handle.frame(dt);
-                frameId = requestAnimationFrame(loop);
-            };
-            frameId = requestAnimationFrame(loop);
         };
 
         // Defer past first paint so the chunk never competes with the dashboard render.
@@ -117,13 +115,14 @@ const HoloDais: React.FC<HoloDaisProps> = ({ theme, paused = false, className = 
 
         return () => {
             cancelled = true;
-            if (frameId) cancelAnimationFrame(frameId);
             if (timerId !== null) window.clearTimeout(timerId);
             const cancelIdle = (window as unknown as {
                 cancelIdleCallback?: (id: number) => void;
             }).cancelIdleCallback;
             if (idleId !== null && typeof cancelIdle === 'function') cancelIdle(idleId);
             observer?.disconnect();
+            // A resize queued for the next frame would otherwise land on a disposed renderer.
+            if (sizeQueued) cancelAnimationFrame(sizeQueued);
             handleRef.current?.dispose();
             handleRef.current = null;
             setLive(false);

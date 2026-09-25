@@ -14,6 +14,7 @@ import NoiseOverlay from '../fx/NoiseOverlay';
 import SanctuaryRing from '../fx/SanctuaryRing';
 import { systemFetch, getStoredUser, saveAuthData } from '../../utils/auth';
 import { accentRGB, elevation, emphasis } from '../../core/depth';
+import { useDialog } from '../../utils/useDialog';
 
 type CalibrationEntry = { processed: number; total: number; title: string; cls: string; changed: boolean };
 type CalibrationState = {
@@ -189,6 +190,15 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
 
     // --- CALIBRATION STATE ---
     const [calibration, setCalibration] = useState<CalibrationState | null>(null);
+
+    // Keyboard: the profile is a full-screen dialog, and the account form and the
+    // calibration log each open as a dialog over it. The hook stacks them, so Escape
+    // closes the topmost only. A calibration that is still running is not dismissed by
+    // Escape — stopping it is an explicit ABORT_PROTOCOL.
+    const rootRef = useRef<HTMLDivElement>(null);
+    const accountRef = useRef<HTMLDivElement>(null);
+    const calibrationRef = useRef<HTMLDivElement>(null);
+    const accountFirstFieldRef = useRef<HTMLInputElement>(null);
     const logEndRef = useRef<HTMLDivElement>(null);
     const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -198,6 +208,10 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
     const [accountForm, setAccountForm] = useState({ newUsername: '', currentPassword: '', newPassword: '', confirmPassword: '' });
     const [accountStatus, setAccountStatus] = useState<{ type: 'error' | 'success'; msg: string } | null>(null);
     const [accountLoading, setAccountLoading] = useState(false);
+
+    useDialog(rootRef, isOpen, onClose);
+    useDialog(accountRef, showAccountModal, () => setShowAccountModal(false), accountFirstFieldRef);
+    useDialog(calibrationRef, !!calibration, () => setCalibration(c => (c && c.phase === 'running' ? c : null)));
 
     const handleAccountUpdate = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -424,8 +438,13 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
     const springConfig = { type: "spring" as const, stiffness: 60, damping: 15 };
 
     return (
-        <div className={`fixed inset-0 z-[300] ${theme.isDark ? 'bg-[#020202]' : 'bg-[#e9eef5]'} flex flex-col overflow-hidden transition-colors duration-700`}
+        <div className={`fixed inset-0 z-[300] ${theme.isDark ? 'bg-[#020202]' : 'bg-[#e9eef5]'} flex flex-col overflow-hidden transition-colors duration-700 outline-none`}
             style={{ '--elev-1': elevation(theme, 1) } as React.CSSProperties}
+            ref={rootRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="hunter-profile-title"
+            tabIndex={-1}
         >
             {/* Background layers */}
             <GalaxyNebula theme={theme} />
@@ -454,40 +473,44 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                     </div>
                     <div className="flex flex-col leading-none">
                         <span className={`font-mono text-[9px] tracking-[0.2em] ${theme.mutedText} uppercase`}>SYSTEM.ROOT</span>
-                        <h2 className={`font-orbitron text-base tracking-[0.2em] font-bold bg-clip-text text-transparent bg-gradient-to-r ${theme.id === 'LIGHT' ? 'from-sky-600 via-cyan-400 to-indigo-200' : 'from-amber-600 via-yellow-400 to-white'} transition-colors duration-700`}>HUNTER PROFILE</h2>
+                        {/* Light takes the ink ramp: the old one faded to indigo-200, 1.3:1 on the page. */}
+                        <h2 id="hunter-profile-title" className={`font-orbitron text-base tracking-[0.2em] font-bold bg-clip-text text-transparent bg-gradient-to-r ${theme.id === 'LIGHT' ? theme.gradientInk : 'from-amber-600 via-yellow-400 to-white'} transition-colors duration-700`}>HUNTER PROFILE</h2>
                     </div>
                 </div>
                 <div className="flex items-center gap-2 sm:gap-3">
                     {/* Compact Sys Admin Tools */}
-                    <button onClick={exportToCSV} title="Export Timeline" className={`w-9 h-9 flex items-center justify-center border ${theme.borderSubtle} ${theme.mutedText} hover:${theme.headingText} ${theme.isDark ? 'hover:bg-white/5' : 'hover:bg-black/5'} transition-colors cursor-pointer`}>
-                        <Download size={14} />
+                    <button onClick={exportToCSV} title="Export Timeline" aria-label="Export library as CSV" className={`w-9 h-9 flex items-center justify-center border ${theme.borderSubtle} ${theme.mutedText} hover:${theme.headingText} ${theme.isDark ? 'hover:bg-white/5' : 'hover:bg-black/5'} transition-colors cursor-pointer`}>
+                        <Download size={14} aria-hidden="true" />
                     </button>
-                    <label title="Synchronize Timeline" className={`w-9 h-9 flex items-center justify-center border ${theme.borderSubtle} ${theme.mutedText} hover:${theme.headingText} ${theme.isDark ? 'hover:bg-white/5' : 'hover:bg-black/5'} transition-colors cursor-pointer`}>
-                        <input type="file" accept=".csv" onChange={async (e) => {
+                    {/* The file input was `hidden` (display:none), which also removes it from the
+                        tab order — import was pointer-only. Visually hidden instead, with the
+                        focus ring carried by the label that draws the button. */}
+                    <label title="Synchronize Timeline" className={`w-9 h-9 flex items-center justify-center border ${theme.borderSubtle} ${theme.mutedText} hover:${theme.headingText} ${theme.isDark ? 'hover:bg-white/5 focus-within:ring-amber-400' : 'hover:bg-black/5 focus-within:ring-[#155e75]'} focus-within:ring-1 transition-colors cursor-pointer`}>
+                        <input type="file" accept=".csv" aria-label="Import library from CSV" onChange={async (e) => {
                             const confirmed = await showNotification("RE-SYNCHRONIZE DATABASE?", "WARNING", true);
                             if (confirmed) handleImport(e);
                             else e.target.value = "";
-                        }} className="hidden" />
-                        <Upload size={14} />
+                        }} className="sr-only" />
+                        <Upload size={14} aria-hidden="true" />
                     </label>
                     <button onClick={handleRecalibrate} title="System Recalibration" className={`h-9 px-3 hidden sm:flex items-center justify-center gap-2 border ${theme.borderSubtle} ${theme.highlightText} ${theme.isDark ? 'hover:bg-amber-500/10' : 'hover:bg-sky-500/10'} transition-colors cursor-pointer relative overflow-hidden group`}>
                         <div className="absolute inset-0 bg-white/5 group-hover:bg-transparent transition-all" />
                         <RefreshCw size={14} className="relative z-10" />
                         <span className="font-mono text-[10px] tracking-widest uppercase relative z-10">Re-Calibrate</span>
                     </button>
-                    <button onClick={handleRecalibrate} title="System Recalibration" className={`sm:hidden w-9 h-9 flex items-center justify-center border ${theme.borderSubtle} ${theme.highlightText} ${theme.isDark ? 'hover:bg-white/5' : 'hover:bg-black/5'} transition-colors cursor-pointer`}>
+                    <button onClick={handleRecalibrate} title="System Recalibration" aria-label="Re-calibrate classifications" className={`sm:hidden w-9 h-9 flex items-center justify-center border ${theme.borderSubtle} ${theme.highlightText} ${theme.isDark ? 'hover:bg-white/5' : 'hover:bg-black/5'} transition-colors cursor-pointer`}>
                         <RefreshCw size={14} />
                     </button>
 
                     <div className={`w-px h-5 ${theme.isDark ? 'bg-gray-800' : 'bg-gray-300'} mx-0.5 sm:mx-1`} />
 
-                    <button onClick={onLogout} title="TERMINATE_SESSION" className={`h-9 px-3 sm:px-4 flex items-center justify-center gap-2 border ${theme.borderSubtle} ${theme.isDark ? 'text-red-400 hover:text-red-300' : 'text-red-700 hover:text-red-800'} hover:border-red-500 hover:bg-red-500/5 transition-all font-mono text-[10px] tracking-widest uppercase cursor-pointer group`}>
+                    <button onClick={onLogout} title="TERMINATE_SESSION" aria-label="Logout" className={`h-9 px-3 sm:px-4 flex items-center justify-center gap-2 border ${theme.borderSubtle} ${theme.isDark ? 'text-red-400 hover:text-red-300' : 'text-red-700 hover:text-red-800'} hover:border-red-500 hover:bg-red-500/5 transition-all font-mono text-[10px] tracking-widest uppercase cursor-pointer group`}>
                         <LogOut size={14} className="group-hover:-translate-x-1 transition-transform hidden sm:block" />
                         <span className="hidden sm:inline">Logout</span>
                         <LogOut size={14} className="sm:hidden" />
                     </button>
-                    <button onClick={onClose} className={`w-9 h-9 flex items-center justify-center border ${theme.borderSubtle} ${theme.mutedText} hover:${theme.highlightText} hover:border-current transition-colors cursor-pointer`}>
-                        <X size={16} />
+                    <button onClick={onClose} aria-label="Close profile" title="Close" className={`w-9 h-9 flex items-center justify-center border ${theme.borderSubtle} ${theme.mutedText} hover:${theme.highlightText} hover:border-current transition-colors cursor-pointer`}>
+                        <X size={16} aria-hidden="true" />
                     </button>
                 </div>
             </div>
@@ -545,7 +568,7 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                                 <div className="flex flex-col justify-start flex-1 min-w-0">
                                     <div className={`text-[9px] lg:text-[10px] font-mono ${theme.highlightText} tracking-[0.2em] font-bold uppercase mb-0.5`}>HUNTER DESIGNATION</div>
                                     <div className="drop-shadow-sm leading-normal overflow-hidden">
-                                        <span className={`inline-block pr-[6px] text-5xl lg:text-[56px] font-black font-manifold tracking-tight text-transparent bg-clip-text bg-gradient-to-r ${theme.gradient} mb-4`}>
+                                        <span className={`inline-block pr-[6px] text-5xl lg:text-[56px] font-black font-manifold tracking-tight text-transparent bg-clip-text bg-gradient-to-r ${theme.gradientInk} mb-4`}>
                                             {playerRank.name}
                                         </span>
                                     </div>
@@ -711,10 +734,12 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                         </div>
                         <div className={`border ${theme.borderSubtle} ${theme.isDark ? 'bg-black/40' : 'bg-white/80'} elev-1 rounded-md backdrop-blur-md p-4 flex flex-col gap-3 flex-1 relative hover:-translate-y-0.5 transition-transform duration-300`}>
                             {topSeries.slice(0, 4).map((item, i) => (
-                                <div 
+                                <button
+                                    type="button"
                                     key={item.id} 
                                     onClick={() => onSelectManhwa && onSelectManhwa(item.id)}
-                                    className={`flex items-center gap-4 relative overflow-hidden py-3 px-4 h-14 md:h-[60px] rounded-xl border ${theme.isDark ? 'border-white/5 border-b-black/60 bg-black/40 hover:border-white/20' : 'border-black/5 border-b-black/10 bg-white/40 hover:border-black/20'} cursor-pointer group transition-all duration-300 shadow-sm hover:shadow-lg ${theme.isDark ? 'hover:shadow-black/60' : 'hover:shadow-black/20'} hover:-translate-y-0.5 border-b-[3px]`}
+                                    aria-label={`Open ${item.title}`}
+                                    className={`w-full text-left outline-none focus-visible:ring-2 ${theme.isDark ? 'focus-visible:ring-amber-400' : 'focus-visible:ring-[#155e75]'} flex items-center gap-4 relative overflow-hidden py-3 px-4 h-14 md:h-[60px] rounded-xl border ${theme.isDark ? 'border-white/5 border-b-black/60 bg-black/40 hover:border-white/20' : 'border-black/5 border-b-black/10 bg-white/40 hover:border-black/20'} cursor-pointer group transition-all duration-300 shadow-sm hover:shadow-lg ${theme.isDark ? 'hover:shadow-black/60' : 'hover:shadow-black/20'} hover:-translate-y-0.5 border-b-[3px]`}
                                 >
                                     {item.coverUrl && (
                                         <div className="absolute inset-0 z-0 overflow-hidden">
@@ -729,7 +754,7 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                                         <div className={`text-xs font-bold truncate tracking-wide ${theme.headingText} drop-shadow-md`}>{item.title}</div>
                                         <div className={`text-[10px] font-mono mt-0.5 ${theme.highlightText}`}>{item.currentChapter.toLocaleString()} <span className="text-[8px]">CN</span></div>
                                     </div>
-                                </div>
+                                </button>
                             ))}
                         </div>
                     </div>
@@ -749,15 +774,19 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                             onWheel={(e) => { e.preventDefault(); e.currentTarget.scrollLeft += e.deltaY + e.deltaX; }}
                         >
                             {activeSeries.map(item => (
-                                <div 
+                                <button
+                                    type="button"
                                     key={item.id} 
                                     onClick={() => onSelectManhwa && onSelectManhwa(item.id)}
-                                    className={`relative overflow-hidden rounded-xl border cursor-pointer group transition-all duration-300 shrink-0 w-44 h-24 ${theme.isDark ? 'border-white/5 hover:border-white/20' : 'border-black/5 hover:border-sky-200'} shadow-sm hover:shadow-lg hover:-translate-y-0.5`}
+                                    aria-label={`Open ${item.title}, ${item.pct}% complete`}
+                                    className={`text-left outline-none focus-visible:ring-2 ${theme.isDark ? 'focus-visible:ring-amber-400' : 'focus-visible:ring-[#155e75]'} relative overflow-hidden rounded-xl border cursor-pointer group transition-all duration-300 shrink-0 w-44 h-24 ${theme.isDark ? 'border-white/5 hover:border-white/20' : 'border-black/5 hover:border-sky-200'} shadow-sm hover:shadow-lg hover:-translate-y-0.5`}
                                 >
                                     {item.coverUrl ? (
                                         <div className="absolute inset-0 z-0 overflow-hidden">
                                             <img src={getProxiedImageUrl(item.coverUrl)} className="w-full h-full object-cover object-center opacity-75 group-hover:opacity-95 group-hover:scale-105 transition-all duration-700 select-none" alt="" />
-                                            <div className={`absolute inset-0 bg-gradient-to-t ${theme.isDark ? 'from-black/90 via-black/40' : 'from-black/75 via-black/20'} to-transparent`} />
+                                            {/* One scrim for both themes: the card is a dark plate either way, and light's
+                                                lighter black/75 let bright cover art under the 9px title (3.9:1). */}
+                                            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
                                         </div>
                                     ) : (
                                         <div className={`absolute inset-0 ${theme.isDark ? 'bg-gray-900' : 'bg-sky-50'}`} />
@@ -773,7 +802,7 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                                             </div>
                                         </div>
                                     </div>
-                                </div>
+                                </button>
                             ))}
                         </div>
                     </div>
@@ -785,10 +814,15 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
             <AnimatePresence>
                 {calibration && (
                     <motion.div 
+                        ref={calibrationRef}
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="calibration-title"
+                        tabIndex={-1}
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-[500] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+                        className="fixed inset-0 z-[500] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 outline-none"
                     >
                         <SystemFrame 
                             variant="full" 
@@ -808,25 +842,28 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                                     className={`absolute left-0 right-0 h-[1px] bg-gradient-to-r from-transparent ${theme.id === 'LIGHT' ? 'via-sky-500/50' : 'via-amber-500/50'} to-transparent z-40 pointer-events-none`}
                                 />
                             )}
-                            <div className="flex flex-col h-[75vh] max-h-[700px] bg-black/50 overflow-hidden">
+                            {/* Surfaces follow the theme. They were pinned black while every
+                                label used the theme's ink — slate-900 and #155e75 on black in the
+                                light theme (recurring cause 4 in PROJECT_CONTEXT). */}
+                            <div className={`flex flex-col h-[75vh] max-h-[700px] ${theme.isDark ? 'bg-black/50' : 'bg-white/60'} overflow-hidden`}>
 
                                 {/* ── HEADER ── */}
-                                <div className={`flex justify-between items-center px-5 py-3.5 border-b ${theme.borderSubtle} shrink-0 bg-black/40`}>
-                                    <span className={`${theme.highlightText} font-mono tracking-widest text-[11px] sm:text-sm flex items-center gap-2.5 uppercase`}>
-                                        <span className={`w-1.5 h-1.5 rounded-full ${calibration.phase === 'running' ? 'bg-amber-500 animate-ping' : theme.id === 'LIGHT' ? 'bg-sky-500' : 'bg-amber-500'}`} />
-                                        <Terminal size={14} className={calibration.phase === 'running' ? 'animate-pulse' : ''} />
+                                <div className={`flex justify-between items-center px-5 py-3.5 border-b ${theme.borderSubtle} shrink-0 ${theme.isDark ? 'bg-black/40' : 'bg-slate-100/80'}`}>
+                                    <span id="calibration-title" className={`${theme.highlightText} font-mono tracking-widest text-[11px] sm:text-sm flex items-center gap-2.5 uppercase`}>
+                                        <span className={`w-1.5 h-1.5 rounded-full ${theme.id === 'LIGHT' ? 'bg-sky-500' : 'bg-amber-500'} ${calibration.phase === 'running' ? 'animate-ping' : ''}`} />
+                                        <Terminal size={14} aria-hidden="true" className={calibration.phase === 'running' ? 'animate-pulse' : ''} />
                                         SYS_CALIBRATION_PROTOCOL
                                     </span>
                                     {calibration.phase === 'running' ? (
                                         <button onClick={() => abortControllerRef.current?.abort()}
-                                            className={`flex items-center justify-center border ${theme.borderSubtle} ${theme.headingText} opacity-80 hover:opacity-100 hover:bg-white/5 transition-all duration-300 rounded-sm active:scale-90 text-[10px] sm:text-xs font-orbitron px-3 py-1.5 font-bold tracking-wider relative overflow-hidden group`}>
+                                            className={`flex items-center justify-center border ${theme.borderSubtle} ${theme.headingText} opacity-80 hover:opacity-100 ${theme.isDark ? 'hover:bg-white/5' : 'hover:bg-black/5'} transition-all duration-300 rounded-sm active:scale-90 text-[10px] sm:text-xs font-orbitron px-3 py-1.5 font-bold tracking-wider relative overflow-hidden group`}>
                                             <div className="absolute inset-0 bg-white/5 group-hover:bg-transparent transition-all" />
                                             <span className="relative z-10">ABORT_PROTOCOL</span>
                                         </button>
                                     ) : (
-                                        <button onClick={() => setCalibration(null)}
-                                            className={`w-7 h-7 flex items-center justify-center border ${theme.borderSubtle} ${theme.mutedText} hover:${theme.headingText} hover:border-white/30 transition-all duration-300 rounded-sm active:scale-90`}>
-                                            <X size={14} />
+                                        <button onClick={() => setCalibration(null)} aria-label="Close calibration log"
+                                            className={`w-7 h-7 flex items-center justify-center border ${theme.borderSubtle} ${theme.mutedText} hover:${theme.headingText} ${theme.isDark ? 'hover:border-white/30' : 'hover:border-slate-500'} transition-all duration-300 rounded-sm active:scale-90`}>
+                                            <X size={14} aria-hidden="true" />
                                         </button>
                                     )}
                                 </div>
@@ -870,7 +907,7 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                                                     {calibration.total > 0 ? Math.round((calibration.processed / calibration.total) * 100) : 0}%
                                                 </div>
                                             </div>
-                                            <div className={`relative h-[2px] w-full bg-black/60 overflow-hidden`}>
+                                            <div className={`relative h-[2px] w-full ${theme.isDark ? 'bg-black/60' : 'bg-slate-200'} overflow-hidden`} role="progressbar" aria-label="Calibration progress" aria-valuemin={0} aria-valuemax={calibration.total || 0} aria-valuenow={calibration.processed}>
                                                 <motion.div
                                                     className={`absolute top-0 left-0 h-full bg-gradient-to-r ${theme.gradient}`}
                                                     initial={{ width: '0%' }}
@@ -882,29 +919,30 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                                     </div>
 
                                     {/* TERMINAL LOG */}
-                                    <div className={`flex flex-col flex-1 min-h-0 border ${theme.borderSubtle} bg-black/40 relative`}>
+                                    <div className={`flex flex-col flex-1 min-h-0 border ${theme.borderSubtle} ${theme.isDark ? 'bg-black/40' : 'bg-slate-50'} relative`}>
                                         <div className={`absolute top-0 left-0 w-2 h-2 border-t border-l ${theme.border} opacity-50`} />
                                         <div className={`absolute bottom-0 right-0 w-2 h-2 border-b border-r ${theme.border} opacity-50`} />
                                         
-                                        <div className={`px-4 py-2 border-b ${theme.borderSubtle} flex justify-between items-center bg-white/[0.02] shrink-0`}>
+                                        <div className={`px-4 py-2 border-b ${theme.borderSubtle} flex justify-between items-center ${theme.isDark ? 'bg-white/[0.02]' : 'bg-slate-100/70'} shrink-0`}>
                                             <span className={`text-[7px] font-orbitron ${theme.mutedText} tracking-[0.2em] uppercase`}>Diagnostic_Feed</span>
                                             <span className={`text-[7px] font-orbitron ${theme.mutedText} tracking-widest uppercase`}>{calibration.log.length}_ENTRIES</span>
                                         </div>
                                         
                                         <div className="flex-1 overflow-y-auto p-3 custom-scrollbar hide-scrollbar space-y-[2px]">
                                             {calibration.log.length === 0 ? (
-                                                <div className={`text-[9px] font-mono ${theme.mutedText} uppercase tracking-widest animate-pulse opacity-50 p-2`}>
+                                                <div className={`text-[9px] font-mono ${theme.mutedText} uppercase tracking-widest animate-pulse p-2`}>
                                                     &gt; AWAITING_DATA_STREAM...
                                                 </div>
                                             ) : (
                                                 calibration.log.map((entry, i) => (
-                                                    <div key={i} className={`flex items-start gap-4 text-[10px] font-mono leading-relaxed px-2 py-1.5 transition-colors ${entry.changed ? (theme.id === 'LIGHT' ? 'bg-sky-500/10' : 'bg-amber-500/10') : 'hover:bg-white/5'}`}>
+                                                    <div key={i} className={`flex items-start gap-4 text-[10px] font-mono leading-relaxed px-2 py-1.5 transition-colors ${entry.changed ? (theme.id === 'LIGHT' ? 'bg-sky-500/10' : 'bg-amber-500/10') : (theme.isDark ? 'hover:bg-white/5' : 'hover:bg-black/5')}`}>
                                                         <span className={`${theme.mutedText} shrink-0`}>[{String(entry.processed).padStart(2, '0')}/{entry.total}]</span>
                                                         <span className={`flex-1 truncate uppercase tracking-widest ${entry.changed ? theme.headingText : theme.baseText}`}>
                                                             {entry.title}
                                                         </span>
                                                         <div className="shrink-0 flex items-center justify-end w-[130px] gap-2">
-                                                            <span className={`${CLASS_COLORS[entry.cls] || theme.mutedText} tracking-wider font-bold`}>{entry.cls}</span>
+                                                            {/* classColor, not CLASS_COLORS: the -400 set is ~2:1 on a pale log. */}
+                                                            <span className={`${classColor(entry.cls, theme.isDark)} tracking-wider font-bold`}>{entry.cls}</span>
                                                             <span className={`w-3 text-right ${entry.changed ? theme.highlightText : 'text-transparent'}`}>{entry.changed ? '↻' : ''}</span>
                                                         </div>
                                                     </div>
@@ -917,12 +955,12 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
 
                                 {/* ── FOOTER ── */}
                                 {(calibration.phase === 'done' || calibration.phase === 'error') && (
-                                    <div className={`px-5 py-3.5 bg-black/70 backdrop-blur-md border-t ${theme.borderSubtle} shrink-0 relative overflow-hidden flex`}>
+                                    <div className={`px-5 py-3.5 ${theme.isDark ? 'bg-black/70' : 'bg-white/80'} backdrop-blur-md border-t ${theme.borderSubtle} shrink-0 relative overflow-hidden flex`}>
                                         <div className={`absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent ${theme.id === 'LIGHT' ? 'via-sky-500/40' : 'via-amber-500/40'} to-transparent`} />
                                         
                                         <button
                                             onClick={() => setCalibration(null)}
-                                            className={`flex-1 relative border ${theme.borderSubtle} ${theme.highlightText} hover:bg-white/10 shadow-[0_0_15px_rgba(255,255,255,0.05)] font-orbitron font-black uppercase tracking-[0.25em] text-[11px] sm:text-xs transition-all duration-500 py-3.5 rounded-sm overflow-hidden group/ack active:scale-[0.98]`}
+                                            className={`flex-1 relative border ${theme.borderSubtle} ${theme.highlightText} ${theme.isDark ? 'hover:bg-white/10' : 'hover:bg-black/5'} shadow-[0_0_15px_rgba(255,255,255,0.05)] font-orbitron font-black uppercase tracking-[0.25em] text-[11px] sm:text-xs transition-all duration-500 py-3.5 rounded-sm overflow-hidden group/ack active:scale-[0.98]`}
                                         >
                                             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover/ack:translate-x-full transition-transform duration-700" />
                                             {calibration.phase === 'done' ? 'ACKNOWLEDGE_UPDATE' : 'DISMISS_CRITICAL_ERROR'}
@@ -939,10 +977,15 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
             <AnimatePresence>
                 {showAccountModal && (
                     <motion.div
+                        ref={accountRef}
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="account-title"
+                        tabIndex={-1}
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-[600] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+                        className="fixed inset-0 z-[600] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 outline-none"
                         onClick={(e) => { if (e.target === e.currentTarget) setShowAccountModal(false); }}
                     >
                         <motion.div
@@ -954,12 +997,12 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                         >
                             {/* Modal Header */}
                             <div className={`flex items-center justify-between px-5 py-3.5 border-b ${theme.borderSubtle} ${theme.isDark ? 'bg-black/40' : 'bg-sky-50/80'}`}>
-                                <div className={`flex items-center gap-2.5 ${theme.highlightText} font-mono text-[11px] tracking-widest uppercase font-bold`}>
-                                    <KeyRound size={13} />
+                                <div id="account-title" className={`flex items-center gap-2.5 ${theme.highlightText} font-mono text-[11px] tracking-widest uppercase font-bold`}>
+                                    <KeyRound size={13} aria-hidden="true" />
                                     HUNTER_CREDENTIALS
                                 </div>
-                                <button onClick={() => setShowAccountModal(false)} className={`w-7 h-7 flex items-center justify-center border ${theme.borderSubtle} ${theme.mutedText} hover:${theme.highlightText} transition-colors rounded-sm`}>
-                                    <X size={13} />
+                                <button type="button" onClick={() => setShowAccountModal(false)} aria-label="Close" className={`w-7 h-7 flex items-center justify-center border ${theme.borderSubtle} ${theme.mutedText} hover:${theme.highlightText} transition-colors rounded-sm`}>
+                                    <X size={13} aria-hidden="true" />
                                 </button>
                             </div>
 
@@ -974,8 +1017,11 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
 
                                 {/* New username */}
                                 <div className="flex flex-col gap-1.5">
-                                    <label className={`text-[9px] font-mono font-bold uppercase tracking-widest ${theme.mutedText}`}>New Username <span className="opacity-50">(leave blank to keep)</span></label>
+                                    <label htmlFor="acct-username" className={`text-[9px] font-mono font-bold uppercase tracking-widest ${theme.mutedText}`}>New Username <span className="font-normal">(leave blank to keep)</span></label>
                                     <input
+                                        id="acct-username"
+                                        ref={accountFirstFieldRef}
+                                        autoComplete="username"
                                         type="text"
                                         value={accountForm.newUsername}
                                         onChange={e => setAccountForm(f => ({ ...f, newUsername: e.target.value }))}
@@ -986,8 +1032,10 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
 
                                 {/* Current password */}
                                 <div className="flex flex-col gap-1.5">
-                                    <label className={`text-[9px] font-mono font-bold uppercase tracking-widest ${theme.mutedText}`}>Current Password <span className="text-red-500">*</span></label>
+                                    <label htmlFor="acct-current" className={`text-[9px] font-mono font-bold uppercase tracking-widest ${theme.mutedText}`}>Current Password <span className={theme.isDark ? 'text-red-400' : 'text-red-700'} aria-hidden="true">*</span></label>
                                     <input
+                                        id="acct-current"
+                                        autoComplete="current-password"
                                         type="password"
                                         required
                                         value={accountForm.currentPassword}
@@ -999,8 +1047,10 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
 
                                 {/* New password */}
                                 <div className="flex flex-col gap-1.5">
-                                    <label className={`text-[9px] font-mono font-bold uppercase tracking-widest ${theme.mutedText}`}>New Password <span className="opacity-50">(leave blank to keep)</span></label>
+                                    <label htmlFor="acct-new" className={`text-[9px] font-mono font-bold uppercase tracking-widest ${theme.mutedText}`}>New Password <span className="font-normal">(leave blank to keep)</span></label>
                                     <input
+                                        id="acct-new"
+                                        autoComplete="new-password"
                                         type="password"
                                         value={accountForm.newPassword}
                                         onChange={e => setAccountForm(f => ({ ...f, newPassword: e.target.value }))}
@@ -1012,8 +1062,10 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                                 {/* Confirm new password */}
                                 {accountForm.newPassword && (
                                     <div className="flex flex-col gap-1.5">
-                                        <label className={`text-[9px] font-mono font-bold uppercase tracking-widest ${theme.mutedText}`}>Confirm New Password</label>
+                                        <label htmlFor="acct-confirm" className={`text-[9px] font-mono font-bold uppercase tracking-widest ${theme.mutedText}`}>Confirm New Password</label>
                                         <input
+                                            id="acct-confirm"
+                                            autoComplete="new-password"
                                             type="password"
                                             value={accountForm.confirmPassword}
                                             onChange={e => setAccountForm(f => ({ ...f, confirmPassword: e.target.value }))}
@@ -1025,10 +1077,12 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
 
                                 {/* Status message */}
                                 {accountStatus && (
-                                    <div className={`flex items-center gap-2 px-3 py-2 rounded-sm text-[10px] font-mono font-bold ${
+                                    <div role={accountStatus.type === 'error' ? 'alert' : 'status'} className={`flex items-center gap-2 px-3 py-2 rounded-sm text-[10px] font-mono font-bold ${
+                                        // -400 inks are tuned for the void; on the white modal they
+                                        // sat near 2.5:1, so light takes the -700 rung.
                                         accountStatus.type === 'error'
-                                            ? 'bg-red-500/10 border border-red-500/30 text-red-400'
-                                            : 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-400'
+                                            ? `bg-red-500/10 border border-red-500/30 ${theme.isDark ? 'text-red-400' : 'text-red-700'}`
+                                            : `bg-emerald-500/10 border border-emerald-500/30 ${theme.isDark ? 'text-emerald-400' : 'text-emerald-700'}`
                                     }`}>
                                         {accountStatus.type === 'error' ? <AlertCircle size={12} /> : <CheckCircle2 size={12} />}
                                         {accountStatus.msg}

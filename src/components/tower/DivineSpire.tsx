@@ -7,6 +7,7 @@ import QuestCard from '../quest/QuestCard';
 import SystemLogo from '../system/SystemLogo';
 import { getQuestRankObj } from '../../utils/ranks';
 import { ChevronLeft, ChevronRight, X, Search, AlertCircle, ChevronDown, Filter } from 'lucide-react';
+import { useDialog } from '../../utils/useDialog';
 
 interface DivineSpireProps {
     isOpen: boolean;
@@ -34,6 +35,7 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
     const availableStatuses = useMemo(() => Array.from(new Set(items.map(i => i.status))).sort(), [items]);
 
     const carouselRef = useRef<HTMLDivElement>(null);
+    const rootRef = useRef<HTMLDivElement>(null);
 
     const scrollCarousel = (direction: 'left' | 'right') => {
         if (carouselRef.current) {
@@ -90,6 +92,14 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
         setSearch(''); // Clear search when going back
     };
 
+    // Escape backs out one level at a time — the filter menu, then the floor, then the
+    // Spire itself — mirroring the header's X, which already means "back" on a floor.
+    useDialog(rootRef, isOpen, () => {
+        if (isFilterOpen) setIsFilterOpen(false);
+        else if (viewMode === 'FLOOR') handleBackToTower();
+        else onClose();
+    });
+
     // KEYBOARD NAVIGATION FOR CAROUSEL
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -121,7 +131,12 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
 
     return (
         <div
-            className={`fixed inset-0 z-[60] bg-transparent animate-in fade-in zoom-in-95 duration-500 flex flex-col transition-colors duration-700`}
+            ref={rootRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="divine-spire-title"
+            tabIndex={-1}
+            className={`fixed inset-0 z-[60] bg-transparent animate-in fade-in zoom-in-95 duration-500 flex flex-col transition-colors duration-700 outline-none`}
             style={{ '--elev-1': elevation(theme, 1) } as React.CSSProperties}
         >
             {/* AMBIENT BACKGROUND GLOW (Root-level to cover header) */}
@@ -149,17 +164,46 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
                         </div>
                         <div className="flex flex-col leading-none">
                             <span className={`font-mono text-[9px] tracking-[0.2em] ${theme.mutedText} uppercase transition-colors duration-700`}>SYSTEM.ACCESS // {playerRank.name}</span>
-                            <h2 className={`font-orbitron text-base tracking-[0.2em] font-bold bg-clip-text text-transparent bg-gradient-to-r ${theme.id === 'LIGHT' ? 'from-sky-600 via-cyan-400 to-indigo-200' : 'from-amber-600 via-yellow-400 to-white'} transition-colors duration-700`}>THE DIVINE SPIRE</h2>
+                            {/* Light takes the ink ramp: the old one faded to indigo-200, 1.3:1 on the page. */}
+                            <h2 id="divine-spire-title" className={`font-orbitron text-base tracking-[0.2em] font-bold bg-clip-text text-transparent bg-gradient-to-r ${theme.id === 'LIGHT' ? theme.gradientInk : 'from-amber-600 via-yellow-400 to-white'} transition-colors duration-700`}>THE DIVINE SPIRE</h2>
                         </div>
                     </div>
                     <button
                         onClick={viewMode === 'FLOOR' ? handleBackToTower : onClose}
-                        className={`group relative p-1.5 md:p-2 ${theme.mutedText} hover:${theme.baseText} transition-all duration-300 rounded-md border border-transparent hover:border-white/10 hover:bg-white/5`}
+                        aria-label={viewMode === 'FLOOR' ? 'Back to the tower' : 'Close the Divine Spire'}
+                        title={viewMode === 'FLOOR' ? 'Back to the tower' : 'Close'}
+                        className={`group relative p-1.5 md:p-2 ${theme.mutedText} hover:${theme.baseText} transition-all duration-300 rounded-md border border-transparent ${theme.isDark ? 'hover:border-white/10 hover:bg-white/5' : 'hover:border-slate-300 hover:bg-black/5'}`}
                     >
-                        <X size={22} className="relative z-10 transition-transform duration-500 group-hover:rotate-90" />
+                        <X size={22} aria-hidden="true" className="relative z-10 transition-transform duration-500 group-hover:rotate-90" />
                     </button>
                 </div>
             </div>
+
+            {/* SECTOR INDEX — the keyboard's way into a floor. The isles are drawn on a
+                canvas and answer only to a pointer, so without this a keyboard user could
+                open the Spire and go no further. It stays out of sight until something in
+                it takes focus, like a skip link, so the tower keeps its composition. */}
+            {viewMode === 'TOWER' && floors.length > 0 && (
+                <nav
+                    aria-label="Spire sectors"
+                    className="absolute inset-x-0 bottom-32 lg:bottom-10 z-[70] flex justify-center px-4 opacity-0 pointer-events-none focus-within:opacity-100 focus-within:pointer-events-auto transition-opacity duration-300"
+                >
+                    <ul className={`flex flex-wrap justify-center gap-2 p-2 border backdrop-blur-md ${theme.isDark ? 'bg-black/80 border-white/10' : 'bg-white/90 border-slate-300 elev-1'}`}>
+                        {floors.map(f => (
+                            <li key={f.index}>
+                                <button
+                                    type="button"
+                                    onClick={() => handleSelectFloor(f.index)}
+                                    aria-label={`Enter sector ${f.index + 1}, records ${f.range}`}
+                                    className={`px-3 py-1.5 font-mono text-[11px] tracking-widest border outline-none ${theme.isDark ? 'border-white/15 text-amber-400 focus-visible:bg-amber-500 focus-visible:text-black' : 'border-slate-300 text-[#155e75] focus-visible:bg-[#155e75] focus-visible:text-white'}`}
+                                >
+                                    SECTOR {String(f.index + 1).padStart(2, '0')}
+                                </button>
+                            </li>
+                        ))}
+                    </ul>
+                </nav>
+            )}
 
             {/* MAIN CONTENT AREA */}
             <div className={`relative z-10 flex-1 min-h-0 overflow-hidden flex flex-col ${viewMode === 'TOWER' ? 'pointer-events-none' : ''}`}>
@@ -175,9 +219,10 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
                             <div className="relative group">
                                 <div className={`absolute -inset-1 bg-gradient-to-r ${theme.gradient} opacity-20 blur-md group-focus-within:opacity-40 transition-all duration-500 rounded-full`} />
                                 <div className={`relative ${theme.isDark ? 'bg-black/60' : 'bg-white/60'} backdrop-blur-xl border border-white/10 rounded-full px-3 py-2 md:px-4 md:py-3 flex items-center shadow-2xl transition-all duration-700`}>
-                                    <Search size={18} className={`${theme.highlightText} mr-2 md:mr-3 opacity-70 shrink-0`} />
+                                    <Search size={18} aria-hidden="true" className={`${theme.highlightText} mr-2 md:mr-3 opacity-70 shrink-0`} />
                                     <input
                                         type="text"
+                                        aria-label="Search archives"
                                         placeholder="SEARCH ARCHIVES..."
                                         className={`w-full bg-transparent text-sm md:text-base font-mono ${theme.baseText} placeholder:${theme.mutedText} placeholder:opacity-50 outline-none uppercase tracking-widest transition-colors duration-700`}
                                         value={search}
@@ -190,7 +235,7 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
                                         autoFocus
                                     />
                                     {search && (
-                                        <button onClick={() => setSearch('')} className={`${theme.mutedText} hover:${theme.highlightText} ml-2`}><X size={16} /></button>
+                                        <button onClick={() => setSearch('')} aria-label="Clear search" className={`${theme.mutedText} hover:${theme.highlightText} ml-2`}><X size={16} aria-hidden="true" /></button>
                                     )}
                                 </div>
                             </div>
@@ -199,16 +244,16 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
                         {/* HUD HEADER: Floor / Sector info (Hidden when searching) */}
                         {!search && floors.length > 0 && floors[selectedFloorIndex] && (
                             <div className="shrink-0 z-[60] flex flex-col items-center drop-shadow-2xl mb-1 md:mb-2 relative group/carousel">
-                                <div className={`font-mono text-[9px] tracking-[0.4em] ${theme.highlightText} font-bold uppercase mb-1 opacity-80 pointer-events-none`}>SYSTEM.SECTOR_INTERFACE</div>
+                                <div className={`font-mono text-[9px] tracking-[0.4em] ${theme.highlightText} font-bold uppercase mb-1 pointer-events-none`}>SYSTEM.SECTOR_INTERFACE</div>
                                 <div className={`relative flex items-center gap-2 md:gap-4 px-3 py-1 md:px-6 md:py-2 rounded-full border backdrop-blur-md pointer-events-auto ${theme.isDark ? 'border-white/10 bg-black/40' : 'border-slate-300 bg-white/85 elev-1'}`}>
-                                    <button disabled={selectedFloorIndex <= 0} onClick={() => setSelectedFloorIndex(i => i - 1)} className={`${theme.mutedText} hover:${theme.highlightText} disabled:opacity-30 transition-colors`}><ChevronLeft size={14} /></button>
-                                    <button onClick={() => setIsFilterOpen(!isFilterOpen)} className={`font-black text-lg md:text-2xl font-orbitron tracking-widest ${theme.headingText} ${theme.isDark ? 'hover:text-white' : 'hover:text-[#155e75]'} transition-colors flex items-center gap-1.5 outline-none`}>
+                                    <button disabled={selectedFloorIndex <= 0} onClick={() => setSelectedFloorIndex(i => i - 1)} aria-label="Previous layer" className={`${theme.mutedText} hover:${theme.highlightText} disabled:opacity-30 transition-colors`}><ChevronLeft size={14} aria-hidden="true" /></button>
+                                    <button onClick={() => setIsFilterOpen(!isFilterOpen)} aria-haspopup="true" aria-expanded={isFilterOpen} className={`font-black text-lg md:text-2xl font-orbitron tracking-widest ${theme.headingText} ${theme.isDark ? 'hover:text-white' : 'hover:text-[#155e75]'} transition-colors flex items-center gap-1.5 outline-none`}>
                                         LAYER {selectedFloorIndex + 1}
                                         <ChevronDown size={16} className={`transition-transform duration-300 ${isFilterOpen ? `rotate-180 ${theme.isDark ? 'text-white' : 'text-[#155e75]'}` : ''}`} />
                                     </button>
                                     <div className={`w-1 h-1 rounded-full ${theme.isDark ? 'bg-white/30' : 'bg-slate-400'}`} />
                                     <span className={`font-mono text-[9px] md:text-xs ${theme.mutedText} tracking-widest`}>SECTOR {floors[selectedFloorIndex].range}</span>
-                                    <button disabled={selectedFloorIndex >= floors.length - 1} onClick={() => setSelectedFloorIndex(i => i + 1)} className={`${theme.mutedText} hover:${theme.highlightText} disabled:opacity-30 transition-colors`}><ChevronRight size={14} /></button>
+                                    <button disabled={selectedFloorIndex >= floors.length - 1} onClick={() => setSelectedFloorIndex(i => i + 1)} aria-label="Next layer" className={`${theme.mutedText} hover:${theme.highlightText} disabled:opacity-30 transition-colors`}><ChevronRight size={14} aria-hidden="true" /></button>
 
                                     {/* Dropdown Filter Menu */}
                                     {isFilterOpen && (
@@ -257,12 +302,16 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
                                 <>
                                     <button
                                         onClick={() => scrollCarousel('left')}
+                                        aria-label="Scroll records left"
+                                        tabIndex={-1}
                                         className={`absolute left-2 md:left-12 top-1/2 -translate-y-1/2 z-30 p-2 md:p-4 rounded-full border border-white/10 ${theme.isDark ? 'bg-black/50 hover:bg-white/10' : 'bg-white/50 hover:bg-black/10'} backdrop-blur-md opacity-0 md:group-hover/carousel:opacity-100 transition-all duration-500 transform hover:scale-110 shadow-[0_0_30px_rgba(0,0,0,0.5)] hidden md:flex`}
                                     >
                                         <ChevronLeft size={32} className={theme.highlightText} />
                                     </button>
                                     <button
                                         onClick={() => scrollCarousel('right')}
+                                        aria-label="Scroll records right"
+                                        tabIndex={-1}
                                         className={`absolute right-2 md:right-12 top-1/2 -translate-y-1/2 z-30 p-2 md:p-4 rounded-full border border-white/10 ${theme.isDark ? 'bg-black/50 hover:bg-white/10' : 'bg-white/50 hover:bg-black/10'} backdrop-blur-md opacity-0 md:group-hover/carousel:opacity-100 transition-all duration-500 transform hover:scale-110 shadow-[0_0_30px_rgba(0,0,0,0.5)] hidden md:flex`}
                                     >
                                         <ChevronRight size={32} className={theme.highlightText} />

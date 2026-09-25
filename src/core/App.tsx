@@ -87,24 +87,34 @@ const QuestListItem = ({ item, theme, activeId, handleLogClick, onDragStateChang
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={() => handleLogClick(item.id)}
-            className={`relative group cursor-pointer border py-1.5 px-3 transition-colors duration-200 ${isHighlighted ? `${theme.border} ${theme.isDark ? 'bg-white/5' : 'bg-sky-500/5'}` : `border-transparent hover:${theme.borderSubtle} bg-transparent`}`}
+            className={`relative group border py-1.5 px-3 transition-colors duration-200 ${isHighlighted ? `${theme.border} ${theme.isDark ? 'bg-white/5' : 'bg-sky-500/5'}` : `border-transparent hover:${theme.borderSubtle} bg-transparent`}`}
         >
-            <div className="flex justify-between items-center h-full">
+            <div className="flex items-center h-full">
+                {/* Drag Handle — always visible on touch (mobile/tablet), hover-only on desktop.
+                    Pointer-only by nature (the order is a preference, not content), so it is
+                    kept out of the accessibility tree; the row itself is the control. */}
+                <div
+                    aria-hidden="true"
+                    className={`cursor-grab active:cursor-grabbing flex-none touch-none select-none ${theme.baseText}
+                        p-2 -ml-2
+                        opacity-40 lg:opacity-0 group-hover:opacity-70 active:opacity-100
+                        transition-opacity
+                        [@media(pointer:coarse)]:opacity-60
+                        flex items-center justify-center min-w-[28px] min-h-[32px]
+                    `}
+                    onPointerDown={handleDragStart}
+                >
+                    <GripVertical size={16} />
+                </div>
+                {/* The row was a clickable <li>: unreachable by keyboard and announced as
+                    plain text. A real button keeps the list semantics intact around it. */}
+                <button
+                    type="button"
+                    onClick={() => handleLogClick(item.id)}
+                    aria-current={isHighlighted ? 'true' : undefined}
+                    className={`flex-1 min-w-0 flex justify-between items-center gap-2 text-left cursor-pointer bg-transparent border-0 p-0 outline-none rounded-sm focus-visible:ring-1 focus-visible:ring-offset-2 ${theme.isDark ? 'focus-visible:ring-amber-400 focus-visible:ring-offset-[#020202]' : 'focus-visible:ring-[#155e75] focus-visible:ring-offset-[#e9eef5]'}`}
+                >
                 <div className="flex items-center gap-2 max-w-[85%] min-w-0">
-                    {/* Drag Handle — always visible on touch (mobile/tablet), hover-only on desktop */}
-                    <div
-                        className={`cursor-grab active:cursor-grabbing flex-none touch-none select-none ${theme.baseText}
-                            p-2 -ml-2
-                            opacity-40 lg:opacity-0 group-hover:opacity-70 active:opacity-100
-                            transition-opacity
-                            [@media(pointer:coarse)]:opacity-60
-                            flex items-center justify-center min-w-[28px] min-h-[32px]
-                        `}
-                        onPointerDown={handleDragStart}
-                    >
-                        <GripVertical size={16} />
-                    </div>
 
                     {item.coverUrl && (
                         <div className={`w-8 h-[45px] xl:w-10 xl:h-[56px] flex-none rounded-sm border ${theme.isDark ? 'border-gray-800' : 'border-gray-300'} bg-black overflow-hidden opacity-80 group-hover:opacity-100 transition-opacity shadow-sm shrink-0`}>
@@ -112,7 +122,7 @@ const QuestListItem = ({ item, theme, activeId, handleLogClick, onDragStateChang
                                 <img
                                     key={item.coverUrl}
                                     src={getProxiedImageUrl(item.coverUrl)}
-                                    alt={item.title}
+                                    alt=""
                                     className="w-full h-full object-cover"
                                     loading="eager"
                                     onError={() => setThumbError(true)}
@@ -133,8 +143,9 @@ const QuestListItem = ({ item, theme, activeId, handleLogClick, onDragStateChang
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
-                    {isHighlighted && <Sun size={14} className={`${theme.highlightText} animate-spin-slow transition-colors duration-700 shrink-0`} />}
+                    {isHighlighted && <Sun size={14} aria-hidden="true" className={`${theme.highlightText} animate-spin-slow transition-colors duration-700 shrink-0`} />}
                 </div>
+                </button>
             </div>
         </Reorder.Item>
     );
@@ -189,7 +200,7 @@ const SystemGateModal = lazy(() => import('../components/system/SystemGateModal'
 
 // Loading Fallback Strategy
 const HeavyLoader = ({ theme }: { theme: any }) => (
-    <div className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm flex items-center justify-center">
+    <div className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm flex items-center justify-center" role="status" aria-label="Loading">
         <div className={`w-16 h-16 border-2 border-dashed ${theme.id === 'LIGHT' ? 'border-sky-500' : 'border-amber-500'} rounded-full animate-spin`} />
     </div>
 );
@@ -604,8 +615,11 @@ const App: React.FC = () => {
             if (!e.message.includes('401')) {
                 console.error("BOOT_SYNC_FAILURE:", e.message);
             }
-            // Fallback to empty state to prevent UI crash
-            setLibrary([]);
+            // Leave the library as it stands. It starts empty, so a failed first load
+            // still shows the empty state; but this also runs as a refresh (after an
+            // import or a recalibration), and a transient failure there used to wipe a
+            // perfectly good library off the screen. A real 401 is handled separately
+            // by the session-expired listener, which does clear it.
         }
     };
 
@@ -904,7 +918,9 @@ const App: React.FC = () => {
                                 text="AKASHIC"
                                 className="font-orbitron text-lg tracking-[0.3em] font-bold drop-shadow-sm transition-colors duration-700"
                                 animatedGradient={true}
-                                gradientColors={currentTheme === 'LIGHT' ? "from-sky-500 to-cyan-500" : "from-amber-600 via-yellow-400 to-white"}
+                                // Light takes the ink ramp: sky/cyan-500 measured 2.1:1 on the page,
+                                // and at 18px this wordmark needs 4.5.
+                                gradientColors={currentTheme === 'LIGHT' ? theme.gradientInk : "from-amber-600 via-yellow-400 to-white"}
                             />
                         </div>
                     </div>
@@ -925,11 +941,28 @@ const App: React.FC = () => {
                                 </span>
                             </div>
                         )}
-                        <button onClick={toggleTheme} className={`w-8 h-8 flex items-center justify-center border ${theme.borderSubtle} ${theme.isDark ? 'bg-white/5 hover:bg-white/10' : 'bg-black/5 hover:bg-black/10'} rounded transition-colors duration-700`}>
-                            {currentTheme === 'LIGHT' ? <Sun size={14} className="text-sky-600 transition-colors duration-700" /> : <Moon size={14} className="text-amber-400 transition-colors duration-700" />}
+                        <button
+                            onClick={toggleTheme}
+                            aria-label={currentTheme === 'LIGHT' ? 'Switch to dark theme' : 'Switch to light theme'}
+                            title={currentTheme === 'LIGHT' ? 'Switch to dark theme' : 'Switch to light theme'}
+                            className={`w-8 h-8 flex items-center justify-center border ${theme.borderSubtle} ${theme.isDark ? 'bg-white/5 hover:bg-white/10' : 'bg-black/5 hover:bg-black/10'} rounded transition-colors duration-700`}
+                        >
+                            {currentTheme === 'LIGHT' ? <Sun size={14} aria-hidden="true" className="text-sky-600 transition-colors duration-700" /> : <Moon size={14} aria-hidden="true" className="text-amber-400 transition-colors duration-700" />}
+                        </button>
+                        {/* Below lg the labelled button gives way to a glyph beside the theme
+                            toggle. It used to simply vanish there, and nothing else on a phone
+                            or tablet opens the Gate editor for a NEW record — adding a series
+                            was desktop-only. */}
+                        <button
+                            onClick={() => { setEditingItem(null); setIsModalOpen(true); }}
+                            aria-label="Create gate"
+                            title="Create gate"
+                            className={`lg:hidden w-8 h-8 flex items-center justify-center border ${theme.borderSubtle} ${theme.highlightText} ${theme.isDark ? 'bg-white/5 hover:bg-white/10' : 'bg-black/5 hover:bg-black/10'} rounded transition-colors duration-700 cursor-pointer`}
+                        >
+                            <Plus size={14} aria-hidden="true" />
                         </button>
                         <button onClick={() => { setEditingItem(null); setIsModalOpen(true); }} className={`hidden lg:flex px-4 py-1.5 border ${theme.borderSubtle} ${theme.highlightText} ${theme.isDark ? 'hover:bg-white/5' : 'hover:bg-black/5'} transition-colors duration-700 font-mono text-[10px] tracking-widest items-center gap-2 cursor-pointer`}>
-                            <Plus size={12} /> CREATE_GATE
+                            <Plus size={12} aria-hidden="true" /> CREATE_GATE
                         </button>
                     </div>
                 </motion.header>
@@ -999,6 +1032,20 @@ const App: React.FC = () => {
 
                             <div
                                 onDoubleClick={() => { setEditingItem(activeQuest); setIsModalOpen(true); }}
+                                // Double-click/tap is the card's only action, which left the editor
+                                // unreachable from a keyboard. Enter or Space on the focused card
+                                // does the same thing. Not offered for the empty placeholder.
+                                role={activeQuest.id !== DEFAULT_QUEST.id ? 'button' : undefined}
+                                tabIndex={activeQuest.id !== DEFAULT_QUEST.id ? 0 : undefined}
+                                aria-label={activeQuest.id !== DEFAULT_QUEST.id ? `Edit ${activeQuest.title}` : undefined}
+                                onKeyDown={(e) => {
+                                    if (activeQuest.id === DEFAULT_QUEST.id) return;
+                                    if (e.key === 'Enter' || e.key === ' ') {
+                                        e.preventDefault();
+                                        setEditingItem(activeQuest);
+                                        setIsModalOpen(true);
+                                    }
+                                }}
                                 onClick={() => {
                                     const now = Date.now();
                                     if (now - lastCoverTap.current < 300) {
@@ -1007,7 +1054,9 @@ const App: React.FC = () => {
                                     }
                                     lastCoverTap.current = now;
                                 }}
-                                className="relative flex-none h-full min-h-0 min-w-0 w-[min(85vw,320px)] md:w-full md:max-w-[45%] lg:w-auto lg:max-h-[49vh] aspect-[72/103] self-center flex items-center justify-center transition-all duration-700 ease-out transform-gpu hover:-translate-y-2 perspective-[1000px] group cursor-pointer"
+                                /* `hero-stage` sizes the card below lg and spaces it for the dais
+                                   (styles/index.css). From lg up the card is height-driven here. */
+                                className={`hero-stage relative flex-none h-full min-h-0 min-w-0 md:max-w-[45%] lg:w-auto lg:max-h-[49vh] aspect-[72/103] self-center flex items-center justify-center transition-all duration-700 ease-out transform-gpu hover:-translate-y-2 focus-visible:-translate-y-2 perspective-[1000px] group cursor-pointer outline-none focus-visible:outline-2 focus-visible:outline-offset-[20px] ${theme.isDark ? 'focus-visible:outline-amber-400' : 'focus-visible:outline-[#155e75]'}`}
                                 style={{
                                     // The mat, and the card's two rest states, as variables so the
                                     // hover transition stays a CSS transition — an inline style
@@ -1068,7 +1117,7 @@ const App: React.FC = () => {
                                     sat 24px above the disc, so the brightest part of the beam was
                                     glowing in the empty gap instead of on the emitter. */}
                                 <div
-                                    className={`absolute left-1/2 -translate-x-1/2 bottom-0 translate-y-[30%] md:translate-y-[35%] [@media(min-width:768px)_and_(min-height:1000px)]:translate-y-[37%] w-[170%] h-[150%] pointer-events-none z-0 opacity-100 transition-opacity duration-700 ${theme.isDark ? 'mix-blend-screen' : ''}`}
+                                    className={`absolute left-1/2 -translate-x-1/2 bottom-0 translate-y-[37%] md:translate-y-[35%] [@media(min-width:1024px)_and_(min-height:1000px)]:translate-y-[37%] w-[170%] h-[150%] pointer-events-none z-0 opacity-100 transition-opacity duration-700 ${theme.isDark ? 'mix-blend-screen' : ''}`}
                                     style={{
                                         // Two ellipses sharing the emitter as their origin: a tight
                                         // bright core at the disc, and a wider dimmer spread above it.
@@ -1112,8 +1161,14 @@ const App: React.FC = () => {
                                     theme={theme}
                                     paused={overlayOpen}
                                     /* Narrower on a phone: the card is nearly the whole
-                                       screen there, so 190% of it overflowed the viewport. */
-                                    className="absolute left-1/2 bottom-0 -translate-x-1/2 translate-y-[26%] w-[118%] aspect-[5/1] z-0 md:translate-y-[56%] md:w-[195%] [@media(min-width:768px)_and_(min-height:1000px)]:translate-y-[68%]"
+                                       screen there, so 190% of it overflowed the viewport.
+                                       Phone placement (91%) is solved with the card's lift
+                                       and the stage spacing in index.css (.hero-stage): it
+                                       puts the body's back rim a clear ~6% of the platform's
+                                       width below the card, where 26% had the card's base
+                                       standing ~25px inside the platform. Tablets share the
+                                       desktop placement; the tall-screen variant is lg-only. */
+                                    className="absolute left-1/2 bottom-0 -translate-x-1/2 translate-y-[91%] w-[118%] aspect-[5/1] z-0 md:translate-y-[56%] md:w-[195%] [@media(min-width:1024px)_and_(min-height:1000px)]:translate-y-[68%]"
                                 />
 
                                 {/* Outer wrapper: pulsing glow border around the cover (SHARP + PARALLAX FLOAT).
@@ -1130,8 +1185,13 @@ const App: React.FC = () => {
                                     bottom, and the canvas height scales off the card width, so a taller
                                     card needs a bigger lift — which at the old 54vh drove the card's
                                     top under the fixed header. 45vh is the tallest card whose required
-                                    lift still leaves the corner reticles below it. */}
-                                <Card3D className="relative -top-5 lg:-top-[7.4vh] w-full h-full card-plate">
+                                    lift still leaves the corner reticles below it.
+
+                                    Tablets (md to lg) take the desktop lift as a share of the
+                                    card instead: 15% of its height is the 0.215 x width that
+                                    7.4vh works out to on a desktop card. Their card is
+                                    width-driven, so the lift cannot be in vh there. */}
+                                <Card3D className="relative -top-5 md:max-lg:-top-[15%] lg:-top-[7.4vh] w-full h-full card-plate">
 
                                     {/* Corner Reticles (External Floating Targeting Geometry) */}
                                     <div className="absolute -top-[16px] -left-[16px] w-8 h-8 border-t-[2px] border-l-[2px] z-30 pointer-events-none opacity-80 transition-colors duration-700" style={{ borderColor: holoEdge, filter: `drop-shadow(0 0 5px ${holoEdge}${theme.isDark ? 'cc' : '88'})` }} />
@@ -1175,7 +1235,7 @@ const App: React.FC = () => {
                                             <img
                                                 key={activeQuest.id}
                                                 src={getProxiedImageUrl(activeQuest.coverUrl)}
-                                                alt={activeQuest.title}
+                                                alt={`Cover art for ${activeQuest.title}`}
                                                 className="w-full h-full object-cover transition-transform duration-[10s] group-hover:scale-110"
                                                 referrerPolicy="no-referrer"
                                                 loading="eager"
@@ -1185,8 +1245,9 @@ const App: React.FC = () => {
                                         ) : (
                                             /* Fallback placeholder — shown when proxy/CDN fails */
                                             <div className="w-full h-full flex flex-col items-center justify-center gap-2 bg-gradient-to-b from-gray-900 to-black">
-                                                <span className="text-2xl opacity-20">📖</span>
-                                                <span className="text-[9px] font-mono text-white/20 uppercase tracking-widest">Cover Unavailable</span>
+                                                <span className="text-2xl opacity-20" aria-hidden="true">📖</span>
+                                                {/* Read, so it has to clear AA: white/20 measured ~1.6:1 here. */}
+                                                <span className="text-[9px] font-mono text-white/60 uppercase tracking-widest">Cover Unavailable</span>
                                             </div>
                                         )}
 
@@ -1279,7 +1340,11 @@ const App: React.FC = () => {
                                 <h1
                                     className={`${activeQuest.title.length > 42 ? 'text-base sm:text-lg xl:text-2xl' : activeQuest.title.length > 25 ? 'text-xl sm:text-2xl xl:text-3xl' : 'text-2xl sm:text-3xl xl:text-4xl'} font-black font-orbitron tracking-tighter text-transparent bg-clip-text uppercase leading-[1.15] line-clamp-2 w-full`}
                                     style={{
-                                        backgroundImage: `linear-gradient(90deg, ${theme.accentColor}cc, ${theme.accentColor}, ${theme.accentColor}cc)`,
+                                        // The title is read, so it is drawn in the INK. On dark that is
+                                        // the same amber it always was; on light the decorative cyan
+                                        // measured 1.84:1 at its faded ends, under even the 3:1 large
+                                        // display type needs. The ink's faded ends still clear 3.7.
+                                        backgroundImage: `linear-gradient(90deg, ${theme.accentInk}cc, ${theme.accentInk}, ${theme.accentInk}cc)`,
                                         textTransform: 'uppercase',
                                         paddingBottom: '0.1em', // prevents descender clipping
                                     }}
@@ -1308,11 +1373,16 @@ const App: React.FC = () => {
 
                             {/* Controls */}
                             <div className="flex gap-2 w-full justify-center mt-2">
+                                {/* The icons are the buttons' only cue, so they are read, not merely seen:
+                                    the INK, not the accent. Cyan on the white plate measured 2.4:1,
+                                    under the 3:1 a meaningful graphic needs; the ink clears it. */}
                                 <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => updateProgress(-1)}
+                                    aria-label="Log previous chapter"
+                                    title="Previous chapter"
                                     className={`w-14 h-12 flex-none border ${theme.isDark ? 'bg-black/80 backdrop-blur-md' : 'bg-white/80 backdrop-blur-md'} flex items-center justify-center transition-colors cursor-pointer rounded-sm`}
                                     style={{ borderColor: `${theme.accentColor}33` }}
                                 >
-                                    <CalibratedMinusIcon size={20} color={theme.accentColor} />
+                                    <CalibratedMinusIcon size={20} color={theme.accentInk} />
                                 </motion.button>
                                 <motion.button
                                     whileHover={{ scale: 1.02 }}
@@ -1331,10 +1401,12 @@ const App: React.FC = () => {
                                     <InfinitePortalIcon size={18} className="group-hover:rotate-12 transition-transform" /> ENTER PORTAL
                                 </motion.button>
                                 <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => updateProgress(1)}
+                                    aria-label="Log next chapter"
+                                    title="Next chapter"
                                     className={`w-14 h-12 flex-none border ${theme.isDark ? 'bg-black/80 backdrop-blur-md' : 'bg-white/80 backdrop-blur-md'} flex items-center justify-center transition-colors cursor-pointer rounded-sm`}
                                     style={{ borderColor: `${theme.accentColor}33` }}
                                 >
-                                    <CalibratedPlusIcon size={20} color={theme.accentColor} />
+                                    <CalibratedPlusIcon size={20} color={theme.accentInk} />
                                 </motion.button>
 
                             </div>
@@ -1349,8 +1421,11 @@ const App: React.FC = () => {
                 >
                     {/* RETRACT HANDLE — a bare glyph at the panel's leading edge, no frame
                         and no plate. A bordered button here competed with the HUD's own
-                        bracket language instead of sitting inside it. Sits low-contrast
-                        until pointed at. Hidden below lg with the rest of the collapse.
+                        bracket language instead of sitting inside it. Sits subdued until
+                        pointed at — but at 70%, not 40%: the chevron is the control's only
+                        cue, and 40% of the ink measured ~1.8:1 on the light page, under the
+                        3:1 a meaningful graphic needs. Hidden below lg with the rest of the
+                        collapse.
 
                         Collapsed it goes `fixed` against the viewport edge: the content
                         row centres itself when the panel is away, so an offset from the
@@ -1362,7 +1437,7 @@ const App: React.FC = () => {
                         aria-controls="system-sidebar"
                         aria-label={sidebarCollapsed ? 'Expand system panel' : 'Collapse system panel'}
                         title={sidebarCollapsed ? 'Expand system panel' : 'Collapse system panel'}
-                        className={`hidden lg:flex top-1/2 -translate-y-1/2 z-30 w-5 h-20 items-center justify-center bg-transparent border-0 opacity-40 hover:opacity-100 focus-visible:opacity-100 transition-opacity duration-300 cursor-pointer outline-none ${sidebarCollapsed ? 'fixed right-1' : 'absolute -left-5'}`}
+                        className={`hidden lg:flex top-1/2 -translate-y-1/2 z-30 w-5 h-20 items-center justify-center bg-transparent border-0 opacity-70 hover:opacity-100 focus-visible:opacity-100 transition-opacity duration-300 cursor-pointer outline-none focus-visible:ring-1 ${theme.isDark ? 'focus-visible:ring-amber-400' : 'focus-visible:ring-[#155e75]'} ${sidebarCollapsed ? 'fixed right-1' : 'absolute -left-5'}`}
                         style={{ color: theme.accentInk }}
                     >
                         {sidebarCollapsed ? <ChevronLeft size={18} /> : <ChevronRight size={18} />}
@@ -1386,6 +1461,7 @@ const App: React.FC = () => {
                                             <EntityAvatar theme={theme} size={84} />
                                             <button
                                                 onClick={() => setIsProfileOpen(true)}
+                                                aria-label="Open hunter profile"
                                                 className={`absolute -bottom-1 -right-2 px-1 py-0.5 ${theme.id === 'LIGHT' ? 'bg-cyan-500' : 'bg-[#f59e0b]'} text-black text-[7px] font-black font-mono tracking-tighter uppercase cursor-pointer hover:scale-110 active:scale-95 transition-transform duration-200 shadow-lg z-20`}
                                             >
                                                 ACTIVE_PROFILE
@@ -1399,7 +1475,7 @@ const App: React.FC = () => {
                                     <div className="flex flex-col items-start text-left flex-1 min-w-0 sm:-mt-6">
                                         <div className={`text-[10px] ${theme.highlightText} font-black font-mono uppercase tracking-[0.2em] mb-1 mt-0.5 opacity-90 transition-colors duration-700 whitespace-nowrap`}>ENTITY CLASSIFICATION</div>
                                         <div className="text-3xl sm:text-4xl lg:text-2xl xl:text-4xl font-black font-manifold tracking-tight drop-shadow-sm flex items-baseline leading-normal overflow-hidden h-[1.5em] sm:h-[1.5em] lg:h-[1.8em] xl:h-[1.5em]">
-                                            <span className={`inline-block pr-[6px] text-transparent bg-clip-text bg-gradient-to-r ${theme.gradient} transition-colors duration-700 truncate`} style={{ lineHeight: '1.2' }}>{playerRank.name}</span>
+                                            <span className={`inline-block pr-[6px] text-transparent bg-clip-text bg-gradient-to-r ${theme.gradientInk} transition-colors duration-700 truncate`} style={{ lineHeight: '1.2' }}>{playerRank.name}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -1454,7 +1530,9 @@ const App: React.FC = () => {
                     </div>
 
                     {/* DIVINE SPIRE BUTTON */}
-                    <button aria-label="Open Divine Spire" onClick={() => { setIsSpireOpen(true); }} className={`mt-auto hidden lg:flex w-full h-12 ${theme.isDark ? 'bg-white/5' : 'bg-sky-500/10'} border ${theme.borderSubtle} ${theme.highlightText} ${theme.isDark ? 'hover:bg-[#f59e0b] hover:text-black' : 'hover:bg-[#155e75] hover:text-white'} font-mono font-bold tracking-widest uppercase transition-all items-center justify-center gap-2 text-[12px] shrink-0 shadow-sm cursor-pointer duration-700`}><LayoutTemplate size={16} /> DIVINE SPIRE</button>
+                    {/* Light: an opaque pale-sky plate. The 10% sky wash it had composited darker over the
+                        bottom of the page gradient and left the ink at 4.37:1. */}
+                    <button aria-label="Open Divine Spire" onClick={() => { setIsSpireOpen(true); }} className={`mt-auto hidden lg:flex w-full h-12 ${theme.isDark ? 'bg-white/5' : 'bg-sky-50/90'} border ${theme.borderSubtle} ${theme.highlightText} ${theme.isDark ? 'hover:bg-[#f59e0b] hover:text-black' : 'hover:bg-[#155e75] hover:text-white'} font-mono font-bold tracking-widest uppercase transition-all items-center justify-center gap-2 text-[12px] shrink-0 shadow-sm cursor-pointer duration-700`}><LayoutTemplate size={16} /> DIVINE SPIRE</button>
                     </div>{/* end full panel */}
                 </div>
             </div>
@@ -1479,7 +1557,7 @@ const App: React.FC = () => {
     return (
         <div 
             id="main-scroll-area" 
-            className={`relative h-[100dvh] overflow-hidden ${theme.appBg} ${theme.baseText} font-sans selection:bg-amber-500/30 transition-colors duration-700 ease-in-out`}
+            className={`relative h-[100dvh] overflow-hidden ${theme.appBg} ${theme.baseText} font-sans ${theme.isDark ? 'selection:bg-amber-500/30' : 'selection:bg-cyan-500/25'} transition-colors duration-700 ease-in-out`}
             style={{
                 // Two accents, deliberately. `--accent-color` and its two derivatives are
                 // decorative — fills, glows and washes, where chroma is the whole point and
@@ -1501,8 +1579,17 @@ const App: React.FC = () => {
                 isPaused={overlayOpen}
                 isMobile={isMobile}
             />
-            {/* BACKGROUND GRADIENT FIX */}
-            <div className="absolute inset-0 pointer-events-none z-0 bg-[radial-gradient(circle,transparent_50%,rgba(0,0,0,0.4)_100%)] opacity-50" />
+            {/* Edge falloff. Neutral black suits the void; on the light page the same 20%
+                black dragged every edge to grey (rgb ~186–205 at the corners), which is both
+                the "grime" the depth system warns about and a contrast loss for everything
+                laid near an edge — the sidebar, the Spire's HUD wings. Light takes the gentle
+                cool falloff HunterProfile already uses. */}
+            <div
+                className="absolute inset-0 pointer-events-none z-0"
+                style={theme.isDark
+                    ? { background: 'radial-gradient(circle, transparent 50%, rgba(0,0,0,0.4) 100%)', opacity: 0.5 }
+                    : { background: 'radial-gradient(circle, transparent 55%, rgba(15,23,42,0.07) 100%)' }}
+            />
 
             {/* HEADER */}
             {!isSpireOpen && memoizedHeader}
@@ -1619,6 +1706,8 @@ const App: React.FC = () => {
                                         style={{ originX: 1, originY: 1 }}
                                         whileTap={{ scale: 0.9 }}
                                         onClick={() => setIsMobileHudExpanded(true)}
+                                        aria-label="Open system menu"
+                                        aria-expanded={false}
                                         className="relative pointer-events-auto w-20 h-20 flex items-center justify-center"
                                     >
                                         <SystemCompass theme={theme} />
@@ -1634,6 +1723,10 @@ const App: React.FC = () => {
                                         style={{ originX: 1, originY: 1 }}
                                         className="pointer-events-auto w-full isolate flex items-end gap-2"
                                     >
+                                        {/* The panel surface is pinned dark in BOTH themes (a HUD plate
+                                            floating over the page), so its ink is pinned light too —
+                                            themed ink put the light theme's #155e75 on near-black at
+                                            2.6:1. Amber stays amber; the light theme gets cyan-300. */}
                                         {/* ── DIVINE SPIRE ── */}
                                         <motion.button
                                             aria-label="Open Divine Spire"
@@ -1665,17 +1758,18 @@ const App: React.FC = () => {
                                             />
                                             {/* Content */}
                                             <div className="relative z-10 h-full flex items-center gap-3 px-4">
-                                                <LayoutTemplate size={20} className={`shrink-0 ${theme.highlightText} drop-shadow-[0_0_8px_currentColor]`} />
+                                                <LayoutTemplate size={20} aria-hidden="true" className={`shrink-0 ${theme.isDark ? 'text-[#f59e0b]' : 'text-cyan-300'} drop-shadow-[0_0_8px_currentColor]`} />
                                                 <div className="flex flex-col items-start leading-none min-w-0">
-                                                    <span className={`font-mono text-[8px] tracking-[0.25em] uppercase ${theme.highlightText} opacity-60 mb-1`}>TERMINAL.EXECUTE</span>
-                                                    <span className={`font-orbitron font-black text-[11px] tracking-[0.2em] uppercase ${theme.highlightText} drop-shadow-[0_0_6px_currentColor]`}>DIVINE_SPIRE</span>
+                                                    <span className={`font-mono text-[8px] tracking-[0.25em] uppercase ${theme.isDark ? 'text-[#f59e0b]' : 'text-cyan-300'} opacity-80 mb-1`}>TERMINAL.EXECUTE</span>
+                                                    <span className={`font-orbitron font-black text-[11px] tracking-[0.2em] uppercase ${theme.isDark ? 'text-[#f59e0b]' : 'text-cyan-300'} drop-shadow-[0_0_6px_currentColor]`}>DIVINE_SPIRE</span>
                                                 </div>
                                             </div>
                                         </motion.button>
 
-                                        {/* ── CREATE GATE ── */}
+                                        {/* ── ENTER PORTAL ── */}
                                         <motion.button
                                             onClick={() => { handleEnterPortal(activeQuest.link || '#'); setIsMobileHudExpanded(false); }}
+                                            aria-label="Enter portal"
                                             whileTap={{ scale: 0.94 }}
                                             className="relative w-16 h-16 overflow-hidden backdrop-blur-md flex flex-col items-center justify-center gap-1"
                                             style={{
@@ -1691,13 +1785,14 @@ const App: React.FC = () => {
                                             <svg className="absolute top-0 right-0 pointer-events-none" width="9" height="9" viewBox="0 0 9 9"><polyline points="9,9 9,0 0,0" fill="none" stroke={theme.isDark ? 'rgba(245,158,11,0.7)' : 'rgba(6,182,212,0.7)'} strokeWidth="1.5" /></svg>
                                             <svg className="absolute bottom-0 left-0 pointer-events-none" width="9" height="9" viewBox="0 0 9 9"><polyline points="0,0 0,9 9,9" fill="none" stroke={theme.isDark ? 'rgba(245,158,11,0.3)' : 'rgba(6,182,212,0.3)'} strokeWidth="1.5" /></svg>
                                             <svg className="absolute bottom-0 right-0 pointer-events-none" width="9" height="9" viewBox="0 0 9 9"><polyline points="9,0 9,9 0,9" fill="none" stroke={theme.isDark ? 'rgba(245,158,11,0.3)' : 'rgba(6,182,212,0.3)'} strokeWidth="1.5" /></svg>
-                                            <ExternalLink size={20} strokeWidth={2} className={`${theme.highlightText} drop-shadow-[0_0_8px_currentColor]`} />
-                                            <span className={`font-mono text-[6px] tracking-[0.15em] ${theme.highlightText} opacity-70 uppercase`}>PORTAL</span>
+                                            <ExternalLink size={20} strokeWidth={2} aria-hidden="true" className={`${theme.isDark ? 'text-[#f59e0b]' : 'text-cyan-300'} drop-shadow-[0_0_8px_currentColor]`} />
+                                            <span aria-hidden="true" className={`font-mono text-[6px] tracking-[0.15em] ${theme.isDark ? 'text-[#f59e0b]' : 'text-cyan-300'} opacity-80 uppercase`}>PORTAL</span>
                                         </motion.button>
 
                                         {/* ── CLOSE / COLLAPSE ── */}
                                         <motion.button
                                             onClick={() => setIsMobileHudExpanded(false)}
+                                            aria-label="Close system menu"
                                             whileTap={{ scale: 0.94 }}
                                             className="relative w-16 h-16 overflow-hidden backdrop-blur-md flex flex-col items-center justify-center gap-1"
                                             style={{
@@ -1711,8 +1806,8 @@ const App: React.FC = () => {
                                             <svg className="absolute top-0 right-0 pointer-events-none" width="9" height="9" viewBox="0 0 9 9"><polyline points="9,9 9,0 0,0" fill="none" stroke="rgba(239,68,68,0.6)" strokeWidth="1.5" /></svg>
                                             <svg className="absolute bottom-0 left-0 pointer-events-none" width="9" height="9" viewBox="0 0 9 9"><polyline points="0,0 0,9 9,9" fill="none" stroke="rgba(239,68,68,0.25)" strokeWidth="1.5" /></svg>
                                             <svg className="absolute bottom-0 right-0 pointer-events-none" width="9" height="9" viewBox="0 0 9 9"><polyline points="9,0 9,9 0,9" fill="none" stroke="rgba(239,68,68,0.25)" strokeWidth="1.5" /></svg>
-                                            <X size={20} strokeWidth={2} className="text-red-500 drop-shadow-[0_0_8px_rgba(239,68,68,0.8)]" />
-                                            <span className="font-mono text-[6px] tracking-[0.15em] text-red-500/70 uppercase">CLOSE</span>
+                                            <X size={20} strokeWidth={2} aria-hidden="true" className="text-red-500 drop-shadow-[0_0_8px_rgba(239,68,68,0.8)]" />
+                                            <span aria-hidden="true" className="font-mono text-[6px] tracking-[0.15em] text-red-400 uppercase">CLOSE</span>
                                         </motion.button>
                                     </motion.div>
                                 )}

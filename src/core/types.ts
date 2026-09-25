@@ -15,7 +15,19 @@ export interface Theme {
     borderSubtle: string;
     overlay: string;
     starColor: string;
+    /**
+     * Decorative gradient: progress fills, washes, rules. Seen, never read.
+     */
     gradient: string;
+    /**
+     * Gradient for display TEXT (bg-clip-text) — the read counterpart of `gradient`, the
+     * way `accentInk` is to `accentColor`. Identical on dark. On light the decorative cyan
+     * ramp measured 1.8–2.4:1 behind a rank name or wordmark, so this one runs through
+     * the ink instead: ink -> cyan-900 -> cyan-950, weakest stop 6.0:1 on the darkest
+     * part of the page. (A cyan-700 start was tried; it passed on the bare page but fell
+     * to ~3.2:1 for the 16px wordmarks once the Spire's scene sat behind them.)
+     */
+    gradientInk: string;
     /**
      * Decorative accent: fills, large shapes, glows. High chroma, no contrast duty.
      */
@@ -41,8 +53,8 @@ export interface Rank {
     threshold: number;
     color: string;
     /**
-     * Rank colour for use on a LIGHT surface. `color` is the -400 rung, which is tuned for
-     * the void and sits near 2.3:1 on a white card. Only surfaces that are actually pale
+     * Rank colour for use on a LIGHT surface (the -800 rung). `color` is the -400 rung,
+     * which is tuned for the void and sits near 2.3:1 on a white card. Only surfaces that are actually pale
      * should reach for this — ManhwaDetail keeps `color`, because its backdrop is dark in
      * both themes.
      */

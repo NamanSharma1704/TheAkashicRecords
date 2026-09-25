@@ -26,6 +26,27 @@ app.set('trust proxy', 1);
 
 const getTodayStr = () => new Date().toISOString().split('T')[0];
 
+/**
+ * Fetch-or-create for the two per-tenant singletons, as ONE atomic operation.
+ *
+ * These used to be a findOne followed by a create when nothing came back. Two requests
+ * arriving together for a new tenant — React StrictMode's doubled mount effect, two
+ * tabs, a chapter PUT beside a state refresh — both saw nothing, both inserted, and the
+ * unique index rejected the loser with E11000. That surfaced as a 500 from
+ * /api/boot/initial-data, which the client treats as "no library". An upsert keyed on
+ * the unique field is resolved inside the database and cannot collide with itself.
+ */
+const ensureUserSettings = (UserSettings, userId) => UserSettings.findOneAndUpdate(
+    { userId },
+    { $setOnInsert: { userId } },
+    { upsert: true, returnDocument: 'after' }
+);
+const ensureDailyQuest = (DailyQuest, date) => DailyQuest.findOneAndUpdate(
+    { date },
+    { $setOnInsert: { date } },
+    { upsert: true, returnDocument: 'after' }
+);
+
 // ─── SECURITY HELPERS ─────────────────────────────────────────────────────────
 
 /**
@@ -552,32 +573,19 @@ app.get('/api/boot/initial-data', authenticate, async (req, res) => {
         const DailyQuest = getModel(req.dbConn, 'DailyQuest');
         const today = getTodayStr();
 
-        // parallel fetch for absolute speed
-        const [quests, settingsResult, dailyResult] = await Promise.all([
+        // parallel fetch for absolute speed. The two singletons are fetched-or-created
+        // atomically (see ensureUserSettings), so a first visit needs no follow-up writes.
+        const [quests, settings, daily] = await Promise.all([
             Quest.find().sort({ lastRead: -1 }),
-            UserSettings.findOne({ userId: req.user._id }),
-            DailyQuest.findOne({ date: today })
+            ensureUserSettings(UserSettings, req.user._id),
+            ensureDailyQuest(DailyQuest, today)
         ]);
 
         console.log(`[PERF] Initial parallel fetch complete: ${Date.now() - start}ms`);
 
-        let settings = settingsResult;
-        let daily = dailyResult;
-
-        // Lazy-seeding and creation handled as post-fetch cleanup to minimize latency
-        const followups = [];
-
         // Quests seeding
         if (quests.length === 0 && req.user.role === 'GUEST') {
-            followups.push(initDatabase(() => req.dbConn));
-        }
-
-        // Settings/Daily creation
-        if (!settings) followups.push(UserSettings.create({ userId: req.user._id }).then(s => settings = s));
-        if (!daily) followups.push(DailyQuest.create({ date: today }).then(d => daily = d));
-
-        if (followups.length > 0) {
-            await Promise.all(followups);
+            await initDatabase(() => req.dbConn);
             console.log(`[PERF] Followup completions in: ${Date.now() - start}ms`);
         }
 
@@ -609,26 +617,13 @@ app.get('/api/user/state', authenticate, async (req, res) => {
         const DailyQuest = getModel(req.dbConn, 'DailyQuest');
         const today = getTodayStr();
 
-        // Parallel fetch for speed
-        const [settingsResult, dailyResult] = await Promise.all([
-            UserSettings.findOne({ userId: req.user._id }),
-            DailyQuest.findOne({ date: today })
+        // Parallel fetch-or-create; atomic, so concurrent first requests cannot collide.
+        const [settings, daily] = await Promise.all([
+            ensureUserSettings(UserSettings, req.user._id),
+            ensureDailyQuest(DailyQuest, today)
         ]);
 
         console.log(`[PERF] Initial fetch complete: ${Date.now() - start}ms`);
-
-        let settings = settingsResult;
-        let daily = dailyResult;
-
-        // Handle missing documents in parallel if possible
-        const creations = [];
-        if (!settings) creations.push(UserSettings.create({ userId: req.user._id }).then(s => settings = s));
-        if (!daily) creations.push(DailyQuest.create({ date: today }).then(d => daily = d));
-
-        if (creations.length > 0) {
-            await Promise.all(creations);
-            console.log(`[PERF] Missing documents created: ${Date.now() - start}ms`);
-        }
 
         res.json({
             streak: settings.streak,
@@ -744,8 +739,7 @@ app.put('/api/quests/:id', authenticate, async (req, res) => {
         if (body.currentChapter !== undefined) {
             const today = getTodayStr();
 
-            let settings = await UserSettings.findOne({ userId: req.user._id });
-            if (!settings) settings = await UserSettings.create({ userId: req.user._id });
+            const settings = await ensureUserSettings(UserSettings, req.user._id);
 
             if (settings.lastReadDate !== today) {
                 const yesterday = new Date();
@@ -761,12 +755,13 @@ app.put('/api/quests/:id', authenticate, async (req, res) => {
                 await settings.save();
             }
 
-            let daily = await DailyQuest.findOne({ date: today });
-            if (!daily) daily = await DailyQuest.create({ date: today });
-            if (!daily.absorbedIds.includes(questId)) {
-                daily.absorbedIds.push(questId);
-                await daily.save();
-            }
+            // $addToSet rather than read-push-save: two chapter clicks in quick succession
+            // would otherwise each read the old array and the second save drop the first id.
+            await DailyQuest.updateOne(
+                { date: today },
+                { $setOnInsert: { date: today }, $addToSet: { absorbedIds: questId } },
+                { upsert: true }
+            );
         }
 
         const updatedQuest = await Quest.findByIdAndUpdate(

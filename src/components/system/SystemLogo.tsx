@@ -20,7 +20,7 @@ const SystemLogo: React.FC<SystemLogoProps> = ({ theme, className = "w-12 h-12" 
                         <stop offset="1" stopColor={secondaryColor} stopOpacity="0.5" />
                     </linearGradient>
                 </defs>
-                <g className="origin-center animate-[spin_10s_linear_infinite_reverse]">
+                <g className="origin-center motion-safe:animate-[spin_10s_linear_infinite_reverse]">
                     <path d="M50 5 L85 25 L85 35" stroke={primaryColor} strokeWidth="2" strokeLinecap="round" fill="none" className="transition-colors duration-700" />
                     <path d="M50 5 L15 25 L15 35" stroke={primaryColor} strokeWidth="2" strokeLinecap="round" fill="none" className="transition-colors duration-700" />
                     <path d="M50 95 L85 75 L85 65" stroke={primaryColor} strokeWidth="2" strokeLinecap="round" fill="none" className="transition-colors duration-700" />

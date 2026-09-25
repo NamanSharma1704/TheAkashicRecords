@@ -1,7 +1,18 @@
+/**
+ * Fill in totalChapters for records that have none, from AniList then Jikan (MAL).
+ *
+ * Writes to the database MONGODB_URI names (backend/.env). Rate-limited to one lookup a
+ * second. Records the sources cannot resolve are reported and left untouched.
+ *
+ * Repaired: it required ./models/Quest (a path that does not exist from this folder),
+ * took the module's export object as the model, and loaded .env from the working
+ * directory — so it could not start.
+ */
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '../.env') });
 const mongoose = require('mongoose');
-const Quest = require('./models/Quest');
+const { Quest } = require('../models/Quest');
 const https = require('https');
-require('dotenv').config();
 
 // Simple fetch utility for AniList (backend equivalent)
 async function fetchAnilist(title) {

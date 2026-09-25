@@ -181,6 +181,8 @@
     .hide-scrollbar {
         -ms-overflow-style: none;
         /* IE and Edge */
+        scrollbar-width: none;
+        /* Firefox — without this the scroller kept a visible bar there */
     }
 
     .hide-scrollbar::-webkit-scrollbar {
@@ -263,6 +265,52 @@
     .card-plate { transition: none; }
 }
 
+/* Hero stage below lg: the card's size, and the room it leaves the holographic dais.
+   From lg up the card is height-driven by Tailwind classes in App.tsx (max-h 49vh, lift
+   7.4vh) and none of this applies.
+
+   Below lg the layout scrolls and the card was sized from width alone, which left no
+   room for the lift the platform needs: on a phone the card's base stood ~25px inside the
+   dais body, and on a portrait tablet it sat on the back rim while the front ring ran
+   under the title. The fix is the one desktop already uses — size the card from the
+   height available so the whole hero (card, platform, title, progress, controls) fits one
+   screen — plus spacing derived from the same width, so the geometry holds at any size.
+
+   Every constant is in units of the card width --cw (the dais is a fixed multiple of it,
+   and projects at 1 world unit = platform width / 2.48, see components/dais/scene.ts):
+     phone   platform 118% w, dais translate 91%, lift 20px:
+             back rim clears the card by 0.074w; front ring lands 0.179w below the stage
+     tablet  platform 195% w, dais translate 56%, lift 15% of height (0.2146w):
+             identical to the desktop composition — 0.097w clearance, ring at 0.159w
+   The stage's bottom margin is that ring distance plus 8px of air, less the 16px flex gap
+   the title already sits behind. The tablet's top margin returns the extra lift, so the
+   corner reticles keep their distance from the header.
+
+   The height bounds: 308px / 288px are the fixed chrome above and below the stage
+   (header, paddings, title, progress, controls, console); 0.62 / 0.55 are 1 / (1.43 card
+   aspect + the stage margins in w). */
+@media (max-width: 1023.98px) {
+    .hero-stage {
+        --cw: min(85vw, 320px, max(208px, calc((100dvh - 308px) * 0.62)));
+        width: var(--cw);
+        /* Auto, not the h-full it carries for lg: the row it sits in takes its height
+           from the stage's margin box and is then treated as definite, so a percentage
+           height would fold the margins below back into the card and override its
+           aspect ratio. */
+        height: auto;
+        margin-bottom: calc(var(--cw) * 0.18 - 8px);
+    }
+}
+
+@media (min-width: 768px) and (max-width: 1023.98px) {
+    .hero-stage {
+        /* 45% of the row, which is the viewport less 112px of nested gutters. */
+        --cw: min(calc((100vw - 112px) * 0.45), 380px, max(240px, calc((100dvh - 288px) * 0.55)));
+        margin-top: calc(var(--cw) * 0.2146 - 20px);
+        margin-bottom: calc(var(--cw) * 0.16 - 8px);
+    }
+}
+
 /* Panel elevation for hand-rolled surfaces that are not SystemFrame.
    Same reason as .card-plate: a box-shadow driven by a custom property cannot go through
    Tailwind's arbitrary-shadow syntax. The variable is set wherever the panels live, from
@@ -275,4 +323,31 @@
 
 @media (prefers-reduced-motion: reduce) {
     .elev-1 { transition: none; }
+}
+
+/* Reduced motion.
+   Motion-driven animation is handled by <MotionConfig reducedMotion="user"> (main.tsx),
+   the canvases and WebGL scenes check the query themselves, and the arbitrary spins are
+   written `motion-safe:`. These are the named utilities: every one of them is ambient
+   movement — a drift, a sweep, a spin, a swell — rather than a signal the reader needs.
+   `animate-spin` (a live loading spinner) and `animate-pulse` (an opacity fade, no
+   movement) are deliberately left running. */
+@media (prefers-reduced-motion: reduce) {
+    .animate-spin-slow,
+    .animate-gradient-x,
+    .animate-text-shimmer,
+    .animate-scanning,
+    .animate-scan-h,
+    .animate-glitch,
+    .animate-ping {
+        animation: none;
+    }
+
+    /* The aura's keyframes are also what give it its softness and restraint; with the
+       animation gone it would sit as a solid disc of accent, so it rests at its midpoint. */
+    .animate-aura {
+        animation: none;
+        opacity: 0.45;
+        filter: blur(12px);
+    }
 }

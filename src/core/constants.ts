@@ -34,6 +34,7 @@ export const THEMES: Record<ThemeId, Theme> = {
         overlay: 'bg-black/80',
         starColor: '255, 255, 255',
         gradient: 'from-[#f59e0b] via-yellow-400 to-white',
+        gradientInk: 'from-[#f59e0b] via-yellow-400 to-white',
         accentColor: '#f59e0b',
         accentInk: '#f59e0b',
         warningInk: '#f59e0b',
@@ -60,6 +61,9 @@ export const THEMES: Record<ThemeId, Theme> = {
         // cyan at these alphas over #e9eef5 never resolved into anything.
         starColor: '71, 85, 105',
         gradient: 'from-[#06b6d4] to-cyan-500',
+        // Read, not seen — see Theme.gradientInk. Any display text clipped to a gradient
+        // takes this, never `gradient`.
+        gradientInk: 'from-[#155e75] via-[#164e63] to-[#083344]',
         accentColor: '#06b6d4',
         accentInk: '#155e75',
         // amber-800. Same meaning as dark's amber-500, four steps down so it survives the page.

@@ -1,12 +1,13 @@
 const http = require('http');
+// Credentials come from backend/.env via scriptEnv, like every other script here. This file
+// used to carry the account's username and password as literals, in a public repository;
+// treat any value that was ever committed here as compromised and rotate it.
+const { adminCredentials } = require('./scriptEnv');
 
 async function testSovereignLogin() {
     console.log("--- Akashic Sovereign Identity Verification ---");
 
-    const adminData = JSON.stringify({
-        username: "Naman",
-        password: "system-override-2026"
-    });
+    const adminData = JSON.stringify(adminCredentials());
 
     const options = {
         hostname: '127.0.0.1',
@@ -15,7 +16,7 @@ async function testSovereignLogin() {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            'Content-Length': adminData.length
+            'Content-Length': Buffer.byteLength(adminData)
         }
     };
 

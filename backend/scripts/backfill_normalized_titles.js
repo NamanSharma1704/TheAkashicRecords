@@ -9,14 +9,23 @@
  *   node backend/scripts/backfill_normalized_titles.js                 # akashic_records
  *   node backend/scripts/backfill_normalized_titles.js test_records    # a specific database
  *   node backend/scripts/backfill_normalized_titles.js --all           # every non-system database
+ *   ...add --dry-run to any of the above to report what WOULD change and write nothing.
  *
  * Idempotent: re-running it changes nothing. Reports collisions rather than deleting
  * anything — use POST /api/admin/purge-duplicates for that.
+ *
+ * Against production, run it in this order (see PROJECT_CONTEXT.md, "Backfill"):
+ *   1. --dry-run first, against the production URI, and read the collision report;
+ *   2. only then the real run. It only ever $sets normalizedTitle, so it is safe to
+ *      re-run, and it never deletes.
+ * The URI is read from backend/.env and is never printed.
  */
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '../.env') });
 const mongoose = require('mongoose');
 const { normalizeTitle } = require('../utils/normalizeTitle');
+
+const DRY_RUN = process.argv.includes('--dry-run');
 
 const backfillOne = async (conn, dbName) => {
     const quests = conn.db.collection('manhwas');
@@ -48,18 +57,19 @@ const backfillOne = async (conn, dbName) => {
         }
     }
 
-    if (ops.length > 0) await quests.bulkWrite(ops, { ordered: false });
+    if (ops.length > 0 && !DRY_RUN) await quests.bulkWrite(ops, { ordered: false });
 
-    console.log(`  [${dbName}] scanned ${docs.length}, updated ${ops.length}, collisions ${collisions}`);
+    console.log(`  [${dbName}] scanned ${docs.length}, ${DRY_RUN ? 'would update' : 'updated'} ${ops.length}, collisions ${collisions}`);
     return { scanned: docs.length, updated: ops.length, collisions };
 };
 
 (async () => {
     if (!process.env.MONGODB_URI) throw new Error('MONGODB_URI is not set');
 
-    const arg = process.argv[2];
+    // First non-flag argument: a database name, or --all.
+    const arg = process.argv.slice(2).find(a => a === '--all' || !a.startsWith('--'));
     await mongoose.connect(process.env.MONGODB_URI, { serverSelectionTimeoutMS: 15000 });
-    console.log('Connected.\n');
+    console.log(DRY_RUN ? 'Connected. DRY RUN: nothing will be written.\n' : 'Connected.\n');
 
     let targets;
     if (arg === '--all') {
@@ -80,7 +90,7 @@ const backfillOne = async (conn, dbName) => {
         totals.collisions += r.collisions;
     }
 
-    console.log(`\nDone. scanned=${totals.scanned} updated=${totals.updated} collisions=${totals.collisions}`);
+    console.log(`\n${DRY_RUN ? 'Dry run done' : 'Done'}. scanned=${totals.scanned} ${DRY_RUN ? 'would_update' : 'updated'}=${totals.updated} collisions=${totals.collisions}`);
     if (totals.collisions > 0) {
         console.log('Collisions found — run POST /api/admin/purge-duplicates before making the index unique.');
     }

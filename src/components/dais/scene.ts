@@ -335,7 +335,10 @@ export const createDais = ({ host, isDark, reducedMotion }: DaisOptions): DaisHa
 
     // ---- loop ----------------------------------------------------------------
     let time = 0;
+    /** Latched by dispose: a late resize or frame must never draw through a released context. */
+    let disposed = false;
     const frame = (dt: number) => {
+        if (disposed) return;
         if (!reducedMotion) {
             time += dt;
             for (const m of glowMaterials) m.uniforms.uTime.value = time;
@@ -345,14 +348,20 @@ export const createDais = ({ host, isDark, reducedMotion }: DaisOptions): DaisHa
     };
 
     const resize = (w: number, h: number) => {
-        if (w <= 0 || h <= 0) return;
+        if (disposed || w <= 0 || h <= 0) return;
         renderer.setSize(w, h, false);
         camera.aspect = w / h;
         placeCamera(camera.aspect);
         camera.updateProjectionMatrix();
+        // setSize reallocates the drawing buffer, which clears it. With the loop running
+        // the next frame repaints anyway, but a paused or reduced-motion dais has no next
+        // frame and would sit blank until something else woke it — so repaint here.
+        renderer.render(scene, camera);
     };
 
     const dispose = () => {
+        if (disposed) return;
+        disposed = true;
         for (const d of disposables) {
             try { d.dispose(); } catch { /* already gone */ }
         }

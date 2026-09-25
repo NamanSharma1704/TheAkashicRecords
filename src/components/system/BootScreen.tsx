@@ -1,5 +1,5 @@
 ﻿import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { motion, useAnimationFrame } from 'motion/react';
+import { motion, useAnimationFrame, useReducedMotion } from 'motion/react';
 import { Theme } from '../../core/types';
 import AkashicCoreLogo from './AkashicCoreLogo';
 
@@ -228,7 +228,12 @@ const Constellations3D: React.FC<{ p: BootPalette }> = ({ p }) => {
     const lineRefs = useRef<(SVGLineElement | null)[][]>(model.map(() => []));
     const fieldRefs = useRef<(SVGCircleElement | null)[][]>(model.map(() => []));
 
+    // These write attributes straight from a frame callback, which neither the global CSS
+    // reset nor MotionConfig can reach, so the preference is checked here: under reduced
+    // motion the asterisms hold the front view they were first rendered in.
+    const reducedMotion = useReducedMotion();
     useAnimationFrame(() => {
+        if (reducedMotion) return;
         const t = performance.now() / 1000;
         model.forEach((a, ai) => {
             const yaw = a.yawAmp * Math.sin((t / a.yawPeriod) * Math.PI * 2 + a.phase);

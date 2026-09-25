@@ -5,7 +5,7 @@ import SystemFrame from '../components/system/SystemFrame';
 import SystemLogo from '../components/system/SystemLogo';
 import ScrambleText from '../components/system/ScrambleText';
 import { Activity, ExternalLink, Sun, Moon, Plus, Zap, Crown, X, LayoutTemplate, GripVertical, ChevronLeft, ChevronRight } from 'lucide-react';
-import { getPlayerRank, getThemedRankStyle, calculateQuestRank } from '../utils/ranks';
+import { getPlayerRank, calculateQuestRank, USER_RANKS } from '../utils/ranks';
 import { THEMES, ITEMS_PER_FLOOR, ThemeId } from './constants';
 
 import SystemConsole from '../components/system/SystemConsole';
@@ -87,14 +87,16 @@ const QuestListItem = ({ item, theme, activeId, handleLogClick, onDragStateChang
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={() => handleLogClick(item.id)}
             className={`relative group cursor-pointer border py-1.5 px-3 transition-colors duration-200 ${isHighlighted ? `${theme.border} ${theme.isDark ? 'bg-white/5' : 'bg-sky-500/5'}` : `border-transparent hover:${theme.borderSubtle} bg-transparent`}`}
         >
             <div className="flex justify-between items-center h-full">
                 <div className="flex items-center gap-2 max-w-[85%] min-w-0">
-                    {/* Drag Handle — always visible on touch (mobile/tablet), hover-only on desktop */}
+                    {/* Drag Handle — always visible on touch (mobile/tablet), hover-only on desktop.
+                        Raised above the row button's stretched hit area so a press here drags
+                        rather than selects. */}
                     <div
-                        className={`cursor-grab active:cursor-grabbing flex-none touch-none select-none ${theme.baseText}
+                        aria-hidden="true"
+                        className={`relative z-10 cursor-grab active:cursor-grabbing flex-none touch-none select-none ${theme.baseText}
                             p-2 -ml-2
                             opacity-40 lg:opacity-0 group-hover:opacity-70 active:opacity-100
                             transition-opacity
@@ -106,20 +108,31 @@ const QuestListItem = ({ item, theme, activeId, handleLogClick, onDragStateChang
                         <GripVertical size={16} />
                     </div>
 
+                    {/* The row's action is a real button so it can be reached and fired from
+                        the keyboard (an <li> with onClick cannot). Its ::after stretches over
+                        the whole row, so the click target is unchanged. */}
+                    <button
+                        type="button"
+                        onClick={() => handleLogClick(item.id)}
+                        aria-current={isHighlighted ? 'true' : undefined}
+                        className="flex items-center gap-2 min-w-0 text-left cursor-pointer after:content-[''] after:absolute after:inset-0"
+                    >
                     {item.coverUrl && (
                         <div className={`w-8 h-[45px] xl:w-10 xl:h-[56px] flex-none rounded-sm border ${theme.isDark ? 'border-gray-800' : 'border-gray-300'} bg-black overflow-hidden opacity-80 group-hover:opacity-100 transition-opacity shadow-sm shrink-0`}>
                             {!thumbError ? (
                                 <img
                                     key={item.coverUrl}
                                     src={getProxiedImageUrl(item.coverUrl)}
-                                    alt={item.title}
+                                    // Decorative: the title sits right beside it, and naming the
+                                    // image as well made every row announce its title twice.
+                                    alt=""
                                     className="w-full h-full object-cover"
                                     loading="eager"
                                     onError={() => setThumbError(true)}
                                 />
                             ) : (
                                 <div className="w-full h-full flex items-center justify-center bg-gray-900">
-                                    <span className="text-[6px] text-gray-600 font-mono uppercase">N/A</span>
+                                    <span className="text-[6px] text-gray-400 font-mono uppercase">N/A</span>
                                 </div>
                             )}
                         </div>
@@ -131,6 +144,7 @@ const QuestListItem = ({ item, theme, activeId, handleLogClick, onDragStateChang
                             <span className={`text-[9px] ${theme.mutedText} uppercase font-mono tracking-widest transition-colors duration-700 truncate`}>{item.status}</span>
                         </div>
                     </div>
+                    </button>
                 </div>
                 <div className="flex items-center gap-2">
                     {isHighlighted && <Sun size={14} className={`${theme.highlightText} animate-spin-slow transition-colors duration-700 shrink-0`} />}
@@ -275,6 +289,14 @@ const App: React.FC = () => {
         }
     });
     const theme = THEMES[currentTheme];
+
+    // The keyboard focus ring (styles/index.css, :focus-visible) draws in the theme's INK.
+    // Set on the document root rather than the dashboard wrapper so the boot, login and
+    // every overlay — including ones that render outside that wrapper — pick it up.
+    useEffect(() => {
+        document.documentElement.style.setProperty('--focus-ring', theme.accentInk);
+        document.documentElement.style.colorScheme = theme.isDark ? 'dark' : 'light';
+    }, [theme.accentInk, theme.isDark]);
 
     const [library, setLibrary] = useState<Quest[]>([]);
     const [activeId, setActiveId] = useState<string | null>(null);
@@ -632,12 +654,19 @@ const App: React.FC = () => {
     const progressPercent = useMemo(() => Math.min(100, Math.round((activeQuest.currentChapter / (activeQuest.totalChapters || 1)) * 100)), [activeQuest]);
     const totalChaptersRead = useMemo(() => library.reduce((acc, item) => acc + (item.currentChapter || 0), 0), [library]);
 
-    // Separate Rank Logic for User
+    // Player rank, plus how far the library is toward the next one — that is what the
+    // EXP bar under the rank name shows. It used to be pinned at scaleX(0.6) whatever the
+    // library held. (A themed `style` field also lived here; nothing read it, and it
+    // compared against 'Sovereign' while every label is upper-case.)
     const playerRank = useMemo(() => {
-        const rawPlayerRank = getPlayerRank(library.length);
-        const rankStyle = getThemedRankStyle(currentTheme, rawPlayerRank.label === 'Sovereign' || rawPlayerRank.label === 'Eclipse' || rawPlayerRank.label === 'Monarch');
-        return { ...rawPlayerRank, name: rawPlayerRank.label, style: rankStyle };
-    }, [library.length, currentTheme]);
+        const titles = library.length;
+        const rawPlayerRank = getPlayerRank(titles);
+        const next = USER_RANKS[USER_RANKS.indexOf(rawPlayerRank) + 1] ?? null;
+        const progress = next
+            ? Math.min(1, Math.max(0, (titles - rawPlayerRank.minTitles) / (next.minTitles - rawPlayerRank.minTitles)))
+            : 1;
+        return { ...rawPlayerRank, name: rawPlayerRank.label, next, progress, titles };
+    }, [library.length]);
 
     const activeQuests = useMemo(() => {
         return library.filter(item => item.status === 'ACTIVE');
@@ -822,7 +851,9 @@ const App: React.FC = () => {
     };
 
     const updateProgress = useCallback(async (amt: number) => {
-        if (!activeQuest.id) return;
+        // DEFAULT_QUEST stands in for an empty library; there is no record to advance, and
+        // activeId is null then, so the PUT would target /api/quests/null.
+        if (!activeQuest.id || activeQuest.id === DEFAULT_QUEST.id || !activeId) return;
         const next = activeQuest.totalChapters > 0
             ? Math.min(Math.max(0, activeQuest.currentChapter + amt), activeQuest.totalChapters)
             : Math.max(0, activeQuest.currentChapter + amt);
@@ -904,7 +935,10 @@ const App: React.FC = () => {
                                 text="AKASHIC"
                                 className="font-orbitron text-lg tracking-[0.3em] font-bold drop-shadow-sm transition-colors duration-700"
                                 animatedGradient={true}
-                                gradientColors={currentTheme === 'LIGHT' ? "from-sky-500 to-cyan-500" : "from-amber-600 via-yellow-400 to-white"}
+                                /* Light used sky-500 -> cyan-500, which measured 2.08:1 on the
+                                   page for 18px text. The wordmark is read, so it takes the ink
+                                   ramp; the shimmer still travels across it. */
+                                gradientColors={theme.isDark ? "from-amber-600 via-yellow-400 to-white" : theme.inkGradient}
                             />
                         </div>
                     </div>
@@ -925,10 +959,28 @@ const App: React.FC = () => {
                                 </span>
                             </div>
                         )}
-                        <button onClick={toggleTheme} className={`w-8 h-8 flex items-center justify-center border ${theme.borderSubtle} ${theme.isDark ? 'bg-white/5 hover:bg-white/10' : 'bg-black/5 hover:bg-black/10'} rounded transition-colors duration-700`}>
+                        <button
+                            type="button"
+                            onClick={toggleTheme}
+                            aria-label={theme.isDark ? 'Switch to light theme' : 'Switch to dark theme'}
+                            title={theme.isDark ? 'Switch to light theme' : 'Switch to dark theme'}
+                            className={`w-8 h-8 flex items-center justify-center border ${theme.borderSubtle} ${theme.isDark ? 'bg-white/5 hover:bg-white/10' : 'bg-black/5 hover:bg-black/10'} rounded transition-colors duration-700`}
+                        >
                             {currentTheme === 'LIGHT' ? <Sun size={14} className="text-sky-600 transition-colors duration-700" /> : <Moon size={14} className="text-amber-400 transition-colors duration-700" />}
                         </button>
-                        <button onClick={() => { setEditingItem(null); setIsModalOpen(true); }} className={`hidden lg:flex px-4 py-1.5 border ${theme.borderSubtle} ${theme.highlightText} ${theme.isDark ? 'hover:bg-white/5' : 'hover:bg-black/5'} transition-colors duration-700 font-mono text-[10px] tracking-widest items-center gap-2 cursor-pointer`}>
+                        {/* Below lg the labelled button would crowd the header, and it used to
+                            simply disappear — leaving phones and tablets with no way to add a
+                            quest at all. The same action as a compact glyph, beside the toggle. */}
+                        <button
+                            type="button"
+                            onClick={() => { setEditingItem(null); setIsModalOpen(true); }}
+                            aria-label="Create gate"
+                            title="Create gate"
+                            className={`lg:hidden w-8 h-8 flex items-center justify-center border ${theme.borderSubtle} ${theme.highlightText} ${theme.isDark ? 'bg-white/5 hover:bg-white/10' : 'bg-black/5 hover:bg-black/10'} rounded transition-colors duration-700 cursor-pointer`}
+                        >
+                            <Plus size={14} />
+                        </button>
+                        <button type="button" onClick={() => { setEditingItem(null); setIsModalOpen(true); }} className={`hidden lg:flex px-4 py-1.5 border ${theme.borderSubtle} ${theme.highlightText} ${theme.isDark ? 'hover:bg-white/5' : 'hover:bg-black/5'} transition-colors duration-700 font-mono text-[10px] tracking-widest items-center gap-2 cursor-pointer`}>
                             <Plus size={12} /> CREATE_GATE
                         </button>
                     </div>
@@ -954,6 +1006,9 @@ const App: React.FC = () => {
     const holoEdge = theme.isDark ? '#ffffff' : '#5a6673';
     const holoSoft = theme.isDark ? '#d8d8de' : '#8d95a1';
 
+    /** Text ink for the mobile HUD plates, which stay dark in both themes. See the HUD. */
+    const hudInk = theme.isDark ? theme.highlightText : 'text-cyan-300';
+
     /**
      * Sidebar collapse. Desktop only — below `lg` the sidebar stacks under the hero
      * rather than sitting beside it, so there is no width to reclaim there and every
@@ -973,7 +1028,14 @@ const App: React.FC = () => {
             <div className={`w-full max-w-[1400px] flex-1 min-h-0 flex flex-col lg:flex-row gap-3 lg:gap-4 pt-2 lg:pt-2 pb-0 ${sidebarCollapsed ? 'lg:mx-auto' : 'lg:ml-auto'}`}>
                 {/* LEFT COLUMN: HERO CANVAS */}
                 <div className="flex-none lg:flex-1 flex flex-col lg:h-full order-1 overflow-visible relative">
-                    <div className="relative z-10 w-full h-full flex flex-col px-4 md:px-6 lg:px-8 justify-between gap-4 overflow-visible pt-8">
+                    {/* --hero-w is the phone card width, and it is HEIGHT-driven as well as
+                        width-driven. Below md the whole hero stack — card, platform, title,
+                        progress, controls — ends 282.6 + 1.583w px down the page (measured),
+                        so for the controls to clear the 28px console bar on the first screen
+                        w can be at most (100dvh - 320px) * 0.632. 240px floors it on short
+                        phones, where the page scrolls instead. The card and the title margin
+                        both read this one value, so the two can never be solved separately. */}
+                    <div className="relative z-10 w-full h-full flex flex-col px-4 md:px-6 lg:px-8 justify-between gap-4 overflow-visible pt-8 [--hero-w:clamp(240px,calc((100dvh_-_320px)_*_0.632),min(85vw,320px))]">
 
                         {/* CENTER: The 3-Column Display (Enhanced Gaps for Tablets) */}
                         <div className="flex-1 min-h-0 flex justify-center items-center gap-4 md:gap-14 lg:gap-6 xl:gap-12 w-full max-w-[1400px] mx-auto px-4">
@@ -997,9 +1059,24 @@ const App: React.FC = () => {
                                 </div>
                             </div>
 
+                            {/* The card opens the editor on double-click/double-tap, and was
+                                reachable no other way from here — so it is also a real control:
+                                focusable, named, and opened with Enter or Space. With an empty
+                                library the placeholder has no record to edit, so the same gesture
+                                (a single one) opens CREATE_GATE instead. */}
                             <div
-                                onDoubleClick={() => { setEditingItem(activeQuest); setIsModalOpen(true); }}
+                                role="button"
+                                tabIndex={0}
+                                aria-label={activeQuest.id === DEFAULT_QUEST.id ? 'Create a new gate' : `Edit ${activeQuest.title}`}
+                                onDoubleClick={() => {
+                                    if (activeQuest.id === DEFAULT_QUEST.id) return;
+                                    setEditingItem(activeQuest); setIsModalOpen(true);
+                                }}
                                 onClick={() => {
+                                    if (activeQuest.id === DEFAULT_QUEST.id) {
+                                        setEditingItem(null); setIsModalOpen(true);
+                                        return;
+                                    }
                                     const now = Date.now();
                                     if (now - lastCoverTap.current < 300) {
                                         setEditingItem(activeQuest);
@@ -1007,7 +1084,13 @@ const App: React.FC = () => {
                                     }
                                     lastCoverTap.current = now;
                                 }}
-                                className="relative flex-none h-full min-h-0 min-w-0 w-[min(85vw,320px)] md:w-full md:max-w-[45%] lg:w-auto lg:max-h-[49vh] aspect-[72/103] self-center flex items-center justify-center transition-all duration-700 ease-out transform-gpu hover:-translate-y-2 perspective-[1000px] group cursor-pointer"
+                                onKeyDown={(e) => {
+                                    if (e.key !== 'Enter' && e.key !== ' ') return;
+                                    e.preventDefault();
+                                    setEditingItem(activeQuest.id === DEFAULT_QUEST.id ? null : activeQuest);
+                                    setIsModalOpen(true);
+                                }}
+                                className="relative flex-none h-full min-h-0 min-w-0 w-[var(--hero-w)] md:w-full md:max-w-[45%] lg:w-auto lg:max-h-[49vh] aspect-[72/103] self-center flex items-center justify-center transition-all duration-700 ease-out transform-gpu hover:-translate-y-2 perspective-[1000px] group cursor-pointer"
                                 style={{
                                     // The mat, and the card's two rest states, as variables so the
                                     // hover transition stays a CSS transition — an inline style
@@ -1066,9 +1149,12 @@ const App: React.FC = () => {
                                     The small `translate-y` matters: these gradients are anchored at
                                     the element's BOTTOM, and with the platform lowered that bottom
                                     sat 24px above the disc, so the brightest part of the beam was
-                                    glowing in the empty gap instead of on the emitter. */}
+                                    glowing in the empty gap instead of on the emitter. Below lg the
+                                    platform now sits lower (see the dais), and 35% is what keeps this
+                                    origin on its emitter there too: the origin lands 2.146w(t - 0.34)
+                                    below the container, the emitter ~0.01-0.03w below it. */}
                                 <div
-                                    className={`absolute left-1/2 -translate-x-1/2 bottom-0 translate-y-[30%] md:translate-y-[35%] [@media(min-width:768px)_and_(min-height:1000px)]:translate-y-[37%] w-[170%] h-[150%] pointer-events-none z-0 opacity-100 transition-opacity duration-700 ${theme.isDark ? 'mix-blend-screen' : ''}`}
+                                    className={`absolute left-1/2 -translate-x-1/2 bottom-0 translate-y-[35%] [@media(min-width:1024px)_and_(min-height:1000px)]:translate-y-[37%] w-[170%] h-[150%] pointer-events-none z-0 opacity-100 transition-opacity duration-700 ${theme.isDark ? 'mix-blend-screen' : ''}`}
                                     style={{
                                         // Two ellipses sharing the emitter as their origin: a tight
                                         // bright core at the disc, and a wider dimmer spread above it.
@@ -1112,8 +1198,23 @@ const App: React.FC = () => {
                                     theme={theme}
                                     paused={overlayOpen}
                                     /* Narrower on a phone: the card is nearly the whole
-                                       screen there, so 190% of it overflowed the viewport. */
-                                    className="absolute left-1/2 bottom-0 -translate-x-1/2 translate-y-[26%] w-[118%] aspect-[5/1] z-0 md:translate-y-[56%] md:w-[195%] [@media(min-width:768px)_and_(min-height:1000px)]:translate-y-[68%]"
+                                       screen there, so 190% of it overflowed the viewport.
+
+                                       Below lg the card keeps its fixed 20px lift and the
+                                       PLATFORM moves instead: lifting the card further would
+                                       push its reticles under the fixed header, which they
+                                       already clear by only 4px. Solved rather than tuned.
+                                       With canvas height h = width/5, the body's back rim
+                                       projects at 0.139h below the canvas top and the front
+                                       floor ring at 0.848h, so a translate of t puts the back
+                                       rim h(t - 0.861) from the container's bottom. The card's
+                                       base is at -20px; t = 0.80 (phone, h = 0.236w) and
+                                       t = 0.82 (md, h = 0.39w) leave it ~14px above the rim,
+                                       where the old 26% / 56% / 68% had it 25px, 15px and 1px
+                                       INTO the platform. The title block below makes room for
+                                       the front ring that this pushes down; see its margin.
+                                       lg+ is unchanged: the card lifts by 7.4vh there. */
+                                    className="absolute left-1/2 bottom-0 -translate-x-1/2 translate-y-[80%] w-[118%] aspect-[5/1] z-0 md:translate-y-[82%] md:w-[195%] lg:translate-y-[56%] [@media(min-width:1024px)_and_(min-height:1000px)]:translate-y-[68%]"
                                 />
 
                                 {/* Outer wrapper: pulsing glow border around the cover (SHARP + PARALLAX FLOAT).
@@ -1183,10 +1284,19 @@ const App: React.FC = () => {
                                                 onError={() => setCoverImgError(true)}
                                             />
                                         ) : (
-                                            /* Fallback placeholder — shown when proxy/CDN fails */
-                                            <div className="w-full h-full flex flex-col items-center justify-center gap-2 bg-gradient-to-b from-gray-900 to-black">
-                                                <span className="text-2xl opacity-20">📖</span>
-                                                <span className="text-[9px] font-mono text-white/20 uppercase tracking-widest">Cover Unavailable</span>
+                                            /* Fallback plate — shown when the proxy/CDN fails, and for the
+                                               empty-library placeholder, which has no cover at all. The
+                                               plate is deliberately dark in both themes (it stands in for
+                                               cover art), so its text is fixed pale ink at a readable
+                                               value rather than white at 20%. */
+                                            <div className="w-full h-full flex flex-col items-center justify-center gap-2 px-6 text-center bg-gradient-to-b from-gray-900 to-black">
+                                                <span className="text-2xl opacity-30" aria-hidden="true">📖</span>
+                                                <span className="text-[9px] font-mono text-slate-300 uppercase tracking-widest">
+                                                    {activeQuest.id === DEFAULT_QUEST.id ? 'Archive empty' : 'Cover unavailable'}
+                                                </span>
+                                                {activeQuest.id === DEFAULT_QUEST.id && (
+                                                    <span className="text-[9px] font-mono text-slate-400 uppercase tracking-widest">Tap to open a gate</span>
+                                                )}
                                             </div>
                                         )}
 
@@ -1273,13 +1383,25 @@ const App: React.FC = () => {
 
                         </div>
 
-                        <div className="w-full max-w-3xl mx-auto flex flex-col gap-3 shrink-0 pointer-events-auto">
+                        {/* Below lg the lowered platform's front ring reaches under the
+                            container, so the title steps down to clear it: front ring at
+                            h(t - 0.152) below the container, plus 12px, minus the gap-4 already
+                            there. Phone: 0.236w * 0.648 with w = --hero-w. md: 0.39w * 0.668
+                            with w = 45% of (100vw - 112px), the centre row's width. */}
+                        <div className="w-full max-w-3xl mx-auto flex flex-col gap-3 shrink-0 pointer-events-auto mt-[calc(var(--hero-w)_*_0.153_-_4px)] md:mt-[calc((100vw_-_112px)_*_0.1172_-_4px)] lg:mt-0">
                             {/* Title — overflow-visible to prevent last character clipping */}
                             <div className="text-center flex flex-col items-center justify-end px-6 w-full min-h-[3rem] sm:min-h-[4rem] xl:min-h-[5rem] overflow-visible">
+                                {/* Gradient text is read, so on light it runs on the ink ramp: the
+                                    decorative cyan measured 1.84:1 here, and long titles drop to
+                                    16px where even 3:1 is not enough. Dark keeps its amber sheen
+                                    (6.3:1 at the dimmest stop) via the inline image, which wins
+                                    over the class gradient. */}
                                 <h1
-                                    className={`${activeQuest.title.length > 42 ? 'text-base sm:text-lg xl:text-2xl' : activeQuest.title.length > 25 ? 'text-xl sm:text-2xl xl:text-3xl' : 'text-2xl sm:text-3xl xl:text-4xl'} font-black font-orbitron tracking-tighter text-transparent bg-clip-text uppercase leading-[1.15] line-clamp-2 w-full`}
+                                    className={`${activeQuest.title.length > 42 ? 'text-base sm:text-lg xl:text-2xl' : activeQuest.title.length > 25 ? 'text-xl sm:text-2xl xl:text-3xl' : 'text-2xl sm:text-3xl xl:text-4xl'} font-black font-orbitron tracking-tighter text-transparent bg-clip-text bg-gradient-to-r ${theme.isDark ? '' : theme.inkGradient} uppercase leading-[1.15] line-clamp-2 w-full`}
                                     style={{
-                                        backgroundImage: `linear-gradient(90deg, ${theme.accentColor}cc, ${theme.accentColor}, ${theme.accentColor}cc)`,
+                                        backgroundImage: theme.isDark
+                                            ? `linear-gradient(90deg, ${theme.accentColor}cc, ${theme.accentColor}, ${theme.accentColor}cc)`
+                                            : undefined,
                                         textTransform: 'uppercase',
                                         paddingBottom: '0.1em', // prevents descender clipping
                                     }}
@@ -1307,16 +1429,23 @@ const App: React.FC = () => {
                             </div>
 
                             {/* Controls */}
+                            {/* The two chapter steppers are icon-only, so the glyph IS the label:
+                                it draws in the ink (the decorative cyan was 2.36:1, under the 3:1
+                                a meaningful graphic needs) and the button carries the name. */}
                             <div className="flex gap-2 w-full justify-center mt-2">
                                 <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => updateProgress(-1)}
+                                    type="button"
+                                    aria-label="Previous chapter"
+                                    title="Previous chapter"
                                     className={`w-14 h-12 flex-none border ${theme.isDark ? 'bg-black/80 backdrop-blur-md' : 'bg-white/80 backdrop-blur-md'} flex items-center justify-center transition-colors cursor-pointer rounded-sm`}
                                     style={{ borderColor: `${theme.accentColor}33` }}
                                 >
-                                    <CalibratedMinusIcon size={20} color={theme.accentColor} />
+                                    <CalibratedMinusIcon size={20} color={theme.accentInk} />
                                 </motion.button>
                                 <motion.button
                                     whileHover={{ scale: 1.02 }}
                                     whileTap={{ scale: 0.96 }}
+                                    type="button"
                                     onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleEnterPortal(activeQuest.link || '#'); }}
                                     disabled={!activeQuest.link || activeQuest.link === '#'}
                                     /* Near-black on the fill, not white. Both accents are mid-luminance
@@ -1331,10 +1460,13 @@ const App: React.FC = () => {
                                     <InfinitePortalIcon size={18} className="group-hover:rotate-12 transition-transform" /> ENTER PORTAL
                                 </motion.button>
                                 <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => updateProgress(1)}
+                                    type="button"
+                                    aria-label="Next chapter"
+                                    title="Next chapter"
                                     className={`w-14 h-12 flex-none border ${theme.isDark ? 'bg-black/80 backdrop-blur-md' : 'bg-white/80 backdrop-blur-md'} flex items-center justify-center transition-colors cursor-pointer rounded-sm`}
                                     style={{ borderColor: `${theme.accentColor}33` }}
                                 >
-                                    <CalibratedPlusIcon size={20} color={theme.accentColor} />
+                                    <CalibratedPlusIcon size={20} color={theme.accentInk} />
                                 </motion.button>
 
                             </div>
@@ -1362,7 +1494,11 @@ const App: React.FC = () => {
                         aria-controls="system-sidebar"
                         aria-label={sidebarCollapsed ? 'Expand system panel' : 'Collapse system panel'}
                         title={sidebarCollapsed ? 'Expand system panel' : 'Collapse system panel'}
-                        className={`hidden lg:flex top-1/2 -translate-y-1/2 z-30 w-5 h-20 items-center justify-center bg-transparent border-0 opacity-40 hover:opacity-100 focus-visible:opacity-100 transition-opacity duration-300 cursor-pointer outline-none ${sidebarCollapsed ? 'fixed right-1' : 'absolute -left-5'}`}
+                        /* Rest opacity is 70, not 40: the glyph is the control's only visible
+                           form, and at 40 it measured 2.25:1 on the void and 1.88:1 on the page,
+                           under the 3:1 a UI graphic needs. 70 clears it in both (4.97 / 3.31)
+                           and still sits back until pointed at. */
+                        className={`hidden lg:flex top-1/2 -translate-y-1/2 z-30 w-5 h-20 items-center justify-center bg-transparent border-0 opacity-70 hover:opacity-100 focus-visible:opacity-100 transition-opacity duration-300 cursor-pointer ${sidebarCollapsed ? 'fixed right-1' : 'absolute -left-5'}`}
                         style={{ color: theme.accentInk }}
                     >
                         {sidebarCollapsed ? <ChevronLeft size={18} /> : <ChevronRight size={18} />}
@@ -1399,11 +1535,29 @@ const App: React.FC = () => {
                                     <div className="flex flex-col items-start text-left flex-1 min-w-0 sm:-mt-6">
                                         <div className={`text-[10px] ${theme.highlightText} font-black font-mono uppercase tracking-[0.2em] mb-1 mt-0.5 opacity-90 transition-colors duration-700 whitespace-nowrap`}>ENTITY CLASSIFICATION</div>
                                         <div className="text-3xl sm:text-4xl lg:text-2xl xl:text-4xl font-black font-manifold tracking-tight drop-shadow-sm flex items-baseline leading-normal overflow-hidden h-[1.5em] sm:h-[1.5em] lg:h-[1.8em] xl:h-[1.5em]">
-                                            <span className={`inline-block pr-[6px] text-transparent bg-clip-text bg-gradient-to-r ${theme.gradient} transition-colors duration-700 truncate`} style={{ lineHeight: '1.2' }}>{playerRank.name}</span>
+                                            <span className={`inline-block pr-[6px] text-transparent bg-clip-text bg-gradient-to-r ${theme.inkGradient} transition-colors duration-700 truncate`} style={{ lineHeight: '1.2' }}>{playerRank.name}</span>
                                         </div>
                                     </div>
                                 </div>
-                                <div className="mt-3"><div className={`flex justify-between text-[8px] font-mono ${theme.highlightText} mb-0.5 transition-colors duration-700 uppercase`}><span>EXP ACQUIRED</span><span>{totalChaptersRead} PTS</span></div><div className={`h-1 w-full ${theme.isDark ? 'bg-gray-800' : 'bg-gray-200'} transition-colors duration-700 overflow-hidden relative`}><div className={`h-full w-full bg-gradient-to-r ${theme.gradient} transition-transform duration-700 origin-left`} style={{ transform: `scaleX(0.6)`, boxShadow: emphasis(theme, accentRGB(theme), 0.6) }} /></div></div>
+                                {/* EXP readout. The bar is progress toward the NEXT rank — ranks are
+                                    earned by titles tracked, so that is the number that moves it —
+                                    and the right-hand legend says so. It was a fixed 60% before. */}
+                                <div className="mt-3">
+                                    <div className={`flex justify-between gap-3 text-[8px] font-mono ${theme.highlightText} mb-0.5 transition-colors duration-700 uppercase`}>
+                                        <span className="truncate">EXP ACQUIRED · {totalChaptersRead} PTS</span>
+                                        <span className="shrink-0">{playerRank.next ? `NEXT ${playerRank.next.label} ${playerRank.titles}/${playerRank.next.minTitles}` : 'MAX RANK'}</span>
+                                    </div>
+                                    <div
+                                        role="progressbar"
+                                        aria-label={playerRank.next ? `Progress to ${playerRank.next.label}` : 'Highest rank reached'}
+                                        aria-valuemin={0}
+                                        aria-valuemax={100}
+                                        aria-valuenow={Math.round(playerRank.progress * 100)}
+                                        className={`h-1 w-full ${theme.isDark ? 'bg-gray-800' : 'bg-gray-200'} transition-colors duration-700 overflow-hidden relative`}
+                                    >
+                                        <div className={`h-full w-full bg-gradient-to-r ${theme.gradient} transition-transform duration-700 origin-left`} style={{ transform: `scaleX(${playerRank.progress})`, boxShadow: emphasis(theme, accentRGB(theme), 0.6) }} />
+                                    </div>
+                                </div>
                             </div>
                         </SystemFrame>
                     </div>
@@ -1433,7 +1587,7 @@ const App: React.FC = () => {
                                     </div>
                                     <div className="flex flex-col gap-0.5">
                                         <div className={`text-[8px] ${theme.mutedText} font-mono uppercase tracking-widest`}>GATE</div>
-                                        <div className={`text-xl font-bold font-mono tabular-nums leading-tight ${activeQuest.status === 'CONQUERED' ? 'text-gray-400' : theme.highlightText}`}>{activeQuest.status === 'CONQUERED' ? 'CLOSED' : 'OPEN'}</div>
+                                        <div className={`text-xl font-bold font-mono tabular-nums leading-tight ${activeQuest.status === 'CONQUERED' ? theme.mutedText : theme.highlightText}`}>{activeQuest.status === 'CONQUERED' ? 'CLOSED' : 'OPEN'}</div>
                                         <div className={`text-[7px] ${theme.mutedText} font-mono uppercase`}>STATUS</div>
                                     </div>
                                 </div>
@@ -1611,6 +1765,9 @@ const App: React.FC = () => {
                                 {!isMobileHudExpanded ? (
                                     <motion.button
                                         key="fab-button"
+                                        type="button"
+                                        aria-label="Open system menu"
+                                        aria-expanded={false}
                                         layoutId="mobile-hud-wrapper"
                                         initial={{ scale: 0, opacity: 0 }}
                                         animate={{ scale: 1, opacity: 1 }}
@@ -1634,8 +1791,13 @@ const App: React.FC = () => {
                                         style={{ originX: 1, originY: 1 }}
                                         className="pointer-events-auto w-full isolate flex items-end gap-2"
                                     >
+                                        {/* These plates are dark in BOTH themes — a HUD terminal, like
+                                            the compass face — so on light their text cannot take the
+                                            page ink (#155e75 on this near-black teal is ~2:1). Fixed
+                                            pale cyan there instead; dark keeps its amber. */}
                                         {/* ── DIVINE SPIRE ── */}
                                         <motion.button
+                                            type="button"
                                             aria-label="Open Divine Spire"
                                             onClick={() => { setIsSpireOpen(true); setIsMobileHudExpanded(false); }}
                                             whileTap={{ scale: 0.96 }}
@@ -1665,19 +1827,22 @@ const App: React.FC = () => {
                                             />
                                             {/* Content */}
                                             <div className="relative z-10 h-full flex items-center gap-3 px-4">
-                                                <LayoutTemplate size={20} className={`shrink-0 ${theme.highlightText} drop-shadow-[0_0_8px_currentColor]`} />
+                                                <LayoutTemplate size={20} className={`shrink-0 ${hudInk} drop-shadow-[0_0_8px_currentColor]`} />
                                                 <div className="flex flex-col items-start leading-none min-w-0">
-                                                    <span className={`font-mono text-[8px] tracking-[0.25em] uppercase ${theme.highlightText} opacity-60 mb-1`}>TERMINAL.EXECUTE</span>
-                                                    <span className={`font-orbitron font-black text-[11px] tracking-[0.2em] uppercase ${theme.highlightText} drop-shadow-[0_0_6px_currentColor]`}>DIVINE_SPIRE</span>
+                                                    <span className={`font-mono text-[8px] tracking-[0.25em] uppercase ${hudInk} opacity-80 mb-1`}>TERMINAL.EXECUTE</span>
+                                                    <span className={`font-orbitron font-black text-[11px] tracking-[0.2em] uppercase ${hudInk} drop-shadow-[0_0_6px_currentColor]`}>DIVINE_SPIRE</span>
                                                 </div>
                                             </div>
                                         </motion.button>
 
-                                        {/* ── CREATE GATE ── */}
+                                        {/* ── ENTER PORTAL ── */}
                                         <motion.button
+                                            type="button"
+                                            aria-label="Enter portal"
+                                            disabled={!activeQuest.link || activeQuest.link === '#'}
                                             onClick={() => { handleEnterPortal(activeQuest.link || '#'); setIsMobileHudExpanded(false); }}
                                             whileTap={{ scale: 0.94 }}
-                                            className="relative w-16 h-16 overflow-hidden backdrop-blur-md flex flex-col items-center justify-center gap-1"
+                                            className="relative w-16 h-16 overflow-hidden backdrop-blur-md flex flex-col items-center justify-center gap-1 disabled:opacity-40"
                                             style={{
                                                 background: theme.isDark ? 'rgba(10,8,2,0.88)' : 'rgba(0,18,24,0.88)',
                                                 border: `1px solid ${theme.isDark ? 'rgba(245,158,11,0.55)' : 'rgba(6,182,212,0.55)'}`,
@@ -1691,12 +1856,14 @@ const App: React.FC = () => {
                                             <svg className="absolute top-0 right-0 pointer-events-none" width="9" height="9" viewBox="0 0 9 9"><polyline points="9,9 9,0 0,0" fill="none" stroke={theme.isDark ? 'rgba(245,158,11,0.7)' : 'rgba(6,182,212,0.7)'} strokeWidth="1.5" /></svg>
                                             <svg className="absolute bottom-0 left-0 pointer-events-none" width="9" height="9" viewBox="0 0 9 9"><polyline points="0,0 0,9 9,9" fill="none" stroke={theme.isDark ? 'rgba(245,158,11,0.3)' : 'rgba(6,182,212,0.3)'} strokeWidth="1.5" /></svg>
                                             <svg className="absolute bottom-0 right-0 pointer-events-none" width="9" height="9" viewBox="0 0 9 9"><polyline points="9,0 9,9 0,9" fill="none" stroke={theme.isDark ? 'rgba(245,158,11,0.3)' : 'rgba(6,182,212,0.3)'} strokeWidth="1.5" /></svg>
-                                            <ExternalLink size={20} strokeWidth={2} className={`${theme.highlightText} drop-shadow-[0_0_8px_currentColor]`} />
-                                            <span className={`font-mono text-[6px] tracking-[0.15em] ${theme.highlightText} opacity-70 uppercase`}>PORTAL</span>
+                                            <ExternalLink size={20} strokeWidth={2} className={`${hudInk} drop-shadow-[0_0_8px_currentColor]`} aria-hidden="true" />
+                                            <span className={`font-mono text-[6px] tracking-[0.15em] ${hudInk} uppercase`} aria-hidden="true">PORTAL</span>
                                         </motion.button>
 
                                         {/* ── CLOSE / COLLAPSE ── */}
                                         <motion.button
+                                            type="button"
+                                            aria-label="Close system menu"
                                             onClick={() => setIsMobileHudExpanded(false)}
                                             whileTap={{ scale: 0.94 }}
                                             className="relative w-16 h-16 overflow-hidden backdrop-blur-md flex flex-col items-center justify-center gap-1"
@@ -1711,8 +1878,9 @@ const App: React.FC = () => {
                                             <svg className="absolute top-0 right-0 pointer-events-none" width="9" height="9" viewBox="0 0 9 9"><polyline points="9,9 9,0 0,0" fill="none" stroke="rgba(239,68,68,0.6)" strokeWidth="1.5" /></svg>
                                             <svg className="absolute bottom-0 left-0 pointer-events-none" width="9" height="9" viewBox="0 0 9 9"><polyline points="0,0 0,9 9,9" fill="none" stroke="rgba(239,68,68,0.25)" strokeWidth="1.5" /></svg>
                                             <svg className="absolute bottom-0 right-0 pointer-events-none" width="9" height="9" viewBox="0 0 9 9"><polyline points="9,0 9,9 0,9" fill="none" stroke="rgba(239,68,68,0.25)" strokeWidth="1.5" /></svg>
-                                            <X size={20} strokeWidth={2} className="text-red-500 drop-shadow-[0_0_8px_rgba(239,68,68,0.8)]" />
-                                            <span className="font-mono text-[6px] tracking-[0.15em] text-red-500/70 uppercase">CLOSE</span>
+                                            <X size={20} strokeWidth={2} className="text-red-500 drop-shadow-[0_0_8px_rgba(239,68,68,0.8)]" aria-hidden="true" />
+                                            {/* red-400 at full strength: red-500 at 70% was 3.0:1 on this plate. */}
+                                            <span className="font-mono text-[6px] tracking-[0.15em] text-red-400 uppercase" aria-hidden="true">CLOSE</span>
                                         </motion.button>
                                     </motion.div>
                                 )}

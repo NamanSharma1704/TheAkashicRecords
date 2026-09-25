@@ -4,6 +4,7 @@ import { X, Users, Share2, Zap, Edit2, Target, AlignLeft, Check, Activity, Exter
 import { getProxiedImageUrl, cleanDescription } from '../../utils/api';
 import { systemFetch } from '../../utils/auth';
 import { sanitizeHtml } from '../../utils/sanitize';
+import { useDialogFocus } from '../../utils/useDialogFocus';
 
 import { Theme, Quest } from '../../core/types';
 import ScrambleText from '../system/ScrambleText';
@@ -69,7 +70,7 @@ const CharacterAvatar: React.FC<{ char: AniListCharacter; theme: Theme }> = ({ c
                     onError={() => setFailed(true)}
                 />
             ) : (
-                <span className={`text-lg font-black font-mono ${theme.isDark ? 'text-white/70' : 'text-slate-600'}`}>{initial}</span>
+                <span className={`text-lg font-black font-mono ${theme.isDark ? 'text-white/70' : 'text-slate-900'}`}>{initial}</span>
             )}
         </div>
     );
@@ -78,13 +79,13 @@ const CharacterAvatar: React.FC<{ char: AniListCharacter; theme: Theme }> = ({ c
 // Unified numbered section header: index chip + icon + label + fading rule, with an
 // optional right-aligned action (e.g. the synopsis MODIFY button, a scanning indicator).
 const SectionHeader: React.FC<{ index: string; icon: React.ReactNode; label: string; theme: Theme; children?: React.ReactNode }> = ({ index, icon, label, theme, children }) => {
-    const accent = theme.id === 'LIGHT' ? 'text-sky-400' : 'text-amber-400';
+    const accent = theme.id === 'LIGHT' ? 'text-cyan-950' : 'text-amber-400';
     const rule = theme.id === 'LIGHT' ? 'from-sky-400/40' : 'from-amber-400/40';
     return (
         <div className="flex items-center gap-3 mb-6 px-1">
             <span className={`text-[11px] font-black font-mono ${accent}`}>{index}</span>
             <span className="opacity-60 flex items-center" aria-hidden="true">{icon}</span>
-            <h2 className={`text-[10px] font-mono tracking-[0.3em] font-bold uppercase ${theme.isDark ? 'text-white/80' : 'text-slate-700'}`}>{label}</h2>
+            <h2 className={`text-[10px] font-mono tracking-[0.3em] font-bold uppercase ${theme.isDark ? 'text-white/80' : 'text-slate-800'}`}>{label}</h2>
             <span className={`flex-1 h-px bg-gradient-to-r ${rule} to-transparent`} />
             {children}
         </div>
@@ -100,41 +101,10 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
     const dialogRef = useRef<HTMLDivElement>(null);
     const prefersReduced = useReducedMotion();
 
-    // Dialog behaviour: focus the panel on open, trap Tab inside it, close on Escape,
-    // and restore focus to whatever was focused before it opened.
-    useEffect(() => {
-        if (!isOpen) return;
-        const node = dialogRef.current;
-        const previouslyFocused = document.activeElement as HTMLElement | null;
-        node?.focus();
-        const handleKey = (e: KeyboardEvent) => {
-            if (e.key === 'Escape') {
-                e.stopPropagation();
-                onClose();
-                return;
-            }
-            if (e.key === 'Tab' && node) {
-                const focusables = node.querySelectorAll<HTMLElement>(
-                    'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])'
-                );
-                if (focusables.length === 0) return;
-                const first = focusables[0];
-                const last = focusables[focusables.length - 1];
-                if (e.shiftKey && document.activeElement === first) {
-                    e.preventDefault();
-                    last.focus();
-                } else if (!e.shiftKey && document.activeElement === last) {
-                    e.preventDefault();
-                    first.focus();
-                }
-            }
-        };
-        document.addEventListener('keydown', handleKey);
-        return () => {
-            document.removeEventListener('keydown', handleKey);
-            previouslyFocused?.focus?.();
-        };
-    }, [isOpen, onClose]);
+    // Dialog behaviour: focus the panel on open, trap Tab inside it, close on Escape, and
+    // restore focus on close. Shared with the other dialogs so that when the gate editor
+    // opens on top of this view, Escape closes only the editor.
+    useDialogFocus(dialogRef, isOpen, onClose);
 
     const isCustomCover = !!(quest?.coverUrl && quest.coverUrl !== "");
     const finalCover = isCustomCover ? quest.coverUrl : (media?.coverImage?.extraLarge || media?.coverImage?.large || quest?.coverUrl || "");
@@ -268,10 +238,10 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
         const finished = ['FINISHED', 'COMPLETED'].includes((status || '').toUpperCase());
         if (finished) return theme.isDark
             ? 'bg-cyan-500/10 text-cyan-400 border-cyan-500/30'
-            : 'bg-indigo-500/10 text-indigo-600 border-indigo-500/30';
+            : 'bg-indigo-500/10 text-indigo-800 border-indigo-500/30';
         return theme.isDark
             ? 'bg-amber-500/10 text-amber-400 border-amber-500/30'
-            : 'bg-sky-500/10 text-sky-600 border-sky-500/30';
+            : 'bg-sky-500/10 text-sky-900 border-sky-500/30';
     };
 
     const containerVariants = {
@@ -288,7 +258,9 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
     // panels are soft frosted cards (not bright white) so they don't glare — mirroring
     // how dark mode's panels are subtle recesses rather than high-contrast blocks.
     const panelClass = theme.isDark ? 'bg-black/30 border-white/5' : 'bg-white/35 border-white/40';
-    const labelClass = `text-[10px] font-mono tracking-widest uppercase ${theme.isDark ? 'text-white/40' : 'text-slate-600'}`;
+    // white/40 measured 3.8:1 on the amber-tinted panels; /60 clears AA and still sits a
+    // tier below the values it labels.
+    const labelClass = `text-[10px] font-mono tracking-widest uppercase ${theme.isDark ? 'text-white/60' : 'text-slate-600'}`;
     const metricCellClass = `flex flex-col gap-1 p-3 rounded-lg border ${theme.isDark ? 'bg-white/5 border-white/5' : 'bg-white/45 border-white/40'}`;
 
     // Theme accent shorthands + this quest's rank sigil.
@@ -296,13 +268,20 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
     const accentBg = theme.id === 'LIGHT' ? 'bg-sky-400' : 'bg-amber-400';
     const rank = getQuestRankObj(quest);
 
+    // Accent TEXT for this view. Light mode here is the authored mid-slate cinematic backdrop
+    // (#949db0-#a6aec0), not the drafting table, so the app's page ink (#155e75) measured
+    // 3.3:1 on it and every -400/-600 rung washed out. The backdrop stays exactly as authored;
+    // the ink steps deeper instead (cyan-950: 5.8:1 on the lightest backdrop stop). Neutral
+    // text sitting directly on the backdrop likewise uses slate-800 rather than -500/-600.
+    const inkText = theme.isDark ? theme.highlightText : 'text-cyan-950';
+
     // Theme-aware text so nothing goes white-on-light in LIGHT mode.
     const strongText = theme.isDark ? 'text-white' : 'text-slate-900';
-    const faintText = theme.isDark ? 'text-white/40' : 'text-slate-500';
+    const faintText = theme.isDark ? 'text-white/50' : 'text-slate-600';
     const iconText = theme.isDark ? 'text-white' : 'text-slate-700';
     const chipBtn = theme.isDark
         ? 'bg-white/5 hover:bg-white/10 border-white/10 text-white hover:border-white/30'
-        : 'bg-slate-900/5 hover:bg-slate-900/10 border-slate-300 text-slate-700 hover:border-slate-500';
+        : 'bg-slate-900/5 hover:bg-slate-900/10 border-slate-400 text-slate-900 hover:border-slate-600';
 
     // EXP-style progress readout.
     const totalCh = quest.totalChapters || 0;
@@ -360,11 +339,11 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
             <div className="absolute top-0 left-0 w-full h-20 flex justify-between items-center px-4 sm:px-8 z-50 pointer-events-none" style={{ paddingTop: 'max(16px, env(safe-area-inset-top))' }}>
                 <div className="flex items-center gap-3">
                     <div className={`w-1 h-8 ${theme.id === 'LIGHT' ? 'bg-sky-500' : 'bg-amber-500'} shadow-[0_0_15px_currentColor]`} />
-                    <div className={`font-mono text-[10px] tracking-[0.4em] ${theme.highlightText} font-bold uppercase`}>SYSTEM.ARCHIVE_INSPECTION</div>
+                    <div className={`font-mono text-[10px] tracking-[0.4em] ${inkText} font-bold uppercase`}>SYSTEM.ARCHIVE_INSPECTION</div>
                 </div>
                 <button
                     onClick={onClose}
-                    className={`pointer-events-auto w-9 h-9 flex items-center justify-center border ${theme.borderSubtle} ${theme.mutedText} hover:${theme.highlightText} hover:border-current transition-colors cursor-pointer`}
+                    className={`pointer-events-auto w-9 h-9 flex items-center justify-center border ${theme.borderSubtle} ${theme.isDark ? `${theme.mutedText} hover:${theme.highlightText}` : 'text-slate-800 hover:text-cyan-950'} hover:border-current transition-colors cursor-pointer`}
                     title="Close Details"
                     aria-label="Close Details"
                 >
@@ -387,7 +366,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                             {/* Data spine */}
                             <div className="hidden md:flex flex-col justify-between items-center absolute top-4 bottom-4 -left-5 z-20">
                                 {[`CH ${quest.currentChapter}`, `${Math.round(progress * 100)}%`, quest.status].map((s, i) => (
-                                    <span key={i} className={`manhwa-detail-spine text-[9px] font-mono tracking-[0.15em] ${theme.id === 'LIGHT' ? 'text-sky-600/80' : 'text-amber-400/80'}`}>{s}</span>
+                                    <span key={i} className={`manhwa-detail-spine text-[9px] font-mono tracking-[0.15em] ${theme.id === 'LIGHT' ? 'text-cyan-950' : 'text-amber-400/80'}`}>{s}</span>
                                 ))}
                             </div>
 
@@ -419,7 +398,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                             {/* Rank emblem */}
                             <div className="flex items-center gap-3 mb-4">
                                 <RankSigil rank={rank} theme={theme} size={44} />
-                                <span className={`text-[10px] font-mono tracking-[0.25em] uppercase font-bold ${theme.id === 'LIGHT' ? 'text-sky-600' : 'text-amber-400'}`}>RANK {rank.name}</span>
+                                <span className={`text-[10px] font-mono tracking-[0.25em] uppercase font-bold ${theme.id === 'LIGHT' ? 'text-cyan-950' : 'text-amber-400'}`}>RANK {rank.name}</span>
                             </div>
                             <div className="flex flex-wrap gap-2 justify-center md:justify-start mb-4">
                                 {media?.status && (
@@ -427,7 +406,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                         {media.status.replace('_', ' ')}
                                     </span>
                                 )}
-                                <span className={`px-2 py-0.5 border text-[9px] font-mono tracking-widest uppercase ${theme.isDark ? 'border-white/10 bg-white/5 text-white/70' : 'border-slate-300 bg-slate-900/5 text-slate-600'}`}>
+                                <span className={`px-2 py-0.5 border text-[9px] font-mono tracking-widest uppercase ${theme.isDark ? 'border-white/10 bg-white/5 text-white/70' : 'border-slate-400 bg-slate-900/5 text-slate-800'}`}>
                                     CLASS: {quest.classType}
                                 </span>
                             </div>
@@ -436,7 +415,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                 {quest.title || media?.title?.english || media?.title?.romaji}
                             </h1>
                             {media?.title?.native && (
-                                <h2 className={`text-xl md:text-2xl font-medium mb-8 ${theme.isDark ? 'text-white/50' : 'text-slate-500'}`}>
+                                <h2 className={`text-xl md:text-2xl font-medium mb-8 ${theme.isDark ? 'text-white/60' : 'text-slate-800'}`}>
                                     {media.title.native}
                                 </h2>
                             )}
@@ -448,11 +427,11 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                         href={quest.link}
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        className={`px-8 py-3 rounded-sm border ${theme.isDark ? 'bg-amber-500/25 hover:bg-amber-500/40 border-amber-500/60 shadow-[0_0_20px_rgba(245,158,11,0.35)]' : 'bg-sky-500/25 hover:bg-sky-500/40 border-sky-500/60 shadow-[0_0_20px_rgba(14,165,233,0.35)]'} ${theme.highlightText} font-bold transition flex items-center gap-3 group/dive hover:scale-105 active:scale-95 cursor-pointer`}
+                                        className={`px-8 py-3 rounded-sm border ${theme.isDark ? 'bg-amber-500/25 hover:bg-amber-500/40 border-amber-500/60 shadow-[0_0_20px_rgba(245,158,11,0.35)]' : 'bg-sky-500/25 hover:bg-sky-500/40 border-sky-500/60 shadow-[0_0_20px_rgba(14,165,233,0.35)]'} ${inkText} font-bold transition flex items-center gap-3 group/dive hover:scale-105 active:scale-95 cursor-pointer`}
                                         title="Enter Portal"
                                         aria-label="Enter Portal"
                                     >
-                                        <Zap size={16} className={`${theme.highlightText} group-hover/dive:animate-pulse`} />
+                                        <Zap size={16} aria-hidden="true" className={`${inkText} group-hover/dive:animate-pulse`} />
                                         <ScrambleText text="ENTER_PORTAL" className="text-[10px] tracking-[0.2em] font-orbitron" />
                                     </a>
                                 )}
@@ -489,7 +468,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                 <div className="flex justify-between items-end mb-4">
                                     <div className="flex items-center gap-2">
                                         <div className={`w-1.5 h-1.5 rounded-full ${theme.id === 'LIGHT' ? 'bg-sky-400' : 'bg-amber-400'} animate-pulse shadow-[0_0_10px_currentColor]`} />
-                                        <div className={`text-[10px] font-mono font-bold tracking-[0.4em] ${theme.highlightText} uppercase`}>SYNCHRONIZATION_THREAD</div>
+                                        <div className={`text-[10px] font-mono font-bold tracking-[0.4em] ${inkText} uppercase`}>SYNCHRONIZATION_THREAD</div>
                                     </div>
                                     <div className={`text-[10px] font-mono ${faintText} tracking-widest uppercase`}>
                                         STATUS: {quest.status}
@@ -501,10 +480,10 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                     <span className={`text-5xl font-black ${strongText} tabular-nums tracking-tighter drop-shadow-md`}>
                                         {quest.currentChapter}
                                     </span>
-                                    <span className={`text-xl font-medium tracking-widest ${theme.isDark ? 'text-white/30' : 'text-slate-400'}`}>
+                                    <span className={`text-xl font-medium tracking-widest ${theme.isDark ? 'text-white/50' : 'text-slate-600'}`}>
                                         / {(quest.totalChapters || 0) > 0 ? quest.totalChapters : '∞'}
                                     </span>
-                                    <span className={`ml-auto text-sm font-mono font-bold ${theme.highlightText}`}>
+                                    <span className={`ml-auto text-sm font-mono font-bold ${inkText}`}>
                                         {Math.round(progress * 100)}% SYNC
                                     </span>
                                 </div>
@@ -539,7 +518,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                         }
                                         setIsEditingSynopsis(!isEditingSynopsis);
                                     }}
-                                    className={`shrink-0 min-h-[28px] px-3 py-1.5 rounded border text-[9px] font-mono tracking-widest uppercase transition-colors flex items-center gap-2 ${theme.isDark ? 'border-white/10 hover:border-white/30 text-white/50 hover:text-white' : 'border-slate-300 hover:border-slate-500 text-slate-500 hover:text-slate-800'}`}
+                                    className={`shrink-0 min-h-[28px] px-3 py-1.5 rounded border text-[9px] font-mono tracking-widest uppercase transition-colors flex items-center gap-2 ${theme.isDark ? 'border-white/10 hover:border-white/30 text-white/60 hover:text-white' : 'border-slate-400 hover:border-slate-600 text-slate-700 hover:text-slate-900'}`}
                                 >
                                     {isEditingSynopsis ? <><Check size={12} /> SAVE_OVERRIDE</> : <><Edit2 size={12} /> MODIFY</>}
                                 </button>
@@ -571,9 +550,10 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                             {/* RECORD METRICS (AniList-derived: score, year, chapters, source) */}
                             {(isLoadingMedia || media) && (
                                 <div className={`p-6 backdrop-blur-xl rounded-xl flex flex-col gap-5 border ${panelClass}`}>
-                                    <div className="flex items-center gap-2 opacity-60">
-                                        <Activity size={16} className={theme.isDark ? 'text-white' : 'text-slate-700'} />
-                                        <span className={`text-[10px] font-mono tracking-[0.3em] font-bold uppercase ${theme.isDark ? 'text-white' : 'text-slate-700'}`}>RECORD_METRICS</span>
+                                    {/* Tiered by colour, not opacity-60: faded, the light label measured 2.7:1. */}
+                                    <div className="flex items-center gap-2">
+                                        <Activity size={16} aria-hidden="true" className={theme.isDark ? 'text-white/60' : 'text-slate-700'} />
+                                        <span className={`text-[10px] font-mono tracking-[0.3em] font-bold uppercase ${theme.isDark ? 'text-white/60' : 'text-slate-700'}`}>RECORD_METRICS</span>
                                     </div>
 
                                     {isLoadingMedia ? (
@@ -591,8 +571,8 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                                 <div className="flex flex-col gap-2">
                                                     <div className="flex justify-between items-baseline">
                                                         <span className={labelClass}>RESONANCE</span>
-                                                        <span className={`font-mono font-bold ${theme.highlightText}`}>
-                                                            {media.averageScore}<span className="text-white/30 text-xs">/100</span>
+                                                        <span className={`font-mono font-bold ${inkText}`}>
+                                                            {media.averageScore}<span className={`text-xs ${theme.isDark ? 'text-white/50' : 'text-slate-600'}`}>/100</span>
                                                         </span>
                                                     </div>
                                                     <div className="h-1.5 w-full bg-white/10 rounded-full overflow-hidden shadow-inner">
@@ -619,7 +599,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                                         <div className={metricCellClass}>
                                                             <span className={labelClass}>DEPTH</span>
                                                             <span className={`text-lg font-black ${strongText} tabular-nums leading-none`}>
-                                                                {media.chapters}<span className={`text-xs ml-1 ${theme.isDark ? 'text-white/30' : 'text-slate-400'}`}>CH</span>
+                                                                {media.chapters}<span className={`text-xs ml-1 ${theme.isDark ? 'text-white/50' : 'text-slate-600'}`}>CH</span>
                                                             </span>
                                                         </div>
                                                     ) : null}
@@ -632,7 +612,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                                     href={media.siteUrl}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
-                                                    className={`flex items-center justify-between px-3 py-2 rounded-lg border transition-colors group/src ${theme.isDark ? 'border-white/10 hover:border-white/30 text-white/60 hover:text-white' : 'border-slate-300 hover:border-slate-500 text-slate-500 hover:text-slate-800'}`}
+                                                    className={`flex items-center justify-between px-3 py-2 rounded-lg border transition-colors group/src ${theme.isDark ? 'border-white/10 hover:border-white/30 text-white/60 hover:text-white' : 'border-slate-400 hover:border-slate-600 text-slate-700 hover:text-slate-900'}`}
                                                     title="Open source record"
                                                 >
                                                     <span className="text-[9px] font-mono tracking-widest uppercase">VIEW_SOURCE</span>
@@ -652,7 +632,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                         <span key={genre} className={`px-3 py-1 text-[10px] font-mono rounded-full border ${theme.isDark ? 'border-white/10 bg-white/5 text-white/70' : 'border-white/40 bg-white/40 text-slate-700'}`}>
                                             {genre}
                                         </span>
-                                    )) : <span className={`text-xs ${theme.isDark ? 'text-white/20' : 'text-slate-400'}`}>{isLoadingMedia ? 'SCANNING...' : 'UNKNOWN'}</span>}
+                                    )) : <span className={`text-xs ${theme.isDark ? 'text-white/50' : 'text-slate-600'}`}>{isLoadingMedia ? 'SCANNING...' : 'UNKNOWN'}</span>}
                                 </div>
                             </div>
                         </div>
@@ -665,7 +645,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                 {isLoadingMedia && (
                                     <div className="shrink-0 flex items-center gap-2">
                                         <div className={`w-2 h-2 rounded-full ${theme.id === 'LIGHT' ? 'bg-sky-500' : 'bg-amber-500'} animate-ping`} />
-                                        <span className={`text-[8px] font-mono tracking-widest ${theme.isDark ? 'text-white/40' : 'text-slate-500'}`}>SCANNING_ARCHIVES…</span>
+                                        <span className={`text-[8px] font-mono tracking-widest ${theme.isDark ? 'text-white/60' : 'text-slate-800'}`}>SCANNING_ARCHIVES…</span>
                                     </div>
                                 )}
                             </SectionHeader>
@@ -679,8 +659,8 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                         <Users size={18} className={theme.isDark ? 'text-white/30' : 'text-slate-500'} aria-hidden="true" />
                                     </div>
                                     <div className="flex flex-col gap-1">
-                                        <span className={`text-[10px] font-mono tracking-[0.3em] uppercase ${theme.isDark ? 'text-white/50' : 'text-slate-600'}`}>No entities on record</span>
-                                        <span className={`text-[9px] font-mono tracking-widest uppercase ${theme.isDark ? 'text-white/40' : 'text-slate-500'}`}>External archive link unavailable, retry later</span>
+                                        <span className={`text-[10px] font-mono tracking-[0.3em] uppercase ${theme.isDark ? 'text-white/60' : 'text-slate-800'}`}>No entities on record</span>
+                                        <span className={`text-[9px] font-mono tracking-widest uppercase ${theme.isDark ? 'text-white/50' : 'text-slate-800'}`}>External archive link unavailable, retry later</span>
                                     </div>
                                 </div>
                             ) : (
@@ -716,7 +696,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                     {similarQuests.length > 0 && (
                         <motion.div variants={itemVariants} className="mt-8">
                                 <SectionHeader index="03" icon={<Share2 size={16} className={iconText} />} label="SIMILAR_RECORDS" theme={theme}>
-                                    <span className={`shrink-0 text-[9px] font-mono tracking-widest uppercase border px-2 py-0.5 rounded ${theme.isDark ? 'border-white/20 text-white' : 'border-slate-300 text-slate-600'}`}>
+                                    <span className={`shrink-0 text-[9px] font-mono tracking-widest uppercase border px-2 py-0.5 rounded ${theme.isDark ? 'border-white/20 text-white' : 'border-slate-400 text-slate-800'}`}>
                                         DATABASE_SYNC: {quest.classType}
                                     </span>
                                 </SectionHeader>
@@ -742,7 +722,9 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                                 <div className="text-[10px] font-bold truncate text-white uppercase">
                                                     {rec.title}
                                                 </div>
-                                                <div className={`text-[8px] font-mono mt-1 uppercase ${theme.highlightText}`}>
+                                                {/* The card is always a dark scrim over art, so light mode takes fixed pale ink here:
+                                                    the page ink (#155e75) on near-black was ~2.6:1. */}
+                                                <div className={`text-[8px] font-mono mt-1 uppercase ${theme.isDark ? theme.highlightText : 'text-cyan-300'}`}>
                                                     {rec.status}
                                                 </div>
                                             </div>

@@ -87,10 +87,12 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, theme, onTogg
         }
     };
 
-    // Field styling shared by both inputs, so they stay identical.
+    // Field styling shared by both inputs, so they stay identical. Placeholders use the same
+    // values as the gate modal's: white/20 and slate-400 measured ~1.9:1 and ~2.4:1, and a
+    // placeholder is text the sweep cannot see (it is not a text node), so it went unchecked.
     const fieldClass = `w-full ${theme.inputBg} border ${theme.borderSubtle} px-3 py-2.5 outline-none
         focus:border-current transition-colors duration-700 font-mono text-sm peer
-        ${theme.isDark ? 'text-white placeholder-white/20' : 'text-slate-900 placeholder-slate-400'}`;
+        ${theme.isDark ? 'text-white placeholder:text-gray-400' : 'text-slate-900 placeholder:text-slate-600'}`;
 
     return (
         <div className={`fixed inset-0 z-[200] ${theme.appBg} font-mono overflow-y-auto hide-scrollbar transition-colors duration-700`}>
@@ -102,8 +104,10 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, theme, onTogg
             {onToggleTheme && (
                 <div className="absolute top-4 right-4 sm:top-6 sm:right-6 z-20">
                     <button
+                        type="button"
                         onClick={onToggleTheme}
-                        aria-label="Toggle theme"
+                        aria-label={theme.isDark ? 'Switch to light theme' : 'Switch to dark theme'}
+                        title={theme.isDark ? 'Switch to light theme' : 'Switch to dark theme'}
                         className={`w-8 h-8 flex items-center justify-center border ${theme.borderSubtle} ${theme.isDark ? 'bg-white/5 hover:bg-white/10' : 'bg-black/5 hover:bg-black/10'} rounded transition-colors duration-700`}
                     >
                         {theme.isDark
@@ -172,12 +176,14 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, theme, onTogg
                                 <div className="space-y-5">
                                     <div className="space-y-2">
                                         <label
+                                            htmlFor="login-username"
                                             className="text-[10px] tracking-[0.3em] uppercase flex items-center gap-2 font-bold"
                                             style={{ color: theme.accentInk }}
                                         >
-                                            <Terminal size={11} /> Hunter_ID
+                                            <Terminal size={11} aria-hidden="true" /> Hunter_ID
                                         </label>
                                         <input
+                                            id="login-username"
                                             type="text"
                                             value={username}
                                             onChange={(e) => setUsername(e.target.value)}
@@ -192,12 +198,14 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, theme, onTogg
 
                                     <div className="space-y-2">
                                         <label
+                                            htmlFor="login-password"
                                             className="text-[10px] tracking-[0.3em] uppercase flex items-center gap-2 font-bold"
                                             style={{ color: theme.accentInk }}
                                         >
-                                            <Key size={11} /> Access_Key
+                                            <Key size={11} aria-hidden="true" /> Access_Key
                                         </label>
                                         <input
+                                            id="login-password"
                                             type="password"
                                             value={password}
                                             onChange={(e) => setPassword(e.target.value)}
@@ -220,7 +228,9 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, theme, onTogg
                                         animate={{ opacity: 1, x: [0, -6, 6, -4, 4, 0] }}
                                         transition={{ duration: 0.4, ease: 'easeOut' }}
                                         role="alert"
-                                        className={`p-3 border-l-2 border-red-500 text-red-500 text-[10px] tracking-[0.2em] font-bold uppercase ${theme.isDark ? 'bg-red-950/30' : 'bg-red-50'}`}
+                                        /* red-500 on red-50 measures 3.44:1, short of AA for 10px
+                                           text; red-700 there is 5.9:1. The void keeps red-500 (5.2:1). */
+                                        className={`p-3 border-l-2 border-red-500 text-[10px] tracking-[0.2em] font-bold uppercase ${theme.isDark ? 'bg-red-950/30 text-red-500' : 'bg-red-50 text-red-700'}`}
                                     >
                                         [!] SYS_ERR: {error}
                                     </motion.div>
@@ -270,8 +280,11 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, theme, onTogg
                             <div className={`pt-5 border-t ${theme.borderSubtle} flex flex-wrap gap-2 justify-between items-center text-[8px] tracking-[0.2em] uppercase font-bold ${theme.mutedText}`}>
                                 <span>Ver_1.08 [Alpha]</span>
                                 <span className="hidden sm:inline">Encrypted_Channel</span>
-                                <span>
-                                    Node_<span style={{ color: theme.accentInk }} className="animate-pulse">Online</span>
+                                {/* The pulse is on a status dot, not the word: pulsing the text
+                                    dragged it to 2.3:1 at the bottom of every cycle. */}
+                                <span className="flex items-center gap-1.5">
+                                    <span className="w-1 h-1 rounded-full animate-pulse" style={{ backgroundColor: theme.accentColor }} aria-hidden="true" />
+                                    <span>Node_<span style={{ color: theme.accentInk }}>Online</span></span>
                                 </span>
                             </div>
                         </div>

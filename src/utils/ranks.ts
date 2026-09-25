@@ -16,13 +16,6 @@ export const getPlayerRank = (titlesTracked: number) => {
     return [...USER_RANKS].reverse().find(r => titlesTracked >= r.minTitles) || USER_RANKS[0];
 };
 
-export const getThemedRankStyle = (theme: string, isRankS: boolean = false) => {
-    // Light inverts to dark text on a pale ground; every other case is the dark treatment.
-    // (A 'SYSTEM' branch used to sit here returning exactly the same pair as 'DARK'.)
-    if (theme === 'LIGHT') return isRankS ? 'text-amber-600' : 'text-slate-800';
-    return isRankS ? 'text-amber-400' : 'text-cyan-400';
-};
-
 export const calculateQuestRank = (quest: Quest) => {
     const chapters = quest.totalChapters || 0;
     if (chapters > 500) return 'S';

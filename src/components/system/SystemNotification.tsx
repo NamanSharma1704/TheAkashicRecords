@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { Theme } from '../../core/types';
 import SystemFrame from './SystemFrame';
 import { AlertTriangle, CheckCircle, Info, XCircle, Terminal } from 'lucide-react';
+import { useDialogFocus } from '../../utils/useDialogFocus';
 
 interface SystemNotificationProps {
     isOpen: boolean;
@@ -20,6 +21,13 @@ const SystemNotification: React.FC<SystemNotificationProps> = ({
     onClose,
     theme
 }) => {
+    const dialogRef = useRef<HTMLDivElement>(null);
+    // A confirmation opens on its SAFE choice, so a stray Enter cannot purge a record or
+    // end a session; a plain notice opens on its only button. Escape declines.
+    const cancelRef = useRef<HTMLButtonElement>(null);
+    const confirmRef = useRef<HTMLButtonElement>(null);
+    useDialogFocus(dialogRef, isOpen, () => onClose(false), confirm ? cancelRef : confirmRef);
+
     if (!isOpen) return null;
 
     const getIcon = () => {
@@ -32,7 +40,14 @@ const SystemNotification: React.FC<SystemNotificationProps> = ({
     };
 
     return (
-        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
+        <div
+            ref={dialogRef}
+            role={confirm || type === 'WARNING' || type === 'ERROR' ? 'alertdialog' : 'dialog'}
+            aria-modal="true"
+            aria-labelledby="sys-note-message"
+            tabIndex={-1}
+            className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300 outline-none"
+        >
             <div className={`w-full max-w-md ${theme.id === 'LIGHT' ? 'shadow-2xl' : 'shadow-[0_0_30px_rgba(0,0,0,0.5)]'}`}>
                 <SystemFrame theme={theme} variant="full">
                     <div className="p-6">
@@ -45,18 +60,20 @@ const SystemNotification: React.FC<SystemNotificationProps> = ({
                             {/* borderSubtle is a border-COLOUR class, and this div has no border
                                 width — the hairline never rendered. It needs a background. */}
                             <div className={`h-[1px] flex-1 mx-4 ${theme.isDark ? 'bg-white/10' : 'bg-slate-300'}`} />
-                            <div className="flex gap-1">
-                                <div className={`w-1 h-1 rounded-full ${theme.highlightText}`} />
-                                <div className={`w-1 h-1 rounded-full ${theme.highlightText} opacity-50`} />
+                            {/* These took a TEXT colour class on an empty div, so they never
+                                painted; they are fills, and take the decorative accent. */}
+                            <div className="flex gap-1" aria-hidden="true">
+                                <div className="w-1 h-1 rounded-full" style={{ backgroundColor: theme.accentColor }} />
+                                <div className="w-1 h-1 rounded-full opacity-50" style={{ backgroundColor: theme.accentColor }} />
                             </div>
                         </div>
 
                         {/* Content */}
                         <div className="flex items-start gap-4 mb-8">
-                            <div className={`p-3 rounded-full ${theme.isDark ? 'bg-white/5' : 'bg-black/5'} border ${theme.borderSubtle}`}>
+                            <div className={`p-3 rounded-full ${theme.isDark ? 'bg-white/5' : 'bg-black/5'} border ${theme.borderSubtle}`} aria-hidden="true">
                                 {getIcon()}
                             </div>
-                            <div className="flex-1 pt-1 space-y-2.5">
+                            <div id="sys-note-message" className="flex-1 pt-1 space-y-2.5">
                                 {message.split('\n').map((paragraph, index) => {
                                     if (!paragraph.trim()) return null;
                                     
@@ -87,6 +104,8 @@ const SystemNotification: React.FC<SystemNotificationProps> = ({
                         <div className="flex items-center justify-end gap-3 mt-4">
                             {confirm && (
                                 <button
+                                    ref={cancelRef}
+                                    type="button"
                                     onClick={() => onClose(false)}
                                     className={`px-6 py-2 border ${theme.borderSubtle} ${theme.mutedText} hover:${theme.headingText} ${theme.isDark ? 'hover:bg-white/5' : 'hover:bg-black/5'} transition-all font-mono text-[10px] tracking-widest uppercase font-bold`}
                                 >
@@ -94,6 +113,8 @@ const SystemNotification: React.FC<SystemNotificationProps> = ({
                                 </button>
                             )}
                             <button
+                                ref={confirmRef}
+                                type="button"
                                 onClick={() => onClose(true)}
                                 className={`px-8 py-2 border ${theme.border} ${theme.isDark ? 'bg-amber-500/10' : 'bg-sky-500/10'} ${theme.highlightText} ${theme.isDark ? 'hover:bg-white/5' : 'hover:bg-black/5'} transition-all font-mono text-[10px] tracking-widest uppercase font-bold border-l-4`}
                             >

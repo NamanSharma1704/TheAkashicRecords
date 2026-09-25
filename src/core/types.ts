@@ -15,7 +15,16 @@ export interface Theme {
     borderSubtle: string;
     overlay: string;
     starColor: string;
+    /** Decorative gradient: progress fills, washes, glows. Never used as a text fill. */
     gradient: string;
+    /**
+     * Gradient for TEXT painted with bg-clip-text — the gradient counterpart of `accentInk`.
+     * `gradient` is decorative, and on light its cyan stops measured 1.8:1 to 2.4:1 against
+     * the page, failing even the 3:1 large-text floor. Gradient text is read, so it runs on
+     * an ink-range ramp instead. Identical to `gradient` on dark, where amber through white
+     * already clears 6:1; on light every stop clears 4.5:1 against the darkest page stop.
+     */
+    inkGradient: string;
     /**
      * Decorative accent: fills, large shapes, glows. High chroma, no contrast duty.
      */

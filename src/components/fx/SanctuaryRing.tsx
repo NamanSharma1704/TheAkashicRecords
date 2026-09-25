@@ -2,7 +2,10 @@ import React from 'react';
 import { Theme } from '../../core/types';
 
 const SanctuaryRing: React.FC<{ theme: Theme; isPaused?: boolean }> = ({ theme, isPaused = false }) => {
-    const color = theme.isDark ? '#ffffff' : '#000000';
+    // Slate rather than black on the page: the light field is contour linework in the
+    // page's own cool ink (theme.starColor, slate-600), like the nodes and ripples beside it.
+    // Pure black read as grime on the drafting table.
+    const color = theme.isDark ? '#ffffff' : `rgb(${theme.starColor})`;
     return (
         <div className="fixed inset-0 pointer-events-none z-0 flex items-center justify-center opacity-20 transition-opacity duration-700">
             <svg viewBox="0 0 500 500" className={`w-[150vh] h-[150vh] ${!isPaused ? 'animate-[spin_120s_linear_infinite]' : ''}`}>

@@ -46,10 +46,12 @@ const HoloDais: React.FC<HoloDaisProps> = ({ theme, paused = false, className = 
         if (!host) return;
 
         let cancelled = false;
-        let frameId = 0;
         let idleId: number | null = null;
         let timerId: number | null = null;
         let observer: ResizeObserver | null = null;
+        // Effect-scoped so teardown can cancel a resize that is still queued; otherwise
+        // it could land after dispose and repaint through a released renderer.
+        let sizeQueued = 0;
 
         const reducedMotion = typeof window.matchMedia === 'function'
             && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -74,7 +76,6 @@ const HoloDais: React.FC<HoloDaisProps> = ({ theme, paused = false, className = 
             // Coalesced into a frame: resizing reallocates the drawing buffer, and a
             // ResizeObserver fires in bursts (a window drag, or the sidebar's width
             // transition next door), so this caps it at one reallocation per frame.
-            let sizeQueued = 0;
             const applySize = () => {
                 const r = host.getBoundingClientRect();
                 handle.resize(Math.round(r.width), Math.round(r.height));
@@ -89,20 +90,12 @@ const HoloDais: React.FC<HoloDaisProps> = ({ theme, paused = false, className = 
                 observer.observe(host);
             }
 
+            // One still frame, then hand over. The animation loop belongs to the effect
+            // below and ONLY to it: this used to start a second, unconditional loop here,
+            // so every frame rendered twice, the sweep and spin ran at double speed, and
+            // `paused` / off-screen / hidden-tab stopped only one of the two.
+            handle.frame(0);
             if (!cancelled) setLive(true);
-
-            if (reducedMotion) {
-                handle.frame(0);
-                return;
-            }
-            let last = performance.now();
-            const loop = (now: number) => {
-                const dt = Math.min((now - last) / 1000, 0.05);
-                last = now;
-                handle.frame(dt);
-                frameId = requestAnimationFrame(loop);
-            };
-            frameId = requestAnimationFrame(loop);
         };
 
         // Defer past first paint so the chunk never competes with the dashboard render.
@@ -117,12 +110,12 @@ const HoloDais: React.FC<HoloDaisProps> = ({ theme, paused = false, className = 
 
         return () => {
             cancelled = true;
-            if (frameId) cancelAnimationFrame(frameId);
             if (timerId !== null) window.clearTimeout(timerId);
             const cancelIdle = (window as unknown as {
                 cancelIdleCallback?: (id: number) => void;
             }).cancelIdleCallback;
             if (idleId !== null && typeof cancelIdle === 'function') cancelIdle(idleId);
+            if (sizeQueued) cancelAnimationFrame(sizeQueued);
             observer?.disconnect();
             handleRef.current?.dispose();
             handleRef.current = null;
@@ -168,7 +161,10 @@ const HoloDais: React.FC<HoloDaisProps> = ({ theme, paused = false, className = 
         };
     }, [live, paused, onScreen]);
 
-    const accent = theme.accentColor;
+    // The stand-in borrows the PLATFORM's light, not the theme accent: the real dais is
+    // white on the void and the same neutral slate as the card chrome on the page, so an
+    // accent-tinted placeholder changed hue at the moment of the swap.
+    const glow = theme.isDark ? '#ffffff' : '#5a6673';
 
     return (
         <div
@@ -184,9 +180,9 @@ const HoloDais: React.FC<HoloDaisProps> = ({ theme, paused = false, className = 
                 style={{
                     opacity: live ? 0 : 1,
                     background: [
-                        `radial-gradient(ellipse 34% 40% at 50% 62%, ${accent}66, transparent 70%)`,
-                        `radial-gradient(ellipse 52% 58% at 50% 62%, ${accent}30, transparent 72%)`,
-                        `radial-gradient(ellipse 76% 82% at 50% 62%, ${accent}1a, transparent 74%)`,
+                        `radial-gradient(ellipse 34% 40% at 50% 62%, ${glow}55, transparent 70%)`,
+                        `radial-gradient(ellipse 52% 58% at 50% 62%, ${glow}28, transparent 72%)`,
+                        `radial-gradient(ellipse 76% 82% at 50% 62%, ${glow}14, transparent 74%)`,
                     ].join(','),
                 }}
             />

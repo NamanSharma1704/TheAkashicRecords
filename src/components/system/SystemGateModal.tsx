@@ -4,6 +4,7 @@ import { Theme, Quest } from '../../core/types';
 import SystemFrame from './SystemFrame';
 import { X, RefreshCw, AlertCircle, CheckCircle, Database, Search, Activity, Trash2 } from 'lucide-react';
 import { fetchMangadex, fetchAuto, fetchAnilistCover, fetchJikanCover, getProxiedImageUrl, cleanDescription } from '../../utils/api';
+import { useDialogFocus } from '../../utils/useDialogFocus';
 
 interface SystemGateModalProps {
     isOpen: boolean;
@@ -34,6 +35,15 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
     // Debounced cover URL — only update image preview 600ms after user stops typing
     const [debouncedCoverUrl, setDebouncedCoverUrl] = useState(formData.coverUrl || '');
     const coverDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    // Keyboard: focus lands in the first field, Tab stays in the form, Escape closes.
+    const dialogRef = useRef<HTMLDivElement>(null);
+    const firstFieldRef = useRef<HTMLInputElement>(null);
+    useDialogFocus(dialogRef, true, onClose, firstFieldRef);
+
+    // Red for errors and the required-field flag, per theme: red-500 is 3.8:1 on the
+    // white panel, below AA for this 8-10px type; red-700 there is 6.5:1.
+    const errorInk = theme.isDark ? 'text-red-400' : 'text-red-700';
 
     // Sync debounced URL whenever coverUrl changes
     useEffect(() => {
@@ -230,11 +240,16 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
     };
 
     return (
-        <motion.div 
+        <motion.div
+            ref={dialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="gate-modal-title"
+            tabIndex={-1}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[500] flex items-center justify-center bg-black/60 backdrop-blur-sm p-3 sm:p-4"
+            className="fixed inset-0 z-[500] flex items-center justify-center bg-black/60 backdrop-blur-sm p-3 sm:p-4 outline-none"
         >
             <SystemFrame 
                 variant="full" 
@@ -258,14 +273,17 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
 
                     {/* ── HEADER ── */}
                     <div className={`flex justify-between items-center px-5 py-3.5 border-b ${theme.borderSubtle} shrink-0 ${theme.isDark ? 'bg-black/30' : 'bg-slate-100/50'}`}>
-                        <span className={`${theme.highlightText} font-mono tracking-widest text-[11px] sm:text-sm flex items-center gap-2.5`}>
-                            <span className={`w-1.5 h-1.5 rounded-full ${isScanning ? (theme.isDark ? 'bg-amber-500 animate-ping' : 'bg-cyan-500 animate-ping') : (theme.isDark ? 'bg-amber-500/50' : 'bg-cyan-500/50')}`} />
-                            <RefreshCw size={12} className={isScanning ? 'animate-spin' : ''} />
-                            {isScanning ? 'ANALYZING_COORDINATES...' : 'SYSTEM_OVERWRITE'}
+                        <span id="gate-modal-title" aria-live="polite" className={`${theme.highlightText} font-mono tracking-widest text-[11px] sm:text-sm flex items-center gap-2.5`}>
+                            <span aria-hidden="true" className={`w-1.5 h-1.5 rounded-full ${isScanning ? (theme.isDark ? 'bg-amber-500 animate-ping' : 'bg-cyan-500 animate-ping') : (theme.isDark ? 'bg-amber-500/50' : 'bg-cyan-500/50')}`} />
+                            <RefreshCw size={12} aria-hidden="true" className={isScanning ? 'animate-spin' : ''} />
+                            {isScanning ? 'ANALYZING_COORDINATES...' : (initialData ? 'SYSTEM_OVERWRITE' : 'CREATE_GATE')}
                         </span>
                         <button
+                            type="button"
                             onClick={onClose}
-                            className={`w-7 h-7 flex items-center justify-center border ${theme.borderSubtle} ${theme.mutedText} hover:${theme.headingText} hover:border-white/30 transition-all duration-300 rounded-sm active:scale-90`}
+                            aria-label="Close"
+                            title="Close"
+                            className={`w-7 h-7 flex items-center justify-center border ${theme.borderSubtle} ${theme.mutedText} hover:${theme.headingText} ${theme.isDark ? 'hover:border-white/30' : 'hover:border-slate-500'} transition-all duration-300 rounded-sm active:scale-90`}
                         >
                             <X size={14} />
                         </button>
@@ -276,7 +294,7 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
 
                         {/* VALIDATION ERROR */}
                         {error && (
-                            <div className={`bg-red-500/10 border-l-2 border-red-500 ${theme.isDark ? 'text-red-400' : 'text-red-700'} px-3 py-2 text-[9px] tracking-[0.2em] font-orbitron flex items-center gap-2.5`}>
+                            <div role="alert" className={`bg-red-500/10 border-l-2 border-red-500 ${errorInk} px-3 py-2 text-[9px] tracking-[0.2em] font-orbitron flex items-center gap-2.5`}>
                                 <AlertCircle size={12} className="shrink-0" />
                                 <span className="uppercase">{error}</span>
                             </div>
@@ -285,14 +303,17 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
                         {/* ── LINK COORDINATES ── */}
                         <div className="space-y-2">
                             <div className={`flex justify-between items-center pb-1.5 border-b ${theme.borderSubtle}`}>
-                                <label className={`${theme.mutedText} uppercase text-[8px] tracking-[0.3em] font-orbitron`}>Link_Coordinates</label>
-                                <div className="flex gap-0.5">
+                                <label htmlFor="quest-link" className={`${theme.mutedText} uppercase text-[8px] tracking-[0.3em] font-orbitron`}>Link_Coordinates</label>
+                                <div className="flex gap-0.5" role="group" aria-label="Metadata source">
                                     {['AUTO', 'ANILIST', 'MAL', 'MANGADEX'].map(src => (
                                         <button
                                             key={src}
                                             type="button"
                                             onClick={() => setSearchSource(src)}
-                                            className={`text-[7px] font-orbitron font-bold tracking-widest px-2 py-0.5 transition-all duration-300 ${searchSource === src ? `${theme.highlightText} border-b ${theme.isDark ? 'border-amber-500' : 'border-cyan-500'}` : `${theme.mutedText} hover:text-white`}`}
+                                            aria-pressed={searchSource === src}
+                                            /* The hover was `hover:text-white` in both themes, which on
+                                               the light panel turned the label white-on-white. */
+                                            className={`text-[7px] font-orbitron font-bold tracking-widest px-2 py-0.5 transition-all duration-300 ${searchSource === src ? `${theme.highlightText} border-b ${theme.isDark ? 'border-amber-500' : 'border-cyan-500'}` : `${theme.mutedText} ${theme.isDark ? 'hover:text-white' : 'hover:text-slate-900'}`}`}
                                         >
                                             {src}
                                         </button>
@@ -303,7 +324,10 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
                             <div className="relative group">
                                 <input
                                     id="quest-link"
+                                    ref={firstFieldRef}
                                     name="link"
+                                    type="url"
+                                    inputMode="url"
                                     value={formData.link}
                                     onChange={handleChange}
                                     placeholder="ENTER_PROTOCOL_URL"
@@ -332,9 +356,9 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
 
                             {/* SCAN STATUS */}
                             {scanStatus && scanStatus !== 'IDLE' && (
-                                <div className="pt-0.5">
-                                    {scanStatus === 'ENCRYPTED' && <div className={`${theme.highlightText} text-[8px] tracking-[0.2em] font-orbitron flex items-center gap-2 animate-pulse`}><AlertCircle size={9} /> COORDINATES ENCRYPTED. INPUT TRUE NAME.</div>}
-                                    {scanStatus === 'ERROR' && <div className="text-red-500 text-[8px] tracking-[0.2em] font-orbitron flex items-center gap-2"><AlertCircle size={9} /> SCAN FAILED. NO MATCH FOUND.</div>}
+                                <div className="pt-0.5" role="status">
+                                    {scanStatus === 'ENCRYPTED' && <div className={`${theme.highlightText} text-[8px] tracking-[0.2em] font-orbitron flex items-center gap-2`}><AlertCircle size={9} aria-hidden="true" /> COORDINATES ENCRYPTED. INPUT TRUE NAME.</div>}
+                                    {scanStatus === 'ERROR' && <div className={`${errorInk} text-[8px] tracking-[0.2em] font-orbitron flex items-center gap-2`}><AlertCircle size={9} aria-hidden="true" /> SCAN FAILED. NO MATCH FOUND.</div>}
                                     {scanStatus === 'SUCCESS' && <div className={`${theme.highlightText} text-[8px] tracking-[0.2em] font-orbitron flex items-center gap-2`}><CheckCircle size={9} /> SCAN COMPLETE. ARTIFACT ACQUIRED.</div>}
                                 </div>
                             )}
@@ -342,9 +366,10 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
 
                         {/* ── ARTIFACT NOMENCLATURE ── */}
                         <div className="space-y-2">
-                            <label className={`block ${theme.mutedText} uppercase text-[8px] tracking-[0.3em] font-orbitron`}>Artifact_Nomenclature</label>
+                            <label htmlFor="quest-title" className={`block ${theme.mutedText} uppercase text-[8px] tracking-[0.3em] font-orbitron`}>Artifact_Nomenclature</label>
                             <div className="relative group">
                                 <input
+                                    id="quest-title"
                                     name="title"
                                     value={formData.title}
                                     onChange={handleChange}
@@ -356,8 +381,11 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
                                     type="button"
                                     onClick={handleTitleSearch}
                                     disabled={!formData.title || isScanning}
-                                    className={`absolute right-0 top-0 h-full px-4 border-l ${theme.borderSubtle} ${theme.isDark ? 'text-amber-500 hover:bg-amber-500/20' : 'text-cyan-600 hover:bg-cyan-500/20'} disabled:opacity-50 transition-all duration-300 flex items-center justify-center ${theme.isDark ? 'bg-black/50' : 'bg-slate-200/60'} active:scale-90 group/archive drop-shadow-sm`}
-                                    title="Search Archives for Cover Art"
+                                    /* Icon-only, so the glyph is the label: the ink, not cyan-600,
+                                       which sat at 3.4:1 on this plate with no margin. */
+                                    className={`absolute right-0 top-0 h-full px-4 border-l ${theme.borderSubtle} ${theme.isDark ? 'text-amber-500 hover:bg-amber-500/20' : 'text-[#155e75] hover:bg-cyan-500/20'} disabled:opacity-50 transition-all duration-300 flex items-center justify-center ${theme.isDark ? 'bg-black/50' : 'bg-slate-200/60'} active:scale-90 group/archive drop-shadow-sm`}
+                                    title="Search archives by title"
+                                    aria-label="Search archives by title"
                                 >
                                     <Database size={16} className="group-hover/archive:scale-110 transition-transform" />
                                 </button>
@@ -371,10 +399,13 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
 
                             {/* WISDOM FLOOR */}
                             <div className="space-y-1.5">
-                                <label className={`block ${theme.mutedText} uppercase text-[8px] font-orbitron tracking-[0.2em] truncate`}>Wisdom_Floor</label>
+                                <label htmlFor="quest-current" className={`block ${theme.mutedText} uppercase text-[8px] font-orbitron tracking-[0.2em] truncate`}>Wisdom_Floor</label>
                                 <div className="relative">
                                     <input
+                                        id="quest-current"
                                         name="currentChapter"
+                                        min={0}
+                                        aria-describedby="quest-current-hint"
                                         type="number"
                                         value={formData.currentChapter}
                                         onFocus={(e) => e.target.select()}
@@ -383,15 +414,20 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
                                     />
                                     <div className={`absolute top-0 right-0 w-0.5 h-full bg-gradient-to-b ${theme.isDark ? 'from-amber-500/30' : 'from-cyan-500/30'} to-transparent`} />
                                 </div>
-                                <p className={`text-[7px] font-orbitron ${theme.mutedText} tracking-widest opacity-50`}>CURRENT CH.</p>
+                                {/* Full-strength muted ink: at opacity-50 these hints fell to ~2.3:1. */}
+                                <p id="quest-current-hint" className={`text-[7px] font-orbitron ${theme.mutedText} tracking-widest`}>CURRENT CH.</p>
                             </div>
 
                             {/* TERMINAL STATE */}
                             <div className="space-y-1.5">
-                                <label className={`block ${theme.mutedText} uppercase text-[8px] font-orbitron tracking-[0.2em] truncate`}>Terminal_State</label>
+                                <label htmlFor="quest-total" className={`block ${theme.mutedText} uppercase text-[8px] font-orbitron tracking-[0.2em] truncate`}>Terminal_State</label>
                                 <div className="relative">
                                     <input
+                                        id="quest-total"
                                         name="totalChapters"
+                                        min={0}
+                                        aria-describedby="quest-total-hint"
+                                        aria-invalid={formData.totalChapters === 0 ? true : undefined}
                                         type="number"
                                         value={formData.totalChapters}
                                         onFocus={(e) => e.target.select()}
@@ -404,12 +440,12 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
                                     <div className={`absolute top-0 left-0 w-0.5 h-full bg-gradient-to-b ${theme.isDark ? 'from-amber-500/30' : 'from-cyan-500/30'} to-transparent`} />
                                 </div>
                                 {formData.totalChapters === 0 ? (
-                                    <p className={`text-[7px] font-orbitron ${theme.isDark ? 'text-red-400/80' : 'text-red-700'} tracking-widest flex items-center gap-1`}>
-                                        <span className="w-1 h-1 bg-red-500 rounded-full animate-pulse shrink-0" />
+                                    <p id="quest-total-hint" className={`text-[7px] font-orbitron ${errorInk} tracking-widest flex items-center gap-1`}>
+                                        <span className="w-1 h-1 bg-red-500 rounded-full animate-pulse shrink-0" aria-hidden="true" />
                                         REQUIRED
                                     </p>
                                 ) : (
-                                    <p className={`text-[7px] font-orbitron ${theme.mutedText} tracking-widest opacity-50`}>TOTAL CH.</p>
+                                    <p id="quest-total-hint" className={`text-[7px] font-orbitron ${theme.mutedText} tracking-widest`}>TOTAL CH.</p>
                                 )}
                             </div>
                         </div>
@@ -435,8 +471,11 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
                                     )}
                                 </div>
                                 <div className="flex-1 space-y-2 min-w-0">
-                                    <label className={`block ${theme.mutedText} uppercase text-[7px] tracking-[0.3em] font-orbitron opacity-60`}>Image URL Encoding</label>
+                                    <label htmlFor="quest-cover" className={`block ${theme.mutedText} uppercase text-[7px] tracking-[0.3em] font-orbitron`}>Image URL Encoding</label>
                                     <input
+                                        id="quest-cover"
+                                        type="url"
+                                        inputMode="url"
                                         name="coverUrl"
                                         value={formData.coverUrl}
                                         onChange={handleChange}
@@ -453,17 +492,20 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
                         {/* ── CLASSIFICATION GRID ── */}
                         <div className="grid grid-cols-2 gap-3">
                             <div className="space-y-1.5">
-                                <label className={`block ${theme.mutedText} uppercase text-[8px] font-orbitron tracking-[0.2em]`}>Protocol_Status</label>
+                                <label htmlFor="quest-status" className={`block ${theme.mutedText} uppercase text-[8px] font-orbitron tracking-[0.2em]`}>Protocol_Status</label>
                                 <div className="relative">
                                     <select
+                                        id="quest-status"
                                         name="status"
                                         value={formData.status}
                                         onChange={handleChange}
                                         className={`w-full appearance-none ${theme.inputBg} border-b-2 ${theme.borderSubtle} ${theme.isDark ? 'focus:border-amber-500/80' : 'focus:border-cyan-500/80'} px-3 py-2.5 ${theme.headingText} hover:bg-black/5 outline-none transition-all font-orbitron font-bold text-[9px] tracking-widest cursor-pointer`}
                                     >
-                                        <option value="ACTIVE" className={`${theme.isDark ? 'bg-black text-amber-500' : 'bg-white text-orange-500'}`}>_ACTIVE</option>
-                                        <option value="CONQUERED" className={`${theme.isDark ? 'bg-black text-blue-500' : 'bg-white text-sky-500'}`}>_CONQUERED</option>
-                                        <option value="SEVERED" className={`${theme.isDark ? 'bg-black text-red-500' : 'bg-white text-red-500'}`}>_SEVERED</option>
+                                        {/* Light rungs moved down to -700: orange/sky/red-500 on the
+                                            white option list measured 2.3-3.8:1. */}
+                                        <option value="ACTIVE" className={`${theme.isDark ? 'bg-black text-amber-500' : 'bg-white text-orange-700'}`}>_ACTIVE</option>
+                                        <option value="CONQUERED" className={`${theme.isDark ? 'bg-black text-blue-500' : 'bg-white text-sky-700'}`}>_CONQUERED</option>
+                                        <option value="SEVERED" className={`${theme.isDark ? 'bg-black text-red-500' : 'bg-white text-red-700'}`}>_SEVERED</option>
                                     </select>
                                     <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none opacity-40">
                                         <div className={`w-0 h-0 border-l-[4px] border-l-transparent border-r-[4px] border-r-transparent border-t-[5px] ${theme.isDark ? 'border-t-white' : 'border-t-slate-800'}`} />
@@ -472,9 +514,10 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
                                 </div>
                             </div>
                             <div className="space-y-1.5">
-                                <label className={`block ${theme.mutedText} uppercase text-[8px] font-orbitron tracking-[0.2em]`}>Entity_Class</label>
+                                <label htmlFor="quest-class" className={`block ${theme.mutedText} uppercase text-[8px] font-orbitron tracking-[0.2em]`}>Entity_Class</label>
                                 <div className="relative">
                                     <select
+                                        id="quest-class"
                                         name="classType"
                                         value={formData.classType}
                                         onChange={handleChange}
@@ -496,11 +539,12 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
 
                         {/* ── SYNOPSIS ── */}
                         <div className="space-y-1.5">
-                            <label className={`block ${theme.mutedText} uppercase text-[8px] font-orbitron tracking-[0.3em]`}>Memetic_Imprint</label>
+                            <label htmlFor="quest-synopsis" className={`block ${theme.mutedText} uppercase text-[8px] font-orbitron tracking-[0.3em]`}>Memetic_Imprint</label>
                             <div className="relative group">
                                 <div className={`absolute top-0 right-0 w-3 h-3 border-t border-r ${theme.border} opacity-30`} />
                                 <div className={`absolute bottom-0 left-0 w-3 h-3 border-b border-l ${theme.border} opacity-30`} />
                                 <textarea
+                                    id="quest-synopsis"
                                     name="synopsis"
                                     value={formData.synopsis}
                                     onChange={(e) => setFormData(prev => ({ ...prev, synopsis: e.target.value }))}
@@ -520,8 +564,11 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
                             <button
                                 type="button"
                                 onClick={onDelete}
-                                className="w-12 h-12 border border-red-900/40 text-red-500/70 hover:bg-red-500 hover:text-white hover:border-red-500 transition-all duration-500 flex items-center justify-center shrink-0 group relative overflow-hidden rounded-sm"
-                                title="PURGE_ARTIFACT"
+                                /* The glyph is the only label. red-500 at 70% was ~2.6:1 on the
+                                   light footer, under 3:1; each theme now gets a full-strength red. */
+                                className={`w-12 h-12 border border-red-900/40 ${theme.isDark ? 'text-red-400' : 'text-red-700'} hover:bg-red-500 hover:text-white hover:border-red-500 transition-all duration-500 flex items-center justify-center shrink-0 group relative overflow-hidden rounded-sm`}
+                                title="Purge artifact"
+                                aria-label="Purge artifact"
                             >
                                 <div className="absolute inset-0 bg-red-500/5 group-hover:bg-red-500/20 transition-all" />
                                 <Trash2 size={16} className="relative z-10 group-active:scale-75 transition-transform" />

@@ -30,11 +30,17 @@ const OmniscientField: React.FC<OmniscientFieldProps> = ({ isDivineMode, isPause
             glow: Math.random() > 0.9
         }));
 
+        // Paused means an overlay covers the field. This used to keep a do-nothing rAF
+        // spinning every frame for as long as the overlay stayed open; the effect re-runs
+        // when `isPaused` flips back, so there is nothing to keep alive in the meantime.
+        if (isPaused) return;
+
+        // Under reduced motion the field is drawn once and left still: the drift toward
+        // the pointer is ambient motion with no information in it.
+        const reducedMotion = typeof window.matchMedia === 'function'
+            && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
         const animate = () => {
-            if (isPaused) {
-                requestRef.current = requestAnimationFrame(animate);
-                return;
-            }
             ctx.clearRect(0, 0, width, height);
 
             // Violet points on the void; dark linework on the drafting table.
@@ -100,13 +106,15 @@ const OmniscientField: React.FC<OmniscientFieldProps> = ({ isDivineMode, isPause
                 }
             }
             ctx.stroke();
-            requestRef.current = requestAnimationFrame(animate);
+            if (!reducedMotion) requestRef.current = requestAnimationFrame(animate);
         };
         requestRef.current = requestAnimationFrame(animate);
 
         const handleResize = () => {
             width = canvas.width = window.innerWidth;
             height = canvas.height = window.innerHeight;
+            // Resizing clears the canvas; a still field has no next frame to repaint it.
+            if (reducedMotion) animate();
         };
         const handleMouse = (e: MouseEvent) => {
             mouseX = e.clientX;

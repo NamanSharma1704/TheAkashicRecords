@@ -8,6 +8,9 @@ import * as THREE from 'three';
 // Each island's glowing hex pad is a clickable floor; all mechanics from the previous
 // tower (raycast focus/open, drag-rotate, wheel, pause, reduced-motion) are preserved.
 
+/** Isles in the spire. The keyboard layer list in DivineSpire mirrors this. */
+export const TOWER_FLOORS = 8;
+
 interface TowerStructureProps {
     onSelectFloor: (floorIndex: number) => void;
     theme: { isDark: boolean };
@@ -139,8 +142,8 @@ const TowerStructure: React.FC<TowerStructureProps> = ({ onSelectFloor, theme, o
 
         const isMobile = window.innerWidth < 768;
 
-        for (let i = 0; i < 8; i++) {
-            const t = i / 7;
+        for (let i = 0; i < TOWER_FLOORS; i++) {
+            const t = i / (TOWER_FLOORS - 1);
             const yPos = (i * FLOOR_SPACING) - TOWER_OFFSET; // keep floor Y identical to old tower (focus-scroll math depends on it)
             const ang = i * SPIRAL_ANG;       // turn per floor -> reads as a spiral
             const rad = (1 - t) * 18 + 6;     // wide orbit so isles clearly swing around the spiral

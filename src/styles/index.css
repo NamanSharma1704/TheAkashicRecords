@@ -25,6 +25,32 @@
         height: 100%;
         width: 100%;
     }
+
+    /* Keyboard focus, in the theme's INK. `--focus-ring` is set on <html> by App.tsx from
+       `accentInk` — amber on the void, #155e75 on the page — so the ring passes 3:1 on
+       both, where the decorative cyan would not. :focus-visible, not :focus, so a mouse
+       click never draws it. Controls that style their own focus (inputs recolour their
+       border) opt out with `outline-none`, which is a utility and so still wins. */
+    :focus-visible {
+        outline: 2px solid var(--focus-ring, #f59e0b);
+        outline-offset: 2px;
+    }
+}
+
+/* Reduced motion, globally. Most loops here are Tailwind `animate-*` utilities (ping,
+   pulse, spin, the scan sweeps) scattered across forty-odd sites, and only a handful
+   honoured the preference. This collapses every CSS animation and transition to its end
+   state instead. Canvas and WebGL loops cannot be reached from CSS; those check the same
+   media query themselves, and `motion` animations follow MotionConfig in main.tsx. */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
 }
 
 /* Animations (Top Level for global access) */

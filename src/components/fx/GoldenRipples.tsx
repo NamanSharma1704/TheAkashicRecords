@@ -19,6 +19,10 @@ const GoldenRipples: React.FC<{ colorRGB: string; isPaused?: boolean; isDark?: b
 
     useEffect(() => {
         if (!shouldRender) return;
+        // Ripples are pure motion — a still frame of half-drawn rings says nothing — so
+        // under reduced motion the canvas simply stays empty; the static wash below remains.
+        if (typeof window.matchMedia === 'function'
+            && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
         const canvas = canvasRef.current;
         if (!canvas) return;
@@ -38,10 +42,14 @@ const GoldenRipples: React.FC<{ colorRGB: string; isPaused?: boolean; isDark?: b
         // re-scheduling, so the first overlay that opened stopped the ripples for good.
         // Scheduling before the pause check fixes the second; tracking the live id fixes
         // the first.
+        //
+        // While paused (an overlay covers the field) nothing is scheduled at all: the effect
+        // re-runs when `isPaused` flips back, so an idle loop would only burn a callback
+        // every frame for as long as the overlay stayed open.
         let frameId = 0;
+        if (isPaused) return () => { window.removeEventListener('resize', handleResize); };
         const animate = () => {
             frameId = requestAnimationFrame(animate);
-            if (isPaused) return;
             ctx.clearRect(0, 0, width, height);
             if (Math.random() < 0.02) ripples.push(createRipple());
             for (let i = ripples.length - 1; i >= 0; i--) {

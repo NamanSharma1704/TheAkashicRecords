@@ -44,9 +44,10 @@ const SystemCompass: React.FC<SystemCompassProps> = ({ theme }) => {
   const sweepPath = `M ${CX} ${CY} L ${sx1} ${sy1} A ${R_FACE} ${R_FACE} 0 0 1 ${sx2} ${sy2} Z`;
 
   return (
+    // Pure ornament: the button that hosts it carries the accessible name.
     <div
       style={{ width: SIZE, height: SIZE, position: 'relative', flexShrink: 0 }}
-      aria-label="Navigation system"
+      aria-hidden="true"
     >
       {/* Ambient pulse glow behind the whole element */}
       <motion.div

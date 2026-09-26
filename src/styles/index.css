@@ -51,6 +51,15 @@
         transition-duration: 0.01ms !important;
         scroll-behavior: auto !important;
     }
+
+    /* The aura's keyframes are also what give it its softness: collapsed to its base
+       style by the rule above it would sit as a solid disc of accent behind the login
+       avatar, so under reduced motion it rests at its midpoint instead. */
+    .animate-aura {
+        animation: none !important;
+        opacity: 0.45;
+        filter: blur(12px);
+    }
 }
 
 /* Animations (Top Level for global access) */
@@ -207,6 +216,8 @@
     .hide-scrollbar {
         -ms-overflow-style: none;
         /* IE and Edge */
+        scrollbar-width: none;
+        /* Firefox — without this the scroller kept a visible bar there */
     }
 
     .hide-scrollbar::-webkit-scrollbar {

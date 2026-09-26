@@ -78,7 +78,7 @@ const TowerHUD: React.FC<TowerHUDProps> = ({ items, theme, onActivate, isFocused
                         <div className="p-1 md:p-3 lg:p-4 space-y-3 lg:space-y-4">
                             <div className="flex flex-col border-b border-gray-500/20 pb-2 gap-1 lg:gap-2 w-full">
                                 <div className="flex items-center gap-2">
-                                    <Activity size={14} className={`${theme.highlightText} animate-spin`} />
+                                    <Activity size={14} className={`${theme.highlightText} motion-safe:animate-spin`} />
                                     <span className={`text-[clamp(9px,1vw,12px)] font-bold tracking-[0.2em] ${theme.headingText} font-orbitron`}>PLAYER_METRICS</span>
                                 </div>
                                 {isFocused && (

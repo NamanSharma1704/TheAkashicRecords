@@ -50,7 +50,7 @@ const EntityAvatar: React.FC<EntityAvatarProps> = ({ theme, size = 64, className
                 <g filter="url(#physGlow)">
                     {/* Background Circuitry Plate */}
                     <circle cx="50" cy="50" r="46" fill="none" stroke="url(#ringGrad)" strokeWidth="0.5" strokeDasharray="5 2" className="opacity-40" />
-                    <circle cx="50" cy="50" r="42" fill="none" stroke={mainColor} strokeWidth="0.25" strokeDasharray="1 10" className="animate-[spin_40s_linear_infinite]" />
+                    <circle cx="50" cy="50" r="42" fill="none" stroke={mainColor} strokeWidth="0.25" strokeDasharray="1 10" className="motion-safe:animate-[spin_40s_linear_infinite]" />
                 </g>
             </svg>
 

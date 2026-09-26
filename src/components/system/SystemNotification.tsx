@@ -54,8 +54,8 @@ const SystemNotification: React.FC<SystemNotificationProps> = ({
                         {/* Header Decoration */}
                         <div className="flex items-center justify-between mb-6">
                             <div className="flex items-center gap-2">
-                                <Terminal size={12} className={theme.highlightText} />
-                                <span className={`font-mono text-[9px] tracking-[0.3em] font-bold uppercase ${theme.mutedText}`}>System Notification</span>
+                                <Terminal size={12} aria-hidden="true" className={theme.highlightText} />
+                                <span id="sys-note-title" className={`font-mono text-[9px] tracking-[0.3em] font-bold uppercase ${theme.mutedText}`}>System Notification</span>
                             </div>
                             {/* borderSubtle is a border-COLOUR class, and this div has no border
                                 width — the hairline never rendered. It needs a background. */}

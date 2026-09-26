@@ -50,8 +50,8 @@ export interface Rank {
     threshold: number;
     color: string;
     /**
-     * Rank colour for use on a LIGHT surface. `color` is the -400 rung, which is tuned for
-     * the void and sits near 2.3:1 on a white card. Only surfaces that are actually pale
+     * Rank colour for use on a LIGHT surface (the -800 rung). `color` is the -400 rung,
+     * which is tuned for the void and sits near 2.3:1 on a white card. Only surfaces that are actually pale
      * should reach for this — ManhwaDetail keeps `color`, because its backdrop is dark in
      * both themes.
      */

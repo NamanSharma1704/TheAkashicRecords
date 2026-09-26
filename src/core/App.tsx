@@ -203,7 +203,7 @@ const SystemGateModal = lazy(() => import('../components/system/SystemGateModal'
 
 // Loading Fallback Strategy
 const HeavyLoader = ({ theme }: { theme: any }) => (
-    <div className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm flex items-center justify-center">
+    <div className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm flex items-center justify-center" role="status" aria-label="Loading">
         <div className={`w-16 h-16 border-2 border-dashed ${theme.id === 'LIGHT' ? 'border-sky-500' : 'border-amber-500'} rounded-full animate-spin`} />
     </div>
 );
@@ -626,8 +626,11 @@ const App: React.FC = () => {
             if (!e.message.includes('401')) {
                 console.error("BOOT_SYNC_FAILURE:", e.message);
             }
-            // Fallback to empty state to prevent UI crash
-            setLibrary([]);
+            // Leave the library as it stands. It starts empty, so a failed first load
+            // still shows the empty state; but this also runs as a refresh (after an
+            // import or a recalibration), and a transient failure there used to wipe a
+            // perfectly good library off the screen. A real 401 is handled separately
+            // by the session-expired listener, which does clear it.
         }
     };
 
@@ -1276,7 +1279,7 @@ const App: React.FC = () => {
                                             <img
                                                 key={activeQuest.id}
                                                 src={getProxiedImageUrl(activeQuest.coverUrl)}
-                                                alt={activeQuest.title}
+                                                alt={`Cover art for ${activeQuest.title}`}
                                                 className="w-full h-full object-cover transition-transform duration-[10s] group-hover:scale-110"
                                                 referrerPolicy="no-referrer"
                                                 loading="eager"
@@ -1607,8 +1610,9 @@ const App: React.FC = () => {
                         />
                     </div>
 
-                    {/* DIVINE SPIRE BUTTON */}
-                    <button aria-label="Open Divine Spire" onClick={() => { setIsSpireOpen(true); }} className={`mt-auto hidden lg:flex w-full h-12 ${theme.isDark ? 'bg-white/5' : 'bg-sky-500/10'} border ${theme.borderSubtle} ${theme.highlightText} ${theme.isDark ? 'hover:bg-[#f59e0b] hover:text-black' : 'hover:bg-[#155e75] hover:text-white'} font-mono font-bold tracking-widest uppercase transition-all items-center justify-center gap-2 text-[12px] shrink-0 shadow-sm cursor-pointer duration-700`}><LayoutTemplate size={16} /> DIVINE SPIRE</button>
+                    {/* DIVINE SPIRE BUTTON. Light: an opaque pale-sky plate. The 10% sky wash it had
+                        composited darker over the bottom of the page gradient and left the ink at 4.37:1. */}
+                    <button aria-label="Open Divine Spire" onClick={() => { setIsSpireOpen(true); }} className={`mt-auto hidden lg:flex w-full h-12 ${theme.isDark ? 'bg-white/5' : 'bg-sky-50/90'} border ${theme.borderSubtle} ${theme.highlightText} ${theme.isDark ? 'hover:bg-[#f59e0b] hover:text-black' : 'hover:bg-[#155e75] hover:text-white'} font-mono font-bold tracking-widest uppercase transition-all items-center justify-center gap-2 text-[12px] shrink-0 shadow-sm cursor-pointer duration-700`}><LayoutTemplate size={16} /> DIVINE SPIRE</button>
                     </div>{/* end full panel */}
                 </div>
             </div>
@@ -1633,7 +1637,7 @@ const App: React.FC = () => {
     return (
         <div 
             id="main-scroll-area" 
-            className={`relative h-[100dvh] overflow-hidden ${theme.appBg} ${theme.baseText} font-sans selection:bg-amber-500/30 transition-colors duration-700 ease-in-out`}
+            className={`relative h-[100dvh] overflow-hidden ${theme.appBg} ${theme.baseText} font-sans ${theme.isDark ? 'selection:bg-amber-500/30' : 'selection:bg-cyan-500/25'} transition-colors duration-700 ease-in-out`}
             style={{
                 // Two accents, deliberately. `--accent-color` and its two derivatives are
                 // decorative — fills, glows and washes, where chroma is the whole point and
@@ -1655,8 +1659,16 @@ const App: React.FC = () => {
                 isPaused={overlayOpen}
                 isMobile={isMobile}
             />
-            {/* BACKGROUND GRADIENT FIX */}
-            <div className="absolute inset-0 pointer-events-none z-0 bg-[radial-gradient(circle,transparent_50%,rgba(0,0,0,0.4)_100%)] opacity-50" />
+            {/* Edge falloff. Neutral black suits the void; on the light page the same 20%
+                black dragged every edge to grey, which is both the "grime" the depth system
+                warns about and a contrast loss for everything laid near an edge — the sidebar,
+                the Spire's HUD wings. Light takes the gentle cool falloff HunterProfile uses. */}
+            <div
+                className="absolute inset-0 pointer-events-none z-0"
+                style={theme.isDark
+                    ? { background: 'radial-gradient(circle, transparent 50%, rgba(0,0,0,0.4) 100%)', opacity: 0.5 }
+                    : { background: 'radial-gradient(circle, transparent 55%, rgba(15,23,42,0.07) 100%)' }}
+            />
 
             {/* HEADER */}
             {!isSpireOpen && memoizedHeader}

@@ -28,6 +28,20 @@ const RANK_HEX: Record<string, string> = {
     E: '#cbd5e1', // slate
 };
 
+/**
+ * The same ranks on a LIGHT plate. The -400 set above is tuned to glow on the void; on the
+ * light theme's white core face the letter measured 1.3–1.7:1 and the rings all but
+ * vanished. These are the -700 rungs, which keep each rank's hue while reading as ink.
+ */
+const RANK_HEX_LIGHT: Record<string, string> = {
+    S: '#b45309', // amber-700
+    A: '#be123c', // rose-700
+    B: '#7e22ce', // purple-700
+    C: '#1d4ed8', // blue-700
+    D: '#0e7490', // cyan-700
+    E: '#475569', // slate-600
+};
+
 const TIER: Record<string, number> = { E: 1, D: 2, C: 3, B: 4, A: 5, S: 6 };
 
 const CX = 24;
@@ -47,7 +61,8 @@ interface RankSigilProps {
 
 const RankSigil = React.memo<RankSigilProps>(({ rank, theme, size = 48 }) => {
     const name = (rank.name?.[0] || 'E').toUpperCase();
-    const c = RANK_HEX[name] || RANK_HEX.E;
+    const palette = theme.isDark ? RANK_HEX : RANK_HEX_LIGHT;
+    const c = palette[name] || palette.E;
     const tier = TIER[name] ?? 1;
     const clipId = `hx-${name}`;
     const coreFace = theme.isDark ? 'rgba(11,11,17,0.9)' : 'rgba(255,255,255,0.85)';
@@ -177,7 +192,7 @@ const RankSigil = React.memo<RankSigilProps>(({ rank, theme, size = 48 }) => {
                     fontWeight={900}
                     fontFamily="ui-monospace, monospace"
                     fill={c}
-                    stroke="#000"
+                    stroke={theme.isDark ? '#000' : '#fff'}
                     strokeWidth={0.4}
                     paintOrder="stroke"
                 >

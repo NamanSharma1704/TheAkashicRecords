@@ -285,7 +285,7 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
                             title="Close"
                             className={`w-7 h-7 flex items-center justify-center border ${theme.borderSubtle} ${theme.mutedText} hover:${theme.headingText} ${theme.isDark ? 'hover:border-white/30' : 'hover:border-slate-500'} transition-all duration-300 rounded-sm active:scale-90`}
                         >
-                            <X size={14} />
+                            <X size={14} aria-hidden="true" />
                         </button>
                     </div>
 
@@ -387,7 +387,7 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
                                     title="Search archives by title"
                                     aria-label="Search archives by title"
                                 >
-                                    <Database size={16} className="group-hover/archive:scale-110 transition-transform" />
+                                    <Database size={16} aria-hidden="true" className="group-hover/archive:scale-110 transition-transform" />
                                 </button>
                             </div>
                         </div>
@@ -459,7 +459,7 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
                                     {formData.coverUrl ? (
                                         <img
                                             src={getProxiedImageUrl(debouncedCoverUrl)}
-                                            alt="Preview"
+                                            alt="Cover preview"
                                             className={`w-16 h-24 sm:w-20 sm:h-28 object-cover border ${theme.borderSubtle} group-hover:${theme.border} transition-colors rounded-sm relative z-10`}
                                             referrerPolicy="no-referrer"
                                         />
@@ -571,7 +571,7 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
                                 aria-label="Purge artifact"
                             >
                                 <div className="absolute inset-0 bg-red-500/5 group-hover:bg-red-500/20 transition-all" />
-                                <Trash2 size={16} className="relative z-10 group-active:scale-75 transition-transform" />
+                                <Trash2 size={16} aria-hidden="true" className="relative z-10 group-active:scale-75 transition-transform" />
                             </button>
                         )}
 

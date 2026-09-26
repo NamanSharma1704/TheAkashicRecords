@@ -802,7 +802,9 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                                     {item.coverUrl ? (
                                         <div className="absolute inset-0 z-0 overflow-hidden">
                                             <img src={getProxiedImageUrl(item.coverUrl)} className="w-full h-full object-cover object-center opacity-75 group-hover:opacity-95 group-hover:scale-105 transition-all duration-700 select-none" alt="" />
-                                            <div className={`absolute inset-0 bg-gradient-to-t ${theme.isDark ? 'from-black/90 via-black/40' : 'from-black/75 via-black/20'} to-transparent`} />
+                                            {/* One scrim for both themes: the card is a dark plate either way, and light's
+                                                lighter black/75 let bright cover art under the 9px title (3.9:1). */}
+                                            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
                                         </div>
                                     ) : (
                                         /* Dark in both themes: the title on these cards is fixed white
@@ -876,7 +878,7 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                                     </span>
                                     {calibration.phase === 'running' ? (
                                         <button onClick={() => abortControllerRef.current?.abort()}
-                                            className={`flex items-center justify-center border ${theme.borderSubtle} ${theme.headingText} opacity-80 hover:opacity-100 hover:bg-white/5 transition-all duration-300 rounded-sm active:scale-90 text-[10px] sm:text-xs font-orbitron px-3 py-1.5 font-bold tracking-wider relative overflow-hidden group`}>
+                                            className={`flex items-center justify-center border ${theme.borderSubtle} ${theme.headingText} opacity-80 hover:opacity-100 ${theme.isDark ? 'hover:bg-white/5' : 'hover:bg-black/5'} transition-all duration-300 rounded-sm active:scale-90 text-[10px] sm:text-xs font-orbitron px-3 py-1.5 font-bold tracking-wider relative overflow-hidden group`}>
                                             <div className="absolute inset-0 bg-white/5 group-hover:bg-transparent transition-all" />
                                             <span className="relative z-10">ABORT_PROTOCOL</span>
                                         </button>
@@ -953,7 +955,7 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                                         <div className={`absolute top-0 left-0 w-2 h-2 border-t border-l ${theme.border} opacity-50`} />
                                         <div className={`absolute bottom-0 right-0 w-2 h-2 border-b border-r ${theme.border} opacity-50`} />
                                         
-                                        <div className={`px-4 py-2 border-b ${theme.borderSubtle} flex justify-between items-center bg-white/[0.02] shrink-0`}>
+                                        <div className={`px-4 py-2 border-b ${theme.borderSubtle} flex justify-between items-center ${theme.isDark ? 'bg-white/[0.02]' : 'bg-slate-100/70'} shrink-0`}>
                                             <span className={`text-[7px] font-orbitron ${theme.mutedText} tracking-[0.2em] uppercase`}>Diagnostic_Feed</span>
                                             <span className={`text-[7px] font-orbitron ${theme.mutedText} tracking-widest uppercase`}>{calibration.log.length}_ENTRIES</span>
                                         </div>
@@ -965,7 +967,7 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                                                 </div>
                                             ) : (
                                                 calibration.log.map((entry, i) => (
-                                                    <div key={i} className={`flex items-start gap-4 text-[10px] font-mono leading-relaxed px-2 py-1.5 transition-colors ${entry.changed ? (theme.id === 'LIGHT' ? 'bg-sky-500/10' : 'bg-amber-500/10') : 'hover:bg-white/5'}`}>
+                                                    <div key={i} className={`flex items-start gap-4 text-[10px] font-mono leading-relaxed px-2 py-1.5 transition-colors ${entry.changed ? (theme.id === 'LIGHT' ? 'bg-sky-500/10' : 'bg-amber-500/10') : (theme.isDark ? 'hover:bg-white/5' : 'hover:bg-black/5')}`}>
                                                         <span className={`${theme.mutedText} shrink-0`}>[{String(entry.processed).padStart(2, '0')}/{entry.total}]</span>
                                                         <span className={`flex-1 truncate uppercase tracking-widest ${entry.changed ? theme.headingText : theme.baseText}`}>
                                                             {entry.title}

@@ -17,7 +17,7 @@ const AWAKENING_PHASES = [
 ];
 
 // Boot timeline, in milliseconds from mount.
-const FILL_MS = 8000;                                   // 0 â†’ 100%
+const FILL_MS = 8000;                                   // 0 → 100%
 const AWAKEN_HOLD_MS = 1600;                            // logo flare before the outro
 const OUTRO_MS = 1000;                                  // fade to the app
 const PHASE_MS = FILL_MS / AWAKENING_PHASES.length;     // one label per slice
@@ -25,7 +25,7 @@ const TOTAL_MS = FILL_MS + AWAKEN_HOLD_MS + OUTRO_MS;
 
 // Tick fast enough to look smooth in the foreground. Background tabs clamp this to
 // roughly 1s (and to once a minute under Chrome's intensive throttling), which is
-// exactly why nothing below counts ticks â€” every value is recomputed from elapsed time.
+// exactly why nothing below counts ticks — every value is recomputed from elapsed time.
 const TICK_MS = 30;
 
 /**
@@ -33,8 +33,8 @@ const TICK_MS = 30;
  *
  * These were two module constants (#fbbf24 gold, #ffffff white) and the component never
  * read its `theme` prop at all, so the boot sequence stayed amber-on-black even with the
- * app in Aureic. Deriving them keeps the celestial identity â€” which is the house
- * aesthetic â€” while letting it invert with everything else.
+ * app in Aureic. Deriving them keeps the celestial identity — which is the house
+ * aesthetic — while letting it invert with everything else.
  */
 type BootPalette = { accent: string; accentInk: string; ink: string; ground: string; isDark: boolean };
 
@@ -71,7 +71,7 @@ const hash = (n: number, seed: number) => frac(Math.sin(n * seed) * 43758.545312
  * R2 low-discrepancy sequence (the 2D generalisation of the golden ratio).
  *
  * The previous generator was `(i * 593.6) % 1600` paired with `(i * 213.3) % 900`, which
- * advances every star by the SAME vector and wraps â€” putting all 110 of them on one
+ * advances every star by the SAME vector and wraps — putting all 110 of them on one
  * lattice line. Measured, it produced exactly one distinct dx and one distinct dy across
  * the whole field, which the eye reads as diagonal ruling rather than as stars. Its
  * comment claimed a golden-ratio distribution, but phi only ever touched the radius and
@@ -91,7 +91,7 @@ function generateStars(count: number): StarData[] {
         const jx = hash(i, 12.9898) - 0.5;
         const jy = hash(i, 78.2330) - 0.5;
 
-        // Magnitude, skewed so most stars are faint and only a handful burn brightly â€”
+        // Magnitude, skewed so most stars are faint and only a handful burn brightly —
         // a uniform size distribution is a large part of what made this read as a texture.
         const m = hash(i, 4.1237);
         const bright = Math.pow(m, 3);
@@ -347,7 +347,7 @@ const MythicalConstellations: React.FC<{ p: BootPalette }> = ({ p }) => {
          * viewBox="0 0 1600 900" with preserveAspectRatio="xMidYMid slice" keeps the
          * coordinate system uniformly scaled on all screens so circles remain circular
          * (not stretched ovals) on phones, tablets, and laptops.
-         * Stars have NO blur filter â€” they are crisp 1px pinpoints of light.
+         * Stars have NO blur filter — they are crisp 1px pinpoints of light.
          * Only constellation node dots get the subtle glow filter.
          */
         <svg
@@ -356,7 +356,7 @@ const MythicalConstellations: React.FC<{ p: BootPalette }> = ({ p }) => {
             preserveAspectRatio="xMidYMid slice"
         >
             <defs>
-                {/* Only used for constellation node circles â€” NOT stars */}
+                {/* Only used for constellation node circles — NOT stars */}
                 <filter id="nodeGlow" x="-150%" y="-150%" width="400%" height="400%">
                     <feGaussianBlur stdDeviation="2.5" result="blur" />
                     <feMerge>
@@ -366,7 +366,7 @@ const MythicalConstellations: React.FC<{ p: BootPalette }> = ({ p }) => {
                 </filter>
             </defs>
 
-            {/* â”€â”€ STARFIELD â”€â”€ crisp pinpoints, no blur filter */}
+            {/* ── STARFIELD ── crisp pinpoints, no blur filter */}
             {STAR_DATA.map((star, i) => (
                 <motion.circle
                     key={i}
@@ -496,7 +496,7 @@ const CelestialVoid: React.FC<{ p: BootPalette }> = ({ p }) => (
             />
         </div>
 
-        {/* Layer 2: Mana Mist â€” motion instead of animate-pulse for GPU acceleration */}
+        {/* Layer 2: Mana Mist — motion instead of animate-pulse for GPU acceleration */}
         <motion.div
             animate={{ opacity: [0.25, 0.45, 0.25] }}
             transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut" }}
@@ -615,12 +615,26 @@ const BootScreen: React.FC<BootScreenProps> = ({ onComplete, theme }) => {
     // The sequence start is pinned to the first render, not to the effect.
     //
     // The effect depends on the completion callback, and a parent passing an inline arrow
-    // gives it a fresh identity on every render â€” which re-ran this effect and restarted
+    // gives it a fresh identity on every render — which re-ran this effect and restarted
     // the clock from zero mid-boot. The old tick-accumulating version masked that (a
     // restart just kept adding to the previous total); computing from elapsed time does
     // not, so the origin has to survive re-runs.
     const startRef = useRef<number | null>(null);
     if (startRef.current === null) startRef.current = performance.now();
+
+    // Skip. The sequence runs ~10.6s with no way out, and it plays on every signed-out
+    // visit — Escape, Enter or Space, or the SKIP control, jump straight to the entry
+    // screen. finish() is latched, so a skip racing the timeline still completes once.
+    useEffect(() => {
+        const onKey = (e: KeyboardEvent) => {
+            if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                finish();
+            }
+        };
+        document.addEventListener('keydown', onKey);
+        return () => document.removeEventListener('keydown', onKey);
+    }, [finish]);
 
     useEffect(() => {
         const start = startRef.current as number;
@@ -630,7 +644,7 @@ const BootScreen: React.FC<BootScreenProps> = ({ onComplete, theme }) => {
          *
          * Nothing here accumulates per tick. That matters because a hidden tab has its
          * timers clamped to ~1s, so the old tick-counting version needed roughly 267
-         * throttled ticks â€” over four minutes â€” to reach 100%. Deriving from the clock
+         * throttled ticks — over four minutes — to reach 100%. Deriving from the clock
          * means a single late tick lands on the correct state, so the sequence finishes
          * on schedule whether or not anyone is watching.
          */
@@ -674,7 +688,7 @@ const BootScreen: React.FC<BootScreenProps> = ({ onComplete, theme }) => {
             className="fixed inset-0 z-[100] flex items-center justify-center overflow-hidden font-mono"
             style={{ backgroundColor: p.ground, willChange: 'opacity' }}
         >
-            {/* Fade-out overlay â€” separate element for smoother composite */}
+            {/* Fade-out overlay — separate element for smoother composite */}
             <motion.div
                 className="absolute inset-0 z-[200] pointer-events-none"
                 style={{ backgroundColor: p.ground, willChange: 'opacity' }}
@@ -687,15 +701,18 @@ const BootScreen: React.FC<BootScreenProps> = ({ onComplete, theme }) => {
                 }}
             />
 
-            <CelestialVoid p={p} />
-            <SovereignHeader p={p} />
+            {/* The field and its telemetry are texture — forty rows of hex are noise to a
+                screen reader — so only the phase and the progress are exposed. */}
+            <div aria-hidden="true"><CelestialVoid p={p} /></div>
+            <div aria-hidden="true"><SovereignHeader p={p} /></div>
+            <span className="sr-only" aria-live="polite">{AWAKENING_PHASES[phaseIndex]}</span>
 
             <div className="relative z-30 flex flex-col items-center justify-between w-full h-full py-16 sm:py-20 md:py-24">
 
                 {/* TOP SPACER for header clearance */}
                 <div className="flex-shrink-0" style={{ height: 'clamp(40px, 6vh, 80px)' }} />
 
-                {/* LOGO AREA â€” fills available vertical space between header and HUD */}
+                {/* LOGO AREA — fills available vertical space between header and HUD */}
                 <div className="relative flex items-center justify-center flex-1 w-full">
                     <DiamondHalo p={p} />
                     <motion.div
@@ -711,7 +728,7 @@ const BootScreen: React.FC<BootScreenProps> = ({ onComplete, theme }) => {
                         }}
                         className={`relative z-30 flex items-center justify-center ${blendFor(p)}`}
                         style={{
-                            /* Viewport-relative size: fills well on phones â†’ tablets â†’ laptops */
+                            /* Viewport-relative size: fills well on phones → tablets → laptops */
                             width:  'clamp(200px, min(70vw, 55vh), 560px)',
                             height: 'clamp(200px, min(70vw, 55vh), 560px)',
                             willChange: 'transform, opacity, filter',
@@ -721,7 +738,7 @@ const BootScreen: React.FC<BootScreenProps> = ({ onComplete, theme }) => {
                     </motion.div>
                 </div>
 
-                {/* BOTTOM LOADING HUD â€” bracketed like every panel in the app */}
+                {/* BOTTOM LOADING HUD — bracketed like every panel in the app */}
                 <div className="w-full max-w-xs sm:max-w-md md:max-w-2xl px-6 sm:px-10 md:px-12 flex-shrink-0 relative z-40">
                     <div className="relative px-5 py-4">
                         <BracketCorners color={p.accent} />
@@ -731,6 +748,7 @@ const BootScreen: React.FC<BootScreenProps> = ({ onComplete, theme }) => {
                                 {/* Phase label */}
                                 <motion.div
                                     key={phaseIndex}
+                                    aria-hidden="true"
                                     initial={{ opacity: 0, x: -8 }}
                                     animate={{ opacity: 1, x: 0 }}
                                     transition={{ duration: 0.4, ease: "easeOut" }}
@@ -741,10 +759,9 @@ const BootScreen: React.FC<BootScreenProps> = ({ onComplete, theme }) => {
                                 </motion.div>
 
                                 <div className="flex gap-3 sm:gap-4 items-center text-[8px] sm:text-[9px] md:text-[10px] tracking-[0.3em] uppercase flex-shrink-0">
-                                    <span
-                                        className={isAwakened ? "animate-pulse" : ""}
-                                        style={{ color: isAwakened ? p.ink : `${p.ink}99` }}
-                                    >
+                                    {/* Awakening is marked by the step to full ink. It also used to
+                                        pulse, which faded the word under AA on each beat. */}
+                                    <span style={{ color: isAwakened ? p.ink : `${p.ink}99` }}>
                                         [STABLE]
                                     </span>
                                     <span className="font-orbitron font-bold tabular-nums" style={{ color: p.accentInk }}>
@@ -758,6 +775,11 @@ const BootScreen: React.FC<BootScreenProps> = ({ onComplete, theme }) => {
                                 <div
                                     className="h-[2px] w-full relative overflow-hidden rounded-full"
                                     style={{ backgroundColor: `${p.ink}1a` }}
+                                    role="progressbar"
+                                    aria-label="System boot"
+                                    aria-valuemin={0}
+                                    aria-valuemax={100}
+                                    aria-valuenow={Math.floor(progress)}
                                 >
                                     <motion.div
                                         initial={{ width: "0%" }}
@@ -776,8 +798,20 @@ const BootScreen: React.FC<BootScreenProps> = ({ onComplete, theme }) => {
                     </div>
                 </div>
 
+                {/* BOTTOM-RIGHT: skip, set in the same telemetry voice as the footer opposite
+                    so it reads as part of the HUD rather than a web control laid on top. */}
+                <button
+                    type="button"
+                    onClick={finish}
+                    aria-label="Skip intro"
+                    className="absolute right-4 sm:right-8 md:right-12 bottom-4 sm:bottom-8 md:bottom-12 z-[210] px-2 py-1 font-mono text-[9px] md:text-[10px] tracking-[0.3em] uppercase font-medium border border-transparent outline-none focus-visible:border-current cursor-pointer"
+                    style={{ color: p.isDark ? `${p.ink}b3` : `${p.ink}cc` }}
+                >
+                    SKIP <span style={{ color: p.accentInk }}>[ESC]</span>
+                </button>
+
                 {/* BOTTOM-LEFT TELEMETRY FOOTER */}
-                <div className="absolute left-4 sm:left-8 md:left-12 bottom-4 sm:bottom-8 md:bottom-12 z-40 text-left text-[7px] sm:text-[9px] md:text-[10px] tracking-[0.3em] leading-[2] uppercase hidden sm:block">
+                <div aria-hidden="true" className="absolute left-4 sm:left-8 md:left-12 bottom-4 sm:bottom-8 md:bottom-12 z-40 text-left text-[7px] sm:text-[9px] md:text-[10px] tracking-[0.3em] leading-[2] uppercase hidden sm:block">
                     <div className="flex gap-4 sm:gap-8">
                         <span className="font-medium" style={{ color: `${p.ink}99` }}>SEC: <span style={{ color: p.accentInk }}>57</span></span>
                         <span className="font-medium" style={{ color: `${p.ink}99` }}>M_ID: <span style={{ color: p.accentInk }}>6E28</span></span>

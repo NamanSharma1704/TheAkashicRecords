@@ -77,7 +77,7 @@ const QuestCard = React.memo<DivineMonolithProps>(({ item, onClick, index, id, t
                     <div className="space-y-3 opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity duration-500">
                         <div className={`text-[9px] font-mono ${theme.isDark ? rankStyle.color : (rankStyle.colorLight || rankStyle.color)} tracking-[0.2em] uppercase border-l-2 ${rankStyle.border} pl-2`}>{item.classType}</div>
 
-                        <h3 className={`text-2xl font-black italic bg-clip-text text-transparent bg-gradient-to-b ${theme.isDark ? 'from-white via-gray-200 to-gray-400' : 'from-black via-gray-700 to-gray-500'} leading-none line-clamp-3 md:line-clamp-4 drop-shadow-sm transition-all duration-700 tracking-tighter uppercase`}>
+                        <h3 className={`text-2xl font-black italic bg-clip-text text-transparent bg-gradient-to-b ${theme.isDark ? 'from-white via-gray-200 to-gray-400' : 'from-black via-slate-800 to-slate-700'} leading-none line-clamp-3 md:line-clamp-4 drop-shadow-sm transition-all duration-700 tracking-tighter uppercase`}>
                             {item.title}
                         </h3>
 

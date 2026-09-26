@@ -33,7 +33,7 @@ tsc_log.txt
 .env.production.local
 
 # Editor settings
-# .vscode/
+# (.vscode/ is ignored below, with the other local-only files)
 .idea/
 *.suo
 *.ntvs*
@@ -44,3 +44,15 @@ tsc_log.txt
 # OS files
 .DS_Store
 Thumbs.db
+
+# Local only. This repository holds what builds, deploys and runs the live site; docs,
+# editor settings, lint config, owner maintenance scripts and stray lockfiles stay on
+# disk but out of version control.
+PROJECT_CONTEXT.md
+README.md
+.eslintrc.cjs
+.vscode/
+.claude/
+backend/scripts/
+system/package-lock.json
+backend/package-lock.json

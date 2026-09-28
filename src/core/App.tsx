@@ -1038,7 +1038,7 @@ const App: React.FC = () => {
                         w can be at most (100dvh - 320px) * 0.632. 240px floors it on short
                         phones, where the page scrolls instead. The card and the title margin
                         both read this one value, so the two can never be solved separately. */}
-                    <div className="relative z-10 w-full h-full flex flex-col px-4 md:px-6 lg:px-8 justify-between gap-4 overflow-visible pt-8 [--hero-w:clamp(240px,calc((100dvh_-_320px)_*_0.632),min(85vw,320px))]">
+                    <div className="relative z-10 w-full h-full flex flex-col px-4 md:px-6 lg:px-8 justify-between gap-4 overflow-visible pt-8 lg:pt-16 [--hero-w:clamp(240px,calc((100dvh_-_320px)_*_0.632),min(85vw,320px))]">
 
                         {/* CENTER: The 3-Column Display (Enhanced Gaps for Tablets) */}
                         <div className="flex-1 min-h-0 flex justify-center items-center gap-4 md:gap-14 lg:gap-6 xl:gap-12 w-full max-w-[1400px] mx-auto px-4">
@@ -1093,7 +1093,7 @@ const App: React.FC = () => {
                                     setEditingItem(activeQuest.id === DEFAULT_QUEST.id ? null : activeQuest);
                                     setIsModalOpen(true);
                                 }}
-                                className="relative flex-none h-full min-h-0 min-w-0 w-[var(--hero-w)] md:w-full md:max-w-[45%] lg:w-auto lg:max-h-[49vh] aspect-[72/103] self-center flex items-center justify-center transition-all duration-700 ease-out transform-gpu hover:-translate-y-2 perspective-[1000px] group cursor-pointer"
+                                className="relative flex-none h-full min-h-0 min-w-0 w-[var(--hero-w)] md:w-full md:max-w-[45%] lg:w-auto lg:max-h-[48dvh] aspect-[72/103] self-center flex items-center justify-center transition-all duration-700 ease-out transform-gpu hover:-translate-y-2 perspective-[1000px] group cursor-pointer"
                                 style={{
                                     // The mat, and the card's two rest states, as variables so the
                                     // hover transition stays a CSS transition — an inline style
@@ -1235,7 +1235,7 @@ const App: React.FC = () => {
                                     card needs a bigger lift — which at the old 54vh drove the card's
                                     top under the fixed header. 45vh is the tallest card whose required
                                     lift still leaves the corner reticles below it. */}
-                                <Card3D className="relative -top-5 lg:-top-[7.4vh] w-full h-full card-plate">
+                                <Card3D className="relative -top-5 lg:-top-[4.5dvh] w-full h-full card-plate">
 
                                     {/* Corner Reticles (External Floating Targeting Geometry) */}
                                     <div className="absolute -top-[16px] -left-[16px] w-8 h-8 border-t-[2px] border-l-[2px] z-30 pointer-events-none opacity-80 transition-colors duration-700" style={{ borderColor: holoEdge, filter: `drop-shadow(0 0 5px ${holoEdge}${theme.isDark ? 'cc' : '88'})` }} />

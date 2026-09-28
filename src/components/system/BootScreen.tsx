@@ -430,8 +430,13 @@ const SacredFrame: React.FC<{ p: BootPalette }> = ({ p }) => {
             <motion.div
                 className="relative"
                 style={{
-                    width: 'min(94vw, clamp(340px, 74vh, 752px))',
-                    height: 'clamp(384px, 78vh, 796px)',
+                    // Sized from the available height (100dvh minus the boot chrome) with a
+                    // larger offset than the emblem so the frame sits a little proud of the
+                    // tower it encloses, yet still smaller than the natural logo-area space so
+                    // it clears the progress HUD below it. Width is capped to stay near-square
+                    // and never wider than tall.
+                    width: 'min(92vw, 660px, max(300px, calc(100dvh - 372px)))',
+                    height: 'max(280px, min(660px, calc(100dvh - 356px)))',
                     willChange: 'opacity',
                 }}
                 animate={reducedMotion ? { opacity: 0.88 } : { opacity: [0.62, 0.92, 0.62] }}
@@ -540,8 +545,13 @@ const SpireEmblem: React.FC<{ p: BootPalette; awakened: boolean }> = ({ p, awake
         <div
             className="relative flex items-center justify-center pointer-events-none"
             style={{
-                width: 'clamp(260px, 90vw, 520px)',
-                height: 'clamp(360px, 71vh, 736px)',
+                width: 'clamp(240px, 80vw, 460px)',
+                // The tower's reserved box is intentionally SHORTER than the frame that wraps
+                // it (see SacredFrame): both are derived from the height actually available
+                // between the header and the progress HUD (100dvh minus the boot chrome), with
+                // fixed offsets so the tower always sits inside the frame and the frame always
+                // clears the loading bar — the raw-vh version overran it on short viewports.
+                height: 'max(220px, min(600px, calc(100dvh - 392px)))',
             }}
         >
             {/* Reliquary pool — a wash of void that grounds the gold relic in either theme.

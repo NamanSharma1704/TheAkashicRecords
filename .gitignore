@@ -56,3 +56,8 @@ README.md
 backend/scripts/
 system/package-lock.json
 backend/package-lock.json
+
+# Reference art the owner drops in for the boot-screen reconstruction — the shipped
+# emblem is baked into system/public as webp; the source plates stay on disk only.
+/boot screen.jpg
+/bootscreen tower.jpg

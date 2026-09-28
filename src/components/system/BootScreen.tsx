@@ -1,7 +1,11 @@
 ﻿import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { motion, useAnimationFrame, useReducedMotion } from 'motion/react';
+import { motion, useReducedMotion } from 'motion/react';
 import { Theme } from '../../core/types';
-import AkashicCoreLogo from './AkashicCoreLogo';
+
+// The boot centrepiece emblem is served from the public root as a keyed cutout of the
+// reference art (see SpireEmblem). Pathed from `/` so it resolves under any route.
+const SPIRE_SRC = '/spire-tower.webp';
+const SPIRE_GLOW_SRC = '/spire-tower-glow.webp';
 
 interface BootScreenProps {
     onComplete: () => void;
@@ -112,235 +116,98 @@ function generateStars(count: number): StarData[] {
 
 const STAR_DATA = generateStars(140);
 
-type Star3D = { x: number; y: number; z: number; mag: number };
-type Asterism3D = {
-    label: string;
-    center: [number, number];   // where the constellation's midpoint sits in the 1600x900 field
-    stars: Star3D[];
-    edges: [number, number][];
-    field?: Star3D[];           // scattered, unconnected stars that sit around the shape
-    yawAmp: number; yawPeriod: number;   // radians, seconds
-    tiltAmp: number; tiltPeriod: number;
-    phase: number;
-};
-
 /**
- * Two constellations invented for this archive rather than borrowed from the sky.
+ * The constellation network.
  *
- * The Sovereign's Crown is a crown of peaks with a tall central spire — the highest rank
- * the System grants. The Ascendant Gate is a diamond gateway crowned by a spire, echoing
- * the diamond halo of this very screen and the Divine Spire: a gate you open and a tower
- * you climb. Each carries a few loose field stars so it reads as part of a real sky, not
- * a figure drawn on the glass.
+ * The reference boot art is not a scattering of unconnected stars but a web: nodes joined
+ * by fine lines that span the whole field and thicken the sky into a lattice. This builds
+ * that web deterministically — nodes placed by the same R2 low-discrepancy sequence as the
+ * starfield (even coverage, no ruled lines), each joined to its nearest few neighbours
+ * within a distance cap so the edges read as local constellations rather than one long
+ * mesh. It is computed once at module load and drawn as static SVG; the sky twinkles
+ * through the separate starfield layer and a slow group-wide shimmer, so there is no
+ * per-node animation to pay for.
  */
-const ASTERISMS: Asterism3D[] = [
-    {
-        label: "The Sovereign's Crown",
-        center: [300, 545],
-        stars: [
-            { x: 0,   y: 46,  z:  42, mag: 2.6 },  // left base
-            { x: 44,  y: 2,   z: -28, mag: 2.2 },  // left peak
-            { x: 86,  y: 30,  z:  16, mag: 2.9 },  // left dip
-            { x: 128, y: -34, z: -62, mag: 1.5 },  // central spire — the sovereign star
-            { x: 170, y: 30,  z:  16, mag: 2.9 },  // right dip
-            { x: 212, y: 2,   z: -28, mag: 2.2 },  // right peak
-            { x: 256, y: 46,  z:  42, mag: 2.6 },  // right base
-        ],
-        edges: [[0, 1], [1, 2], [2, 3], [3, 4], [4, 5], [5, 6]],
-        field: [
-            { x: 22,  y: 68,  z:  25, mag: 3.6 },
-            { x: 234, y: 66,  z: -18, mag: 3.8 },
-            { x: 128, y: -58, z:  30, mag: 3.9 },
-        ],
-        yawAmp: 0.58, yawPeriod: 21, tiltAmp: 0.20, tiltPeriod: 27, phase: 0,
-    },
-    {
-        label: "The Ascendant Gate",
-        center: [1200, 250],
-        stars: [
-            { x: 0,   y: -102, z: -52, mag: 1.5 },  // 0 spire tip — the summit above the gate
-            { x: 0,   y: -54,  z: -26, mag: 2.3 },  // 1 gate top (keystone)
-            { x: -58, y: 6,    z:  34, mag: 2.6 },  // 2 left post
-            { x: 58,  y: 6,    z:  34, mag: 2.6 },  // 3 right post
-            { x: 0,   y: 66,   z: -26, mag: 2.2 },  // 4 gate foot
-            { x: 0,   y: 6,    z:   6, mag: 3.0 },  // 5 threshold, inside the arch
-        ],
-        edges: [[0, 1], [1, 2], [2, 4], [4, 3], [3, 1], [1, 5], [5, 4]],
-        field: [
-            { x: -78, y: -28, z:  28, mag: 3.7 },
-            { x: 74,  y: 50,  z: -20, mag: 3.9 },
-            { x: 0,   y: 96,  z:  40, mag: 3.9 },
-        ],
-        yawAmp: 0.52, yawPeriod: 24, tiltAmp: 0.24, tiltPeriod: 19, phase: 1.7,
-    },
-];
+type NetNode = { x: number; y: number; r: number; bright: boolean };
 
-/** Base star radius from magnitude (brighter = larger), before the depth scale. */
-const magRadius = (mag: number) => Math.max(1.1, 3.9 - mag * 0.65);
-
-// Perspective strength. Larger flattens; this gives clear parallax without the nearer
-// stars ballooning as the shape turns edge-on.
-const FOCAL = 540;
-
-type Projected = { sx: number; sy: number; scale: number };
-
-/** Rotate a centroid-relative point by yaw (about Y) then tilt (about X), and project it. */
-const project = (
-    lx: number, ly: number, lz: number,
-    yaw: number, tilt: number, cx: number, cy: number
-): Projected => {
-    const sinY = Math.sin(yaw), cosY = Math.cos(yaw);
-    const rx = lx * cosY + lz * sinY;
-    const rz = -lx * sinY + lz * cosY;
-    const sinX = Math.sin(tilt), cosX = Math.cos(tilt);
-    const ry = ly * cosX - rz * sinX;
-    const rz2 = ly * sinX + rz * cosX;
-    const scale = FOCAL / (FOCAL + rz2);
-    return { sx: cx + rx * scale, sy: cy + ry * scale, scale };
-};
-
-/**
- * Renders the asterisms with a live perspective projection.
- *
- * The projection is recomputed each frame from performance.now() and written straight to
- * the SVG elements through refs, so there is no per-frame React render. Using absolute
- * time (not accumulated frames) means a tab returning from the background lands on the
- * correct pose instead of catching up. rAF is suspended while hidden, so the shape simply
- * holds its last pose there; the initial attributes below are the yaw=0/tilt=0 front view,
- * which is what shows before the first frame and in a frozen tab.
- */
-const Constellations3D: React.FC<{ p: BootPalette }> = ({ p }) => {
-    const { accent: gold, ink: white } = p;
-
-    // Centroid-relative geometry, computed once. The centroid comes from the connected
-    // stars only, so field stars keep their offset around the same pivot.
-    const model = useMemo(() => ASTERISMS.map(a => {
-        const n = a.stars.length;
-        const mx = a.stars.reduce((s, v) => s + v.x, 0) / n;
-        const my = a.stars.reduce((s, v) => s + v.y, 0) / n;
-        const mz = a.stars.reduce((s, v) => s + v.z, 0) / n;
-        const rebase = (s: Star3D) => ({ x: s.x - mx, y: s.y - my, z: s.z - mz, mag: s.mag });
-        return { ...a, local: a.stars.map(rebase), fieldLocal: (a.field ?? []).map(rebase) };
-    }), []);
-
-    const dotRefs = useRef<(SVGCircleElement | null)[][]>(model.map(() => []));
-    const haloRefs = useRef<(SVGCircleElement | null)[][]>(model.map(() => []));
-    const lineRefs = useRef<(SVGLineElement | null)[][]>(model.map(() => []));
-    const fieldRefs = useRef<(SVGCircleElement | null)[][]>(model.map(() => []));
-
-    // These write attributes straight from a frame callback, which neither the global CSS
-    // reset nor MotionConfig can reach, so the preference is checked here: under reduced
-    // motion the asterisms hold the front view they were first rendered in.
-    const reducedMotion = useReducedMotion();
-    useAnimationFrame(() => {
-        if (reducedMotion) return;
-        const t = performance.now() / 1000;
-        model.forEach((a, ai) => {
-            const yaw = a.yawAmp * Math.sin((t / a.yawPeriod) * Math.PI * 2 + a.phase);
-            const tilt = a.tiltAmp * Math.sin((t / a.tiltPeriod) * Math.PI * 2 + a.phase * 1.3);
-            const cx = a.center[0] + Math.sin(t / 8 + a.phase) * 5;
-            const cy = a.center[1] + Math.sin(t / 6 + a.phase * 2) * 4;
-
-            const proj = a.local.map(s => project(s.x, s.y, s.z, yaw, tilt, cx, cy));
-
-            a.edges.forEach(([from, to], ei) => {
-                const el = lineRefs.current[ai][ei];
-                if (!el) return;
-                const pa = proj[from], pb = proj[to];
-                el.setAttribute('x1', pa.sx.toFixed(1));
-                el.setAttribute('y1', pa.sy.toFixed(1));
-                el.setAttribute('x2', pb.sx.toFixed(1));
-                el.setAttribute('y2', pb.sy.toFixed(1));
-                const avg = (pa.scale + pb.scale) / 2;
-                el.setAttribute('opacity', (0.10 + Math.max(0, avg - 0.75) * 0.42).toFixed(3));
-            });
-
-            a.local.forEach((s, si) => {
-                const pr = proj[si];
-                const r = magRadius(s.mag) * pr.scale;
-                const dot = dotRefs.current[ai][si];
-                if (dot) {
-                    dot.setAttribute('cx', pr.sx.toFixed(1));
-                    dot.setAttribute('cy', pr.sy.toFixed(1));
-                    dot.setAttribute('r', r.toFixed(2));
-                    dot.setAttribute('opacity', Math.min(1, Math.max(0.3, (pr.scale - 0.7) / 0.55)).toFixed(3));
-                }
-                const halo = haloRefs.current[ai][si];
-                if (halo) {
-                    halo.setAttribute('cx', pr.sx.toFixed(1));
-                    halo.setAttribute('cy', pr.sy.toFixed(1));
-                    halo.setAttribute('r', (r * 2.6).toFixed(2));
-                    halo.setAttribute('opacity', (0.09 * pr.scale).toFixed(3));
-                }
-            });
-
-            a.fieldLocal.forEach((s, si) => {
-                const pr = project(s.x, s.y, s.z, yaw, tilt, cx, cy);
-                const el = fieldRefs.current[ai][si];
-                if (!el) return;
-                el.setAttribute('cx', pr.sx.toFixed(1));
-                el.setAttribute('cy', pr.sy.toFixed(1));
-                el.setAttribute('r', (magRadius(s.mag) * pr.scale).toFixed(2));
-                el.setAttribute('opacity', (0.4 * Math.min(1, pr.scale)).toFixed(3));
-            });
+function buildNetwork(count: number): { nodes: NetNode[]; edges: [number, number][] } {
+    const nodes: NetNode[] = [];
+    for (let i = 1; i <= count; i++) {
+        const jx = hash(i, 12.9898) - 0.5;
+        const jy = hash(i, 78.2330) - 0.5;
+        const m = hash(i, 4.1237);
+        nodes.push({
+            x: frac(0.5 + A1 * i) * 1600 + jx * 74,
+            y: frac(0.5 + A2 * i) * 900 + jy * 74,
+            r: 1.1 + Math.pow(m, 2) * 2.6,
+            bright: m > 0.8,
         });
-    });
+    }
 
+    // Join each node to its nearest neighbours within a cap. Capping both the count and the
+    // distance keeps the web local — short struts between close stars — rather than a
+    // fully-connected graph that would read as noise.
+    const MAX_DIST = 236;
+    const MAX_PER = 3;
+    const edges: [number, number][] = [];
+    const seen = new Set<string>();
+    for (let i = 0; i < count; i++) {
+        const near: { j: number; d: number }[] = [];
+        for (let j = 0; j < count; j++) {
+            if (j === i) continue;
+            const d = Math.hypot(nodes[i].x - nodes[j].x, nodes[i].y - nodes[j].y);
+            if (d < MAX_DIST) near.push({ j, d });
+        }
+        near.sort((a, b) => a.d - b.d);
+        for (let k = 0; k < Math.min(MAX_PER, near.length); k++) {
+            const j = near[k].j;
+            const key = i < j ? i + ':' + j : j + ':' + i;
+            if (!seen.has(key)) { seen.add(key); edges.push([i, j]); }
+        }
+    }
+    return { nodes, edges };
+}
+
+const NETWORK = buildNetwork(92);
+
+const ConstellationNetwork: React.FC<{ p: BootPalette }> = ({ p }) => {
+    const { accent: gold, ink: white } = p;
+    const reducedMotion = useReducedMotion();
     return (
-        <>
-            {model.map((a, ai) => {
-                const p0 = a.local.map(s => project(s.x, s.y, s.z, 0, 0, a.center[0], a.center[1]));
-                const f0 = a.fieldLocal.map(s => project(s.x, s.y, s.z, 0, 0, a.center[0], a.center[1]));
+        <motion.g
+            animate={reducedMotion ? { opacity: 0.85 } : { opacity: [0.6, 0.92, 0.6] }}
+            transition={{ duration: 9, repeat: Infinity, ease: 'easeInOut' }}
+            style={{ willChange: 'opacity' }}
+        >
+            {NETWORK.edges.map(([a, b], i) => {
+                const na = NETWORK.nodes[a];
+                const nb = NETWORK.nodes[b];
                 return (
-                    <g key={a.label} opacity={0.9}>
-                        {a.edges.map(([from, to], ei) => (
-                            <line
-                                key={ei}
-                                ref={el => { lineRefs.current[ai][ei] = el; }}
-                                x1={p0[from].sx} y1={p0[from].sy}
-                                x2={p0[to].sx} y2={p0[to].sy}
-                                stroke={gold} strokeWidth="0.6" opacity="0.25"
-                            />
-                        ))}
-                        {a.fieldLocal.map((s, si) => (
-                            <circle
-                                key={`f${si}`}
-                                ref={el => { fieldRefs.current[ai][si] = el; }}
-                                cx={f0[si].sx} cy={f0[si].sy} r={magRadius(s.mag) * f0[si].scale}
-                                fill={white} opacity="0.4"
-                            />
-                        ))}
-                        {a.local.map((s, si) => {
-                            const r0 = magRadius(s.mag) * p0[si].scale;
-                            return (
-                                <g key={si}>
-                                    {s.mag < 2.0 && (
-                                        <circle
-                                            ref={el => { haloRefs.current[ai][si] = el; }}
-                                            cx={p0[si].sx} cy={p0[si].sy} r={r0 * 2.6}
-                                            fill={gold} opacity="0.09"
-                                        />
-                                    )}
-                                    <circle
-                                        ref={el => { dotRefs.current[ai][si] = el; }}
-                                        cx={p0[si].sx} cy={p0[si].sy} r={r0}
-                                        fill={s.mag < 2.1 ? white : gold}
-                                        filter="url(#nodeGlow)"
-                                    />
-                                </g>
-                            );
-                        })}
-                    </g>
+                    <line
+                        key={i}
+                        x1={na.x.toFixed(1)} y1={na.y.toFixed(1)}
+                        x2={nb.x.toFixed(1)} y2={nb.y.toFixed(1)}
+                        stroke={gold} strokeWidth="0.6" opacity="0.3"
+                    />
                 );
             })}
-        </>
+            {NETWORK.nodes.map((n, i) => (
+                <circle
+                    key={i}
+                    cx={n.x.toFixed(1)} cy={n.y.toFixed(1)} r={n.r.toFixed(2)}
+                    fill={n.bright ? white : gold}
+                    opacity={n.bright ? 0.95 : 0.6}
+                    filter={n.bright ? 'url(#nodeGlow)' : undefined}
+                />
+            ))}
+        </motion.g>
     );
 };
 
 // --- CELESTIAL & HUD COMPONENTS ---
 
 const MythicalConstellations: React.FC<{ p: BootPalette }> = ({ p }) => {
-    // The starfield uses only the ink colour; the asterisms are drawn by Constellations3D.
+    // The starfield uses only the ink colour; the joined web is drawn by ConstellationNetwork.
     const { ink: white } = p;
     return (
         /*
@@ -388,7 +255,7 @@ const MythicalConstellations: React.FC<{ p: BootPalette }> = ({ p }) => {
                 />
             ))}
 
-            <Constellations3D p={p} />
+            <ConstellationNetwork p={p} />
         </svg>
     );
 };
@@ -527,41 +394,97 @@ const CelestialVoid: React.FC<{ p: BootPalette }> = ({ p }) => (
     </div>
 );
 
-const DiamondHalo: React.FC<{ p: BootPalette }> = ({ p }) => {
-    const diamondPoints = "50,0 100,50 50,100 0,50";
+/**
+ * The sacred-geometry frame the tower stands inside.
+ *
+ * Where the old halo was three diamonds spinning at different rates, the reference is a
+ * precise, still figure: an outer square, an inscribed diamond touching its edge midpoints,
+ * and an eight-point star radiating from the centre. It reads as a reliquary the relic
+ * stands within — the diamond's lower edges make the downward chevron under the tower and
+ * its upper edges the peak the spire rises into — so it is drawn crisp and near-static, with
+ * only a slow glow-breath for life.
+ *
+ * It is sized to ENCLOSE the tower: a near-square on wide screens (matching the reference)
+ * that becomes a portrait rhombus on a phone, where a square wide enough for the tower's
+ * height would overflow the width. The lines live in a stretched 0..100 viewBox with a
+ * non-scaling stroke, so they stay hairline-thin at any aspect; the glowing vertex nodes are
+ * round elements positioned by percentage, so they never distort into ellipses.
+ */
+const SacredFrame: React.FC<{ p: BootPalette }> = ({ p }) => {
+    const reducedMotion = useReducedMotion();
+    const stroke = p.accent;
 
-    // Sizes relative to viewport so they look right on all screen sizes
-    const rings = [
-        { sizeVmin: 115, maxPx: 900, speed: 60, op: 0.05, color: p.accent, rev: false, dash: undefined },
-        { sizeVmin: 70,  maxPx: 540, speed: 45, op: 0.15, color: p.ink,    rev: true,  dash: "4 12" },
-        { sizeVmin: 52,  maxPx: 400, speed: 20, op: 0.25, color: p.accent, rev: false, dash: undefined },
+    // Vertices in the 0..100 box, inset slightly from the container edge.
+    const TL = '3,3', TR = '97,3', BR = '97,97', BL = '3,97';
+    const T = '50,3', R = '97,50', B = '50,97', L = '3,50';
+
+    // Round vertex nodes, positioned by percentage to match the polygon points above.
+    const nodes = [
+        { l: 50, t: 3, big: true }, { l: 97, t: 50, big: true },
+        { l: 50, t: 97, big: true }, { l: 3, t: 50, big: true },
+        { l: 3, t: 3 }, { l: 97, t: 3 }, { l: 97, t: 97 }, { l: 3, t: 97 },
     ];
 
     return (
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10 opacity-60">
-            {rings.map((ring, idx) => (
-                <motion.svg
-                    key={idx}
-                    animate={{ rotate: ring.rev ? -360 : 360 }}
-                    transition={{ duration: ring.speed, repeat: Infinity, ease: "linear" }}
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+            <motion.div
+                className="relative"
+                style={{
+                    width: 'min(94vw, clamp(340px, 74vh, 752px))',
+                    height: 'clamp(384px, 78vh, 796px)',
+                    willChange: 'opacity',
+                }}
+                animate={reducedMotion ? { opacity: 0.88 } : { opacity: [0.62, 0.92, 0.62] }}
+                transition={{ duration: 6.5, repeat: Infinity, ease: 'easeInOut' }}
+            >
+                <svg
+                    className="absolute inset-0 w-full h-full"
                     viewBox="0 0 100 100"
-                    className={`absolute ${blendFor(p)}`}
-                    style={{
-                        width: `clamp(120px, ${ring.sizeVmin}vmin, ${ring.maxPx}px)`,
-                        height: `clamp(120px, ${ring.sizeVmin}vmin, ${ring.maxPx}px)`,
-                        opacity: ring.op,
-                        willChange: 'transform',
-                    }}
+                    preserveAspectRatio="none"
+                    style={{ overflow: 'visible' }}
                 >
-                    <polygon
-                        points={diamondPoints}
-                        fill="none"
-                        stroke={ring.color}
-                        strokeWidth="0.3"
-                        strokeDasharray={ring.dash}
+                    <defs>
+                        <filter id="frameGlow" x="-15%" y="-15%" width="130%" height="130%">
+                            <feGaussianBlur stdDeviation="0.6" result="b" />
+                            <feMerge>
+                                <feMergeNode in="b" />
+                                <feMergeNode in="SourceGraphic" />
+                            </feMerge>
+                        </filter>
+                    </defs>
+                    <g fill="none" stroke={stroke} filter="url(#frameGlow)" strokeLinejoin="round">
+                        {/* Eight-point star — centre to the four square corners. */}
+                        <path d={`M50,50 L${TL} M50,50 L${TR} M50,50 L${BR} M50,50 L${BL}`}
+                            vectorEffect="non-scaling-stroke" strokeWidth="1" opacity="0.28" />
+                        {/* Diamond diagonals — the vertical and horizontal axes. */}
+                        <path d={`M${T} L${B} M${L} L${R}`}
+                            vectorEffect="non-scaling-stroke" strokeWidth="1" opacity="0.22" />
+                        {/* Outer square. */}
+                        <polygon points={`${TL} ${TR} ${BR} ${BL}`}
+                            vectorEffect="non-scaling-stroke" strokeWidth="1.25" opacity="0.5" />
+                        {/* Inscribed diamond. */}
+                        <polygon points={`${T} ${R} ${B} ${L}`}
+                            vectorEffect="non-scaling-stroke" strokeWidth="1.6" opacity="0.85" />
+                    </g>
+                </svg>
+                {nodes.map((n, i) => (
+                    <span
+                        key={i}
+                        className="absolute rounded-full"
+                        style={{
+                            left: `${n.l}%`,
+                            top: `${n.t}%`,
+                            width: n.big ? 7 : 5,
+                            height: n.big ? 7 : 5,
+                            marginLeft: n.big ? -3.5 : -2.5,
+                            marginTop: n.big ? -3.5 : -2.5,
+                            background: stroke,
+                            boxShadow: `0 0 9px ${stroke}, 0 0 3px ${stroke}`,
+                            opacity: n.big ? 0.95 : 0.7,
+                        }}
                     />
-                </motion.svg>
-            ))}
+                ))}
+            </motion.div>
         </div>
     );
 };
@@ -595,6 +518,109 @@ const BracketCorners: React.FC<{ color: string }> = ({ color }) => (
         <div className="absolute bottom-0 left-0 w-3 h-3 border-b-2 border-l-2" style={{ borderColor: color }} />
     </>
 );
+
+/**
+ * The Spire emblem — the boot centrepiece.
+ *
+ * This is the reference tower itself: its own pixels, keyed off the white plate to a
+ * transparent cutout, not a redrawing of it. It reads pixel-for-pixel like the art the
+ * owner supplied — every filigree line, lit window and gold shade — which a procedural
+ * mesh could only approximate. A projection has no back, so it cannot turn in full 3D; it
+ * is staged at the reference's fixed three-quarter angle and given life instead through a
+ * slow float, a breathing window-glow, and a sheen that sweeps the gilt.
+ *
+ * A dark "reliquary" pool sits behind it so the gold relic keeps its contrast on the
+ * Aureic light ground as well as on the Void. The tower stays the Void artefact it is in
+ * both themes; only the surrounding HUD inverts.
+ */
+const SpireEmblem: React.FC<{ p: BootPalette; awakened: boolean }> = ({ p, awakened }) => {
+    const reducedMotion = useReducedMotion();
+
+    return (
+        <div
+            className="relative flex items-center justify-center pointer-events-none"
+            style={{
+                width: 'clamp(260px, 90vw, 520px)',
+                height: 'clamp(360px, 71vh, 736px)',
+            }}
+        >
+            {/* Reliquary pool — a wash of void that grounds the gold relic in either theme.
+                On the Void it is a faint warm bloom (the tower already sits on black); on the
+                Aureic ground it is a defined dark niche, deep at the core and falling off
+                cleanly so it reads as a medallion rather than a grey smudge. */}
+            <div
+                className="absolute"
+                style={{
+                    width: p.isDark ? '132%' : '122%',
+                    height: p.isDark ? '120%' : '112%',
+                    background: p.isDark
+                        ? `radial-gradient(46% 46% at 50% 47%, ${p.accent}24 0%, ${p.accent}0d 34%, transparent 66%)`
+                        : 'radial-gradient(44% 47% at 50% 46%, rgba(6,13,22,0.94) 0%, rgba(6,13,22,0.80) 30%, rgba(6,13,22,0.32) 56%, transparent 73%)',
+                    filter: p.isDark ? 'blur(4px)' : 'blur(7px)',
+                }}
+            />
+
+            {/* The tower, floating. */}
+            <motion.div
+                className="relative w-full h-full"
+                style={{ willChange: 'transform' }}
+                animate={reducedMotion ? {} : { y: [0, -10, 0] }}
+                transition={{ duration: 7.5, repeat: Infinity, ease: 'easeInOut' }}
+            >
+                {/* Base cutout — the reference's own pixels. */}
+                <img
+                    src={SPIRE_SRC}
+                    alt=""
+                    aria-hidden="true"
+                    draggable={false}
+                    className="absolute inset-0 w-full h-full object-contain select-none"
+                    style={{ filter: `drop-shadow(0 22px 40px ${p.isDark ? 'rgba(0,0,0,0.6)' : 'rgba(4,10,18,0.7)'})` }}
+                />
+
+                {/* Window & lantern glow — screen-blended and breathing; it quickens at awakening. */}
+                <motion.img
+                    src={SPIRE_GLOW_SRC}
+                    alt=""
+                    aria-hidden="true"
+                    draggable={false}
+                    className="absolute inset-0 w-full h-full object-contain select-none"
+                    style={{ mixBlendMode: 'screen', willChange: 'opacity' }}
+                    animate={reducedMotion ? { opacity: 0.9 } : { opacity: awakened ? [0.82, 1, 0.82] : [0.5, 0.9, 0.5] }}
+                    transition={{ duration: awakened ? 2.2 : 3.6, repeat: Infinity, ease: 'easeInOut' }}
+                />
+
+                {/* Light sweep — a sheen crossing the gilt, clipped to the tower silhouette. */}
+                {!reducedMotion && (
+                    <div
+                        className="absolute inset-0 overflow-hidden"
+                        style={{
+                            WebkitMaskImage: `url(${SPIRE_SRC})`,
+                            maskImage: `url(${SPIRE_SRC})`,
+                            WebkitMaskSize: 'contain',
+                            maskSize: 'contain',
+                            WebkitMaskRepeat: 'no-repeat',
+                            maskRepeat: 'no-repeat',
+                            WebkitMaskPosition: 'center',
+                            maskPosition: 'center',
+                            mixBlendMode: 'screen',
+                        }}
+                    >
+                        <motion.div
+                            className="absolute top-[-30%] bottom-[-30%] w-1/2"
+                            style={{
+                                background: `linear-gradient(105deg, transparent 0%, ${p.isDark ? 'rgba(255,240,205,0.45)' : 'rgba(255,255,255,0.5)'} 50%, transparent 100%)`,
+                                filter: 'blur(6px)',
+                                willChange: 'transform',
+                            }}
+                            animate={{ x: ['-160%', '360%'] }}
+                            transition={{ duration: 5.5, repeat: Infinity, repeatDelay: 3.5, ease: 'easeInOut' }}
+                        />
+                    </div>
+                )}
+            </motion.div>
+        </div>
+    );
+};
 
 const BootScreen: React.FC<BootScreenProps> = ({ onComplete, theme }) => {
     const p = paletteFor(theme);
@@ -714,27 +740,29 @@ const BootScreen: React.FC<BootScreenProps> = ({ onComplete, theme }) => {
 
                 {/* LOGO AREA — fills available vertical space between header and HUD */}
                 <div className="relative flex items-center justify-center flex-1 w-full">
-                    <DiamondHalo p={p} />
+                    <SacredFrame p={p} />
+                    {/*
+                     * The emblem composites its own pixels over a dark pool, so it must not
+                     * carry the line-art blend mode the core logo used — screen/multiply on a
+                     * photographic cutout would wash it out on the void or crush it on the
+                     * light ground. The reveal/awaken/outro lives on this wrapper; the emblem's
+                     * own float, glow and sheen live inside it.
+                     */}
                     <motion.div
-                        initial={{ scale: 0.85, opacity: 0 }}
+                        initial={{ scale: 0.9, opacity: 0 }}
                         animate={
                             isShattering
-                                ? { scale: 3.5, opacity: 0, filter: 'drop-shadow(0 0 0px transparent)' }
-                                : { scale: 1, opacity: 1, filter: isAwakened ? `drop-shadow(0 0 70px ${p.accent}80)` : `drop-shadow(0 0 20px ${p.accent}1a)` }
+                                ? { scale: 1.55, opacity: 0 }
+                                : { scale: 1, opacity: 1 }
                         }
                         transition={{
                             duration: isShattering ? 1.0 : 1.8,
                             ease: isShattering ? "easeIn" : "easeOut",
                         }}
-                        className={`relative z-30 flex items-center justify-center ${blendFor(p)}`}
-                        style={{
-                            /* Viewport-relative size: fills well on phones → tablets → laptops */
-                            width:  'clamp(200px, min(70vw, 55vh), 560px)',
-                            height: 'clamp(200px, min(70vw, 55vh), 560px)',
-                            willChange: 'transform, opacity, filter',
-                        }}
+                        className="relative z-30 flex items-center justify-center"
+                        style={{ willChange: 'transform, opacity' }}
                     >
-                        <AkashicCoreLogo theme={theme} animate={true} />
+                        <SpireEmblem p={p} awakened={isAwakened} />
                     </motion.div>
                 </div>
 

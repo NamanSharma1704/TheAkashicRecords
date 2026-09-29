@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, Suspense, lazy, useRef, useCallback } from 'react';
+import { flushSync } from 'react-dom';
 import { motion, AnimatePresence, Reorder, useDragControls } from 'motion/react';
 import { Quest } from './types';
 import SystemFrame from '../components/system/SystemFrame';
@@ -909,11 +910,32 @@ const App: React.FC = () => {
 
     const toggleTheme = useCallback(() => {
         const next: ThemeId = currentTheme === 'LIGHT' ? 'DARK' : 'LIGHT';
-        setCurrentTheme(next);
-        try {
-            localStorage.setItem('akashic_theme', next);
-        } catch {
-            // Non-fatal: the palette still applies for this session.
+        const applyTheme = () => {
+            setCurrentTheme(next);
+            try {
+                localStorage.setItem('akashic_theme', next);
+            } catch {
+                // Non-fatal: the palette still applies for this session.
+            }
+        };
+
+        // The whole page — background atmosphere, gradients, brackets and the WebGL dais —
+        // crossfades as one via the View Transitions API, instead of every layer hard-cutting
+        // while only the token colours ease. `flushSync` makes the state change land inside the
+        // transition's capture. The `theme-switching` class freezes the per-element colour
+        // transitions for the capture, so the "after" frame is the final palette rather than a
+        // frame caught mid-fade (which would crossfade old->old). Falls back to the plain swap
+        // where the API is absent or motion is reduced; the 700ms token transitions cover that.
+        const doc = document as Document & { startViewTransition?: (cb: () => void) => { finished: Promise<unknown> } };
+        const reduce = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+        if (doc.startViewTransition && !reduce) {
+            const root = document.documentElement;
+            root.classList.add('theme-switching');
+            const transition = doc.startViewTransition(() => { flushSync(applyTheme); });
+            transition.finished.finally(() => root.classList.remove('theme-switching'));
+        } else {
+            applyTheme();
         }
     }, [currentTheme]);
 

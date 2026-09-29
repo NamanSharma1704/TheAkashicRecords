@@ -10,10 +10,12 @@ import { Theme } from '../../core/types';
  * Both branches now sit at their theme's `appBg` and gradient only a few levels either
  * side of it.
  *
- * Light is a drafting table, not a dimmed void: a cool grid at very low alpha, over
- * which white panels rise on a real shadow like paper. That grid is what carries the
- * richness that emitted light carries in dark mode — flat near-white reads as
- * unfinished, where flat near-black reads as deliberate.
+ * Light is a lit stage, not a dimmed void: the page brightens to a near-white violet-white
+ * behind the content and falls to a deeper lilac at the edges, so every white panel sits in
+ * the brightest zone and the darker perimeter frames it. That graded pool is what carries the
+ * definition here — the work emitted light does in dark mode. An earlier pass ruled a grid over
+ * a flat sheet to give panels something to separate from; the grid read as graph paper and
+ * competed with the content, so the value gradient does that job now and the sheet stays clean.
  */
 const GalaxyNebula: React.FC<{ theme: Theme }> = ({ theme }) => {
     if (theme.isDark) {
@@ -25,27 +27,32 @@ const GalaxyNebula: React.FC<{ theme: Theme }> = ({ theme }) => {
         );
     }
     return (
-        <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden bg-[#e9eef5]">
-            {/* Light direction, but stingy with it at the top. The page is the floor of the
-                whole value range — every white panel separates from it and every pale bloom
-                needs room above it — so the top only goes four levels over the token while
-                the bottom drops ten under. An earlier pass ran the top up to #eef2f8 and
-                handed that headroom straight back. */}
-            <div className="absolute inset-0 bg-gradient-to-b from-[#edf1f7] via-[#e9eef5] to-[#e2eaf3]" />
-            {/* Drafting grid. 32px minor over a 160px major, both slate rather than black
-                so they read as ruling on a cool sheet rather than dirt on a white one.
-                Kept under 0.05 alpha: at this size anything stronger moires while scrolling. */}
+        <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden bg-[#ece5f6]">
+            {/* The light-pool. Brightest near-white violet-white high and centre — where the hero
+                and content column sit — falling to a deeper lilac at the edges. This is a graded
+                value field, not a flat sheet: every panel lands in the brightest zone and reads
+                forward off it, the way glow makes panels read in dark mode. */}
             <div
                 className="absolute inset-0"
                 style={{
-                    backgroundImage:
-                        'repeating-linear-gradient(0deg, rgba(15,23,42,0.075) 0 1px, transparent 1px 160px),'
-                        + 'repeating-linear-gradient(90deg, rgba(15,23,42,0.075) 0 1px, transparent 1px 160px),'
-                        + 'repeating-linear-gradient(0deg, rgba(15,23,42,0.040) 0 1px, transparent 1px 32px),'
-                        + 'repeating-linear-gradient(90deg, rgba(15,23,42,0.040) 0 1px, transparent 1px 32px)',
+                    background:
+                        'radial-gradient(125% 95% at 50% 24%, #fbf9ff 0%, #f3eff9 38%, #e8dff4 70%, #ddd2ec 100%)',
                 }}
             />
-            <div className="absolute inset-0 bg-[url('/noise.svg')] opacity-[0.05] mix-blend-multiply" />
+            {/* Corner shade — a soft asymmetric vignette deepening the two far corners so the
+                field has a direction of light (upper-centre) and content is framed rather than
+                floating on flatness. Cool aubergine, kept low so it grounds without darkening. */}
+            <div
+                className="absolute inset-0"
+                style={{
+                    background:
+                        'radial-gradient(75% 75% at 106% 110%, rgba(59,29,110,0.11) 0%, transparent 46%),'
+                        + 'radial-gradient(65% 65% at -6% -8%, rgba(59,29,110,0.07) 0%, transparent 44%)',
+                }}
+            />
+            {/* Vellum grain — organic tooth in the surface (multiply), the texture the grid used
+                to provide, now without any geometry. */}
+            <div className="absolute inset-0 bg-[url('/noise.svg')] opacity-[0.06] mix-blend-multiply" />
         </div>
     );
 };

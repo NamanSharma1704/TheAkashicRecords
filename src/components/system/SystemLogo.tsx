@@ -8,7 +8,7 @@ interface SystemLogoProps {
 
 const SystemLogo: React.FC<SystemLogoProps> = ({ theme, className = "w-12 h-12" }) => {
     const isLight = theme?.id === 'LIGHT';
-    const primaryColor = isLight ? '#0ea5e9' : '#d97706';
+    const primaryColor = isLight ? '#7c3aed' : '#d97706';
     const secondaryColor = isLight ? '#6366f1' : '#fbbf24';
 
     return (

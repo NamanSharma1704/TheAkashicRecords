@@ -5,6 +5,7 @@ import ScrambleText from './ScrambleText';
 import SystemFrame from './SystemFrame';
 import EntityAvatar from './EntityAvatar';
 import BackgroundController from '../fx/BackgroundController';
+import ArcaneSigil from '../fx/ArcaneSigil';
 import { Shield, Terminal, Key, Cpu, Zap, Sun, Moon } from 'lucide-react';
 
 interface LoginScreenProps {
@@ -26,7 +27,7 @@ const SectionLabel: React.FC<{ theme: Theme; children: React.ReactNode }> = ({ t
     <div className="flex items-center gap-2">
         <div className="w-1 h-1 rotate-45" style={{ backgroundColor: theme.accentColor }} />
         <span className={`text-[9px] font-mono tracking-[0.3em] uppercase ${theme.mutedText}`}>{children}</span>
-        <div className={`flex-1 h-[1px] ${theme.isDark ? 'bg-white/10' : 'bg-slate-200'}`} />
+        <div className={`flex-1 h-[1px] ${theme.isDark ? 'bg-white/10' : 'bg-stone-200'}`} />
     </div>
 );
 
@@ -92,13 +93,23 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, theme, onTogg
     // placeholder is text the sweep cannot see (it is not a text node), so it went unchecked.
     const fieldClass = `w-full ${theme.inputBg} border ${theme.borderSubtle} px-3 py-2.5 outline-none
         focus:border-current transition-colors duration-700 font-mono text-sm peer
-        ${theme.isDark ? 'text-white placeholder:text-gray-400' : 'text-slate-900 placeholder:text-slate-600'}`;
+        ${theme.isDark ? 'text-white placeholder:text-gray-400' : 'text-stone-900 placeholder:text-stone-600'}`;
 
     return (
         <div className={`fixed inset-0 z-[200] ${theme.appBg} font-mono overflow-y-auto hide-scrollbar transition-colors duration-700`}>
             {/* Same ambient stack the dashboard uses, rather than a one-off field. isMobile is
                 passed through so phones skip the ring and ripple layers here too. */}
             <BackgroundController theme={theme} isMobile={isMobile} />
+
+            {/* The light theme's summoning-circle, centred on the sign-in panel so the entry
+                screen carries the same signature as the dashboard. Light only; it reads softly
+                through the glass panel and directly on the page around it. */}
+            {!theme.isDark && (
+                <ArcaneSigil
+                    theme={theme}
+                    className="left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[min(760px,94vw)] aspect-square z-0"
+                />
+            )}
 
             {/* Theme toggle, positioned like the in-app header control. */}
             {onToggleTheme && (
@@ -112,7 +123,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, theme, onTogg
                     >
                         {theme.isDark
                             ? <Moon size={14} className="transition-colors duration-700" style={{ color: theme.accentInk }} />
-                            : <Sun size={14} className="text-sky-600 transition-colors duration-700" />}
+                            : <Sun size={14} className="text-amber-600 transition-colors duration-700" />}
                     </button>
                 </div>
             )}
@@ -248,7 +259,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, theme, onTogg
                                            carries the weight a primary action wants, so the label goes
                                            near-black (7.33:1) rather than the button going ghost too. */
                                         style={{
-                                            color: theme.isDark ? theme.accentColor : '#0f172a',
+                                            color: theme.isDark ? theme.accentColor : '#2c2718',
                                             borderColor: theme.accentColor,
                                             backgroundColor: theme.isDark ? `${theme.accentColor}1a` : theme.accentColor
                                         }}
@@ -269,7 +280,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, theme, onTogg
                                         disabled={loading}
                                         className={`w-full py-3 border ${theme.borderSubtle} ${theme.isDark
                                             ? 'bg-black/40 hover:bg-white/5 text-gray-300 hover:text-white'
-                                            : 'bg-white/60 hover:bg-black/5 text-slate-600 hover:text-slate-900'} font-bold tracking-[0.2em] uppercase text-[10px] transition-colors duration-700 flex items-center justify-center gap-2 ${loading ? 'opacity-50 cursor-wait' : 'cursor-pointer'}`}
+                                            : 'bg-white/60 hover:bg-black/5 text-stone-600 hover:text-stone-900'} font-bold tracking-[0.2em] uppercase text-[10px] transition-colors duration-700 flex items-center justify-center gap-2 ${loading ? 'opacity-50 cursor-wait' : 'cursor-pointer'}`}
                                     >
                                         <Shield size={13} /> Bypass_Authentication (Guest)
                                     </button>

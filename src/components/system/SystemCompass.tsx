@@ -12,7 +12,7 @@ interface SystemCompassProps {
  * Design language:
  *  - Corner bracket ornaments (matches SystemFrame / holographic-panel style)
  *  - Orbitron font — same as h1/logo throughout the app
- *  - Amber  (#f59e0b) on dark / Cyan (#06b6d4) on light  
+ *  - Amber  (#f59e0b) on dark / Cyan (#7c3aed) on light  
  *  - Tick ring + N / E / S / W cardinal marks
  *  - Scanline grid inside face
  *  - Diamond needle with north glow
@@ -20,8 +20,8 @@ interface SystemCompassProps {
  */
 const SystemCompass: React.FC<SystemCompassProps> = ({ theme }) => {
   const isDark = theme.isDark;
-  const col   = isDark ? '#f59e0b' : '#06b6d4';
-  const col2  = isDark ? '#fbbf24' : '#22d3ee';
+  const col   = isDark ? '#f59e0b' : '#7c3aed';
+  const col2  = isDark ? '#fbbf24' : '#a78bfa';
   const dim   = (a: number) =>
     isDark ? `rgba(245,158,11,${a})` : `rgba(6,182,212,${a})`;
 

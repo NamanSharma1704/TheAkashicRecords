@@ -164,7 +164,7 @@ const HoloDais: React.FC<HoloDaisProps> = ({ theme, paused = false, className = 
     // The stand-in borrows the PLATFORM's light, not the theme accent: the real dais is
     // white on the void and the same neutral slate as the card chrome on the page, so an
     // accent-tinted placeholder changed hue at the moment of the swap.
-    const glow = theme.isDark ? '#ffffff' : '#5a6673';
+    const glow = theme.isDark ? '#ffffff' : '#7c3aed';
 
     return (
         <div

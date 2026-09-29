@@ -59,14 +59,16 @@ const TowerStructure: React.FC<TowerStructureProps> = ({ onSelectFloor, theme, o
         let hoveredFloor: THREE.Object3D | null = null;
         let isHoveringTower = false;
 
-        // --- THEME (matched to the site's accent tokens: amber-500 #f59e0b / cyan-500 #06b6d4) ---
+        // --- THEME. Void: amber hologram emitting light. Aureic: a lapis monument drawn in
+        // the accent's ink with a gold hot core — gold on ultramarine, standing out by
+        // saturation and edge contrast on the vellum rather than by glow. ---
         const isDark = theme.isDark;
-        const PRIMARY_COLOR = isDark ? 0xf59e0b : 0x06b6d4; // amber-500 / cyan-500 (accentColor)
-        const HOVER_COLOR = isDark ? 0xffffff : 0x155e75;   // white / accentInk
-        const BODY_COLOR = isDark ? 0xd6891a : 0x0e9ec4;    // rich amber / vibrant cyan platform fill
-        const EDGE_COLOR = isDark ? 0xfbbf24 : 0x22d3ee;    // amber-400 / cyan-400 (bright hologram edge)
-        const RIM_COLOR = isDark ? 0xfacc15 : 0x06b6d4;     // yellow-400 / cyan-500 (neon rim)
-        const HOT_COLOR = isDark ? 0xfff7e0 : 0xcffafe;     // pale amber / cyan-100 (hot core)
+        const PRIMARY_COLOR = isDark ? 0xf59e0b : 0x7c3aed; // violet-500 / lapis (accentColor)
+        const HOVER_COLOR = isDark ? 0xffffff : 0x3b1d6e;   // white / deep lapis (accentInk)
+        const BODY_COLOR = isDark ? 0xd6891a : 0x8b5cf6;    // rich amber / lapis body fill
+        const EDGE_COLOR = isDark ? 0xfbbf24 : 0xa78bfa;    // amber-400 / bright lapis edge
+        const RIM_COLOR = isDark ? 0xfacc15 : 0x7c3aed;     // yellow-400 / lapis rim
+        const HOT_COLOR = isDark ? 0xfff7e0 : 0xc4b0f5;     // pale amber / GOLD hot core (treasure)
 
         // --- SCENE ---
         const scene = new THREE.Scene();
@@ -217,7 +219,7 @@ const TowerStructure: React.FC<TowerStructureProps> = ({ onSelectFloor, theme, o
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
                 ctx.letterSpacing = "20px";
-                const themeColor = isDark ? '#f59e0b' : '#155e75';
+                const themeColor = isDark ? '#f59e0b' : '#5b21b6';
                 if (isDark) {
                     ctx.lineWidth = 15;
                     ctx.strokeStyle = themeColor;
@@ -296,7 +298,7 @@ const TowerStructure: React.FC<TowerStructureProps> = ({ onSelectFloor, theme, o
             if (x) { const g = x.createRadialGradient(16, 16, 0, 16, 16, 16); g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = g; x.fillRect(0, 0, 32, 32); }
             return new THREE.CanvasTexture(cv);
         })();
-        const moteMat = new THREE.PointsMaterial({ size: 1.9, map: moteTex, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0.9, color: isDark ? 0xffbe3d : 0x2fd6ec });
+        const moteMat = new THREE.PointsMaterial({ size: 1.9, map: moteTex, transparent: true, blending: isDark ? THREE.AdditiveBlending : THREE.NormalBlending, depthWrite: false, opacity: isDark ? 0.9 : 0.55, color: isDark ? 0xffbe3d : 0xb9a5ec });
         const motes = new THREE.Points(moteGeo, moteMat);
         group.add(motes);
         disposables.push(moteGeo, moteTex, moteMat);

@@ -22,7 +22,7 @@ const AkashicCoreLogo: React.FC<AkashicCoreLogoProps> = ({ theme, className = "w
 
     const pal = isDark
         ? { prm: '#f59e0b', mid: '#b45309', drk: '#78350f', deep: '#451a03', flare: '#fde68a', core: '#fffbeb' }
-        : { prm: '#06b6d4', mid: '#0e7490', drk: '#164e63', deep: '#083344', flare: '#22d3ee', core: '#67e8f9' };
+        : { prm: '#7c3aed', mid: '#6d3ad0', drk: '#3b1d6e', deep: '#083344', flare: '#a78bfa', core: '#e6ddf8' };
 
     // Kept under the original names so the drawing code below reads unchanged.
     const goldPrm = pal.prm;

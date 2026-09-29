@@ -9,8 +9,9 @@ import { Theme } from './types';
  * page the opposite holds — a glow has nothing to brighten, so height reads as a cast
  * shadow. Same ladder, two vocabularies.
  *
- * Every shadow here is cool-tinted slate rather than pure black. Neutral black over a
- * blue-grey page reads as grime; the shadow has to belong to the surface it falls on.
+ * Every light shadow here is cool aubergine rather than pure black or warm brown. A neutral
+ * or cool shadow over a lilac vellum page reads as grime; the shadow has to belong to
+ * the surface it falls on, so it takes the ground's own violet coolness.
  */
 
 /**
@@ -25,9 +26,11 @@ const LIGHT_ELEVATION: Record<Level, string> = {
     0: 'none',
     // Two layers each: a tight contact shadow that pins the object to the surface, and a
     // wide ambient one that gives it size. A single blur reads as a sticker.
-    1: '0 1px 2px rgba(15,23,42,0.06), 0 2px 6px rgba(15,23,42,0.08)',
-    2: '0 2px 4px rgba(15,23,42,0.07), 0 8px 18px rgba(15,23,42,0.12)',
-    3: '0 4px 8px rgba(15,23,42,0.08), 0 22px 40px rgba(15,23,42,0.16)',
+    // A warm-white inset top rim gives each surface a lit top edge — the light-mode read of
+    // the dark theme's ambient-caught rim — and the two warm cast layers give it real height.
+    1: 'inset 0 1px 0 rgba(255,253,255,0.9), 0 1px 2px rgba(40,26,60,0.10), 0 3px 8px rgba(40,26,60,0.12)',
+    2: 'inset 0 1px 0 rgba(255,253,255,0.9), 0 2px 4px rgba(40,26,60,0.12), 0 10px 22px rgba(40,26,60,0.18)',
+    3: 'inset 0 1px 0 rgba(255,253,255,0.95), 0 4px 10px rgba(40,26,60,0.14), 0 26px 46px rgba(40,26,60,0.24)',
 };
 
 const DARK_ELEVATION: Record<Level, string> = {
@@ -47,19 +50,19 @@ export const elevation = (theme: Theme, level: Level): string =>
 /**
  * The glow/shadow translation, in one place.
  *
- * This is the lesson the hero cone cost several rounds to learn: a coloured glow is not
- * a thing you can recolour for light mode, because on a pale page there is no headroom
- * above the background to glow *into*. The light branch therefore spends the emphasis
- * differently — a neutral cast shadow carries the presence, and the colour survives as a
- * tight saturated ring at an alpha a glow could never use.
+ * A white glow can't lighten a white page, but a SATURATED gold one is not trying to
+ * lighten — it stains the parchment warm, so it reads as a real bloom-halo the way the
+ * void's amber reads as emitted light. The light branch therefore spends the emphasis as a
+ * true coloured bloom plus a warm cast shadow for the height, not just a tight ring.
  *
  * `rgb` is a bare "r, g, b" triplet so callers can pass a theme token straight through.
  */
 export const emphasis = (theme: Theme, rgb: string, strength = 1): string =>
     theme.isDark
         ? `0 0 ${Math.round(20 * strength)}px rgba(${rgb}, ${(0.45 * strength).toFixed(3)})`
-        : `0 ${Math.round(6 * strength)}px ${Math.round(16 * strength)}px rgba(15,23,42,${(0.14 * strength).toFixed(3)}),`
-          + ` 0 0 0 1px rgba(${rgb}, ${(0.28 * strength).toFixed(3)})`;
+        : `0 0 ${Math.round(16 * strength)}px rgba(${rgb}, ${(0.40 * strength).toFixed(3)}),`
+          + ` 0 ${Math.round(6 * strength)}px ${Math.round(16 * strength)}px rgba(40,26,60,${(0.18 * strength).toFixed(3)}),`
+          + ` 0 0 0 1px rgba(${rgb}, ${(0.34 * strength).toFixed(3)})`;
 
 /**
  * Bare "r, g, b" for the theme's decorative accent, for feeding `emphasis`.

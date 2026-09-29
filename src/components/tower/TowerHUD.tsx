@@ -91,20 +91,20 @@ const TowerHUD: React.FC<TowerHUDProps> = ({ items, theme, onActivate, isFocused
                             <div className="grid grid-cols-2 gap-x-4 gap-y-3">
                                 <div className="flex flex-col">
                                     <div className={`text-[clamp(8px,0.8vw,10px)] ${theme.mutedText} font-mono uppercase tracking-widest`}>Read</div>
-                                    <div className={`text-[clamp(18px,2vw,32px)] font-bold font-mono tabular-nums leading-tight ${theme.isDark ? 'text-amber-300' : 'text-[#155e75]'}`}>{totalManhwa}</div>
+                                    <div className={`text-[clamp(18px,2vw,32px)] font-bold font-mono tabular-nums leading-tight ${theme.isDark ? 'text-violet-300' : 'text-[#5b21b6]'}`}>{totalManhwa}</div>
                                 </div>
                                 <div className="flex flex-col">
                                     <div className={`text-[clamp(8px,0.8vw,10px)] ${theme.mutedText} font-mono uppercase tracking-widest`}>Chapters</div>
-                                    <div className={`text-[clamp(18px,2vw,32px)] font-bold font-mono tabular-nums leading-tight ${theme.isDark ? 'text-amber-300' : 'text-[#155e75]'}`}>{displayChapters.toLocaleString()}</div>
+                                    <div className={`text-[clamp(18px,2vw,32px)] font-bold font-mono tabular-nums leading-tight ${theme.isDark ? 'text-violet-300' : 'text-[#5b21b6]'}`}>{displayChapters.toLocaleString()}</div>
                                 </div>
                                 <div className="flex flex-col">
                                     <div className={`text-[clamp(8px,0.8vw,10px)] ${theme.mutedText} font-mono uppercase tracking-widest`}>Conquered</div>
-                                    <div className={`text-[clamp(18px,2vw,32px)] font-bold font-mono tabular-nums leading-tight ${theme.isDark ? 'text-amber-400' : 'text-[#155e75]'}`}>{completedManhwa}</div>
+                                    <div className={`text-[clamp(18px,2vw,32px)] font-bold font-mono tabular-nums leading-tight ${theme.isDark ? 'text-amber-400' : 'text-[#5b21b6]'}`}>{completedManhwa}</div>
                                 </div>
                                 <div className="flex flex-col">
                                     <div className={`text-[clamp(8px,0.8vw,10px)] ${theme.mutedText} font-mono uppercase tracking-widest`}>Streak</div>
                                     <div className="flex items-center gap-1.5">
-                                        <div className={`text-[clamp(18px,2vw,32px)] font-bold font-mono tabular-nums leading-tight ${theme.isDark ? 'text-amber-400' : 'text-[#155e75]'}`}>{streak}</div>
+                                        <div className={`text-[clamp(18px,2vw,32px)] font-bold font-mono tabular-nums leading-tight ${theme.isDark ? 'text-amber-400' : 'text-[#5b21b6]'}`}>{streak}</div>
                                         <Activity size={12} className={theme.highlightText} />
                                     </div>
                                 </div>
@@ -139,7 +139,7 @@ const TowerHUD: React.FC<TowerHUDProps> = ({ items, theme, onActivate, isFocused
                                             <span>{totalManhwa} / 1000</span>
                                         </div>
                                         <div className={`h-1.5 w-full ${theme.isDark ? 'bg-white/10' : 'bg-black/10'} relative overflow-hidden`}>
-                                            <div className={`h-full bg-gradient-to-r ${theme.gradient} progress-bloom transition-all duration-1000 ease-out`} style={{ width: `${Math.min(100, (totalManhwa / 10))}%`, color: theme.id === 'LIGHT' ? '#0ea5e9' : '#fbbf24' }} />
+                                            <div className={`h-full bg-gradient-to-r ${theme.gradient} progress-bloom transition-all duration-1000 ease-out`} style={{ width: `${Math.min(100, (totalManhwa / 10))}%`, color: theme.id === 'LIGHT' ? '#7c3aed' : '#fbbf24' }} />
                                         </div>
                                     </div>
 
@@ -158,7 +158,7 @@ const TowerHUD: React.FC<TowerHUDProps> = ({ items, theme, onActivate, isFocused
                                                 <span className={`${theme.highlightText} font-mono font-bold text-[clamp(12px,1.2vw,16px)]`}>{Math.min(5, dailyAbsorbed)}<span className={`${theme.mutedText} text-[clamp(9px,0.9vw,11px)]`}>/5</span></span>
                                             </div>
                                             <div className={`h-1 w-full ${theme.isDark ? 'bg-white/10' : 'bg-black/10'} relative overflow-hidden`}>
-                                                <div className={`h-full bg-gradient-to-r ${theme.gradient} progress-bloom transition-all duration-700`} style={{ width: `${Math.min(100, (dailyAbsorbed / 5) * 100)}%`, color: theme.id === 'LIGHT' ? '#0ea5e9' : '#fbbf24' }} />
+                                                <div className={`h-full bg-gradient-to-r ${theme.gradient} progress-bloom transition-all duration-700`} style={{ width: `${Math.min(100, (dailyAbsorbed / 5) * 100)}%`, color: theme.id === 'LIGHT' ? '#7c3aed' : '#fbbf24' }} />
                                             </div>
                                         </div>
                                     )}
@@ -186,7 +186,7 @@ const TowerHUD: React.FC<TowerHUDProps> = ({ items, theme, onActivate, isFocused
                                     <span className={`text-[clamp(18px,2vw,32px)] font-black font-mono ${i === 0 ? theme.highlightText : 'text-gray-500'} group-hover:scale-110 transition-transform`}>0{i + 1}</span>
                                     <div className="flex-1 min-w-0">
                                         <div className={`text-[clamp(10px,1vw,12px)] font-bold truncate ${theme.headingText} group-hover:${theme.highlightText} transition-colors font-orbitron uppercase`}>{item.title}</div>
-                                        <div className={`text-[clamp(9px,0.9vw,11px)] font-bold font-mono tabular-nums ${theme.isDark ? 'text-amber-400' : 'text-[#155e75]'}`}>{item.totalChapters} CHAPTERS</div>
+                                        <div className={`text-[clamp(9px,0.9vw,11px)] font-bold font-mono tabular-nums ${theme.isDark ? 'text-amber-400' : 'text-[#5b21b6]'}`}>{item.totalChapters} CHAPTERS</div>
                                     </div>
                                 </button>
                             ))}
@@ -205,11 +205,11 @@ const TowerHUD: React.FC<TowerHUDProps> = ({ items, theme, onActivate, isFocused
                                 return (
                                     <div key={cls} className="space-y-1.5">
                                         <div className="flex justify-between items-end">
-                                            <span className={`text-[clamp(9px,1vw,11px)] font-mono tabular-nums ${theme.isDark ? 'text-amber-400' : 'text-[#155e75]'}`}>{count}</span>
+                                            <span className={`text-[clamp(9px,1vw,11px)] font-mono tabular-nums ${theme.isDark ? 'text-amber-400' : 'text-[#5b21b6]'}`}>{count}</span>
                                             <span className={`text-[clamp(8px,0.8vw,10px)] font-bold ${theme.headingText} uppercase tracking-[0.2em] font-orbitron`}>{cls}</span>
                                         </div>
                                         <div className={`h-1 w-full ${theme.isDark ? 'bg-white/10' : 'bg-black/10'} flex justify-end`}>
-                                            <div className={`h-full transition-all duration-1000 bg-gradient-to-l ${theme.gradient} progress-bloom`} style={{ width: `${pct}%`, color: theme.id === 'LIGHT' ? '#0ea5e9' : '#fbbf24' }} />
+                                            <div className={`h-full transition-all duration-1000 bg-gradient-to-l ${theme.gradient} progress-bloom`} style={{ width: `${pct}%`, color: theme.id === 'LIGHT' ? '#7c3aed' : '#fbbf24' }} />
                                         </div>
                                     </div>
                                 );
@@ -263,33 +263,33 @@ const TowerHUD: React.FC<TowerHUDProps> = ({ items, theme, onActivate, isFocused
                         <div className="py-2 px-3 flex items-center justify-around gap-0.5">
                             <div className="flex flex-col items-center">
                                 <span className={`text-[7px] ${theme.mutedText} font-mono uppercase tracking-tighter`}>Titles</span>
-                                <span className={`text-[13px] font-bold ${theme.isDark ? 'text-amber-300' : 'text-[#155e75]'}`}>{totalManhwa}</span>
+                                <span className={`text-[13px] font-bold ${theme.isDark ? 'text-violet-300' : 'text-[#5b21b6]'}`}>{totalManhwa}</span>
                             </div>
-                            <div className={`w-px h-5 ${theme.isDark ? 'bg-white/10' : 'bg-slate-300'}`} aria-hidden="true" />
+                            <div className={`w-px h-5 ${theme.isDark ? 'bg-white/10' : 'bg-stone-300'}`} aria-hidden="true" />
                             <div className="flex flex-col items-center">
                                 <span className={`text-[7px] ${theme.mutedText} font-mono uppercase tracking-tighter`}>Active</span>
-                                <span className={`text-[13px] font-bold ${theme.isDark ? 'text-amber-300' : 'text-[#155e75]'}`}>{totalManhwa - completedManhwa}</span>
+                                <span className={`text-[13px] font-bold ${theme.isDark ? 'text-violet-300' : 'text-[#5b21b6]'}`}>{totalManhwa - completedManhwa}</span>
                             </div>
-                            <div className={`w-px h-5 ${theme.isDark ? 'bg-white/10' : 'bg-slate-300'}`} aria-hidden="true" />
+                            <div className={`w-px h-5 ${theme.isDark ? 'bg-white/10' : 'bg-stone-300'}`} aria-hidden="true" />
                             <div className="flex flex-col items-center">
                                 <span className={`text-[7px] ${theme.mutedText} font-mono uppercase tracking-tighter`}>Conquered</span>
-                                <span className={`text-[13px] font-bold ${theme.isDark ? 'text-amber-300' : 'text-[#155e75]'}`}>{completedManhwa}</span>
+                                <span className={`text-[13px] font-bold ${theme.isDark ? 'text-violet-300' : 'text-[#5b21b6]'}`}>{completedManhwa}</span>
                             </div>
-                            <div className={`w-px h-5 ${theme.isDark ? 'bg-white/10' : 'bg-slate-300'}`} aria-hidden="true" />
+                            <div className={`w-px h-5 ${theme.isDark ? 'bg-white/10' : 'bg-stone-300'}`} aria-hidden="true" />
                             <div className="flex flex-col items-center">
                                 <span className={`text-[7px] ${theme.mutedText} font-mono uppercase tracking-tighter`}>Avg Ch</span>
-                                <span className={`text-[13px] font-bold ${theme.isDark ? 'text-amber-300' : 'text-[#155e75]'}`}>{totalManhwa > 0 ? Math.round(displayChapters / totalManhwa) : 0}</span>
+                                <span className={`text-[13px] font-bold ${theme.isDark ? 'text-violet-300' : 'text-[#5b21b6]'}`}>{totalManhwa > 0 ? Math.round(displayChapters / totalManhwa) : 0}</span>
                             </div>
-                            <div className={`w-px h-5 ${theme.isDark ? 'bg-white/10' : 'bg-slate-300'}`} aria-hidden="true" />
+                            <div className={`w-px h-5 ${theme.isDark ? 'bg-white/10' : 'bg-stone-300'}`} aria-hidden="true" />
                             <div className="flex flex-col items-center">
                                 <span className={`text-[7px] ${theme.mutedText} font-mono uppercase tracking-tighter`}>Chapters</span>
-                                <span className={`text-[13px] font-bold ${theme.isDark ? 'text-amber-300' : 'text-[#155e75]'}`}>{displayChapters.toLocaleString()}</span>
+                                <span className={`text-[13px] font-bold ${theme.isDark ? 'text-violet-300' : 'text-[#5b21b6]'}`}>{displayChapters.toLocaleString()}</span>
                             </div>
-                            <div className={`w-px h-5 ${theme.isDark ? 'bg-white/10' : 'bg-slate-300'}`} aria-hidden="true" />
+                            <div className={`w-px h-5 ${theme.isDark ? 'bg-white/10' : 'bg-stone-300'}`} aria-hidden="true" />
                             <div className="flex flex-col items-center">
                                 <span className={`text-[7px] ${theme.mutedText} font-mono uppercase tracking-tighter`}>Streak</span>
                                 <div className="flex items-center gap-0.5">
-                                    <span className={`text-[13px] font-bold ${theme.isDark ? 'text-amber-400' : 'text-[#155e75]'}`}>{streak}</span>
+                                    <span className={`text-[13px] font-bold ${theme.isDark ? 'text-amber-400' : 'text-[#5b21b6]'}`}>{streak}</span>
                                     <Activity size={8} className={theme.highlightText} />
                                 </div>
                             </div>

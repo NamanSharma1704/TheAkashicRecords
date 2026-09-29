@@ -3,6 +3,7 @@ import GalaxyNebula from './GalaxyNebula';
 import OmniscientField from './OmniscientField';
 import SanctuaryRing from './SanctuaryRing';
 import GoldenRipples from './GoldenRipples';
+import IlluminatedCodex from './IlluminatedCodex';
 import NoiseOverlay from './NoiseOverlay';
 import { Theme } from '../../core/types';
 
@@ -18,11 +19,19 @@ const BackgroundController: React.FC<BackgroundControllerProps> = ({ theme, isPa
     return (
         <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
             <GalaxyNebula theme={theme} />
-            <OmniscientField isDivineMode={isDivineMode} isPaused={isPaused} isMobile={isMobile} />
-            {!isMobile && (
+            {/* Two different atmospheres, not one recoloured. The Void keeps its emissive
+                starfield/ripples; the light theme gets its own "light and ink on vellum" set. */}
+            {isDivineMode ? (
+                <IlluminatedCodex theme={theme} isPaused={isPaused} />
+            ) : (
                 <>
-                    <SanctuaryRing theme={theme} isPaused={isPaused} />
-                    <GoldenRipples colorRGB={theme.starColor} isPaused={isPaused} isDark={theme.isDark} />
+                    <OmniscientField isDivineMode={isDivineMode} isPaused={isPaused} isMobile={isMobile} />
+                    {!isMobile && (
+                        <>
+                            <SanctuaryRing theme={theme} isPaused={isPaused} />
+                            <GoldenRipples colorRGB={theme.starColor} isPaused={isPaused} isDark={theme.isDark} />
+                        </>
+                    )}
                 </>
             )}
             <NoiseOverlay />

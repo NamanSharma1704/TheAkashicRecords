@@ -51,7 +51,7 @@ const OmniscientField: React.FC<OmniscientFieldProps> = ({ isDivineMode, isPause
             const glowColor = isDivineMode ? '30, 41, 59' : '139, 92, 246';
             const regColor = isDivineMode ? '51, 65, 85' : '139, 92, 246';
             // Dark ink on light needs far less alpha to register than light on dark — but
-            // the links need more, because 0.04 of slate over #e9eef5 is nothing at all.
+            // the links need more, because 0.04 of slate over #f1edf7 is nothing at all.
             const glowAlpha = isDivineMode ? 0.34 : 0.8;
             const regAlpha = isDivineMode ? 0.20 : 0.4;
             const linkAlpha = isDivineMode ? 0.10 : 0.04;

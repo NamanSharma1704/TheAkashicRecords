@@ -16,8 +16,8 @@ interface EntityAvatarProps {
 
 const EntityAvatar: React.FC<EntityAvatarProps> = ({ theme, size = 64, className = "" }) => {
     const goldColor = '#f59e0b';
-    const mainColor = theme.id === 'LIGHT' ? '#06b6d4' : goldColor;
-    const secondaryColor = theme.id === 'LIGHT' ? '#22d3ee' : '#fbbf24';
+    const mainColor = theme.id === 'LIGHT' ? '#7c3aed' : goldColor;
+    const secondaryColor = theme.id === 'LIGHT' ? '#a78bfa' : '#fbbf24';
 
     // Trifold Palette: Black hood/armor, White face/chest, Golden energy
     const hoodColor = '#0a0a0a'; // Always black hood for structure
@@ -28,7 +28,7 @@ const EntityAvatar: React.FC<EntityAvatarProps> = ({ theme, size = 64, className
 
     return (
         <div
-            className={`relative group flex items-center justify-center overflow-hidden border ${theme.border} ${theme.isDark ? 'bg-[#0a0a0a]' : 'bg-[#f5f5f5]'} ${className} transition-all duration-700 hover:shadow-[0_0_30px_rgba(var(--primary-rgb),0.5)]`}
+            className={`relative group flex items-center justify-center overflow-hidden border ${theme.border} ${theme.isDark ? 'bg-[#0a0a0a]' : 'bg-[#eae1f5]'} ${className} transition-all duration-700 hover:shadow-[0_0_30px_rgba(var(--primary-rgb),0.5)]`}
             style={{
                 width: size,
                 height: size,
@@ -181,10 +181,10 @@ const EntityAvatar: React.FC<EntityAvatarProps> = ({ theme, size = 64, className
             {/* Bottom Status Ticker (Physical Integration) */}
             <div className="absolute bottom-1 right-2 flex items-center gap-1 opacity-20 group-hover:opacity-100 transition-opacity">
                 <div className="w-[2px] h-[2px] rounded-full bg-white animate-ping" />
-                {/* The card is #0a0a0a on dark but #f5f5f5 on light, where white-on-white
+                {/* The card is #0a0a0a on dark but #f2eef8 on light, where white-on-white
                     erased this decal entirely. It is 4px texture rather than text, so it
                     stays faint — but faint in both themes, not absent in one. */}
-                <span className={`text-[4px] font-mono ${theme.isDark ? 'text-white/50' : 'text-slate-900/50'} lowercase tracking-widest`}>Defined_State://True</span>
+                <span className={`text-[4px] font-mono ${theme.isDark ? 'text-white/50' : 'text-[#2c2718]/50'} lowercase tracking-widest`}>Defined_State://True</span>
             </div>
 
             {/* Corner Decorative Brackets (Theme Integrated) */}

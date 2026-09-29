@@ -40,35 +40,54 @@ export const THEMES: Record<ThemeId, Theme> = {
         warningInk: '#f59e0b',
         isDark: true
     },
+    // Aureic — the light theme, an illuminated-manuscript surface: gold and lapis ink on warm
+    // vellum. The cyan version was cold and washed; the all-gold version was warm and cohesive
+    // but topped out on contrast, so headline detail stayed soft. This is the illuminated
+    // answer — a WARM parchment ground and warm ink for reading, a deep LAPIS accent that pops
+    // hard on the page and carries the chrome, rank, borders and definition, and GOLD kept for
+    // the hero marks (logo, tower, wordmark shimmer). Depth comes from real cast shadows and
+    // ambient occlusion (see depth.ts), never the glow a pale page kills. Gold on ultramarine
+    // on vellum: the canonical pairing, and an archive of the stars in blue and gold.
     LIGHT: {
         id: 'LIGHT',
         name: 'Light Mode',
-        primary: 'sky',
-        accent: 'indigo',
-        appBg: 'bg-[#e9eef5]',
-        panelBg: 'bg-white',
-        modalBg: 'bg-[#f0f9ff]',
-        inputBg: 'bg-slate-100',
-        baseText: 'text-slate-700',
-        headingText: 'text-slate-900',
-        mutedText: 'text-slate-600',
-        highlightText: 'text-[#155e75]',
-        border: 'border-[#06b6d4]',
-        borderSubtle: 'border-slate-300',
-        overlay: 'bg-white/80',
-        // Ink for the background field, not a glow colour. The field draws contour rings
-        // and linework, so on a pale page this has to be slate rather than the accent —
-        // cyan at these alphas over #e9eef5 never resolved into anything.
-        starColor: '71, 85, 105',
-        gradient: 'from-[#06b6d4] to-cyan-500',
-        // cyan-900 -> a deep cyan -> accentInk. The mid stop is the brightest and still
-        // measures 4.7:1 on #e2eaf3, the darkest stop of the page, so the sheen survives
-        // at every text size rather than only at display sizes.
-        inkGradient: 'from-[#164e63] via-[#0c6f8a] to-[#155e75]',
-        accentColor: '#06b6d4',
-        accentInk: '#155e75',
-        // amber-800. Same meaning as dark's amber-500, four steps down so it survives the page.
-        warningInk: '#92400e',
+        primary: 'violet',
+        accent: 'violet',
+        // Arcanum: a monochromatic AMETHYST theme — one hue across its whole value scale, the
+        // same self-matching structure that makes black/white/amber cohere, but a separate
+        // identity from the amber Void. Neutrals are violet-tinted so ground, ink, borders and
+        // accent all belong to one family; a true aubergine near-black gives the full value
+        // range (~12:1) that carries definition, and amethyst is the disciplined 10% accent.
+        appBg: 'bg-[#f1edf7]',
+        panelBg: 'bg-[#fcfaff]',
+        modalBg: 'bg-[#f6f1fc]',
+        inputBg: 'bg-[#eae3f5]',
+        // Aubergine near-black for ink — the "black" of this theme, giving the black-to-white
+        // value range that definition needs. Body and muted step up in lightness, still violet.
+        baseText: 'text-[#463a5c]',
+        headingText: 'text-[#241a33]',
+        mutedText: 'text-[#655a80]',
+        // Accent text is deep amethyst — ~6.5:1 on the lilac vellum, readable at every size.
+        highlightText: 'text-[#5b21b6]',
+        // An amethyst hairline for structural accent edges; the quiet divider is a soft
+        // violet-grey so not every line shouts.
+        border: 'border-[#8b5cf6]',
+        borderSubtle: 'border-[#d3cae8]',
+        overlay: 'bg-[#e7ddf5]/85',
+        // Deep amethyst ink for the field's contour rings, grid and linework, so the HUD carries
+        // the same density of visible detail the void does — violet ink drawn on lilac vellum.
+        starColor: '74, 40, 120',
+        gradient: 'from-[#7c3aed] to-[#a78bfa]',
+        // The wordmark shimmer is amethyst too — Arcanum has one hue, no gold. Deep enough that
+        // the mid stop still clears 3:1 on the vellum for the display text it rides.
+        inkGradient: 'from-[#3b1d6e] via-[#7c3aed] to-[#5b21b6]',
+        // The accent is amethyst: a vivid violet for decorative chrome (fills, glows, progress,
+        // borders, bloom-halos) and a deep amethyst ink for anything read (rank, values, accent
+        // text). One hue, its own identity, carrying both vibrance and definition.
+        accentColor: '#7c3aed',
+        accentInk: '#5b21b6',
+        // Vermilion, kept distinct from the amethyst so a warning never reads as chrome.
+        warningInk: '#b0431a',
         isDark: false
     },
 };

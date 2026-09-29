@@ -1,6 +1,7 @@
 ﻿import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { motion, useReducedMotion } from 'motion/react';
 import { Theme } from '../../core/types';
+import ArcaneSigil from '../fx/ArcaneSigil';
 
 // The boot centrepiece emblem is served from the public root as a keyed cutout of the
 // reference art (see SpireEmblem). Pathed from `/` so it resolves under any route.
@@ -50,7 +51,7 @@ type BootPalette = { accent: string; accentInk: string; ink: string; ground: str
  */
 const paletteFor = (theme: Theme): BootPalette => theme.isDark
     ? { accent: '#fbbf24', accentInk: '#fbbf24', ink: '#ffffff', ground: '#020202', isDark: true }
-    : { accent: theme.accentColor, accentInk: theme.accentInk, ink: '#0f172a', ground: '#f8fafc', isDark: false };
+    : { accent: theme.accentColor, accentInk: theme.accentInk, ink: '#241a33', ground: '#f1edf7', isDark: false };
 
 // Screen blending only lifts against a dark ground; on the light theme it erases the art.
 const blendFor = (p: BootPalette) => p.isDark ? 'mix-blend-screen' : 'mix-blend-multiply';
@@ -191,15 +192,21 @@ const ConstellationNetwork: React.FC<{ p: BootPalette }> = ({ p }) => {
                     />
                 );
             })}
-            {NETWORK.nodes.map((n, i) => (
-                <circle
-                    key={i}
-                    cx={n.x.toFixed(1)} cy={n.y.toFixed(1)} r={n.r.toFixed(2)}
-                    fill={n.bright ? white : gold}
-                    opacity={n.bright ? 0.95 : 0.6}
-                    filter={n.bright ? 'url(#nodeGlow)' : undefined}
-                />
-            ))}
+            {NETWORK.nodes.map((n, i) => {
+                // On the Aureic ground a scatter of jewel stars — lapis and viridian among
+                // the gold — gives the sky the vibrancy an illuminated page gets from setting
+                // gold beside lapis and vermilion. The Void keeps its single-hue sky.
+                const jewel = p.isDark ? null : (i % 7 === 3 ? '#1c4f86' : i % 7 === 6 ? '#0f6d63' : null);
+                return (
+                    <circle
+                        key={i}
+                        cx={n.x.toFixed(1)} cy={n.y.toFixed(1)} r={n.r.toFixed(2)}
+                        fill={jewel ?? (n.bright ? white : gold)}
+                        opacity={jewel ? 0.85 : n.bright ? 0.95 : 0.6}
+                        filter={n.bright || jewel ? 'url(#nodeGlow)' : undefined}
+                    />
+                );
+            })}
         </motion.g>
     );
 };
@@ -750,6 +757,17 @@ const BootScreen: React.FC<BootScreenProps> = ({ onComplete, theme }) => {
 
                 {/* LOGO AREA — fills available vertical space between header and HUD */}
                 <div className="relative flex items-center justify-center flex-1 w-full">
+                    {/* The light theme's summoning-circle, centred on the spire so the boot carries
+                        the same signature as the app. It layers with the sacred frame (a circle
+                        inside the diamond reliquary) and sits over the starfield, behind the relic.
+                        Light only; it freezes with the rest of the boot during the outro. */}
+                    {!theme.isDark && (
+                        <ArcaneSigil
+                            theme={theme}
+                            paused={isShattering}
+                            className="left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[min(880px,96vmin)] aspect-square z-0"
+                        />
+                    )}
                     <SacredFrame p={p} />
                     {/*
                      * The emblem composites its own pixels over a dark pool, so it must not

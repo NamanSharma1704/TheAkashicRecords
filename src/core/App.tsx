@@ -18,6 +18,7 @@ import SystemCompass from '../components/system/SystemCompass';
 // import to idle, so a lazy boundary here would only put a Suspense hole over the hero.
 import HoloDais from '../components/dais/HoloDais';
 import Card3D from '../components/quest/Card3D';
+import ArcaneSigil from '../components/fx/ArcaneSigil';
 import { accentRGB, elevation, emphasis } from './depth';
 import { InfinitePortalIcon, CalibratedPlusIcon, CalibratedMinusIcon } from '../components/system/CustomIcons';
 
@@ -87,7 +88,7 @@ const QuestListItem = ({ item, theme, activeId, handleLogClick, onDragStateChang
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className={`relative group cursor-pointer border py-1.5 px-3 transition-colors duration-200 ${isHighlighted ? `${theme.border} ${theme.isDark ? 'bg-white/5' : 'bg-sky-500/5'}` : `border-transparent hover:${theme.borderSubtle} bg-transparent`}`}
+            className={`relative group cursor-pointer border py-1.5 px-3 transition-colors duration-200 ${isHighlighted ? `${theme.border} ${theme.isDark ? 'bg-white/5' : 'bg-violet-500/10'}` : `border-transparent hover:${theme.borderSubtle} bg-transparent`}`}
         >
             <div className="flex justify-between items-center h-full">
                 <div className="flex items-center gap-2 max-w-[85%] min-w-0">
@@ -140,7 +141,7 @@ const QuestListItem = ({ item, theme, activeId, handleLogClick, onDragStateChang
                     <div className="flex flex-col min-w-0 pr-2">
                         <span className={`font-bold font-mono text-[11px] leading-tight ${isHighlighted ? theme.highlightText : `${theme.mutedText} group-hover:${theme.headingText}`} transition-colors duration-700 uppercase line-clamp-2`}>{item.title}</span>
                         <div className="flex items-center gap-2 mt-1">
-                            <div className={`w-1 h-1 rounded-full flex-none ${item.status === 'ACTIVE' ? (theme.isDark ? 'bg-amber-400' : 'bg-cyan-500') : 'bg-gray-400'}`} />
+                            <div className={`w-1 h-1 rounded-full flex-none ${item.status === 'ACTIVE' ? (theme.isDark ? 'bg-amber-400' : 'bg-[#7c3aed]') : 'bg-gray-400'}`} />
                             <span className={`text-[9px] ${theme.mutedText} uppercase font-mono tracking-widest transition-colors duration-700 truncate`}>{item.status}</span>
                         </div>
                     </div>
@@ -204,7 +205,7 @@ const SystemGateModal = lazy(() => import('../components/system/SystemGateModal'
 // Loading Fallback Strategy
 const HeavyLoader = ({ theme }: { theme: any }) => (
     <div className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm flex items-center justify-center" role="status" aria-label="Loading">
-        <div className={`w-16 h-16 border-2 border-dashed ${theme.id === 'LIGHT' ? 'border-sky-500' : 'border-amber-500'} rounded-full animate-spin`} />
+        <div className={`w-16 h-16 border-2 border-dashed ${theme.id === 'LIGHT' ? 'border-[#8b5cf6]' : 'border-amber-500'} rounded-full animate-spin`} />
     </div>
 );
 
@@ -320,7 +321,7 @@ const App: React.FC = () => {
         if (win) {
             try { win.opener = null; } catch { /* cross-origin guard */ }
             try {
-                win.document.write(buildPortalLoader(target.href, theme.accentColor, theme.isDark ? '#fbbf24' : '#67e8f9'));
+                win.document.write(buildPortalLoader(target.href, theme.accentColor, theme.isDark ? '#fbbf24' : '#e6ddf8'));
                 win.document.close();
             } catch {
                 win.location.href = target.href;
@@ -969,7 +970,7 @@ const App: React.FC = () => {
                             title={theme.isDark ? 'Switch to light theme' : 'Switch to dark theme'}
                             className={`w-8 h-8 flex items-center justify-center border ${theme.borderSubtle} ${theme.isDark ? 'bg-white/5 hover:bg-white/10' : 'bg-black/5 hover:bg-black/10'} rounded transition-colors duration-700`}
                         >
-                            {currentTheme === 'LIGHT' ? <Sun size={14} className="text-sky-600 transition-colors duration-700" /> : <Moon size={14} className="text-amber-400 transition-colors duration-700" />}
+                            {currentTheme === 'LIGHT' ? <Sun size={14} className="text-[#7c3aed] transition-colors duration-700" /> : <Moon size={14} className="text-amber-400 transition-colors duration-700" />}
                         </button>
                         {/* Below lg the labelled button would crowd the header, and it used to
                             simply disappear — leaving phones and tablets with no way to add a
@@ -1010,7 +1011,7 @@ const App: React.FC = () => {
     const holoSoft = theme.isDark ? '#d8d8de' : '#8d95a1';
 
     /** Text ink for the mobile HUD plates, which stay dark in both themes. See the HUD. */
-    const hudInk = theme.isDark ? theme.highlightText : 'text-cyan-300';
+    const hudInk = theme.isDark ? theme.highlightText : 'text-violet-300';
 
     /**
      * Sidebar collapse. Desktop only — below `lg` the sidebar stacks under the hero
@@ -1114,6 +1115,19 @@ const App: React.FC = () => {
                                 } as React.CSSProperties}
                             >
 
+                                {/* ARCANE SIGIL — the light theme's summoning-circle, centred on
+                                    this card and the platform below it (composition centre ≈ 62% down
+                                    this box) rather than on the viewport, so the platform sits at the
+                                    heart of the circle. First child, so it paints beneath the cone,
+                                    dais and card. Light only; the Void has its own atmosphere. */}
+                                {!theme.isDark && (
+                                    <ArcaneSigil
+                                        theme={theme}
+                                        paused={overlayOpen}
+                                        className="left-1/2 top-[54%] w-[400%] aspect-square -translate-x-1/2 -translate-y-1/2 z-0"
+                                    />
+                                )}
+
                                 {/* PROJECTION CONE — the light the dais throws upward.
                                     Rebuilt from stacked radial gradients anchored at the emitter
                                     rather than a clip-path trapezoid. The old version had three
@@ -1185,8 +1199,8 @@ const App: React.FC = () => {
                                         background: theme.isDark
                                             ? 'radial-gradient(ellipse 30% 40% at 50% 66%, rgba(255,255,255,0.34) 0%, rgba(255,255,255,0.11) 40%, rgba(255,255,255,0) 78%),'
                                               + 'radial-gradient(ellipse 64% 52% at 50% 66%, rgba(255,255,255,0.13) 0%, rgba(255,255,255,0.05) 34%, rgba(255,255,255,0) 62%)'
-                                            : 'radial-gradient(ellipse 30% 40% at 50% 66%, rgba(45,58,78,0.72) 0%, rgba(45,58,78,0.50) 40%, rgba(45,58,78,0) 78%),'
-                                              + 'radial-gradient(ellipse 64% 52% at 50% 66%, rgba(45,58,78,0.42) 0%, rgba(45,58,78,0.20) 34%, rgba(45,58,78,0) 62%)',
+                                            : 'radial-gradient(ellipse 26% 40% at 50% 66%, rgba(124,58,237,0.55) 0%, rgba(124,58,237,0.30) 38%, rgba(124,58,237,0) 76%),'
+                                              + 'radial-gradient(ellipse 58% 52% at 50% 66%, rgba(139,92,246,0.28) 0%, rgba(139,92,246,0.12) 34%, rgba(139,92,246,0) 62%)',
                                     }}
                                 />
 
@@ -1294,11 +1308,11 @@ const App: React.FC = () => {
                                                value rather than white at 20%. */
                                             <div className="w-full h-full flex flex-col items-center justify-center gap-2 px-6 text-center bg-gradient-to-b from-gray-900 to-black">
                                                 <span className="text-2xl opacity-30" aria-hidden="true">📖</span>
-                                                <span className="text-[9px] font-mono text-slate-300 uppercase tracking-widest">
+                                                <span className="text-[9px] font-mono text-stone-300 uppercase tracking-widest">
                                                     {activeQuest.id === DEFAULT_QUEST.id ? 'Archive empty' : 'Cover unavailable'}
                                                 </span>
                                                 {activeQuest.id === DEFAULT_QUEST.id && (
-                                                    <span className="text-[9px] font-mono text-slate-400 uppercase tracking-widest">Tap to open a gate</span>
+                                                    <span className="text-[9px] font-mono text-stone-400 uppercase tracking-widest">Tap to open a gate</span>
                                                 )}
                                             </div>
                                         )}
@@ -1457,7 +1471,7 @@ const App: React.FC = () => {
                                        8.29:1 on amber and 7.33:1 on cyan, and the icon follows because
                                        it draws in currentColor. `drop-shadow-md` went with the white:
                                        a dark shadow under dark text only muddies it. */
-                                    className={`h-12 flex-1 max-w-[400px] backdrop-blur-md flex items-center justify-center gap-2 transition-all font-mono font-bold tracking-widest text-[12px] group cursor-pointer rounded-sm text-slate-900 disabled:opacity-40 disabled:cursor-not-allowed`}
+                                    className={`h-12 flex-1 max-w-[400px] backdrop-blur-md flex items-center justify-center gap-2 transition-all font-mono font-bold tracking-widest text-[12px] group cursor-pointer rounded-sm text-[#241a06] disabled:opacity-40 disabled:cursor-not-allowed`}
                                     style={{ backgroundColor: theme.accentColor, borderColor: theme.accentColor, boxShadow: emphasis(theme, accentRGB(theme)) }}
                                 >
                                     <InfinitePortalIcon size={18} className="group-hover:rotate-12 transition-transform" /> ENTER PORTAL
@@ -1517,22 +1531,22 @@ const App: React.FC = () => {
                                     <div className="relative flex-none">
                                         {/* Technical Scanning Decoration */}
                                         <div className="absolute inset-x-0 top-0 flex justify-between px-1 opacity-30">
-                                            <div className={`w-4 h-[1px] ${theme.id === 'LIGHT' ? 'bg-cyan-500' : 'bg-[#f59e0b]'}`} />
-                                            <div className={`w-4 h-[1px] ${theme.id === 'LIGHT' ? 'bg-cyan-500' : 'bg-[#f59e0b]'}`} />
+                                            <div className={`w-4 h-[1px] ${theme.id === 'LIGHT' ? 'bg-[#7c3aed]' : 'bg-[#f59e0b]'}`} />
+                                            <div className={`w-4 h-[1px] ${theme.id === 'LIGHT' ? 'bg-[#7c3aed]' : 'bg-[#f59e0b]'}`} />
                                         </div>
 
                                         <div className="relative p-0.5">
                                             <EntityAvatar theme={theme} size={84} />
                                             <button
                                                 onClick={() => setIsProfileOpen(true)}
-                                                className={`absolute -bottom-1 -right-2 px-1 py-0.5 ${theme.id === 'LIGHT' ? 'bg-cyan-500' : 'bg-[#f59e0b]'} text-black text-[7px] font-black font-mono tracking-tighter uppercase cursor-pointer hover:scale-110 active:scale-95 transition-transform duration-200 shadow-lg z-20`}
+                                                className={`absolute -bottom-1 -right-2 px-1 py-0.5 ${theme.id === 'LIGHT' ? 'bg-[#7c3aed]' : 'bg-[#f59e0b]'} text-black text-[7px] font-black font-mono tracking-tighter uppercase cursor-pointer hover:scale-110 active:scale-95 transition-transform duration-200 shadow-lg z-20`}
                                             >
                                                 ACTIVE_PROFILE
                                             </button>
                                         </div>
 
                                         {/* Vertical Scan Line decoration */}
-                                        <div className={`absolute -left-1 top-1/2 -translate-y-1/2 w-[1px] h-8 ${theme.id === 'LIGHT' ? 'bg-cyan-500' : 'bg-[#f59e0b]'} opacity-20`} />
+                                        <div className={`absolute -left-1 top-1/2 -translate-y-1/2 w-[1px] h-8 ${theme.id === 'LIGHT' ? 'bg-[#7c3aed]' : 'bg-[#f59e0b]'} opacity-20`} />
                                     </div>
 
                                     <div className="flex flex-col items-start text-left flex-1 min-w-0 sm:-mt-6">
@@ -1612,7 +1626,7 @@ const App: React.FC = () => {
 
                     {/* DIVINE SPIRE BUTTON. Light: an opaque pale-sky plate. The 10% sky wash it had
                         composited darker over the bottom of the page gradient and left the ink at 4.37:1. */}
-                    <button aria-label="Open Divine Spire" onClick={() => { setIsSpireOpen(true); }} className={`mt-auto hidden lg:flex w-full h-12 ${theme.isDark ? 'bg-white/5' : 'bg-sky-50/90'} border ${theme.borderSubtle} ${theme.highlightText} ${theme.isDark ? 'hover:bg-[#f59e0b] hover:text-black' : 'hover:bg-[#155e75] hover:text-white'} font-mono font-bold tracking-widest uppercase transition-all items-center justify-center gap-2 text-[12px] shrink-0 shadow-sm cursor-pointer duration-700`}><LayoutTemplate size={16} /> DIVINE SPIRE</button>
+                    <button aria-label="Open Divine Spire" onClick={() => { setIsSpireOpen(true); }} className={`mt-auto hidden lg:flex w-full h-12 ${theme.isDark ? 'bg-white/5' : 'bg-[#ece4f7]/90'} border ${theme.borderSubtle} ${theme.highlightText} ${theme.isDark ? 'hover:bg-[#f59e0b] hover:text-black' : 'hover:bg-[#5b21b6] hover:text-[#fcfaff]'} font-mono font-bold tracking-widest uppercase transition-all items-center justify-center gap-2 text-[12px] shrink-0 shadow-sm cursor-pointer duration-700`}><LayoutTemplate size={16} /> DIVINE SPIRE</button>
                     </div>{/* end full panel */}
                 </div>
             </div>
@@ -1637,7 +1651,7 @@ const App: React.FC = () => {
     return (
         <div 
             id="main-scroll-area" 
-            className={`relative h-[100dvh] overflow-hidden ${theme.appBg} ${theme.baseText} font-sans ${theme.isDark ? 'selection:bg-amber-500/30' : 'selection:bg-cyan-500/25'} transition-colors duration-700 ease-in-out`}
+            className={`relative h-[100dvh] overflow-hidden ${theme.appBg} ${theme.baseText} font-sans ${theme.isDark ? 'selection:bg-amber-500/30' : 'selection:bg-[#7c3aed]/25'} transition-colors duration-700 ease-in-out`}
             style={{
                 // Two accents, deliberately. `--accent-color` and its two derivatives are
                 // decorative — fills, glows and washes, where chroma is the whole point and
@@ -1667,7 +1681,7 @@ const App: React.FC = () => {
                 className="absolute inset-0 pointer-events-none z-0"
                 style={theme.isDark
                     ? { background: 'radial-gradient(circle, transparent 50%, rgba(0,0,0,0.4) 100%)', opacity: 0.5 }
-                    : { background: 'radial-gradient(circle, transparent 55%, rgba(15,23,42,0.07) 100%)' }}
+                    : { background: 'radial-gradient(circle at 50% 40%, rgba(124,58,237,0.07) 0%, transparent 42%), radial-gradient(circle, transparent 48%, rgba(40,26,60,0.16) 100%)' }}
             />
 
             {/* HEADER */}

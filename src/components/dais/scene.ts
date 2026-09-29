@@ -139,11 +139,13 @@ export const createDais = ({ host, isDark, reducedMotion }: DaisOptions): DaisHa
     // theme's pale page would be invisible, so light runs the same neutral ramp
     // inverted — pale greys for the tier faces, deepening toward each edge and the
     // core — which keeps the steps legible without introducing any colour.
-    const COLD = new THREE.Color(isDark ? 0x6e6e72 : 0xc7ccd4);
-    const WARM = new THREE.Color(isDark ? 0xd8d8de : 0x8d95a1);
-    const EDGE = new THREE.Color(isDark ? 0xffffff : 0x5a6673);
-    const HOT = new THREE.Color(isDark ? 0xffffff : 0x3b4350);
-    const LINE = new THREE.Color(isDark ? 0xf4f5f7 : 0x4b5563);
+    // Light mode is a lapis blueprint — the platform is drawn in the accent's own ink so it
+    // reads as chrome on the warm vellum, not a cold slate slab floating on it.
+    const COLD = new THREE.Color(isDark ? 0x6e6e72 : 0xcfc4ea);
+    const WARM = new THREE.Color(isDark ? 0xd8d8de : 0x9a86cf);
+    const EDGE = new THREE.Color(isDark ? 0xffffff : 0x7c3aed);
+    const HOT = new THREE.Color(isDark ? 0xffffff : 0x3b1d6e);
+    const LINE = new THREE.Color(isDark ? 0xf4f5f7 : 0x7c3aed);
 
     const BLEND = isDark ? THREE.AdditiveBlending : THREE.NormalBlending;
     /**
@@ -155,8 +157,11 @@ export const createDais = ({ host, isDark, reducedMotion }: DaisOptions): DaisHa
      * carry the structure. Using one gain for both is what left light mode a pale puddle
      * with its steps and pins invisible.
      */
-    const FILL_GAIN = isDark ? 1 : 0.55;
-    const LINE_GAIN = isDark ? 1 : 1.25;
+    // Light mode lifts the fill gain (0.55 -> 0.74) and floor so the violet platform reads as
+    // an emitting hologram rather than faint ruling — a saturated violet still holds as a
+    // coloured bloom on the vellum where a white glow would vanish.
+    const FILL_GAIN = isDark ? 1 : 0.74;
+    const LINE_GAIN = isDark ? 1 : 1.3;
 
     const glowMaterials: THREE.ShaderMaterial[] = [];
     const makeGlow = (cold: THREE.Color, hot: THREE.Color, intensity: number, sweep: number) => {
@@ -169,7 +174,7 @@ export const createDais = ({ host, isDark, reducedMotion }: DaisOptions): DaisHa
                 uIntensity: { value: intensity * FILL_GAIN },
                 uTime: { value: 0 },
                 uSweep: { value: reducedMotion ? 0 : sweep },
-                uFloor: { value: isDark ? 0.62 : 0.24 },
+                uFloor: { value: isDark ? 0.62 : 0.34 },
             },
             transparent: true,
             blending: BLEND,

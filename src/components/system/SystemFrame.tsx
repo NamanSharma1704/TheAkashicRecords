@@ -40,7 +40,7 @@ const SystemFrame: React.FC<SystemFrameProps> = ({
     surfaceClass,
     level = 1
 }) => {
-    const borderColor = theme.id === 'LIGHT' ? 'border-sky-400' : 'border-amber-400';
+    const borderColor = theme.id === 'LIGHT' ? 'border-violet-400' : 'border-amber-400';
     const surface = surfaceClass ?? theme.panelBg;
     return (
         <motion.div 

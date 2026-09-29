@@ -522,14 +522,19 @@ const SovereignHeader: React.FC<{ p: BootPalette }> = ({ p }) => (
 );
 
 /** The app's signature corner brackets, drawn inline so the boot HUD matches SystemFrame. */
-const BracketCorners: React.FC<{ color: string }> = ({ color }) => (
-    <>
-        <div className="absolute top-0 left-0 w-3 h-3 border-t-2 border-l-2" style={{ borderColor: color }} />
-        <div className="absolute top-0 right-0 w-3 h-3 border-t-2 border-r-2" style={{ borderColor: color }} />
-        <div className="absolute bottom-0 right-0 w-3 h-3 border-b-2 border-r-2" style={{ borderColor: color }} />
-        <div className="absolute bottom-0 left-0 w-3 h-3 border-b-2 border-l-2" style={{ borderColor: color }} />
-    </>
-);
+const BracketCorners: React.FC<{ color: string; gradient?: string }> = ({ color, gradient }) => {
+    // On light the HUD brackets take the amethyst ramp (a diagonal gradient per L); the Void keeps
+    // the flat accent colour.
+    const style: React.CSSProperties = gradient ? { borderImage: gradient } : { borderColor: color };
+    return (
+        <>
+            <div className="absolute top-0 left-0 w-3 h-3 border-t-2 border-l-2" style={style} />
+            <div className="absolute top-0 right-0 w-3 h-3 border-t-2 border-r-2" style={style} />
+            <div className="absolute bottom-0 right-0 w-3 h-3 border-b-2 border-r-2" style={style} />
+            <div className="absolute bottom-0 left-0 w-3 h-3 border-b-2 border-l-2" style={style} />
+        </>
+    );
+};
 
 /**
  * The Spire emblem — the boot centrepiece.
@@ -797,7 +802,7 @@ const BootScreen: React.FC<BootScreenProps> = ({ onComplete, theme }) => {
                 {/* BOTTOM LOADING HUD — bracketed like every panel in the app */}
                 <div className="w-full max-w-xs sm:max-w-md md:max-w-2xl px-6 sm:px-10 md:px-12 flex-shrink-0 relative z-40">
                     <div className="relative px-5 py-4">
-                        <BracketCorners color={p.accent} />
+                        <BracketCorners color={p.accent} gradient={p.isDark ? undefined : 'linear-gradient(135deg, #a855f7, #7c3aed 55%, #5b21b6) 1'} />
 
                         <div className="flex flex-col items-center gap-3 sm:gap-4 w-full">
                             <div className="flex w-full justify-between items-end gap-4">

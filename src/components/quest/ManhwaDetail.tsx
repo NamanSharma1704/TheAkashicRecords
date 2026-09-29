@@ -266,6 +266,11 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
     // Theme accent shorthands + this quest's rank sigil.
     const accentBorder = theme.id === 'LIGHT' ? 'border-violet-400' : 'border-amber-400';
     const accentBg = theme.id === 'LIGHT' ? 'bg-violet-400' : 'bg-amber-400';
+    // Cover corner reticles take the amethyst ramp on light (a diagonal gradient per L, sweeping
+    // bright→deep across the four); dark keeps the flat amber border-colour class.
+    const bracketStyle: React.CSSProperties | undefined = theme.id === 'LIGHT'
+        ? { borderImage: 'linear-gradient(135deg, #a855f7, #7c3aed 55%, #5b21b6) 1' }
+        : undefined;
     const rank = getQuestRankObj(quest);
 
     // Accent TEXT for this view. Light mode here is the authored mid-slate cinematic backdrop
@@ -372,10 +377,10 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
 
                             {/* Bracketed frame */}
                             <div className={`relative p-[3px] border ${accentBorder} border-opacity-30`}>
-                                <span className={`absolute -top-px -left-px w-3 h-3 border-t-2 border-l-2 ${accentBorder} z-20`} />
-                                <span className={`absolute -top-px -right-px w-3 h-3 border-t-2 border-r-2 ${accentBorder} z-20`} />
-                                <span className={`absolute -bottom-px -left-px w-3 h-3 border-b-2 border-l-2 ${accentBorder} z-20`} />
-                                <span className={`absolute -bottom-px -right-px w-3 h-3 border-b-2 border-r-2 ${accentBorder} z-20`} />
+                                <span className={`absolute -top-px -left-px w-3 h-3 border-t-2 border-l-2 ${accentBorder} z-20`} style={bracketStyle} />
+                                <span className={`absolute -top-px -right-px w-3 h-3 border-t-2 border-r-2 ${accentBorder} z-20`} style={bracketStyle} />
+                                <span className={`absolute -bottom-px -left-px w-3 h-3 border-b-2 border-l-2 ${accentBorder} z-20`} style={bracketStyle} />
+                                <span className={`absolute -bottom-px -right-px w-3 h-3 border-b-2 border-r-2 ${accentBorder} z-20`} style={bracketStyle} />
                                 <div className="relative aspect-[2/3] rounded-md overflow-hidden border border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.5)]">
                                     <motion.img
                                         layoutId={`cover-${quest.id}`}
@@ -411,7 +416,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                 </span>
                             </div>
 
-                            <h1 id="manhwa-detail-title" className={`text-3xl md:text-4xl lg:text-6xl font-black ${strongText} mb-2 leading-tight tracking-tighter drop-shadow-xl uppercase break-words`}>
+                            <h1 id="manhwa-detail-title" className={`text-3xl md:text-4xl lg:text-6xl font-black ${theme.isDark ? strongText : `text-transparent bg-clip-text bg-gradient-to-br ${theme.inkGradient}`} mb-2 leading-tight tracking-tighter drop-shadow-xl uppercase break-words`}>
                                 {quest.title || media?.title?.english || media?.title?.romaji}
                             </h1>
                             {media?.title?.native && (
@@ -477,7 +482,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
 
                                 {/* Numeric Readouts */}
                                 <div className="flex items-baseline gap-2 mb-2">
-                                    <span className={`text-5xl font-black ${strongText} tabular-nums tracking-tighter drop-shadow-md`}>
+                                    <span className={`text-5xl font-black ${theme.isDark ? strongText : `text-transparent bg-clip-text bg-gradient-to-b ${theme.inkGradient}`} tabular-nums tracking-tighter drop-shadow-md`}>
                                         {quest.currentChapter}
                                     </span>
                                     <span className={`text-xl font-medium tracking-widest ${theme.isDark ? 'text-white/50' : 'text-stone-600'}`}>

@@ -40,7 +40,16 @@ const SystemFrame: React.FC<SystemFrameProps> = ({
     surfaceClass,
     level = 1
 }) => {
-    const borderColor = theme.id === 'LIGHT' ? 'border-violet-400' : 'border-amber-400';
+    const isLight = theme.id === 'LIGHT';
+    // Brackets are solid amber on the Void; on light they take the amethyst ramp. A corner is an
+    // L of two borders, so a 135° gradient runs bright→deep across each one — and because the
+    // four corners sit at the box's compass points, together they sweep from a bright top-left to
+    // a deep bottom-right. border-image paints the two sides that have width; the class colour
+    // stays as the fallback. `via` keeps the luminous mid from clipping on the 2px stroke.
+    const borderColor = isLight ? 'border-violet-400' : 'border-amber-400';
+    const bracketStyle: React.CSSProperties | undefined = isLight
+        ? { borderImage: 'linear-gradient(135deg, #a855f7, #7c3aed 55%, #5b21b6) 1' }
+        : undefined;
     const surface = surfaceClass ?? theme.panelBg;
     return (
         <motion.div 
@@ -50,10 +59,10 @@ const SystemFrame: React.FC<SystemFrameProps> = ({
             transition={transition}
             className={`relative p-[1px] group ${className} h-full w-full transition-all duration-700 ease-in-out`}
         >
-            <div className={`absolute top-0 left-0 w-3 h-3 border-t-2 border-l-2 ${borderColor} z-20 transition-colors duration-300`} />
-            <div className={`absolute top-0 right-0 w-3 h-3 border-t-2 border-r-2 ${borderColor} z-20 transition-colors duration-300`} />
-            <div className={`absolute bottom-0 right-0 w-3 h-3 border-b-2 border-r-2 ${borderColor} z-20 transition-colors duration-300`} />
-            <div className={`absolute bottom-0 left-0 w-3 h-3 border-b-2 border-l-2 ${borderColor} z-20 transition-colors duration-300`} />
+            <div className={`absolute top-0 left-0 w-3 h-3 border-t-2 border-l-2 ${borderColor} z-20 transition-colors duration-300`} style={bracketStyle} />
+            <div className={`absolute top-0 right-0 w-3 h-3 border-t-2 border-r-2 ${borderColor} z-20 transition-colors duration-300`} style={bracketStyle} />
+            <div className={`absolute bottom-0 right-0 w-3 h-3 border-b-2 border-r-2 ${borderColor} z-20 transition-colors duration-300`} style={bracketStyle} />
+            <div className={`absolute bottom-0 left-0 w-3 h-3 border-b-2 border-l-2 ${borderColor} z-20 transition-colors duration-300`} style={bracketStyle} />
             <div
                 className={`relative h-full w-full ${frosted ? `${surface} backdrop-blur-md` : 'bg-transparent'} overflow-hidden ${variant === 'full' ? `border ${theme.borderSubtle}` : ''} transition-[background-color,border-color,box-shadow] duration-700`}
                 style={frosted ? { boxShadow: elevation(theme, level) } : undefined}

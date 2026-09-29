@@ -35,6 +35,7 @@ export const THEMES: Record<ThemeId, Theme> = {
         starColor: '255, 255, 255',
         gradient: 'from-[#f59e0b] via-yellow-400 to-white',
         inkGradient: 'from-[#f59e0b] via-yellow-400 to-white',
+        labelGradient: 'from-[#f59e0b] to-amber-300',
         accentColor: '#f59e0b',
         accentInk: '#f59e0b',
         warningInk: '#f59e0b',
@@ -78,9 +79,14 @@ export const THEMES: Record<ThemeId, Theme> = {
         // the same density of visible detail the void does — violet ink drawn on lilac vellum.
         starColor: '74, 40, 120',
         gradient: 'from-[#7c3aed] to-[#a78bfa]',
-        // The wordmark shimmer is amethyst too — Arcanum has one hue, no gold. Deep enough that
-        // the mid stop still clears 3:1 on the vellum for the display text it rides.
-        inkGradient: 'from-[#3b1d6e] via-[#7c3aed] to-[#5b21b6]',
+        // The wordmark shimmer is amethyst too — Arcanum has one hue, no gold. Tuned for big
+        // display text: a bright violet start, a luminous #a855f7 mid, deepening slightly at the
+        // end so it still grounds. The lightest stop clears the 3:1 large-text floor on the
+        // vellum; small labels use labelGradient below, which stays darker for 4.5:1.
+        inkGradient: 'from-[#7c3aed] via-[#a855f7] to-[#6d28d9]',
+        // Readable ramp for section labels at 9–11px: a bright-but-safe #7c3aed through the deep
+        // ink, every stop clearing 4.5:1 on the panel.
+        labelGradient: 'from-[#7c3aed] to-[#5b21b6]',
         // The accent is amethyst: a vivid violet for decorative chrome (fills, glows, progress,
         // borders, bloom-halos) and a deep amethyst ink for anything read (rank, values, accent
         // text). One hue, its own identity, carrying both vibrance and definition.

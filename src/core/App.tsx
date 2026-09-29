@@ -1050,15 +1050,15 @@ const App: React.FC = () => {
                                     <div className="flex flex-col items-end w-max max-w-none">
                                         <div className={`text-[10px] font-mono ${theme.mutedText} tracking-[0.3em] uppercase mb-2 flex items-center justify-end gap-1.5`}>
                                             <Crown size={10} style={{ color: theme.accentInk }} />
-                                            <span style={{ marginRight: '-0.3em' }}>RANK ASSESSMENT</span>
+                                            <span style={{ marginRight: '-0.3em' }} className={theme.isDark ? '' : `text-transparent bg-clip-text bg-gradient-to-r ${theme.labelGradient}`}>RANK ASSESSMENT</span>
                                         </div>
-                                        <div className="text-6xl xl:text-[80px] font-black font-orbitron leading-none transition-colors duration-700 text-right text-[var(--accent-ink)] [filter:drop-shadow(0_0_25px_var(--accent-glow))]">
+                                        <div className={`text-6xl xl:text-[80px] font-black font-orbitron leading-none transition-colors duration-700 text-right [filter:drop-shadow(0_0_25px_var(--accent-glow))] ${theme.isDark ? 'text-[var(--accent-ink)]' : `text-transparent bg-clip-text bg-gradient-to-b ${theme.inkGradient}`}`}>
                                             {calculateQuestRank(activeQuest)}
                                         </div>
                                     </div>
                                     <div className="flex flex-col items-end w-max max-w-none">
-                                        <div className={`text-[10px] font-mono ${theme.mutedText} tracking-[0.3em] uppercase mb-1 text-right w-full`}>CLASSIFICATION</div>
-                                        <div className={`text-base lg:text-lg xl:text-2xl font-black font-orbitron tracking-wider whitespace-nowrap text-right transition-colors duration-700 text-[var(--accent-ink)]`}>{activeQuest.classType || 'UNKNOWN'}</div>
+                                        <div className={`text-[10px] font-mono tracking-[0.3em] uppercase mb-1 text-right w-full ${theme.isDark ? theme.mutedText : `text-transparent bg-clip-text bg-gradient-to-r ${theme.labelGradient}`}`}>CLASSIFICATION</div>
+                                        <div className={`text-base lg:text-lg xl:text-2xl font-black font-orbitron tracking-wider whitespace-nowrap text-right transition-colors duration-700 ${theme.isDark ? 'text-[var(--accent-ink)]' : `text-transparent bg-clip-text bg-gradient-to-r ${theme.inkGradient}`}`}>{activeQuest.classType || 'UNKNOWN'}</div>
                                     </div>
                                 </div>
                             </div>
@@ -1252,10 +1252,10 @@ const App: React.FC = () => {
                                 <Card3D className="relative -top-5 lg:-top-[4.5dvh] w-full h-full card-plate">
 
                                     {/* Corner Reticles (External Floating Targeting Geometry) */}
-                                    <div className="absolute -top-[16px] -left-[16px] w-8 h-8 border-t-[2px] border-l-[2px] z-30 pointer-events-none opacity-80 transition-colors duration-700" style={{ borderColor: holoEdge, filter: `drop-shadow(0 0 5px ${holoEdge}${theme.isDark ? 'cc' : '88'})` }} />
-                                    <div className="absolute -top-[16px] -right-[16px] w-8 h-8 border-t-[2px] border-r-[2px] z-30 pointer-events-none opacity-80 transition-colors duration-700" style={{ borderColor: holoEdge, filter: `drop-shadow(0 0 5px ${holoEdge}${theme.isDark ? 'cc' : '88'})` }} />
-                                    <div className="absolute -bottom-[16px] -left-[16px] w-8 h-8 border-b-[2px] border-l-[2px] z-30 pointer-events-none opacity-80 transition-colors duration-700" style={{ borderColor: holoEdge, filter: `drop-shadow(0 0 5px ${holoEdge}${theme.isDark ? 'cc' : '88'})` }} />
-                                    <div className="absolute -bottom-[16px] -right-[16px] w-8 h-8 border-b-[2px] border-r-[2px] z-30 pointer-events-none opacity-80 transition-colors duration-700" style={{ borderColor: holoEdge, filter: `drop-shadow(0 0 5px ${holoEdge}${theme.isDark ? 'cc' : '88'})` }} />
+                                    <div className="absolute -top-[16px] -left-[16px] w-8 h-8 border-t-[2px] border-l-[2px] z-30 pointer-events-none opacity-80 transition-colors duration-700" style={theme.isDark ? { borderColor: holoEdge, filter: `drop-shadow(0 0 5px ${holoEdge}cc)` } : { borderImage: 'linear-gradient(135deg, #a855f7, #7c3aed 55%, #5b21b6) 1', filter: 'drop-shadow(0 0 6px #7c3aed77)' }} />
+                                    <div className="absolute -top-[16px] -right-[16px] w-8 h-8 border-t-[2px] border-r-[2px] z-30 pointer-events-none opacity-80 transition-colors duration-700" style={theme.isDark ? { borderColor: holoEdge, filter: `drop-shadow(0 0 5px ${holoEdge}cc)` } : { borderImage: 'linear-gradient(135deg, #a855f7, #7c3aed 55%, #5b21b6) 1', filter: 'drop-shadow(0 0 6px #7c3aed77)' }} />
+                                    <div className="absolute -bottom-[16px] -left-[16px] w-8 h-8 border-b-[2px] border-l-[2px] z-30 pointer-events-none opacity-80 transition-colors duration-700" style={theme.isDark ? { borderColor: holoEdge, filter: `drop-shadow(0 0 5px ${holoEdge}cc)` } : { borderImage: 'linear-gradient(135deg, #a855f7, #7c3aed 55%, #5b21b6) 1', filter: 'drop-shadow(0 0 6px #7c3aed77)' }} />
+                                    <div className="absolute -bottom-[16px] -right-[16px] w-8 h-8 border-b-[2px] border-r-[2px] z-30 pointer-events-none opacity-80 transition-colors duration-700" style={theme.isDark ? { borderColor: holoEdge, filter: `drop-shadow(0 0 5px ${holoEdge}cc)` } : { borderImage: 'linear-gradient(135deg, #a855f7, #7c3aed 55%, #5b21b6) 1', filter: 'drop-shadow(0 0 6px #7c3aed77)' }} />
 
                                     {/* Pulsing border glow (Unified High-Contrast Chrome - Visible on White) */}
                                     <div
@@ -1367,8 +1367,8 @@ const App: React.FC = () => {
                             {/* Right Column: Sequence & System Log — justify-center mirrors left */}
                             <div className="hidden md:flex flex-col items-start justify-center gap-4 md:gap-6 xl:gap-10 self-stretch flex-1 basis-0 min-w-0 shrink">
                                 <div className="flex flex-col items-start w-max max-w-none">
-                                    <div className={`text-[10px] font-mono ${theme.mutedText} tracking-[0.3em] uppercase mb-1`}>SEQUENCE DATA</div>
-                                    <div className={`text-5xl xl:text-[70px] font-black font-mono tabular-nums leading-none text-left transition-colors duration-700 text-[var(--accent-ink)]`}>
+                                    <div className={`text-[10px] font-mono tracking-[0.3em] uppercase mb-1 ${theme.isDark ? theme.mutedText : `text-transparent bg-clip-text bg-gradient-to-r ${theme.labelGradient}`}`}>SEQUENCE DATA</div>
+                                    <div className={`text-5xl xl:text-[70px] font-black font-mono tabular-nums leading-none text-left transition-colors duration-700 ${theme.isDark ? 'text-[var(--accent-ink)]' : `text-transparent bg-clip-text bg-gradient-to-b ${theme.inkGradient}`}`}>
                                         {String(activeQuest.currentChapter).padStart(3, '0')}
                                     </div>
                                     <div className={`text-[11px] font-mono tracking-widest mt-2 ${theme.mutedText}`}>
@@ -1550,7 +1550,7 @@ const App: React.FC = () => {
                                     </div>
 
                                     <div className="flex flex-col items-start text-left flex-1 min-w-0 sm:-mt-6">
-                                        <div className={`text-[10px] ${theme.highlightText} font-black font-mono uppercase tracking-[0.2em] mb-1 mt-0.5 opacity-90 transition-colors duration-700 whitespace-nowrap`}>ENTITY CLASSIFICATION</div>
+                                        <div className={`text-[10px] font-black font-mono uppercase tracking-[0.2em] mb-1 mt-0.5 opacity-90 transition-colors duration-700 whitespace-nowrap ${theme.isDark ? theme.highlightText : `text-transparent bg-clip-text bg-gradient-to-r ${theme.labelGradient}`}`}>ENTITY CLASSIFICATION</div>
                                         <div className="text-3xl sm:text-4xl lg:text-2xl xl:text-4xl font-black font-manifold tracking-tight drop-shadow-sm flex items-baseline leading-normal overflow-hidden h-[1.5em] sm:h-[1.5em] lg:h-[1.8em] xl:h-[1.5em]">
                                             <span className={`inline-block pr-[6px] text-transparent bg-clip-text bg-gradient-to-r ${theme.inkGradient} transition-colors duration-700 truncate`} style={{ lineHeight: '1.2' }}>{playerRank.name}</span>
                                         </div>
@@ -1584,27 +1584,27 @@ const App: React.FC = () => {
                         <SystemFrame variant="brackets" theme={theme}>
                             <div className="px-3 py-2 flex flex-col gap-1">
                                 <div className={`flex items-center gap-2 ${theme.highlightText} font-mono text-[9px] tracking-widest font-bold mb-1`}>
-                                    <Activity size={11} /> QUEST_METRICS
+                                    <Activity size={11} /> <span className={theme.isDark ? '' : `text-transparent bg-clip-text bg-gradient-to-r ${theme.labelGradient}`}>QUEST_METRICS</span>
                                 </div>
                                 <div className="grid grid-cols-4 gap-2">
                                     <div className="flex flex-col gap-0.5">
                                         <div className={`text-[8px] ${theme.mutedText} font-mono uppercase tracking-widest`}>WISDOM</div>
-                                        <div className={`text-xl font-bold font-mono tabular-nums leading-tight ${theme.highlightText}`}>{activeQuest.currentChapter}</div>
+                                        <div className={`text-xl font-bold font-mono tabular-nums leading-tight ${theme.isDark ? theme.highlightText : `text-transparent bg-clip-text bg-gradient-to-b ${theme.inkGradient}`}`}>{activeQuest.currentChapter}</div>
                                         <div className={`text-[7px] ${theme.mutedText} font-mono uppercase`}>CH. READ</div>
                                     </div>
                                     <div className="flex flex-col gap-0.5">
                                         <div className={`text-[8px] ${theme.mutedText} font-mono uppercase tracking-widest`}>MIGHT</div>
-                                        <div className={`text-xl font-bold font-mono tabular-nums leading-tight ${theme.highlightText}`}>{Math.floor(activeQuest.totalChapters / 10)}</div>
+                                        <div className={`text-xl font-bold font-mono tabular-nums leading-tight ${theme.isDark ? theme.highlightText : `text-transparent bg-clip-text bg-gradient-to-b ${theme.inkGradient}`}`}>{Math.floor(activeQuest.totalChapters / 10)}</div>
                                         <div className={`text-[7px] ${theme.mutedText} font-mono uppercase`}>PWR INDEX</div>
                                     </div>
                                     <div className="flex flex-col gap-0.5">
                                         <div className={`text-[8px] ${theme.mutedText} font-mono uppercase tracking-widest`}>SYNC</div>
-                                        <div className={`text-xl font-bold font-mono tabular-nums leading-tight ${theme.highlightText}`}>{progressPercent}%</div>
+                                        <div className={`text-xl font-bold font-mono tabular-nums leading-tight ${theme.isDark ? theme.highlightText : `text-transparent bg-clip-text bg-gradient-to-b ${theme.inkGradient}`}`}>{progressPercent}%</div>
                                         <div className={`text-[7px] ${theme.mutedText} font-mono uppercase`}>COMPLETION</div>
                                     </div>
                                     <div className="flex flex-col gap-0.5">
                                         <div className={`text-[8px] ${theme.mutedText} font-mono uppercase tracking-widest`}>GATE</div>
-                                        <div className={`text-xl font-bold font-mono tabular-nums leading-tight ${activeQuest.status === 'CONQUERED' ? theme.mutedText : theme.highlightText}`}>{activeQuest.status === 'CONQUERED' ? 'CLOSED' : 'OPEN'}</div>
+                                        <div className={`text-xl font-bold font-mono tabular-nums leading-tight ${activeQuest.status === 'CONQUERED' ? theme.mutedText : (theme.isDark ? theme.highlightText : `text-transparent bg-clip-text bg-gradient-to-b ${theme.inkGradient}`)}`}>{activeQuest.status === 'CONQUERED' ? 'CLOSED' : 'OPEN'}</div>
                                         <div className={`text-[7px] ${theme.mutedText} font-mono uppercase`}>STATUS</div>
                                     </div>
                                 </div>
@@ -1614,7 +1614,7 @@ const App: React.FC = () => {
 
                     {/* ACTIVE QUESTS LIST - only scrollable region allowed */}
                     <div className="flex-1 flex flex-col min-h-0 gap-1 mt-2 overflow-hidden max-h-[380px] lg:max-h-none">
-                        <div className={`text-[10px] font-mono ${theme.headingText} uppercase tracking-widest border-b ${theme.borderSubtle} pb-1.5 mb-1 transition-colors duration-700 shrink-0`}>ACTIVE QUESTS</div>
+                        <div className={`text-[10px] font-mono uppercase tracking-widest border-b ${theme.borderSubtle} pb-1.5 mb-1 transition-colors duration-700 shrink-0 ${theme.isDark ? theme.headingText : `text-transparent bg-clip-text bg-gradient-to-r ${theme.labelGradient}`}`}>ACTIVE QUESTS</div>
                         <ActiveQuestList
                             orderedActiveQuests={orderedActiveQuests}
                             handleReorderActiveQuests={handleReorderActiveQuests}
@@ -1829,21 +1829,21 @@ const App: React.FC = () => {
                                             whileTap={{ scale: 0.96 }}
                                             className="relative flex-1 h-16 overflow-hidden backdrop-blur-md"
                                             style={{
-                                                background: theme.isDark ? 'rgba(10,8,2,0.88)' : 'rgba(0,18,24,0.88)',
-                                                border: `1px solid ${theme.isDark ? 'rgba(245,158,11,0.55)' : 'rgba(6,182,212,0.55)'}`,
+                                                background: theme.isDark ? 'rgba(10,8,2,0.88)' : 'rgba(16,8,26,0.88)',
+                                                border: `1px solid ${theme.isDark ? 'rgba(245,158,11,0.55)' : 'rgba(168,85,247,0.55)'}`,
                                                 boxShadow: theme.isDark
                                                     ? '0 0 20px rgba(245,158,11,0.12), inset 0 0 30px rgba(245,158,11,0.04)'
-                                                    : '0 0 20px rgba(6,182,212,0.12), inset 0 0 30px rgba(6,182,212,0.04)',
+                                                    : '0 0 20px rgba(168,85,247,0.12), inset 0 0 30px rgba(168,85,247,0.04)',
                                             }}
                                         >
                                             {/* Bracket corners — four tiny fixed SVGs, no calc() needed */}
-                                            <svg className="absolute top-0 left-0 pointer-events-none" width="9" height="9" viewBox="0 0 9 9"><polyline points="0,9 0,0 9,0" fill="none" stroke={theme.isDark ? 'rgba(245,158,11,0.7)' : 'rgba(6,182,212,0.7)'} strokeWidth="1.5" /></svg>
-                                            <svg className="absolute top-0 right-0 pointer-events-none" width="9" height="9" viewBox="0 0 9 9"><polyline points="9,9 9,0 0,0" fill="none" stroke={theme.isDark ? 'rgba(245,158,11,0.7)' : 'rgba(6,182,212,0.7)'} strokeWidth="1.5" /></svg>
-                                            <svg className="absolute bottom-0 left-0 pointer-events-none" width="9" height="9" viewBox="0 0 9 9"><polyline points="0,0 0,9 9,9" fill="none" stroke={theme.isDark ? 'rgba(245,158,11,0.3)' : 'rgba(6,182,212,0.3)'} strokeWidth="1.5" /></svg>
-                                            <svg className="absolute bottom-0 right-0 pointer-events-none" width="9" height="9" viewBox="0 0 9 9"><polyline points="9,0 9,9 0,9" fill="none" stroke={theme.isDark ? 'rgba(245,158,11,0.3)' : 'rgba(6,182,212,0.3)'} strokeWidth="1.5" /></svg>
+                                            <svg className="absolute top-0 left-0 pointer-events-none" width="9" height="9" viewBox="0 0 9 9"><polyline points="0,9 0,0 9,0" fill="none" stroke={theme.isDark ? 'rgba(245,158,11,0.7)' : 'rgba(168,85,247,0.7)'} strokeWidth="1.5" /></svg>
+                                            <svg className="absolute top-0 right-0 pointer-events-none" width="9" height="9" viewBox="0 0 9 9"><polyline points="9,9 9,0 0,0" fill="none" stroke={theme.isDark ? 'rgba(245,158,11,0.7)' : 'rgba(168,85,247,0.7)'} strokeWidth="1.5" /></svg>
+                                            <svg className="absolute bottom-0 left-0 pointer-events-none" width="9" height="9" viewBox="0 0 9 9"><polyline points="0,0 0,9 9,9" fill="none" stroke={theme.isDark ? 'rgba(245,158,11,0.3)' : 'rgba(168,85,247,0.3)'} strokeWidth="1.5" /></svg>
+                                            <svg className="absolute bottom-0 right-0 pointer-events-none" width="9" height="9" viewBox="0 0 9 9"><polyline points="9,0 9,9 0,9" fill="none" stroke={theme.isDark ? 'rgba(245,158,11,0.3)' : 'rgba(168,85,247,0.3)'} strokeWidth="1.5" /></svg>
                                             {/* Scanline overlay */}
                                             <div className="absolute inset-0 pointer-events-none opacity-40"
-                                                style={{ backgroundImage: `repeating-linear-gradient(0deg, transparent, transparent 3px, ${theme.isDark ? 'rgba(245,158,11,0.04)' : 'rgba(6,182,212,0.04)'} 3px, ${theme.isDark ? 'rgba(245,158,11,0.04)' : 'rgba(6,182,212,0.04)'} 4px)` }}
+                                                style={{ backgroundImage: `repeating-linear-gradient(0deg, transparent, transparent 3px, ${theme.isDark ? 'rgba(245,158,11,0.04)' : 'rgba(168,85,247,0.04)'} 3px, ${theme.isDark ? 'rgba(245,158,11,0.04)' : 'rgba(168,85,247,0.04)'} 4px)` }}
                                             />
                                             {/* Sweep line animation */}
                                             <motion.div
@@ -1870,18 +1870,18 @@ const App: React.FC = () => {
                                             whileTap={{ scale: 0.94 }}
                                             className="relative w-16 h-16 overflow-hidden backdrop-blur-md flex flex-col items-center justify-center gap-1 disabled:opacity-40"
                                             style={{
-                                                background: theme.isDark ? 'rgba(10,8,2,0.88)' : 'rgba(0,18,24,0.88)',
-                                                border: `1px solid ${theme.isDark ? 'rgba(245,158,11,0.55)' : 'rgba(6,182,212,0.55)'}`,
+                                                background: theme.isDark ? 'rgba(10,8,2,0.88)' : 'rgba(16,8,26,0.88)',
+                                                border: `1px solid ${theme.isDark ? 'rgba(245,158,11,0.55)' : 'rgba(168,85,247,0.55)'}`,
                                                 boxShadow: theme.isDark
                                                     ? '0 0 16px rgba(245,158,11,0.15)'
-                                                    : '0 0 16px rgba(6,182,212,0.15)',
+                                                    : '0 0 16px rgba(168,85,247,0.15)',
                                             }}
                                         >
                                             {/* Bracket corners */}
-                                            <svg className="absolute top-0 left-0 pointer-events-none" width="9" height="9" viewBox="0 0 9 9"><polyline points="0,9 0,0 9,0" fill="none" stroke={theme.isDark ? 'rgba(245,158,11,0.7)' : 'rgba(6,182,212,0.7)'} strokeWidth="1.5" /></svg>
-                                            <svg className="absolute top-0 right-0 pointer-events-none" width="9" height="9" viewBox="0 0 9 9"><polyline points="9,9 9,0 0,0" fill="none" stroke={theme.isDark ? 'rgba(245,158,11,0.7)' : 'rgba(6,182,212,0.7)'} strokeWidth="1.5" /></svg>
-                                            <svg className="absolute bottom-0 left-0 pointer-events-none" width="9" height="9" viewBox="0 0 9 9"><polyline points="0,0 0,9 9,9" fill="none" stroke={theme.isDark ? 'rgba(245,158,11,0.3)' : 'rgba(6,182,212,0.3)'} strokeWidth="1.5" /></svg>
-                                            <svg className="absolute bottom-0 right-0 pointer-events-none" width="9" height="9" viewBox="0 0 9 9"><polyline points="9,0 9,9 0,9" fill="none" stroke={theme.isDark ? 'rgba(245,158,11,0.3)' : 'rgba(6,182,212,0.3)'} strokeWidth="1.5" /></svg>
+                                            <svg className="absolute top-0 left-0 pointer-events-none" width="9" height="9" viewBox="0 0 9 9"><polyline points="0,9 0,0 9,0" fill="none" stroke={theme.isDark ? 'rgba(245,158,11,0.7)' : 'rgba(168,85,247,0.7)'} strokeWidth="1.5" /></svg>
+                                            <svg className="absolute top-0 right-0 pointer-events-none" width="9" height="9" viewBox="0 0 9 9"><polyline points="9,9 9,0 0,0" fill="none" stroke={theme.isDark ? 'rgba(245,158,11,0.7)' : 'rgba(168,85,247,0.7)'} strokeWidth="1.5" /></svg>
+                                            <svg className="absolute bottom-0 left-0 pointer-events-none" width="9" height="9" viewBox="0 0 9 9"><polyline points="0,0 0,9 9,9" fill="none" stroke={theme.isDark ? 'rgba(245,158,11,0.3)' : 'rgba(168,85,247,0.3)'} strokeWidth="1.5" /></svg>
+                                            <svg className="absolute bottom-0 right-0 pointer-events-none" width="9" height="9" viewBox="0 0 9 9"><polyline points="9,0 9,9 0,9" fill="none" stroke={theme.isDark ? 'rgba(245,158,11,0.3)' : 'rgba(168,85,247,0.3)'} strokeWidth="1.5" /></svg>
                                             <ExternalLink size={20} strokeWidth={2} className={`${hudInk} drop-shadow-[0_0_8px_currentColor]`} aria-hidden="true" />
                                             <span className={`font-mono text-[6px] tracking-[0.15em] ${hudInk} uppercase`} aria-hidden="true">PORTAL</span>
                                         </motion.button>

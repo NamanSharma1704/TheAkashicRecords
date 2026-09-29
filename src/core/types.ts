@@ -26,6 +26,13 @@ export interface Theme {
      */
     inkGradient: string;
     /**
+     * Gradient for TEXT at heading/label sizes — the readable counterpart of `inkGradient`.
+     * `inkGradient` is tuned for big display text, so its brightest stop only clears the 3:1
+     * large-text floor; small section labels need 4.5:1, so this ramp keeps every stop dark
+     * enough to stay legible at 9–11px while still reading as a violet gradient.
+     */
+    labelGradient: string;
+    /**
      * Decorative accent: fills, large shapes, glows. High chroma, no contrast duty.
      */
     accentColor: string;

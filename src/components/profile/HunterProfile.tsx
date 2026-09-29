@@ -582,7 +582,7 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                                 {/* basis-full, not just w-full: flex-1's 0% basis is what line
                                     breaking reads, so without it this never wrapped. */}
                                 <div className="order-last basis-full sm:order-none sm:basis-0 flex flex-col justify-start flex-1 min-w-0">
-                                    <div className={`text-[9px] lg:text-[10px] font-mono ${theme.highlightText} tracking-[0.2em] font-bold uppercase mb-0.5`}>HUNTER DESIGNATION</div>
+                                    <div className={`text-[9px] lg:text-[10px] font-mono tracking-[0.2em] font-bold uppercase mb-0.5 ${theme.isDark ? theme.highlightText : `text-transparent bg-clip-text bg-gradient-to-r ${theme.labelGradient}`}`}>HUNTER DESIGNATION</div>
                                     <div className="drop-shadow-sm leading-normal overflow-hidden">
                                         <span className={`inline-block pr-[6px] text-4xl sm:text-5xl lg:text-[56px] font-black font-manifold tracking-tight text-transparent bg-clip-text bg-gradient-to-r ${theme.inkGradient} mb-4`}>
                                             {playerRank.name}
@@ -689,7 +689,7 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                     <div className="w-full">
                         <div className={`flex items-center gap-2 mb-2 ${theme.highlightText}`}>
                             <Database size={13} />
-                            <span className="text-[10px] font-mono font-bold tracking-[0.3em] uppercase">Combat Metrics</span>
+                            <span className={`text-[10px] font-mono font-bold tracking-[0.3em] uppercase ${theme.isDark ? '' : `text-transparent bg-clip-text bg-gradient-to-r ${theme.labelGradient}`}`}>Combat Metrics</span>
                         </div>
                         {/* Four bracketed stat tiles — the shared StatBox, the same framed tile
                             vocabulary as the rest of the profile, with a staggered entrance. */}
@@ -721,7 +721,7 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                     <div className="flex flex-col">
                         <div className={`flex items-center gap-2 mb-2 ${theme.highlightText}`}>
                             <Database size={13} />
-                            <span className="text-[10px] font-mono font-bold tracking-[0.3em] uppercase">Class Distribution</span>
+                            <span className={`text-[10px] font-mono font-bold tracking-[0.3em] uppercase ${theme.isDark ? '' : `text-transparent bg-clip-text bg-gradient-to-r ${theme.labelGradient}`}`}>Class Distribution</span>
                         </div>
                         <div className={`border ${theme.borderSubtle} ${theme.isDark ? 'bg-black/40' : 'bg-white/80'} elev-1 rounded-md backdrop-blur-md px-5 py-5 lg:py-6 flex flex-col flex-1 relative overflow-hidden group hover:-translate-y-0.5 transition-transform duration-300`}>
                             <div className="absolute -right-12 -bottom-12 opacity-[0.03] pointer-events-none mix-blend-screen scale-150 transition-transform duration-1000 group-hover:rotate-12">
@@ -750,7 +750,7 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                     <div className="flex flex-col">
                         <div className={`flex items-center gap-2 mb-2 ${theme.highlightText}`}>
                             <Layers size={13} />
-                            <span className="text-[10px] font-mono font-bold tracking-[0.3em] uppercase">Top Series</span>
+                            <span className={`text-[10px] font-mono font-bold tracking-[0.3em] uppercase ${theme.isDark ? '' : `text-transparent bg-clip-text bg-gradient-to-r ${theme.labelGradient}`}`}>Top Series</span>
                         </div>
                         <div className={`border ${theme.borderSubtle} ${theme.isDark ? 'bg-black/40' : 'bg-white/80'} elev-1 rounded-md backdrop-blur-md p-4 flex flex-col gap-3 flex-1 relative hover:-translate-y-0.5 transition-transform duration-300`}>
                             {topSeries.slice(0, 4).map((item, i) => (
@@ -783,7 +783,7 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                 <motion.div variants={itemVariants} className="flex flex-col">
                     <div className={`flex items-center gap-2 mb-2 ${theme.highlightText}`}>
                         <Target size={13} />
-                        <span className="text-[10px] font-mono font-bold tracking-[0.3em] uppercase">Active Progress</span>
+                        <span className={`text-[10px] font-mono font-bold tracking-[0.3em] uppercase ${theme.isDark ? '' : `text-transparent bg-clip-text bg-gradient-to-r ${theme.labelGradient}`}`}>Active Progress</span>
                     </div>
                     <div className={`border ${theme.borderSubtle} ${theme.isDark ? 'bg-black/40' : 'bg-white/80'} elev-1 rounded-md backdrop-blur-md p-4 relative`}>
                         {activeSeries.length === 0 && <div className={`text-xs font-mono ${theme.mutedText}`}>NO ACTIVE SERIES</div>}

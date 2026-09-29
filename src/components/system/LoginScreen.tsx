@@ -26,7 +26,7 @@ interface LoginScreenProps {
 const SectionLabel: React.FC<{ theme: Theme; children: React.ReactNode }> = ({ theme, children }) => (
     <div className="flex items-center gap-2">
         <div className="w-1 h-1 rotate-45" style={{ backgroundColor: theme.accentColor }} />
-        <span className={`text-[9px] font-mono tracking-[0.3em] uppercase ${theme.mutedText}`}>{children}</span>
+        <span className={`text-[9px] font-mono tracking-[0.3em] uppercase ${theme.isDark ? theme.mutedText : `text-transparent bg-clip-text bg-gradient-to-r ${theme.labelGradient}`}`}>{children}</span>
         <div className={`flex-1 h-[1px] ${theme.isDark ? 'bg-white/10' : 'bg-stone-200'}`} />
     </div>
 );

@@ -79,10 +79,10 @@ const TowerHUD: React.FC<TowerHUDProps> = ({ items, theme, onActivate, isFocused
                             <div className="flex flex-col border-b border-gray-500/20 pb-2 gap-1 lg:gap-2 w-full">
                                 <div className="flex items-center gap-2">
                                     <Activity size={14} className={`${theme.highlightText} motion-safe:animate-spin`} />
-                                    <span className={`text-[clamp(9px,1vw,12px)] font-bold tracking-[0.2em] ${theme.headingText} font-orbitron`}>PLAYER_METRICS</span>
+                                    <span className={`text-[clamp(9px,1vw,12px)] font-bold tracking-[0.2em] font-orbitron ${theme.isDark ? theme.headingText : `text-transparent bg-clip-text bg-gradient-to-r ${theme.labelGradient}`}`}>PLAYER_METRICS</span>
                                 </div>
                                 {isFocused && (
-                                    <span className={`text-[clamp(16px,2.5vw,28px)] font-black tracking-widest ${theme.highlightText} drop-shadow-[0_0_8px_rgba(255,255,255,0.3)] font-orbitron italic animate-pulse`}>
+                                    <span className={`text-[clamp(16px,2.5vw,28px)] font-black tracking-widest ${theme.isDark ? theme.highlightText : `text-transparent bg-clip-text bg-gradient-to-r ${theme.inkGradient}`} drop-shadow-[0_0_8px_rgba(255,255,255,0.3)] font-orbitron italic animate-pulse`}>
                                         SECTOR {selectedFloorIndex + 1}
                                     </span>
                                 )}
@@ -177,7 +177,7 @@ const TowerHUD: React.FC<TowerHUDProps> = ({ items, theme, onActivate, isFocused
                     {/* TOP MONOLITHS */}
                     <div className="w-full">
                         <div className={`flex items-center gap-2 mb-3 ${theme.highlightText} w-full justify-end`}>
-                            <span className="text-[clamp(10px,1vw,12px)] font-bold tracking-[0.2em] font-orbitron uppercase">TOP_REVELATIONS</span>
+                            <span className={`text-[clamp(10px,1vw,12px)] font-bold tracking-[0.2em] font-orbitron uppercase ${theme.isDark ? '' : `text-transparent bg-clip-text bg-gradient-to-r ${theme.labelGradient}`}`}>TOP_REVELATIONS</span>
                             <Layers size={14} />
                         </div>
                         <div className="flex flex-col gap-3">
@@ -196,7 +196,7 @@ const TowerHUD: React.FC<TowerHUDProps> = ({ items, theme, onActivate, isFocused
                     {/* CLASS DISTRIBUTION */}
                     <div className="w-full">
                         <div className={`flex items-center gap-2 mb-3 mt-4 ${theme.highlightText} w-full justify-end`}>
-                            <span className="text-[clamp(10px,1vw,12px)] font-bold tracking-[0.2em] font-orbitron uppercase">SYNERGY_INDEX</span>
+                            <span className={`text-[clamp(10px,1vw,12px)] font-bold tracking-[0.2em] font-orbitron uppercase ${theme.isDark ? '' : `text-transparent bg-clip-text bg-gradient-to-r ${theme.labelGradient}`}`}>SYNERGY_INDEX</span>
                             <Database size={14} />
                         </div>
                         <div className="space-y-4">
@@ -220,7 +220,7 @@ const TowerHUD: React.FC<TowerHUDProps> = ({ items, theme, onActivate, isFocused
                     {/* ACTIVE QUESTS QUICK-NAV */}
                     <div className="w-full mt-auto">
                         <div className={`flex items-center gap-2 mb-3 ${theme.highlightText} w-full justify-end`}>
-                            <span className="text-[clamp(10px,1vw,12px)] font-bold tracking-[0.2em] font-orbitron uppercase">RECENT_DATA</span>
+                            <span className={`text-[clamp(10px,1vw,12px)] font-bold tracking-[0.2em] font-orbitron uppercase ${theme.isDark ? '' : `text-transparent bg-clip-text bg-gradient-to-r ${theme.labelGradient}`}`}>RECENT_DATA</span>
                             <Sword size={14} />
                         </div>
                         <div className="flex flex-col gap-2">

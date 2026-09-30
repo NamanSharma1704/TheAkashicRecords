@@ -19,7 +19,7 @@ const StatBox: React.FC<StatBoxProps> = ({ value, label, icon: Icon, color, them
         theme={theme}
         // The translucent fill goes through surfaceClass: set on className it landed on the
         // frame's outer wrapper, hidden behind the solid inner panel, and never showed.
-        surfaceClass={theme.isDark ? 'bg-black/40' : 'bg-white/40'}
+        surfaceClass={theme.isDark ? 'bg-black/40' : 'bg-white/70'}
         // Height follows the content, not the width. The tile used aspect ratios up to
         // 16:9, so a quarter-width column grew with the screen — about 210px tall at 1920px.
         className={`w-full ${className} transition-colors duration-700`}

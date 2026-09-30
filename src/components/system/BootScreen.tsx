@@ -51,7 +51,7 @@ type BootPalette = { accent: string; accentInk: string; ink: string; ground: str
  */
 const paletteFor = (theme: Theme): BootPalette => theme.isDark
     ? { accent: '#fbbf24', accentInk: '#fbbf24', ink: '#ffffff', ground: '#020202', isDark: true }
-    : { accent: theme.accentColor, accentInk: theme.accentInk, ink: '#241a33', ground: '#f1edf7', isDark: false };
+    : { accent: theme.accentColor, accentInk: theme.accentInk, ink: '#241a33', ground: '#e9e2f6', isDark: false };
 
 // Screen blending only lifts against a dark ground; on the light theme it erases the art.
 const blendFor = (p: BootPalette) => p.isDark ? 'mix-blend-screen' : 'mix-blend-multiply';

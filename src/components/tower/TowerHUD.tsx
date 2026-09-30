@@ -4,6 +4,7 @@ import SystemFrame from '../system/SystemFrame';
 import { getPlayerRank } from '../../utils/ranks';
 import { getProxiedImageUrl } from '../../utils/api';
 import EntityAvatar from '../system/EntityAvatar';
+import { FLOOR_DEFS, floorIndexForItem } from './floors';
 import { Activity, Target, Layers, Database, Sword } from 'lucide-react';
 
 interface TowerHUDProps {
@@ -17,11 +18,11 @@ interface TowerHUDProps {
     dailyAbsorbed?: number;
 }
 
-const TowerHUD: React.FC<TowerHUDProps> = ({ items, theme, onActivate, isFocused = false, selectedFloorIndex = 0, itemsPerFloor = 5, streak = 0, dailyAbsorbed }) => {
+const TowerHUD: React.FC<TowerHUDProps> = ({ items, theme, onActivate, isFocused = false, selectedFloorIndex = 0, streak = 0, dailyAbsorbed }) => {
     // 1. Memoize Stats and Data Slicing
     const { displayItems, totalManhwa, displayChapters, completedManhwa, recents, classEntries } = useMemo(() => {
-        const floorStart = selectedFloorIndex * itemsPerFloor;
-        const _floorItems = items.slice(floorStart, floorStart + itemsPerFloor);
+        // Focused: the stats describe the titles resting on this progress floor, not a page range.
+        const _floorItems = items.filter(it => floorIndexForItem(it) === selectedFloorIndex);
         const _displayItems = isFocused ? _floorItems : items;
 
         const _totalManhwa = _displayItems.length;
@@ -56,7 +57,7 @@ const TowerHUD: React.FC<TowerHUDProps> = ({ items, theme, onActivate, isFocused
             recents: _recents,
             classEntries: _classEntries
         };
-    }, [items, isFocused, selectedFloorIndex, itemsPerFloor]);
+    }, [items, isFocused, selectedFloorIndex]);
 
     // Derived Rank (Always based on global titles) - Memoize separately for clarity
     const rawRank = useMemo(() => getPlayerRank(items.length), [items.length]);
@@ -83,7 +84,7 @@ const TowerHUD: React.FC<TowerHUDProps> = ({ items, theme, onActivate, isFocused
                                 </div>
                                 {isFocused && (
                                     <span className={`text-[clamp(16px,2.5vw,28px)] font-black tracking-widest ${theme.isDark ? theme.highlightText : `text-transparent bg-clip-text bg-gradient-to-r ${theme.inkGradient}`} drop-shadow-[0_0_8px_rgba(255,255,255,0.3)] font-orbitron italic animate-pulse`}>
-                                        SECTOR {selectedFloorIndex + 1}
+                                        {FLOOR_DEFS[selectedFloorIndex]?.label ?? 'FLOOR'}
                                     </span>
                                 )}
                             </div>
@@ -91,11 +92,11 @@ const TowerHUD: React.FC<TowerHUDProps> = ({ items, theme, onActivate, isFocused
                             <div className="grid grid-cols-2 gap-x-4 gap-y-3">
                                 <div className="flex flex-col">
                                     <div className={`text-[clamp(8px,0.8vw,10px)] ${theme.mutedText} font-mono uppercase tracking-widest`}>Read</div>
-                                    <div className={`text-[clamp(18px,2vw,32px)] font-bold font-mono tabular-nums leading-tight ${theme.isDark ? 'text-violet-300' : 'text-[#5b21b6]'}`}>{totalManhwa}</div>
+                                    <div className={`text-[clamp(18px,2vw,32px)] font-bold font-mono tabular-nums leading-tight ${theme.isDark ? 'text-amber-300' : 'text-[#5b21b6]'}`}>{totalManhwa}</div>
                                 </div>
                                 <div className="flex flex-col">
                                     <div className={`text-[clamp(8px,0.8vw,10px)] ${theme.mutedText} font-mono uppercase tracking-widest`}>Chapters</div>
-                                    <div className={`text-[clamp(18px,2vw,32px)] font-bold font-mono tabular-nums leading-tight ${theme.isDark ? 'text-violet-300' : 'text-[#5b21b6]'}`}>{displayChapters.toLocaleString()}</div>
+                                    <div className={`text-[clamp(18px,2vw,32px)] font-bold font-mono tabular-nums leading-tight ${theme.isDark ? 'text-amber-300' : 'text-[#5b21b6]'}`}>{displayChapters.toLocaleString()}</div>
                                 </div>
                                 <div className="flex flex-col">
                                     <div className={`text-[clamp(8px,0.8vw,10px)] ${theme.mutedText} font-mono uppercase tracking-widest`}>Conquered</div>
@@ -263,29 +264,29 @@ const TowerHUD: React.FC<TowerHUDProps> = ({ items, theme, onActivate, isFocused
                         <div className="py-2 px-3 flex items-center justify-around gap-0.5">
                             <div className="flex flex-col items-center">
                                 <span className={`text-[7px] ${theme.mutedText} font-mono uppercase tracking-tighter`}>Titles</span>
-                                <span className={`text-[13px] font-bold ${theme.isDark ? 'text-violet-300' : 'text-[#5b21b6]'}`}>{totalManhwa}</span>
+                                <span className={`text-[13px] font-bold ${theme.isDark ? 'text-amber-300' : 'text-[#5b21b6]'}`}>{totalManhwa}</span>
                             </div>
-                            <div className={`w-px h-5 ${theme.isDark ? 'bg-white/10' : 'bg-stone-300'}`} aria-hidden="true" />
+                            <div className={`w-px h-5 ${theme.isDark ? 'bg-white/10' : 'bg-black/10'}`} aria-hidden="true" />
                             <div className="flex flex-col items-center">
                                 <span className={`text-[7px] ${theme.mutedText} font-mono uppercase tracking-tighter`}>Active</span>
-                                <span className={`text-[13px] font-bold ${theme.isDark ? 'text-violet-300' : 'text-[#5b21b6]'}`}>{totalManhwa - completedManhwa}</span>
+                                <span className={`text-[13px] font-bold ${theme.isDark ? 'text-amber-300' : 'text-[#5b21b6]'}`}>{totalManhwa - completedManhwa}</span>
                             </div>
-                            <div className={`w-px h-5 ${theme.isDark ? 'bg-white/10' : 'bg-stone-300'}`} aria-hidden="true" />
+                            <div className={`w-px h-5 ${theme.isDark ? 'bg-white/10' : 'bg-black/10'}`} aria-hidden="true" />
                             <div className="flex flex-col items-center">
                                 <span className={`text-[7px] ${theme.mutedText} font-mono uppercase tracking-tighter`}>Conquered</span>
-                                <span className={`text-[13px] font-bold ${theme.isDark ? 'text-violet-300' : 'text-[#5b21b6]'}`}>{completedManhwa}</span>
+                                <span className={`text-[13px] font-bold ${theme.isDark ? 'text-amber-300' : 'text-[#5b21b6]'}`}>{completedManhwa}</span>
                             </div>
-                            <div className={`w-px h-5 ${theme.isDark ? 'bg-white/10' : 'bg-stone-300'}`} aria-hidden="true" />
+                            <div className={`w-px h-5 ${theme.isDark ? 'bg-white/10' : 'bg-black/10'}`} aria-hidden="true" />
                             <div className="flex flex-col items-center">
                                 <span className={`text-[7px] ${theme.mutedText} font-mono uppercase tracking-tighter`}>Avg Ch</span>
-                                <span className={`text-[13px] font-bold ${theme.isDark ? 'text-violet-300' : 'text-[#5b21b6]'}`}>{totalManhwa > 0 ? Math.round(displayChapters / totalManhwa) : 0}</span>
+                                <span className={`text-[13px] font-bold ${theme.isDark ? 'text-amber-300' : 'text-[#5b21b6]'}`}>{totalManhwa > 0 ? Math.round(displayChapters / totalManhwa) : 0}</span>
                             </div>
-                            <div className={`w-px h-5 ${theme.isDark ? 'bg-white/10' : 'bg-stone-300'}`} aria-hidden="true" />
+                            <div className={`w-px h-5 ${theme.isDark ? 'bg-white/10' : 'bg-black/10'}`} aria-hidden="true" />
                             <div className="flex flex-col items-center">
                                 <span className={`text-[7px] ${theme.mutedText} font-mono uppercase tracking-tighter`}>Chapters</span>
-                                <span className={`text-[13px] font-bold ${theme.isDark ? 'text-violet-300' : 'text-[#5b21b6]'}`}>{displayChapters.toLocaleString()}</span>
+                                <span className={`text-[13px] font-bold ${theme.isDark ? 'text-amber-300' : 'text-[#5b21b6]'}`}>{displayChapters.toLocaleString()}</span>
                             </div>
-                            <div className={`w-px h-5 ${theme.isDark ? 'bg-white/10' : 'bg-stone-300'}`} aria-hidden="true" />
+                            <div className={`w-px h-5 ${theme.isDark ? 'bg-white/10' : 'bg-black/10'}`} aria-hidden="true" />
                             <div className="flex flex-col items-center">
                                 <span className={`text-[7px] ${theme.mutedText} font-mono uppercase tracking-tighter`}>Streak</span>
                                 <div className="flex items-center gap-0.5">

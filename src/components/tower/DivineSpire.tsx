@@ -2,7 +2,8 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Theme, Quest } from '../../core/types';
 import { elevation } from '../../core/depth';
 import TowerHUD from './TowerHUD';
-import TowerStructure, { TOWER_FLOORS } from './TowerStructure';
+import TowerStructure from './TowerStructure';
+import { FLOOR_DEFS, floorIndexForItem } from './floors';
 import QuestCard from '../quest/QuestCard';
 import SystemLogo from '../system/SystemLogo';
 import { getQuestRankObj } from '../../utils/ranks';
@@ -62,14 +63,20 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
         });
     }, [items, filterClass, filterStatus]);
 
-    // Calculate floors for data
+    // The floors are the progress stages (see floors.ts), not pages of the library. Every title
+    // in the filtered library is dropped onto the floor its progress has earned, so all eight
+    // floors always exist — some may simply be empty (sealed) until a title reaches that stage.
     const floors = useMemo(() => {
-        const _floors: { index: number; items: Quest[]; range: string }[] = [];
-        for (let i = 0; i < activeLibrary.length; i += itemsPerFloor) {
-            _floors.push({ index: _floors.length, items: activeLibrary.slice(i, i + itemsPerFloor), range: `${i + 1}-${Math.min(i + itemsPerFloor, activeLibrary.length)}` });
-        }
-        return _floors;
-    }, [activeLibrary, itemsPerFloor]);
+        const buckets: Quest[][] = FLOOR_DEFS.map(() => []);
+        activeLibrary.forEach(item => { buckets[floorIndexForItem(item)].push(item); });
+        return FLOOR_DEFS.map((def, index) => ({
+            index,
+            label: def.label,
+            name: def.name,
+            meaning: def.meaning,
+            items: buckets[index],
+        }));
+    }, [activeLibrary]);
 
     // Fallback to ensure selected floor is valid if list shrinks
     useEffect(() => {
@@ -142,7 +149,7 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
             {/* AMBIENT BACKGROUND GLOW (Root-level to cover header) */}
             {viewMode === 'FLOOR' && (
                 <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
-                    <div className={`absolute -top-[20%] -right-[20%] w-[60%] h-[60%] ${theme.isDark ? 'bg-violet-500/10 mix-blend-screen' : 'bg-violet-500/10 mix-blend-multiply'} rounded-full blur-[150px] z-10 transition-colors duration-700`} />
+                    <div className={`absolute -top-[20%] -right-[20%] w-[60%] h-[60%] ${theme.isDark ? 'bg-amber-500/10 mix-blend-screen' : 'bg-violet-500/10 mix-blend-multiply'} rounded-full blur-[150px] z-10 transition-colors duration-700`} />
                     <div className={`absolute -bottom-[20%] -left-[20%] w-[60%] h-[60%] ${theme.isDark ? 'bg-yellow-500/10 mix-blend-screen' : 'bg-violet-500/10 mix-blend-multiply'} rounded-full blur-[150px] z-10 transition-colors duration-700`} />
                 </div>
             )}
@@ -162,20 +169,19 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
             {viewMode === 'TOWER' && (
                 <nav
                     aria-label="Spire layers"
-                    className={`sr-only focus-within:not-sr-only focus-within:fixed focus-within:bottom-6 focus-within:left-1/2 focus-within:-translate-x-1/2 focus-within:z-[70] focus-within:flex focus-within:flex-wrap focus-within:justify-center focus-within:gap-1.5 focus-within:p-2 focus-within:rounded-md focus-within:border focus-within:backdrop-blur-md ${theme.isDark ? 'focus-within:bg-black/85 focus-within:border-white/10' : 'focus-within:bg-white/90 focus-within:border-stone-300'}`}
+                    className={`sr-only focus-within:not-sr-only focus-within:fixed focus-within:bottom-6 focus-within:left-1/2 focus-within:-translate-x-1/2 focus-within:z-[70] focus-within:flex focus-within:flex-wrap focus-within:justify-center focus-within:gap-1.5 focus-within:p-2 focus-within:rounded-md focus-within:border focus-within:backdrop-blur-md ${theme.isDark ? 'focus-within:bg-black/85 focus-within:border-white/10' : 'focus-within:bg-white/90 focus-within:border-violet-200'}`}
                 >
-                    {Array.from({ length: TOWER_FLOORS }, (_, i) => {
-                        const first = i * itemsPerFloor + 1;
-                        const last = Math.min((i + 1) * itemsPerFloor, items.length);
+                    {floors.map((floor, i) => {
+                        const count = floor.items.length;
                         return (
                             <button
                                 key={i}
                                 type="button"
                                 onClick={() => handleSelectFloor(i)}
-                                aria-label={first <= items.length ? `Enter layer ${i + 1}, records ${first} to ${last}` : `Enter layer ${i + 1}, empty`}
+                                aria-label={count > 0 ? `Enter ${floor.name}, ${count} record${count === 1 ? '' : 's'}` : `Enter ${floor.name}, sealed`}
                                 className={`px-3 py-1.5 font-mono text-[10px] tracking-widest uppercase border ${theme.borderSubtle} ${theme.highlightText} ${theme.isDark ? 'hover:bg-white/10' : 'hover:bg-black/5'}`}
                             >
-                                LAYER {i + 1}
+                                {floor.label}
                             </button>
                         );
                     })}
@@ -221,7 +227,7 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
                         <div className="relative z-20 shrink-0 w-full max-w-xl mx-auto px-4 mb-2 md:mb-4">
                             <div className="relative group">
                                 <div className={`absolute -inset-1 bg-gradient-to-r ${theme.gradient} opacity-20 blur-md group-focus-within:opacity-40 transition-all duration-500 rounded-full`} />
-                                <div className={`relative ${theme.isDark ? 'bg-black/60' : 'bg-white/60'} backdrop-blur-xl border border-white/10 rounded-full px-3 py-2 md:px-4 md:py-3 flex items-center shadow-2xl transition-all duration-700`}>
+                                <div className={`relative ${theme.isDark ? 'bg-black/60' : 'bg-white/80'} backdrop-blur-xl border border-white/10 rounded-full px-3 py-2 md:px-4 md:py-3 flex items-center shadow-2xl transition-all duration-700`}>
                                     <Search size={18} aria-hidden="true" className={`${theme.highlightText} mr-2 md:mr-3 opacity-70 shrink-0`} />
                                     {/* The placeholder is this field's only visible label, so it keeps
                                         full muted strength (it was muted at 50%, ~2.3:1), and the
@@ -250,15 +256,15 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
                         {/* HUD HEADER: Floor / Sector info (Hidden when searching) */}
                         {!search && floors.length > 0 && floors[selectedFloorIndex] && (
                             <div className="shrink-0 z-[60] flex flex-col items-center drop-shadow-2xl mb-1 md:mb-2 relative group/carousel">
-                                <div className={`font-mono text-[9px] tracking-[0.4em] ${theme.highlightText} font-bold uppercase mb-1 pointer-events-none`}>SYSTEM.SECTOR_INTERFACE</div>
-                                <div className={`relative flex items-center gap-2 md:gap-4 px-3 py-1 md:px-6 md:py-2 rounded-full border backdrop-blur-md pointer-events-auto ${theme.isDark ? 'border-white/10 bg-black/40' : 'border-stone-300 bg-white/85 elev-1'}`}>
+                                <div className={`font-mono text-[9px] tracking-[0.4em] ${theme.highlightText} font-bold uppercase mb-1 pointer-events-none`}>SYSTEM.ASCENT_INTERFACE</div>
+                                <div className={`relative flex items-center gap-2 md:gap-4 px-3 py-1 md:px-6 md:py-2 rounded-full border backdrop-blur-md pointer-events-auto ${theme.isDark ? 'border-white/10 bg-black/40' : 'border-violet-200 bg-white/85 elev-1'}`}>
                                     <button type="button" disabled={selectedFloorIndex <= 0} onClick={() => setSelectedFloorIndex(i => i - 1)} aria-label="Previous layer" title="Previous layer" className={`${theme.mutedText} hover:${theme.highlightText} disabled:opacity-30 transition-colors`}><ChevronLeft size={14} aria-hidden="true" /></button>
                                     <button type="button" onClick={() => setIsFilterOpen(!isFilterOpen)} aria-expanded={isFilterOpen} aria-haspopup="true" aria-controls="spire-filter-menu" className={`font-black text-lg md:text-2xl font-orbitron tracking-widest ${theme.headingText} ${theme.isDark ? 'hover:text-white' : 'hover:text-[#5b21b6]'} transition-colors flex items-center gap-1.5 outline-none`}>
-                                        LAYER {selectedFloorIndex + 1}
+                                        {floors[selectedFloorIndex].label}
                                         <ChevronDown size={16} className={`transition-transform duration-300 ${isFilterOpen ? `rotate-180 ${theme.isDark ? 'text-white' : 'text-[#5b21b6]'}` : ''}`} />
                                     </button>
                                     <div className={`w-1 h-1 rounded-full ${theme.isDark ? 'bg-white/30' : 'bg-stone-400'}`} />
-                                    <span className={`font-mono text-[9px] md:text-xs ${theme.mutedText} tracking-widest`}>SECTOR {floors[selectedFloorIndex].range}</span>
+                                    <span className={`font-mono text-[9px] md:text-xs ${theme.mutedText} tracking-widest whitespace-nowrap`}>{floors[selectedFloorIndex].items.length} {floors[selectedFloorIndex].items.length === 1 ? 'RECORD' : 'RECORDS'}</span>
                                     <button type="button" disabled={selectedFloorIndex >= floors.length - 1} onClick={() => setSelectedFloorIndex(i => i + 1)} aria-label="Next layer" title="Next layer" className={`${theme.mutedText} hover:${theme.highlightText} disabled:opacity-30 transition-colors`}><ChevronRight size={14} aria-hidden="true" /></button>
 
                                     {/* Dropdown Filter Menu */}
@@ -268,9 +274,9 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
                                             <div>
                                                 <div className={`text-[10px] font-mono text-white/60 tracking-widest mb-2 uppercase flex items-center gap-1.5`}><Filter size={10} /> Classification Protocol</div>
                                                 <div className="flex flex-wrap gap-2">
-                                                    <button onClick={() => setFilterClass('ALL')} className={`px-3 py-1 text-xs font-mono rounded border ${filterClass === 'ALL' ? `${theme.isDark ? 'border-violet-500 bg-violet-500/20' : 'border-violet-500 bg-violet-500/20'} text-white` : `border-white/10 text-white/50 hover:border-white/30 hover:text-white/80`} transition-all`}>ALL</button>
+                                                    <button onClick={() => setFilterClass('ALL')} className={`px-3 py-1 text-xs font-mono rounded border ${filterClass === 'ALL' ? `${theme.isDark ? 'border-amber-500 bg-amber-500/20' : 'border-violet-500 bg-violet-500/20'} text-white` : `border-white/10 text-white/50 hover:border-white/30 hover:text-white/80`} transition-all`}>ALL</button>
                                                     {availableClasses.map(c => (
-                                                        <button key={c} onClick={() => setFilterClass(c)} className={`px-3 py-1 text-xs font-mono rounded border ${filterClass === c ? `${theme.isDark ? 'border-violet-500 bg-violet-500/20' : 'border-violet-500 bg-violet-500/20'} text-white` : `border-white/10 text-white/50 hover:border-white/30 hover:text-white/80`} transition-all uppercase`}>{c}</button>
+                                                        <button key={c} onClick={() => setFilterClass(c)} className={`px-3 py-1 text-xs font-mono rounded border ${filterClass === c ? `${theme.isDark ? 'border-amber-500 bg-amber-500/20' : 'border-violet-500 bg-violet-500/20'} text-white` : `border-white/10 text-white/50 hover:border-white/30 hover:text-white/80`} transition-all uppercase`}>{c}</button>
                                                     ))}
                                                 </div>
                                             </div>
@@ -278,9 +284,9 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
                                             <div>
                                                 <div className={`text-[10px] font-mono text-white/60 tracking-widest mb-2 uppercase flex items-center gap-1.5`}><Filter size={10} /> Operational Status</div>
                                                 <div className="flex flex-wrap gap-2">
-                                                    <button onClick={() => setFilterStatus('ALL')} className={`px-3 py-1 text-xs font-mono rounded border ${filterStatus === 'ALL' ? `${theme.isDark ? 'border-violet-500 bg-violet-500/20' : 'border-violet-500 bg-violet-500/20'} text-white` : `border-white/10 text-white/50 hover:border-white/30 hover:text-white/80`} transition-all`}>ALL</button>
+                                                    <button onClick={() => setFilterStatus('ALL')} className={`px-3 py-1 text-xs font-mono rounded border ${filterStatus === 'ALL' ? `${theme.isDark ? 'border-amber-500 bg-amber-500/20' : 'border-violet-500 bg-violet-500/20'} text-white` : `border-white/10 text-white/50 hover:border-white/30 hover:text-white/80`} transition-all`}>ALL</button>
                                                     {availableStatuses.map(s => (
-                                                        <button key={s} onClick={() => setFilterStatus(s)} className={`px-3 py-1 text-xs font-mono rounded border ${filterStatus === s ? `${theme.isDark ? 'border-violet-500 bg-violet-500/20' : 'border-violet-500 bg-violet-500/20'} text-white` : `border-white/10 text-white/50 hover:border-white/30 hover:text-white/80`} transition-all uppercase`}>{s}</button>
+                                                        <button key={s} onClick={() => setFilterStatus(s)} className={`px-3 py-1 text-xs font-mono rounded border ${filterStatus === s ? `${theme.isDark ? 'border-amber-500 bg-amber-500/20' : 'border-violet-500 bg-violet-500/20'} text-white` : `border-white/10 text-white/50 hover:border-white/30 hover:text-white/80`} transition-all uppercase`}>{s}</button>
                                                     ))}
                                                 </div>
                                             </div>
@@ -298,6 +304,10 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
                                         </div>
                                     )}
                                 </div>
+                                {/* What this stage of the climb represents. */}
+                                <div className={`mt-2 font-mono text-[9px] md:text-[10px] tracking-[0.25em] uppercase text-center max-w-[90vw] px-4 ${theme.isDark ? theme.mutedText : `text-transparent bg-clip-text bg-gradient-to-r ${theme.labelGradient}`}`}>
+                                    {floors[selectedFloorIndex].meaning}
+                                </div>
                             </div>
                         )}
 
@@ -312,7 +322,7 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
                                         type="button"
                                         onClick={() => scrollCarousel('left')}
                                         aria-label="Scroll left"
-                                        className={`absolute left-2 md:left-12 top-1/2 -translate-y-1/2 z-30 p-2 md:p-4 rounded-full border border-white/10 ${theme.isDark ? 'bg-black/50 hover:bg-white/10' : 'bg-white/50 hover:bg-black/10'} backdrop-blur-md opacity-0 md:group-hover/carousel:opacity-100 focus-visible:opacity-100 transition-all duration-500 transform hover:scale-110 shadow-[0_0_30px_rgba(0,0,0,0.5)] hidden md:flex`}
+                                        className={`absolute left-2 md:left-12 top-1/2 -translate-y-1/2 z-30 p-2 md:p-4 rounded-full border border-white/10 ${theme.isDark ? 'bg-black/50 hover:bg-white/10' : 'bg-white/70 hover:bg-black/10'} backdrop-blur-md opacity-0 md:group-hover/carousel:opacity-100 focus-visible:opacity-100 transition-all duration-500 transform hover:scale-110 shadow-[0_0_30px_rgba(0,0,0,0.5)] hidden md:flex`}
                                     >
                                         <ChevronLeft size={32} aria-hidden="true" className={theme.highlightText} />
                                     </button>
@@ -320,7 +330,7 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
                                         type="button"
                                         onClick={() => scrollCarousel('right')}
                                         aria-label="Scroll right"
-                                        className={`absolute right-2 md:right-12 top-1/2 -translate-y-1/2 z-30 p-2 md:p-4 rounded-full border border-white/10 ${theme.isDark ? 'bg-black/50 hover:bg-white/10' : 'bg-white/50 hover:bg-black/10'} backdrop-blur-md opacity-0 md:group-hover/carousel:opacity-100 focus-visible:opacity-100 transition-all duration-500 transform hover:scale-110 shadow-[0_0_30px_rgba(0,0,0,0.5)] hidden md:flex`}
+                                        className={`absolute right-2 md:right-12 top-1/2 -translate-y-1/2 z-30 p-2 md:p-4 rounded-full border border-white/10 ${theme.isDark ? 'bg-black/50 hover:bg-white/10' : 'bg-white/70 hover:bg-black/10'} backdrop-blur-md opacity-0 md:group-hover/carousel:opacity-100 focus-visible:opacity-100 transition-all duration-500 transform hover:scale-110 shadow-[0_0_30px_rgba(0,0,0,0.5)] hidden md:flex`}
                                     >
                                         <ChevronRight size={32} aria-hidden="true" className={theme.highlightText} />
                                     </button>
@@ -341,8 +351,8 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
                                             return (
                                                 <div key={item.id} className="h-full max-h-[55vh] sm:max-h-[60vh] md:max-h-[65vh] aspect-[3/4] shrink-0 snap-center transition-all duration-700 hover:scale-[1.03] group relative">
                                                     {/* Reflection Glow */}
-                                                    <div className={`absolute -bottom-6 left-1/2 -translate-x-1/2 w-3/4 h-6 bg-gradient-to-t ${theme.isDark ? 'from-violet-500/40' : 'from-violet-500/40'} to-transparent blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-700`} />
-                                                    <div className={`absolute -inset-6 ${theme.isDark ? 'bg-violet-500/10' : 'bg-violet-500/10'} blur-[40px] rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none`} />
+                                                    <div className={`absolute -bottom-6 left-1/2 -translate-x-1/2 w-3/4 h-6 bg-gradient-to-t ${theme.isDark ? 'from-amber-500/40' : 'from-violet-500/40'} to-transparent blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-700`} />
+                                                    <div className={`absolute -inset-6 ${theme.isDark ? 'bg-amber-500/10' : 'bg-violet-500/10'} blur-[40px] rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none`} />
                                                     <div className="relative z-10 w-full h-full">
                                                         <QuestCard id={`item-${item.id}`} item={item} onClick={onActivate} index={index} theme={theme} rankStyle={rawRank} />
                                                     </div>
@@ -352,16 +362,16 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
                                     )}
                                 </div>
                             ) : (
-                                floors.length > 0 && floors[selectedFloorIndex] ? (
+                                floors[selectedFloorIndex] && floors[selectedFloorIndex].items.length > 0 ? (
                                     <div ref={carouselRef} onWheel={handleWheel} className="absolute inset-0 flex items-center overflow-x-auto hide-scrollbar snap-x snap-mandatory px-3 sm:px-6 md:px-12 py-4 gap-4 sm:gap-6 md:gap-8 lg:gap-10">
                                         {floors[selectedFloorIndex].items.map((item, index) => {
                                             const rawRank = getQuestRankObj(item);
                                             return (
                                                 <div key={item.id} className="h-full max-h-[55vh] sm:max-h-[60vh] md:max-h-[65vh] aspect-[3/4] shrink-0 snap-center transition-all duration-700 hover:scale-[1.03] group relative">
                                                     {/* Reflection Glow */}
-                                                    <div className={`absolute -bottom-6 left-1/2 -translate-x-1/2 w-3/4 h-6 bg-gradient-to-t ${theme.id === 'LIGHT' ? 'from-violet-500/40' : 'from-violet-500/40'} to-transparent blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-all duration-700`} />
+                                                    <div className={`absolute -bottom-6 left-1/2 -translate-x-1/2 w-3/4 h-6 bg-gradient-to-t ${theme.id === 'LIGHT' ? 'from-violet-500/40' : 'from-amber-500/40'} to-transparent blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-all duration-700`} />
                                                     {/* Backdrop Ambient Lighting */}
-                                                    <div className={`absolute -inset-6 ${theme.id === 'LIGHT' ? 'bg-violet-500/10' : 'bg-violet-500/10'} blur-[40px] rounded-full opacity-0 group-hover:opacity-100 transition-all duration-700 pointer-events-none`} />
+                                                    <div className={`absolute -inset-6 ${theme.id === 'LIGHT' ? 'bg-violet-500/10' : 'bg-amber-500/10'} blur-[40px] rounded-full opacity-0 group-hover:opacity-100 transition-all duration-700 pointer-events-none`} />
                                                     <div className="relative z-10 w-full h-full">
                                                         <QuestCard id={`item-${item.id}`} item={item} onClick={onActivate} index={index} theme={theme} rankStyle={rawRank} />
                                                     </div>
@@ -372,7 +382,8 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
                                 ) : (
                                     <div className={`absolute inset-0 flex flex-col items-center justify-center ${theme.mutedText}`}>
                                         <AlertCircle size={48} className="mb-4 opacity-50" />
-                                        <p className="font-mono text-sm tracking-widest">LAYER EMPTY / LOCKED</p>
+                                        <p className="font-mono text-sm tracking-widest uppercase">{floors[selectedFloorIndex]?.name ?? 'Layer'} — Sealed</p>
+                                        <p className="font-mono text-[10px] tracking-widest mt-2 opacity-70">No records have reached this stage yet</p>
                                     </div>
                                 )
                             )}

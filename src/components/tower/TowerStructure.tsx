@@ -1,5 +1,6 @@
 import React, { useRef, useEffect } from 'react';
 import * as THREE from 'three';
+import { FLOOR_DEFS, floorIndexForItem } from './floors';
 
 // Divine Spire 8.0: Holographic ascending isles.
 // A spiral of translucent faceted islands (bright wireframe edges) climbing toward a
@@ -8,8 +9,9 @@ import * as THREE from 'three';
 // Each island's glowing hex pad is a clickable floor; all mechanics from the previous
 // tower (raycast focus/open, drag-rotate, wheel, pause, reduced-motion) are preserved.
 
-/** Isles in the spire. The keyboard layer list in DivineSpire mirrors this. */
-export const TOWER_FLOORS = 8;
+/** Isles in the spire — one per progress floor (see floors.ts). The keyboard layer list in
+ *  DivineSpire mirrors this. */
+export const TOWER_FLOORS = FLOOR_DEFS.length;
 
 interface TowerStructureProps {
     onSelectFloor: (floorIndex: number) => void;
@@ -20,7 +22,7 @@ interface TowerStructureProps {
     isPaused?: boolean;
 }
 
-const TowerStructure: React.FC<TowerStructureProps> = ({ onSelectFloor, theme, onFocus, items = [], itemsPerFloor = 5, isPaused = false }) => {
+const TowerStructure: React.FC<TowerStructureProps> = ({ onSelectFloor, theme, onFocus, items = [], isPaused = false }) => {
     const mountRef = useRef<HTMLDivElement>(null);
     const onSelectFloorRef = useRef(onSelectFloor);
     // isPaused must be read through a ref: the scene effect below is scoped to [theme], so a
@@ -155,7 +157,7 @@ const TowerStructure: React.FC<TowerStructureProps> = ({ onSelectFloor, theme, o
             isle.position.set(Math.cos(ang) * rad, yPos, Math.sin(ang) * rad);
             isle.rotation.y = Math.random() * Math.PI;
 
-            const isEmpty = items.slice(i * itemsPerFloor, (i + 1) * itemsPerFloor).length === 0;
+            const isEmpty = !items.some(it => floorIndexForItem(it) === i);
             const edges: THREE.LineSegments[] = [];
 
             // main floating rock
@@ -195,9 +197,8 @@ const TowerStructure: React.FC<TowerStructureProps> = ({ onSelectFloor, theme, o
             isle.add(hitbox);
             disposables.push(hitGeo, hitMat);
 
-            // --- SECTOR label sprite ---
-            const sectorNum = (i + 1).toString().padStart(2, '0');
-            const text = `SECTOR ${sectorNum}`;
+            // --- FLOOR label sprite --- the progress-stage name, not a sector number.
+            const text = FLOOR_DEFS[i].label;
             const tempCanvas = document.createElement('canvas');
             const tempCtx = tempCanvas.getContext('2d');
             let textWidth = 4000;

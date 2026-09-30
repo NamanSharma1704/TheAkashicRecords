@@ -10,16 +10,17 @@
     --detail-grid-color: rgba(245,158,11,0.05);
 }
 
-/* THEME: LIGHT — Arcanum. An amethyst reading chamber on lilac vellum: the base stays light
-   so the glass panels and dark ink read, but amethyst radials, a violet vignette and a raised
-   cover aura give it cinematic depth and let each record's own art tint the scene. */
+/* THEME: LIGHT — Arcanum, a CLEAN bright amethyst chamber. Calm and defined, not a murky wash:
+   a bright lilac ground, a single luminous bloom high-centre, and just two soft colour pools in
+   the far corners for atmosphere. The cover aura is barely there and the technical grid is off, so
+   the white panels and dark ink read crisply instead of floating in haze. */
 [data-theme='light'].manhwa-detail-backdrop {
-    --detail-bg-gradient: linear-gradient(135deg, #e8e1f4 0%, #ded3ef 25%, #d5c9ea 55%, #dcd2f0 80%, #e5def3 100%);
-    --detail-base-radial: radial-gradient(ellipse 80% 60% at 70% 15%, rgba(124,58,237,0.18) 0%, transparent 60%), radial-gradient(ellipse 60% 50% at 15% 80%, rgba(91,33,182,0.14) 0%, transparent 55%), radial-gradient(ellipse 100% 100% at 50% 50%, rgba(124,58,237,0.04) 0%, rgba(59,29,90,0.22) 100%);
-    --detail-aura-opacity: 0.18;
-    --detail-vignette-radial: radial-gradient(ellipse at 50% 50%, transparent 24%, rgba(45,26,72,0.34) 100%);
-    --detail-star-color: rgba(237,221,248,0.95);
-    --detail-grid-color: rgba(124,58,237,0.09);
+    --detail-bg-gradient: linear-gradient(160deg, #f1ebfa 0%, #e8dff5 48%, #eee2f7 100%);
+    --detail-base-radial: radial-gradient(ellipse 90% 55% at 50% 0%, rgba(255,255,255,0.65) 0%, transparent 55%), radial-gradient(ellipse 62% 52% at 88% 16%, rgba(139,92,246,0.16) 0%, transparent 62%), radial-gradient(ellipse 58% 50% at 10% 90%, rgba(214,120,224,0.12) 0%, transparent 62%);
+    --detail-aura-opacity: 0.09;
+    --detail-vignette-radial: radial-gradient(ellipse at 50% 38%, transparent 58%, rgba(76,29,149,0.13) 100%);
+    --detail-star-color: rgba(124,58,237,0.32);
+    --detail-grid-color: transparent;
 }
 
 .manhwa-detail-backdrop {

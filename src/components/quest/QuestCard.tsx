@@ -63,7 +63,7 @@ const QuestCard = React.memo<DivineMonolithProps>(({ item, onClick, index, id, t
                 </div>
                 <div className="absolute inset-0 z-10 opacity-40 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity duration-700 grayscale group-hover:grayscale-0 group-focus-visible:grayscale-0">
                     <motion.img layoutId={`cover-${item.id}`} src={getProxiedImageUrl(item.coverUrl)} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-                    <div className={`absolute inset-0 bg-gradient-to-t ${theme.isDark ? 'from-black via-black/20' : 'from-white via-white/20'} to-transparent transition-colors duration-700`} />
+                    <div className={`absolute inset-0 bg-gradient-to-t ${theme.isDark ? 'from-black via-black/20' : 'from-black via-black/20'} to-transparent transition-colors duration-700`} />
                 </div>
                 <div className={`absolute inset-0 border-2 ${rankStyle.border} opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity duration-500 shadow-[inset_0_0_30px_currentColor]`} />
 
@@ -77,14 +77,14 @@ const QuestCard = React.memo<DivineMonolithProps>(({ item, onClick, index, id, t
                     <div className="space-y-3 opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity duration-500">
                         <div className={`text-[9px] font-mono ${theme.isDark ? rankStyle.color : (rankStyle.colorLight || rankStyle.color)} tracking-[0.2em] uppercase border-l-2 ${rankStyle.border} pl-2`}>{item.classType}</div>
 
-                        <h3 className={`text-2xl font-black italic bg-clip-text text-transparent bg-gradient-to-b ${theme.isDark ? 'from-white via-gray-200 to-gray-400' : 'from-black via-stone-800 to-stone-700'} leading-none line-clamp-3 md:line-clamp-4 drop-shadow-sm transition-all duration-700 tracking-tighter uppercase`}>
+                        <h3 className={`text-2xl font-black italic bg-clip-text text-transparent bg-gradient-to-b ${theme.isDark ? 'from-white via-gray-200 to-gray-400' : 'from-white via-gray-200 to-gray-400'} leading-none line-clamp-3 md:line-clamp-4 drop-shadow-sm transition-all duration-700 tracking-tighter uppercase`}>
                             {item.title}
                         </h3>
 
                         <div className={`h-[1px] w-full ${theme.isDark ? 'bg-white/10' : 'bg-black/10'} overflow-hidden relative transition-colors duration-700`}><div className={`absolute inset-0 w-full h-full ${rankStyle.bg} -translate-x-full group-hover:translate-x-0 group-focus-visible:translate-x-0 transition-transform duration-1000 delay-100`} /></div>
                         <div className={`flex justify-between items-center text-xs md:text-sm font-mono ${theme.mutedText} group-hover:${theme.baseText} transition-colors delay-300 duration-700`}>
                             <span className="flex items-center gap-2"><BookOpen size={14} aria-hidden="true" /> CH: {item.currentChapter}</span>
-                            <span className={`px-2 md:px-3 py-1 border ${theme.borderSubtle} ${item.status === 'SEVERED' ? (theme.id === 'LIGHT' ? 'bg-violet-500/10 text-violet-500 border-violet-500/30' : 'bg-violet-500/10 text-violet-500 border-violet-500/30') : theme.isDark ? 'bg-white/5' : 'bg-black/5'} transition-colors duration-700 uppercase tracking-widest`}>{item.status}</span>
+                            <span className={`px-2 md:px-3 py-1 border ${theme.borderSubtle} ${item.status === 'SEVERED' ? (theme.id === 'LIGHT' ? 'bg-violet-500/10 text-violet-500 border-violet-500/30' : 'bg-amber-500/10 text-amber-500 border-amber-500/30') : theme.isDark ? 'bg-white/5' : 'bg-black/5'} transition-colors duration-700 uppercase tracking-widest`}>{item.status}</span>
                         </div>
                     </div>
                 </div>

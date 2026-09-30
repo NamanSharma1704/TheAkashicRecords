@@ -27,7 +27,7 @@ const SectionLabel: React.FC<{ theme: Theme; children: React.ReactNode }> = ({ t
     <div className="flex items-center gap-2">
         <div className="w-1 h-1 rotate-45" style={{ backgroundColor: theme.accentColor }} />
         <span className={`text-[9px] font-mono tracking-[0.3em] uppercase ${theme.isDark ? theme.mutedText : `text-transparent bg-clip-text bg-gradient-to-r ${theme.labelGradient}`}`}>{children}</span>
-        <div className={`flex-1 h-[1px] ${theme.isDark ? 'bg-white/10' : 'bg-stone-200'}`} />
+        <div className={`flex-1 h-[1px] ${theme.isDark ? 'bg-white/10' : 'bg-black/10'}`} />
     </div>
 );
 
@@ -119,7 +119,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, theme, onTogg
                         onClick={onToggleTheme}
                         aria-label={theme.isDark ? 'Switch to light theme' : 'Switch to dark theme'}
                         title={theme.isDark ? 'Switch to light theme' : 'Switch to dark theme'}
-                        className={`w-8 h-8 flex items-center justify-center border ${theme.borderSubtle} ${theme.isDark ? 'bg-white/5 hover:bg-white/10' : 'bg-black/5 hover:bg-black/10'} rounded transition-colors duration-700`}
+                        className={`w-8 h-8 flex items-center justify-center border ${theme.borderSubtle} ${theme.isDark ? 'bg-white/5 hover:bg-white/10' : 'bg-violet-50 hover:bg-black/5'} rounded transition-colors duration-700`}
                     >
                         {theme.isDark
                             ? <Moon size={14} className="transition-colors duration-700" style={{ color: theme.accentInk }} />
@@ -136,7 +136,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, theme, onTogg
                     <SystemFrame
                         theme={theme}
                         variant="full"
-                        surfaceClass={theme.isDark ? 'bg-black/20' : 'bg-white/50'}
+                        surfaceClass={theme.isDark ? 'bg-black/20' : 'bg-white/75'}
                     >
                         {/* animate-scanning: a faint band that sweeps down the glass. This effect
                             was on the original login panel; the colour is inline so it resolves
@@ -259,9 +259,9 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, theme, onTogg
                                            carries the weight a primary action wants, so the label goes
                                            near-black (7.33:1) rather than the button going ghost too. */
                                         style={{
-                                            color: theme.isDark ? theme.accentColor : '#2c2718',
+                                            color: theme.accentColor,
                                             borderColor: theme.accentColor,
-                                            backgroundColor: theme.isDark ? `${theme.accentColor}1a` : theme.accentColor
+                                            backgroundColor: `${theme.accentColor}1a`
                                         }}
                                     >
                                         {loading

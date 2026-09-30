@@ -54,45 +54,34 @@ export const THEMES: Record<ThemeId, Theme> = {
         name: 'Light Mode',
         primary: 'violet',
         accent: 'violet',
-        // Arcanum: a monochromatic AMETHYST theme — one hue across its whole value scale, the
-        // same self-matching structure that makes black/white/amber cohere, but a separate
-        // identity from the amber Void. Neutrals are violet-tinted so ground, ink, borders and
-        // accent all belong to one family; a true aubergine near-black gives the full value
-        // range (~12:1) that carries definition, and amethyst is the disciplined 10% accent.
-        appBg: 'bg-[#f1edf7]',
-        panelBg: 'bg-[#fcfaff]',
+        // Arcanum — a BRIGHT amethyst day theme, but not a flat white page. A light field reads as
+        // a surface, so its immersion comes from a RICH, saturated luminous atmosphere behind the
+        // content (see GalaxyNebula / IlluminatedCodex): a radiant amethyst sky with real nebula
+        // depth. The ground stays bright so panels and dark violet ink read; the "feel" lives in
+        // the atmosphere, not in darkness. Neutrals are violet-tinted so the whole family coheres.
+        appBg: 'bg-[#e9e2f6]',
+        panelBg: 'bg-[#fbf9ff]',
         modalBg: 'bg-[#f6f1fc]',
         inputBg: 'bg-[#eae3f5]',
-        // Aubergine near-black for ink — the "black" of this theme, giving the black-to-white
-        // value range that definition needs. Body and muted step up in lightness, still violet.
+        // Aubergine near-black ink for the value range that carries definition; body and muted
+        // step up in lightness, still violet.
         baseText: 'text-[#463a5c]',
         headingText: 'text-[#241a33]',
         mutedText: 'text-[#655a80]',
-        // Accent text is deep amethyst — ~6.5:1 on the lilac vellum, readable at every size.
+        // Deep amethyst accent text — readable at every size on the bright ground.
         highlightText: 'text-[#5b21b6]',
-        // An amethyst hairline for structural accent edges; the quiet divider is a soft
-        // violet-grey so not every line shouts.
         border: 'border-[#8b5cf6]',
         borderSubtle: 'border-[#d3cae8]',
         overlay: 'bg-[#e7ddf5]/85',
-        // Deep amethyst ink for the field's contour rings, grid and linework, so the HUD carries
-        // the same density of visible detail the void does — violet ink drawn on lilac vellum.
+        // Deep amethyst ink for any HUD linework drawn on the bright ground.
         starColor: '74, 40, 120',
         gradient: 'from-[#7c3aed] to-[#a78bfa]',
-        // The wordmark shimmer is amethyst too — Arcanum has one hue, no gold. Tuned for big
-        // display text: a bright violet start, a luminous #a855f7 mid, deepening slightly at the
-        // end so it still grounds. The lightest stop clears the 3:1 large-text floor on the
-        // vellum; small labels use labelGradient below, which stays darker for 4.5:1.
+        // Display-text gradient: bright violet start, luminous #a855f7 mid, deep end.
         inkGradient: 'from-[#7c3aed] via-[#a855f7] to-[#6d28d9]',
-        // Readable ramp for section labels at 9–11px: a bright-but-safe #7c3aed through the deep
-        // ink, every stop clearing 4.5:1 on the panel.
+        // Section-label ramp, readable on the bright panel.
         labelGradient: 'from-[#7c3aed] to-[#5b21b6]',
-        // The accent is amethyst: a vivid violet for decorative chrome (fills, glows, progress,
-        // borders, bloom-halos) and a deep amethyst ink for anything read (rank, values, accent
-        // text). One hue, its own identity, carrying both vibrance and definition.
         accentColor: '#7c3aed',
         accentInk: '#5b21b6',
-        // Vermilion, kept distinct from the amethyst so a warning never reads as chrome.
         warningInk: '#b0431a',
         isDark: false
     },

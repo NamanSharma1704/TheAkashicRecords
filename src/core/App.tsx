@@ -206,7 +206,7 @@ const SystemGateModal = lazy(() => import('../components/system/SystemGateModal'
 // Loading Fallback Strategy
 const HeavyLoader = ({ theme }: { theme: any }) => (
     <div className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm flex items-center justify-center" role="status" aria-label="Loading">
-        <div className={`w-16 h-16 border-2 border-dashed ${theme.id === 'LIGHT' ? 'border-[#8b5cf6]' : 'border-amber-500'} rounded-full animate-spin`} />
+        <div className={`w-16 h-16 border-2 border-dashed ${theme.id === 'LIGHT' ? 'border-violet-400' : 'border-amber-500'} rounded-full animate-spin`} />
     </div>
 );
 
@@ -1131,7 +1131,7 @@ const App: React.FC = () => {
                                     // page -> mat -> art instead of falling straight through. On the
                                     // void the problem inverts — the art dissolves into the
                                     // background — so there the mat is a faint light rim instead.
-                                    '--card-mat': theme.isDark ? 'rgba(255,255,255,0.07)' : '#c6d0de',
+                                    '--card-mat': theme.isDark ? 'rgba(255,255,255,0.07)' : '#c4b3dd',
                                     '--card-rest': `0 0 0 10px var(--card-mat), ${elevation(theme, 2)}`,
                                     '--card-raised': `0 0 0 10px var(--card-mat), ${elevation(theme, 3)}`,
                                 } as React.CSSProperties}

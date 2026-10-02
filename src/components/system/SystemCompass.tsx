@@ -12,7 +12,7 @@ interface SystemCompassProps {
  * Design language:
  *  - Corner bracket ornaments (matches SystemFrame / holographic-panel style)
  *  - Orbitron font — same as h1/logo throughout the app
- *  - Amber  (#f59e0b) on dark / Cyan (#7c3aed) on light  
+ *  - Amber  (#f59e0b) on dark / Amethyst (#7c3aed) on light
  *  - Tick ring + N / E / S / W cardinal marks
  *  - Scanline grid inside face
  *  - Diamond needle with north glow
@@ -23,7 +23,7 @@ const SystemCompass: React.FC<SystemCompassProps> = ({ theme }) => {
   const col   = isDark ? '#f59e0b' : '#7c3aed';
   const col2  = isDark ? '#fbbf24' : '#a78bfa';
   const dim   = (a: number) =>
-    isDark ? `rgba(245,158,11,${a})` : `rgba(6,182,212,${a})`;
+    isDark ? `rgba(245,158,11,${a})` : `rgba(124,58,237,${a})`;
 
   const SIZE     = 72;
   const CX       = 36;
@@ -77,8 +77,8 @@ const SystemCompass: React.FC<SystemCompassProps> = ({ theme }) => {
 
           {/* Face bg — deep void */}
           <radialGradient id="akFaceBg" cx="38%" cy="35%" r="75%">
-            <stop offset="0%"   stopColor={isDark ? '#120d02' : '#001219'} />
-            <stop offset="100%" stopColor={isDark ? '#020202' : '#000b12'} />
+            <stop offset="0%"   stopColor={isDark ? '#120d02' : '#140d28'} />
+            <stop offset="100%" stopColor={isDark ? '#020202' : '#07040f'} />
           </radialGradient>
 
           {/* Sweep sector */}
@@ -209,7 +209,7 @@ const SystemCompass: React.FC<SystemCompassProps> = ({ theme }) => {
           <circle cx={CX} cy={CY} r="2.8"
                   fill={col} style={{ filter: `drop-shadow(0 0 5px ${col})` }} />
           <circle cx={CX} cy={CY} r="1.2"
-                  fill={isDark ? '#020202' : '#000b12'} />
+                  fill={isDark ? '#020202' : '#07040f'} />
         </motion.g>
 
         {/* ── OUTER OUTERMOST RING ── */}

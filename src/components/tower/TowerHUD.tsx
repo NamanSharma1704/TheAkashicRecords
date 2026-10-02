@@ -3,7 +3,6 @@ import { Quest } from '../../core/types';
 import SystemFrame from '../system/SystemFrame';
 import { getPlayerRank } from '../../utils/ranks';
 import { getProxiedImageUrl } from '../../utils/api';
-import EntityAvatar from '../system/EntityAvatar';
 import { FLOOR_DEFS, floorIndexForItem } from './floors';
 import { Activity, Target, Layers, Database, Sword } from 'lucide-react';
 
@@ -116,19 +115,28 @@ const TowerHUD: React.FC<TowerHUDProps> = ({ items, theme, onActivate, isFocused
                     {/* RANK + TITLES DISCOVERED + DIVINE MANDATE — in a bracketed box like PLAYER_METRICS */}
                     {!isFocused && (
                         <div className="flex flex-col gap-4">
-                            {/* Rank card */}
-                            <div className="relative group min-h-[140px] flex flex-col justify-center">
-                                <div className={`absolute inset-0 bg-gradient-to-r ${theme.gradient} opacity-10 group-hover:opacity-20 transition-opacity`} />
-                                <div className="p-4 md:px-10 md:py-6 flex flex-row items-center gap-4 bg-transparent transition-all overflow-visible relative z-10">
-                                    <EntityAvatar theme={theme} size={70} className="shrink-0 opacity-100 drop-shadow-2xl" />
-                                    <div className="flex flex-col min-w-0 flex-1">
-                                        <span className={`text-[clamp(8px,1vw,10px)] ${theme.highlightText} font-bold font-mono uppercase tracking-[0.3em] mb-1`}>Status: Active</span>
-                                        <div className="text-[clamp(18px,2vw,30px)] font-black font-orbitron italic tracking-tighter flex items-baseline leading-none overflow-visible">
-                                            <span className={`inline-block text-transparent bg-clip-text bg-gradient-to-r ${theme.inkGradient} py-2 pr-10 whitespace-nowrap`}>{rawRank.label}</span>
-                                        </div>
+                            {/* FLOOR LEGEND — the key to what each tier of the Spire means, so the
+                                climb is legible at a glance (replaces the old rank/avatar card). */}
+                            <SystemFrame variant="brackets" theme={theme} frosted={false} className="shadow-none w-full">
+                                <div className="p-3 lg:p-4">
+                                    <div className="flex items-center gap-2 mb-3">
+                                        <Layers size={13} className={theme.highlightText} />
+                                        <span className={`text-[clamp(9px,1vw,11px)] font-bold tracking-[0.2em] font-orbitron ${theme.isDark ? theme.headingText : `text-transparent bg-clip-text bg-gradient-to-r ${theme.labelGradient}`}`}>ASCENT_KEY</span>
+                                    </div>
+                                    <div className="flex flex-col">
+                                        {FLOOR_DEFS.map((f, i) => (
+                                            <div
+                                                key={f.label}
+                                                className={`flex items-baseline gap-2 py-1 ${i < FLOOR_DEFS.length - 1 ? `border-b ${theme.isDark ? 'border-white/5' : 'border-black/5'}` : ''}`}
+                                            >
+                                                <span className={`w-3 shrink-0 text-[9px] font-mono tabular-nums ${theme.mutedText}`}>{i}</span>
+                                                <span className={`text-[clamp(9px,0.95vw,11px)] font-orbitron font-bold tracking-wide ${theme.highlightText} whitespace-nowrap`}>{f.name}</span>
+                                                <span className={`ml-auto text-[clamp(8px,0.85vw,10px)] font-mono ${theme.mutedText} text-right whitespace-nowrap`}>{f.rule}</span>
+                                            </div>
+                                        ))}
                                     </div>
                                 </div>
-                            </div>
+                            </SystemFrame>
 
                             {/* TITLES DISCOVERED + DIVINE MANDATE — bracketed box */}
                             <SystemFrame variant="brackets" theme={theme} frosted={false} className="shadow-none w-full">

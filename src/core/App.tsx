@@ -5,7 +5,7 @@ import { Quest } from './types';
 import SystemFrame from '../components/system/SystemFrame';
 import SystemLogo from '../components/system/SystemLogo';
 import ScrambleText from '../components/system/ScrambleText';
-import { Activity, ExternalLink, Sun, Moon, Plus, Zap, Crown, X, LayoutTemplate, GripVertical, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Activity, ExternalLink, Sun, Moon, Plus, Zap, Crown, X, LayoutTemplate, GripVertical, ChevronLeft, ChevronRight, LogOut } from 'lucide-react';
 import { getPlayerRank, calculateQuestRank, USER_RANKS } from '../utils/ranks';
 import { THEMES, ITEMS_PER_FLOOR, ThemeId } from './constants';
 
@@ -20,6 +20,7 @@ import SystemCompass from '../components/system/SystemCompass';
 import HoloDais from '../components/dais/HoloDais';
 import Card3D from '../components/quest/Card3D';
 import ArcaneSigil from '../components/fx/ArcaneSigil';
+import SanctuaryRing from '../components/fx/SanctuaryRing';
 import { accentRGB, elevation, emphasis } from './depth';
 import { InfinitePortalIcon, CalibratedPlusIcon, CalibratedMinusIcon } from '../components/system/CustomIcons';
 
@@ -469,11 +470,11 @@ const App: React.FC = () => {
         resolve?: (val: boolean) => void;
     }>({ isOpen: false, message: "", type: 'INFO', confirm: false });
 
-    const showSystemNotification = (message: string, type: 'INFO' | 'SUCCESS' | 'WARNING' | 'ERROR' = 'INFO', confirm: boolean = false): Promise<boolean> => {
+    const showSystemNotification = useCallback((message: string, type: 'INFO' | 'SUCCESS' | 'WARNING' | 'ERROR' = 'INFO', confirm: boolean = false): Promise<boolean> => {
         return new Promise((resolve) => {
             setSysNote({ isOpen: true, message, type, confirm, resolve });
         });
-    };
+    }, []);
 
     const handleSysNoteClose = (result: boolean) => {
         if (sysNote.resolve) sysNote.resolve(result);
@@ -487,14 +488,14 @@ const App: React.FC = () => {
         // Data fetching will be triggered by useEffect
     };
 
-    const handleLogout = async () => {
+    const handleLogout = useCallback(async () => {
         const confirmed = await showSystemNotification("TERMINATE_SESSION: Are you sure?", "WARNING", true);
         if (confirmed) {
             await performLogout();
             setIsAuth(false);
             setLibrary([]);
         }
-    };
+    }, [showSystemNotification]);
 
     const [guestTimeLeft, setGuestTimeLeft] = useState<number | null>(null);
 
@@ -548,7 +549,7 @@ const App: React.FC = () => {
             const timer = setInterval(checkSession, 10000); // Check every 10s
             return () => clearInterval(timer);
         }
-    }, [isAuth]);
+    }, [isAuth, showSystemNotification]);
 
     // Guest sandbox cleanup is deliberately NOT tied to page unload.
     //
@@ -994,6 +995,15 @@ const App: React.FC = () => {
                         >
                             {currentTheme === 'LIGHT' ? <Sun size={14} className="text-[#7c3aed] transition-colors duration-700" /> : <Moon size={14} className="text-amber-400 transition-colors duration-700" />}
                         </button>
+                        <button
+                            type="button"
+                            onClick={handleLogout}
+                            aria-label="Log out"
+                            title="Log out"
+                            className={`w-8 h-8 flex items-center justify-center border ${theme.borderSubtle} ${theme.isDark ? 'bg-white/5 hover:bg-red-500/80 hover:border-red-500' : 'bg-black/5 hover:bg-red-500 hover:border-red-500'} rounded transition-colors duration-300 group/logout`}
+                        >
+                            <LogOut size={14} className={`${theme.mutedText} group-hover/logout:text-white transition-colors duration-300`} />
+                        </button>
                         {/* Below lg the labelled button would crowd the header, and it used to
                             simply disappear — leaving phones and tablets with no way to add a
                             quest at all. The same action as a compact glyph, beside the toggle. */}
@@ -1013,7 +1023,7 @@ const App: React.FC = () => {
                 </motion.header>
             )}
         </AnimatePresence>
-    ), [theme, currentTheme, isHeaderVisible, guestTimeLeft, toggleTheme]);
+    ), [theme, currentTheme, isHeaderVisible, guestTimeLeft, toggleTheme, handleLogout]);
 
     // Track hero cover image error state — reset whenever the active quest changes
     const [coverImgError, setCoverImgError] = React.useState(false);
@@ -1137,12 +1147,18 @@ const App: React.FC = () => {
                                 } as React.CSSProperties}
                             >
 
-                                {/* ARCANE SIGIL — the light theme's summoning-circle, centred on
-                                    this card and the platform below it (composition centre ≈ 62% down
-                                    this box) rather than on the viewport, so the platform sits at the
-                                    heart of the circle. First child, so it paints beneath the cone,
-                                    dais and card. Light only; the Void has its own atmosphere. */}
-                                {!theme.isDark && (
+                                {/* CARD-CENTRED RINGS — centred on this card and the platform below it
+                                    (composition centre ≈ 54% down this box), not on the viewport, so the
+                                    platform sits at the heart of them. First child, so they paint beneath
+                                    the cone, dais and card. Each theme keeps its own ring language: the
+                                    Void's simple concentric SanctuaryRing, the day theme's summoning sigil. */}
+                                {theme.isDark ? (
+                                    <SanctuaryRing
+                                        theme={theme}
+                                        isPaused={overlayOpen}
+                                        className="left-1/2 top-[54%] w-[380%] aspect-square -translate-x-1/2 -translate-y-1/2 z-0"
+                                    />
+                                ) : (
                                     <ArcaneSigil
                                         theme={theme}
                                         paused={overlayOpen}
@@ -1518,14 +1534,20 @@ const App: React.FC = () => {
                     id="system-sidebar"
                     className={`relative w-full flex flex-col gap-1.5 lg:gap-2 lg:min-h-0 lg:h-full order-2 mb-10 lg:mb-0 lg:transition-[width] lg:duration-500 lg:ease-out lg:overflow-visible ${sidebarCollapsed ? 'lg:w-0' : 'lg:w-80 xl:w-96'}`}
                 >
-                    {/* RETRACT HANDLE — a bare glyph at the panel's leading edge, no frame
-                        and no plate. A bordered button here competed with the HUD's own
-                        bracket language instead of sitting inside it. Sits low-contrast
-                        until pointed at. Hidden below lg with the rest of the collapse.
-
-                        Collapsed it goes `fixed` against the viewport edge: the content
-                        row centres itself when the panel is away, so an offset from the
-                        zero-width panel would strand the glyph mid-gutter. */}
+                    {/* RETRACT HANDLE — a grip that rides the sidebar's own leading edge.
+                        The stacked bracket-cards give the column no continuous edge of its own, so
+                        a faint accent RAIL supplies one: a vertical hairline that fades out top and
+                        bottom, running down the leading edge. The grip is a thumb seated on that
+                        rail — centred on the exact line, same accent, translucent so the rail shows
+                        through it — so it reads as part of the sidebar's edge, not a chip in the
+                        gutter. The rail retires with the panel when collapsed; the grip then docks
+                        flush to the viewport edge to reopen. */}
+                    {!sidebarCollapsed && (
+                        <div
+                            aria-hidden="true"
+                            className={`hidden lg:block absolute -left-2 top-12 bottom-12 w-px z-30 pointer-events-none bg-gradient-to-b from-transparent to-transparent ${theme.isDark ? 'via-[#f59e0b]/45' : 'via-[#7c3aed]/40'}`}
+                        />
+                    )}
                     <button
                         type="button"
                         onClick={() => setSidebarCollapsed((v) => !v)}
@@ -1533,14 +1555,9 @@ const App: React.FC = () => {
                         aria-controls="system-sidebar"
                         aria-label={sidebarCollapsed ? 'Expand system panel' : 'Collapse system panel'}
                         title={sidebarCollapsed ? 'Expand system panel' : 'Collapse system panel'}
-                        /* Rest opacity is 70, not 40: the glyph is the control's only visible
-                           form, and at 40 it measured 2.25:1 on the void and 1.88:1 on the page,
-                           under the 3:1 a UI graphic needs. 70 clears it in both (4.97 / 3.31)
-                           and still sits back until pointed at. */
-                        className={`hidden lg:flex top-1/2 -translate-y-1/2 z-30 w-5 h-20 items-center justify-center bg-transparent border-0 opacity-70 hover:opacity-100 focus-visible:opacity-100 transition-opacity duration-300 cursor-pointer ${sidebarCollapsed ? 'fixed right-1' : 'absolute -left-5'}`}
-                        style={{ color: theme.accentInk }}
+                        className={`hidden lg:flex top-1/2 -translate-y-1/2 z-40 w-[22px] h-16 items-center justify-center border transition-[opacity,background-color,border-color,color] duration-300 cursor-pointer ${theme.isDark ? 'bg-[#14120e] border-[#f59e0b]/55 text-[#f59e0b] hover:bg-[#f59e0b] hover:border-[#f59e0b] hover:text-black' : 'bg-[#f6f1fc] border-[#7c3aed]/45 text-[#7c3aed] hover:bg-[#7c3aed] hover:border-[#7c3aed] hover:text-white'} ${sidebarCollapsed ? 'fixed right-0 rounded-l-xl opacity-0 hover:opacity-100 focus-visible:opacity-100' : 'absolute -left-[19px] rounded-full'}`}
                     >
-                        {sidebarCollapsed ? <ChevronLeft size={18} /> : <ChevronRight size={18} />}
+                        {sidebarCollapsed ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
                     </button>
 
                     {/* FULL PANEL — always shown below lg, where the sidebar stacks. */}

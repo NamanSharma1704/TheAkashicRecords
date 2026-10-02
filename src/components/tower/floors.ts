@@ -16,17 +16,19 @@ export interface FloorDef {
     label: string;
     name: string;
     meaning: string;
+    /** The concise rule, for the Spire's floor-legend key. */
+    rule: string;
 }
 
 export const FLOOR_DEFS: FloorDef[] = [
-    { label: 'SEVERED', name: 'The Severed', meaning: 'Abandoned gates — the climb forsaken' },
-    { label: 'SEALED', name: 'Sealed Gates', meaning: 'Untouched — the first read still awaits' },
-    { label: 'THRESHOLD', name: 'The Threshold', meaning: 'Just breached · under 25%' },
-    { label: 'TRIALS', name: 'The Trials', meaning: 'Into the climb · 25–49%' },
-    { label: 'ASCENT', name: 'The Ascent', meaning: 'Past the midpoint · 50–74%' },
-    { label: 'CREST', name: 'The Crest', meaning: 'Nearing the summit · 75–99%' },
-    { label: 'VIGIL', name: 'The Vigil', meaning: 'Caught up — awaiting new chapters' },
-    { label: 'THRONE', name: 'The Throne', meaning: 'Conquered — the gate cleared' },
+    { label: 'SEVERED', name: 'The Severed', meaning: 'Abandoned gates — the climb forsaken', rule: 'Dropped' },
+    { label: 'SEALED', name: 'Sealed Gates', meaning: 'Untouched — the first read still awaits', rule: 'Untouched · 0%' },
+    { label: 'THRESHOLD', name: 'The Threshold', meaning: 'Just breached · under 25%', rule: 'Under 25%' },
+    { label: 'TRIALS', name: 'The Trials', meaning: 'Into the climb · 25–49%', rule: '25–49%' },
+    { label: 'ASCENT', name: 'The Ascent', meaning: 'Past the midpoint · 50–74%', rule: '50–74%' },
+    { label: 'CREST', name: 'The Crest', meaning: 'Nearing the summit · 75–99%', rule: '75–99%' },
+    { label: 'VIGIL', name: 'The Vigil', meaning: 'Caught up — awaiting new chapters', rule: 'Caught up' },
+    { label: 'THRONE', name: 'The Throne', meaning: 'Conquered — the gate cleared', rule: 'Conquered' },
 ];
 
 export const SPIRE_FLOOR_COUNT = FLOOR_DEFS.length;

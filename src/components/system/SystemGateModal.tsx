@@ -5,6 +5,7 @@ import SystemFrame from './SystemFrame';
 import { X, RefreshCw, AlertCircle, CheckCircle, Database, Search, Activity, Trash2 } from 'lucide-react';
 import { fetchMangadex, fetchAuto, fetchAnilistCover, fetchJikanCover, getProxiedImageUrl, cleanDescription } from '../../utils/api';
 import { useDialogFocus } from '../../utils/useDialogFocus';
+import { systemFetch } from '../../utils/auth';
 
 interface SystemGateModalProps {
     isOpen: boolean;
@@ -15,6 +16,13 @@ interface SystemGateModalProps {
     theme: Theme;
     existingQuests: Quest[];
 }
+
+/** Plain-language line shown under each of the form's System-voice errors. */
+const PLAIN_ERRORS: Record<string, string> = {
+    'TITLE IS REQUIRED': 'Give the record a title.',
+    'LINK (COORDINATES) REQUIRED': 'Add the web address where you read this series.',
+    'ARTIFACT ALREADY EXISTS IN DATABASE': 'This title is already in your library.',
+};
 
 // --- SYSTEM GATE MODAL (Controlled Form with Scan Logic) ---
 const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDelete, initialData, theme, existingQuests }) => {
@@ -55,9 +63,22 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
     }, [formData.coverUrl]);
 
     useEffect(() => {
-        if (initialData) {
-            setFormData(initialData);
-        }
+        if (!initialData) return;
+        setFormData(initialData);
+        // The library list omits synopses, so a record opened from it arrives without one
+        // (undefined, not ""). Fetch it, and fill it in only if the field is still untouched:
+        // typing before it lands wins. Saved before it lands, an undefined synopsis is simply
+        // left out of the save, so the stored text is never overwritten with an empty one.
+        if (initialData.synopsis !== undefined || !initialData.id) return;
+        let alive = true;
+        systemFetch(`/api/quests/${initialData.id}`)
+            .then(res => (res.ok ? res.json() : null))
+            .then(doc => {
+                if (!alive || !doc) return;
+                setFormData(prev => (prev.synopsis === undefined ? { ...prev, synopsis: doc.synopsis ?? '' } : prev));
+            })
+            .catch(() => { /* the field stays empty and is left out of the save */ });
+        return () => { alive = false; };
     }, [initialData]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -274,7 +295,7 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
                     {/* ── HEADER ── */}
                     <div className={`flex justify-between items-center px-5 py-3.5 border-b ${theme.borderSubtle} shrink-0 ${theme.isDark ? 'bg-black/30' : 'bg-violet-50/70'}`}>
                         <span id="gate-modal-title" aria-live="polite" className={`${theme.highlightText} font-mono tracking-widest text-[11px] sm:text-sm flex items-center gap-2.5`}>
-                            <span aria-hidden="true" className={`w-1.5 h-1.5 rounded-full ${isScanning ? (theme.isDark ? 'bg-amber-500 animate-ping' : 'bg-violet-500 animate-ping') : (theme.isDark ? 'bg-amber-500/50' : 'bg-violet-500/50')}`} />
+                            <span aria-hidden="true" className={`w-1.5 h-1.5 rounded-full ${isScanning ? 'bg-accent-solid animate-ping' : 'bg-accent-line'}`} />
                             <RefreshCw size={12} aria-hidden="true" className={isScanning ? 'animate-spin' : ''} />
                             {isScanning ? 'ANALYZING_COORDINATES...' : (initialData ? 'SYSTEM_OVERWRITE' : 'CREATE_GATE')}
                         </span>
@@ -293,10 +314,14 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
                     <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar px-5 py-4 space-y-4">
 
                         {/* VALIDATION ERROR */}
+                        {/* The System's line, then what it means in plain words. */}
                         {error && (
-                            <div role="alert" className={`bg-red-500/10 border-l-2 border-red-500 ${errorInk} px-3 py-2 text-[9px] tracking-[0.2em] font-orbitron flex items-center gap-2.5`}>
-                                <AlertCircle size={12} className="shrink-0" />
-                                <span className="uppercase">{error}</span>
+                            <div role="alert" className={`bg-red-500/10 border-l-2 border-red-500 ${errorInk} px-3 py-2 flex items-start gap-2.5`}>
+                                <AlertCircle size={12} className="shrink-0 mt-px" />
+                                <span className="flex flex-col gap-1">
+                                    <span className="uppercase text-[9px] tracking-[0.2em] font-orbitron">{error}</span>
+                                    {PLAIN_ERRORS[error] && <span className="font-mono text-[11px] leading-snug">{PLAIN_ERRORS[error]}</span>}
+                                </span>
                             </div>
                         )}
 
@@ -313,7 +338,7 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
                                             aria-pressed={searchSource === src}
                                             /* The hover was `hover:text-white` in both themes, which on
                                                the light panel turned the label white-on-white. */
-                                            className={`text-[7px] font-orbitron font-bold tracking-widest px-2 py-0.5 transition-all duration-300 ${searchSource === src ? `${theme.highlightText} border-b ${theme.isDark ? 'border-amber-500' : 'border-violet-500'}` : `${theme.mutedText} ${theme.isDark ? 'hover:text-white' : 'hover:text-stone-900'}`}`}
+                                            className={`text-[7px] font-orbitron font-bold tracking-widest px-2 py-0.5 transition-all duration-300 ${searchSource === src ? `${theme.highlightText} border-b border-accent-solid` : `${theme.mutedText} ${theme.isDark ? 'hover:text-white' : 'hover:text-stone-900'}`}`}
                                         >
                                             {src}
                                         </button>
@@ -331,7 +356,7 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
                                     value={formData.link}
                                     onChange={handleChange}
                                     placeholder="ENTER_PROTOCOL_URL"
-                                    className={`w-full ${theme.inputBg} border-b-2 ${theme.borderSubtle} ${theme.isDark ? 'focus:border-amber-500/80' : 'focus:border-violet-500/80'} pr-28 pl-3 py-2.5 ${theme.baseText} outline-none transition-colors duration-150 font-mono text-[10px] ${theme.isDark ? 'placeholder:text-gray-400' : 'placeholder:text-stone-600'}`}
+                                    className={`w-full ${theme.inputBg} border-b-2 ${theme.borderSubtle} focus:border-accent-line-strong pr-28 pl-3 py-2.5 ${theme.baseText} outline-none transition-colors duration-150 font-mono text-[10px] ${theme.isDark ? 'placeholder:text-gray-400' : 'placeholder:text-stone-600'}`}
                                 />
                                 <div className={`absolute bottom-0 left-0 h-[2px] w-0 bg-gradient-to-r ${theme.gradient} group-focus-within:w-[calc(100%-7rem)] transition-all duration-150`} />
                                 {/* Horizontal sweep along the field while SCAN_CORE is resolving the
@@ -346,7 +371,7 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
                                     type="button"
                                     onClick={handleScan}
                                     disabled={!formData.link || isScanning}
-                                    className={`absolute right-0 top-0 h-full px-4 font-orbitron text-[10px] font-black tracking-wider border-l ${theme.borderSubtle} ${theme.isDark ? 'text-amber-500 hover:bg-amber-500 hover:text-black' : 'text-[#5b21b6] hover:bg-violet-500 hover:text-stone-900'} disabled:opacity-50 transition-all duration-300 flex items-center gap-1.5 ${theme.isDark ? 'bg-black/50' : 'bg-black/10'} active:scale-95 overflow-hidden group/btn drop-shadow-sm`}
+                                    className={`absolute right-0 top-0 h-full px-4 font-orbitron text-[10px] font-black tracking-wider border-l ${theme.borderSubtle} text-accent-ink hover:bg-accent-solid ${theme.isDark ? 'hover:text-black' : 'hover:text-stone-900'} disabled:opacity-50 transition-all duration-300 flex items-center gap-1.5 ${theme.isDark ? 'bg-black/50' : 'bg-black/10'} active:scale-95 overflow-hidden group/btn drop-shadow-sm`}
                                 >
                                     <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover/btn:translate-x-full transition-transform duration-700" />
                                     {isScanning ? <Activity size={14} className="animate-pulse" /> : <Search size={14} />}
@@ -357,9 +382,10 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
                             {/* SCAN STATUS */}
                             {scanStatus && scanStatus !== 'IDLE' && (
                                 <div className="pt-0.5" role="status">
-                                    {scanStatus === 'ENCRYPTED' && <div className={`${theme.highlightText} text-[8px] tracking-[0.2em] font-orbitron flex items-center gap-2`}><AlertCircle size={9} aria-hidden="true" /> COORDINATES ENCRYPTED. INPUT TRUE NAME.</div>}
-                                    {scanStatus === 'ERROR' && <div className={`${errorInk} text-[8px] tracking-[0.2em] font-orbitron flex items-center gap-2`}><AlertCircle size={9} aria-hidden="true" /> SCAN FAILED. NO MATCH FOUND.</div>}
-                                    {scanStatus === 'SUCCESS' && <div className={`${theme.highlightText} text-[8px] tracking-[0.2em] font-orbitron flex items-center gap-2`}><CheckCircle size={9} /> SCAN COMPLETE. ARTIFACT ACQUIRED.</div>}
+                                    {/* Each status keeps its System line and adds what to do next. */}
+                                    {scanStatus === 'ENCRYPTED' && <div className={`${theme.highlightText} flex flex-col gap-0.5`}><span className="text-[8px] tracking-[0.2em] font-orbitron flex items-center gap-2"><AlertCircle size={9} aria-hidden="true" /> COORDINATES ENCRYPTED. INPUT TRUE NAME.</span><span className="font-mono text-[11px]">No title could be read from that link. Type the series title below, then scan again.</span></div>}
+                                    {scanStatus === 'ERROR' && <div className={`${errorInk} flex flex-col gap-0.5`}><span className="text-[8px] tracking-[0.2em] font-orbitron flex items-center gap-2"><AlertCircle size={9} aria-hidden="true" /> SCAN FAILED. NO MATCH FOUND.</span><span className="font-mono text-[11px]">No source recognised that title. Check the spelling, try another source, or fill the fields in yourself.</span></div>}
+                                    {scanStatus === 'SUCCESS' && <div className={`${theme.highlightText} flex flex-col gap-0.5`}><span className="text-[8px] tracking-[0.2em] font-orbitron flex items-center gap-2"><CheckCircle size={9} aria-hidden="true" /> SCAN COMPLETE. ARTIFACT ACQUIRED.</span><span className="font-mono text-[11px]">Details filled in. Check them before saving.</span></div>}
                                 </div>
                             )}
                         </div>
@@ -374,7 +400,7 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
                                     value={formData.title}
                                     onChange={handleChange}
                                     placeholder="DESCRIPTOR_REQUIRED"
-                                    className={`w-full ${theme.inputBg} border-b-2 ${theme.borderSubtle} ${theme.isDark ? 'focus:border-amber-500/80' : 'focus:border-violet-500/80'} pr-12 pl-3 py-2.5 ${theme.headingText} outline-none transition-colors duration-150 font-orbitron font-bold text-base sm:text-lg italic tracking-tight ${theme.isDark ? 'placeholder:text-gray-400' : 'placeholder:text-stone-600'}`}
+                                    className={`w-full ${theme.inputBg} border-b-2 ${theme.borderSubtle} focus:border-accent-line-strong pr-12 pl-3 py-2.5 ${theme.headingText} outline-none transition-colors duration-150 font-orbitron font-bold text-base sm:text-lg italic tracking-tight ${theme.isDark ? 'placeholder:text-gray-400' : 'placeholder:text-stone-600'}`}
                                 />
                                 <div className={`absolute bottom-0 left-0 h-[2px] w-0 bg-gradient-to-r ${theme.gradient} group-focus-within:w-[calc(100%-3rem)] transition-all duration-150`} />
                                 <button
@@ -383,7 +409,7 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
                                     disabled={!formData.title || isScanning}
                                     /* Icon-only, so the glyph is the label: the ink, not cyan-600,
                                        which sat at 3.4:1 on this plate with no margin. */
-                                    className={`absolute right-0 top-0 h-full px-4 border-l ${theme.borderSubtle} ${theme.isDark ? 'text-amber-500 hover:bg-amber-500/20' : 'text-[#5b21b6] hover:bg-violet-500/20'} disabled:opacity-50 transition-all duration-300 flex items-center justify-center ${theme.isDark ? 'bg-black/50' : 'bg-black/10'} active:scale-90 group/archive drop-shadow-sm`}
+                                    className={`absolute right-0 top-0 h-full px-4 border-l ${theme.borderSubtle} text-accent-ink hover:bg-accent-soft-strong disabled:opacity-50 transition-all duration-300 flex items-center justify-center ${theme.isDark ? 'bg-black/50' : 'bg-black/10'} active:scale-90 group/archive drop-shadow-sm`}
                                     title="Search archives by title"
                                     aria-label="Search archives by title"
                                 >
@@ -410,9 +436,9 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
                                         value={formData.currentChapter}
                                         onFocus={(e) => e.target.select()}
                                         onChange={handleChange}
-                                        className={`w-full ${theme.inputBg} border ${theme.borderSubtle} ${theme.isDark ? 'hover:border-amber-500/40' : 'hover:border-violet-500/40'} focus:${theme.border} py-2 px-3 ${theme.baseText} outline-none transition-colors duration-150 font-mono text-center text-sm font-bold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`}
+                                        className={`w-full ${theme.inputBg} border ${theme.borderSubtle} hover:border-accent-line focus:${theme.border} py-2 px-3 ${theme.baseText} outline-none transition-colors duration-150 font-mono text-center text-sm font-bold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`}
                                     />
-                                    <div className={`absolute top-0 right-0 w-0.5 h-full bg-gradient-to-b ${theme.isDark ? 'from-amber-500/30' : 'from-violet-500/30'} to-transparent`} />
+                                    <div className={`absolute top-0 right-0 w-0.5 h-full bg-gradient-to-b from-accent-wash to-transparent`} />
                                 </div>
                                 {/* Full-strength muted ink: at opacity-50 these hints fell to ~2.3:1. */}
                                 <p id="quest-current-hint" className={`text-[7px] font-orbitron ${theme.mutedText} tracking-widest`}>CURRENT CH.</p>
@@ -434,10 +460,10 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
                                         onChange={handleChange}
                                         className={`w-full ${theme.inputBg} py-2 px-3 ${theme.baseText} outline-none transition-colors duration-150 font-mono text-center text-sm font-bold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${formData.totalChapters === 0
                                             ? 'border border-red-500/50 shadow-[0_0_8px_rgba(239,68,68,0.2)]'
-                                            : `border ${theme.borderSubtle} ${theme.isDark ? 'hover:border-amber-500/40' : 'hover:border-violet-500/40'} focus:${theme.border}`
+                                            : `border ${theme.borderSubtle} hover:border-accent-line focus:${theme.border}`
                                             }`}
                                     />
-                                    <div className={`absolute top-0 left-0 w-0.5 h-full bg-gradient-to-b ${theme.isDark ? 'from-amber-500/30' : 'from-violet-500/30'} to-transparent`} />
+                                    <div className={`absolute top-0 left-0 w-0.5 h-full bg-gradient-to-b from-accent-wash to-transparent`} />
                                 </div>
                                 {formData.totalChapters === 0 ? (
                                     <p id="quest-total-hint" className={`text-[7px] font-orbitron ${errorInk} tracking-widest flex items-center gap-1`}>
@@ -480,7 +506,7 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
                                         value={formData.coverUrl}
                                         onChange={handleChange}
                                         placeholder="IMAGE_LINK_ENCODING"
-                                        className={`w-full ${theme.inputBg} border-b ${theme.borderSubtle} ${theme.isDark ? 'focus:border-amber-500/60' : 'focus:border-violet-500/60'} px-2 py-2 ${theme.baseText} ${theme.isDark ? 'placeholder:text-gray-400' : 'placeholder:text-stone-600'} outline-none transition-colors duration-150 font-mono text-[9px] truncate`}
+                                        className={`w-full ${theme.inputBg} border-b ${theme.borderSubtle} focus:border-accent-line-strong px-2 py-2 ${theme.baseText} ${theme.isDark ? 'placeholder:text-gray-400' : 'placeholder:text-stone-600'} outline-none transition-colors duration-150 font-mono text-[9px] truncate`}
                                     />
                                     <p className={`text-[8px] font-mono ${theme.mutedText} italic truncate`}>
                                         {formData.coverUrl || 'WAITING_FOR_DATA...'}
@@ -499,7 +525,7 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
                                         name="status"
                                         value={formData.status}
                                         onChange={handleChange}
-                                        className={`w-full appearance-none ${theme.inputBg} border-b-2 ${theme.borderSubtle} ${theme.isDark ? 'focus:border-amber-500/80' : 'focus:border-violet-500/80'} px-3 py-2.5 ${theme.headingText} hover:bg-black/5 outline-none transition-all font-orbitron font-bold text-[9px] tracking-widest cursor-pointer`}
+                                        className={`w-full appearance-none ${theme.inputBg} border-b-2 ${theme.borderSubtle} focus:border-accent-line-strong px-3 py-2.5 ${theme.headingText} hover:bg-black/5 outline-none transition-all font-orbitron font-bold text-[9px] tracking-widest cursor-pointer`}
                                     >
                                         {/* Light rungs moved down to -700: orange/sky/red-500 on the
                                             white option list measured 2.3-3.8:1. */}
@@ -521,7 +547,7 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
                                         name="classType"
                                         value={formData.classType}
                                         onChange={handleChange}
-                                        className={`w-full appearance-none ${theme.inputBg} border-b-2 ${theme.borderSubtle} ${theme.isDark ? 'focus:border-amber-500/80' : 'focus:border-violet-500/80'} px-3 py-2.5 ${theme.headingText} hover:bg-black/5 outline-none transition-all font-orbitron font-bold text-[9px] tracking-widest cursor-pointer`}
+                                        className={`w-full appearance-none ${theme.inputBg} border-b-2 ${theme.borderSubtle} focus:border-accent-line-strong px-3 py-2.5 ${theme.headingText} hover:bg-black/5 outline-none transition-all font-orbitron font-bold text-[9px] tracking-widest cursor-pointer`}
                                     >
                                         <option value="PLAYER" className={theme.isDark ? 'bg-black' : 'bg-white'}>_PLAYER</option>
                                         <option value="IRREGULAR" className={theme.isDark ? 'bg-black' : 'bg-white'}>_IRREGULAR</option>
@@ -546,7 +572,7 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
                                 <textarea
                                     id="quest-synopsis"
                                     name="synopsis"
-                                    value={formData.synopsis}
+                                    value={formData.synopsis ?? ''}
                                     onChange={(e) => setFormData(prev => ({ ...prev, synopsis: e.target.value }))}
                                     placeholder="COLLECTING_RESONANCE_DATA..."
                                     className={`w-full h-20 ${theme.inputBg} border ${theme.borderSubtle} focus:${theme.border} px-3 py-2.5 ${theme.baseText} ${theme.isDark ? 'placeholder:text-gray-400' : 'placeholder:text-stone-600'} outline-none transition-all duration-500 font-rajdhani italic text-[11px] resize-none custom-scrollbar group-hover:bg-black/5`}
@@ -558,7 +584,7 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
 
                     {/* ── STICKY FOOTER ── */}
                     <div className={`px-5 py-3.5 ${theme.isDark ? 'bg-black/70' : 'bg-white/80'} backdrop-blur-md border-t ${theme.borderSubtle} flex gap-3 shrink-0 relative overflow-hidden`}>
-                        <div className={`absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r ${theme.isDark ? 'from-transparent via-amber-500/40 to-transparent' : 'from-transparent via-violet-500/40 to-transparent'}`} />
+                        <div className={`absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-accent-line to-transparent`} />
 
                         {initialData && (
                             <button
@@ -567,7 +593,7 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
                                 /* The glyph is the only label. red-500 at 70% was ~2.6:1 on the
                                    light footer, under 3:1; each theme now gets a full-strength red. */
                                 className={`w-12 h-12 border border-red-900/40 ${theme.isDark ? 'text-red-400' : 'text-red-700'} hover:bg-red-500 hover:text-white hover:border-red-500 transition-all duration-500 flex items-center justify-center shrink-0 group relative overflow-hidden rounded-sm`}
-                                title="Purge artifact"
+                                title="Purge artifact (moves it to the Trash; Undo available)"
                                 aria-label="Purge artifact"
                             >
                                 <div className="absolute inset-0 bg-red-500/5 group-hover:bg-red-500/20 transition-all" />
@@ -578,7 +604,7 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
                         <button
                             onClick={handleSubmit}
                             disabled={isScanning}
-                            className={`flex-1 relative border ${theme.border} ${theme.highlightText} ${theme.isDark ? 'hover:bg-amber-500 hover:text-black' : 'hover:bg-violet-500 hover:text-stone-900'} font-orbitron font-black uppercase tracking-[0.25em] text-[11px] sm:text-sm transition-all duration-500 disabled:opacity-30 flex items-center justify-center gap-2.5 active:scale-[0.98] overflow-hidden group/confirm py-3.5 rounded-sm`}
+                            className={`flex-1 relative border ${theme.border} ${theme.highlightText} hover:bg-accent-solid ${theme.isDark ? 'hover:text-black' : 'hover:text-stone-900'} font-orbitron font-black uppercase tracking-[0.25em] text-[11px] sm:text-sm transition-all duration-500 disabled:opacity-30 flex items-center justify-center gap-2.5 active:scale-[0.98] overflow-hidden group/confirm py-3.5 rounded-sm`}
                         >
                             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover/confirm:translate-x-full transition-transform duration-700" />
                             {isScanning ? (

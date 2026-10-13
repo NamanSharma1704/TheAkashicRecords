@@ -1,11 +1,13 @@
 const { QuestSchema } = require('./Quest');
 const { dailyQuestSchema } = require('./DailyQuest');
 const { userSettingsSchema } = require('./UserSettings');
+const { readingLogSchema } = require('./ReadingLog');
 
 const schemas = {
     Quest: QuestSchema,
     DailyQuest: dailyQuestSchema,
-    UserSettings: userSettingsSchema
+    UserSettings: userSettingsSchema,
+    ReadingLog: readingLogSchema
 };
 
 /**

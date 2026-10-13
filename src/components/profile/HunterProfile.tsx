@@ -5,7 +5,9 @@ import SystemLogo from '../system/SystemLogo';
 import SystemFrame from '../system/SystemFrame';
 import EntityAvatar from '../system/EntityAvatar';
 import StatBox from '../system/StatBox';
-import { X, Database, Layers, Target, Download, Upload, RefreshCw, LogOut, Terminal, Edit2, KeyRound, User2, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { X, Database, Layers, Target, Download, Upload, RefreshCw, LogOut, Terminal, Edit2, KeyRound, User2, AlertCircle, CheckCircle2, Trash2, Activity, Gauge } from 'lucide-react';
+import TrashPanel from './TrashPanel';
+import ReadingActivity from './ReadingActivity';
 import { USER_RANKS } from '../../utils/ranks';
 import { getProxiedImageUrl } from '../../utils/api';
 import GalaxyNebula from '../fx/GalaxyNebula';
@@ -152,9 +154,15 @@ interface HunterProfileProps {
     onLogout: () => void;
     showNotification: (message: string, type?: 'INFO' | 'SUCCESS' | 'WARNING' | 'ERROR', confirm?: boolean) => Promise<boolean>;
     onSelectManhwa?: (id: string) => void;
+    /** Bring a record back from the server's Trash into the library. Resolves true on success. */
+    onRestoreQuest: (id: string) => Promise<boolean>;
+    /** Low-power effects: animated background and hero held still. */
+    lowPower: boolean;
+    onToggleLowPower: () => void;
 }
 
-const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, items, playerRank, onImport, onRefresh, onLogout, showNotification, onSelectManhwa }) => {
+const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, items, playerRank, onImport, onRefresh, onLogout, showNotification, onSelectManhwa, onRestoreQuest, lowPower, onToggleLowPower }) => {
+    const [showTrash, setShowTrash] = useState(false);
     const totalChapters = useMemo(() => items.reduce((acc, i) => acc + (i.currentChapter || 0), 0), [items]);
     const totalManhwa = items.length;
     const conquered = useMemo(() => items.filter(i => i.status === 'CONQUERED').length, [items]);
@@ -248,7 +256,7 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
 
     const handleRecalibrate = async () => {
         const confirmed = await showNotification(
-            "INITIALIZE GLOBAL RE-CLASSIFICATION PROTOCOL?\n\nThe system will actively synchronize all archives with external databanks (AniList, MangaDex, Jikan) to re-evaluate entity classifications.\n\nWARNING: Extensive computational operations required. Estimated duration: ~75 seconds.",
+            "INITIALIZE GLOBAL RE-CLASSIFICATION PROTOCOL?\nRe-checks every title's genres on AniList, MangaDex and MyAnimeList and updates its class (Player, Mage and so on). Only the class changes; chapters and covers are left alone.\nWARNING: This takes about 75 seconds. You can stop it part-way.",
             'WARNING', true
         );
         if (!confirmed) return;
@@ -321,7 +329,7 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
     };
 
     const exportToCSV = async () => {
-        const confirmed = await showNotification("INITIATE DATA EXTRACTION PROTOCOL?", 'INFO', true);
+        const confirmed = await showNotification("INITIATE DATA EXTRACTION PROTOCOL?\nDownloads your library as a CSV file you can keep or import later.", 'INFO', true);
         if (!confirmed) return;
 
         const headers = ['Title', 'Current Ch', 'Max Ch', 'Link', 'Cover URL', 'Status', 'Class'];
@@ -350,34 +358,40 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
             window.URL.revokeObjectURL(url);
         }, 100);
 
-        showNotification("ARCHIVE EXTRACTED SUCCESSFULLY.", "SUCCESS");
+        showNotification(`ARCHIVE EXTRACTED SUCCESSFULLY.\nSaved ${items.length} record${items.length === 1 ? '' : 's'} to your downloads as a CSV file.`, "SUCCESS");
     };
 
     const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
+        const input = e.target;
+        const file = input.files?.[0];
         if (!file) return;
 
         const reader = new FileReader();
         reader.onload = (event) => {
+            // Cleared so choosing the same file again fires onChange again.
+            input.value = '';
             try {
                 const text = event.target?.result as string;
                 const lines = text.split(/\r?\n/);
                 if (lines.length < 2) throw new Error("File is empty or invalid format");
 
                 const newQuests: Quest[] = [];
-                // Simple CSV parser that handles quotes
                 for (let i = 1; i < lines.length; i++) {
                     const line = lines[i].trim();
                     if (!line) continue;
 
-                    // Robust CSV line parser (handles quotes and empty fields)
+                    // RFC 4180 field split. Inside quotes a doubled quote is a literal quote;
+                    // the old loop toggled on every quote character, so `"Say ""hi"""`
+                    // lost its inner quotes.
                     const fields: string[] = [];
                     let currentField = "";
                     let inQuotes = false;
                     for (let charIndex = 0; charIndex < line.length; charIndex++) {
                         const char = line[charIndex];
-                        if (char === '"') inQuotes = !inQuotes;
-                        else if (char === ',' && !inQuotes) {
+                        if (char === '"') {
+                            if (inQuotes && line[charIndex + 1] === '"') { currentField += '"'; charIndex++; }
+                            else inQuotes = !inQuotes;
+                        } else if (char === ',' && !inQuotes) {
                             fields.push(currentField);
                             currentField = "";
                         } else {
@@ -391,27 +405,34 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                         continue;
                     }
 
-                    const clean = (s: string) => s ? s.replace(/^"|"$/g, '').replace(/""/g, '"').trim() : "";
+                    const clean = (s: string | undefined) => (s ?? '').trim();
+                    const title = clean(fields[0]);
+                    if (!title) continue;
 
                     newQuests.push({
                         id: Math.random().toString(36).substring(2, 11),
-                        title: clean(fields[0]),
+                        title,
                         currentChapter: parseInt(clean(fields[1])) || 0,
                         totalChapters: parseInt(clean(fields[2])) || 0,
                         link: clean(fields[3]),
                         coverUrl: clean(fields[4]),
-                        status: clean(fields[5]) || 'ACTIVE',
-                        classType: clean(fields[6] || 'PLAYER'),
+                        // Blank stays blank: the import keeps a record's existing status and
+                        // class rather than overwriting them with a default.
+                        status: clean(fields[5]).toUpperCase(),
+                        classType: clean(fields[6]).toUpperCase(),
                         lastUpdated: Date.now()
                     });
                 }
 
-                if (newQuests.length > 0 && onImport) {
-                    onImport(newQuests);
-                    showNotification(`Successfully synchronized ${newQuests.length} records.`, 'SUCCESS');
+                if (newQuests.length === 0) {
+                    showNotification("No records found in that file.\nCheck it is an Akashic Records CSV export.", 'WARNING');
+                    return;
                 }
+                // The import reports its own progress and outcome (a toast in App). This used
+                // to announce success here, before a single record had been written.
+                if (onImport) onImport(newQuests);
             } catch {
-                showNotification("Data corruption detected in source file.", 'ERROR');
+                showNotification("Data corruption detected in source file.\nThe file could not be read as CSV.", 'ERROR');
             }
         };
         reader.readAsText(file);
@@ -496,13 +517,28 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                         focus, and the label draws the ring for it. */}
                     <label title="Import archive (CSV)" className={`w-9 h-9 flex items-center justify-center border ${theme.borderSubtle} ${theme.mutedText} hover:${theme.headingText} ${theme.isDark ? 'hover:bg-white/5' : 'hover:bg-black/5'} transition-colors cursor-pointer has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-[color:var(--focus-ring)]`}>
                         <input type="file" accept=".csv" aria-label="Import archive (CSV)" onChange={async (e) => {
-                            const confirmed = await showNotification("RE-SYNCHRONIZE DATABASE?", "WARNING", true);
+                            const confirmed = await showNotification("RE-SYNCHRONIZE DATABASE?\nImports this CSV: new titles are added, and titles the file has further along are updated. Nothing in your library is moved backwards.", "WARNING", true);
                             if (confirmed) handleImport(e);
                             else e.target.value = "";
                         }} className="sr-only" />
                         <Upload size={14} aria-hidden="true" />
                     </label>
-                    <button type="button" onClick={handleRecalibrate} title="System recalibration" className={`h-9 px-3 hidden sm:flex items-center justify-center gap-2 border ${theme.borderSubtle} ${theme.highlightText} ${theme.isDark ? 'hover:bg-amber-500/10' : 'hover:bg-violet-500/10'} transition-colors cursor-pointer relative overflow-hidden group`}>
+                    <button type="button" onClick={() => setShowTrash(true)} title="Trash (deleted records)" aria-label="Open the Trash" className={`w-9 h-9 flex items-center justify-center border ${theme.borderSubtle} ${theme.mutedText} hover:${theme.headingText} ${theme.isDark ? 'hover:bg-white/5' : 'hover:bg-black/5'} transition-colors cursor-pointer`}>
+                        <Trash2 size={14} aria-hidden="true" />
+                    </button>
+                    {/* Low-power effects: holds the animated background, rings and dais still.
+                        A toggle, so it announces its state (aria-pressed) and shows it (fill). */}
+                    <button
+                        type="button"
+                        onClick={onToggleLowPower}
+                        aria-pressed={lowPower}
+                        aria-label="Low-power effects"
+                        title={lowPower ? 'Low-power effects: ON (animations held still)' : 'Low-power effects: OFF'}
+                        className={`w-9 h-9 flex items-center justify-center border transition-colors cursor-pointer ${lowPower ? 'border-accent-line-strong bg-accent-soft-strong text-accent-ink' : `${theme.borderSubtle} ${theme.mutedText} hover:${theme.headingText} ${theme.isDark ? 'hover:bg-white/5' : 'hover:bg-black/5'}`}`}
+                    >
+                        <Gauge size={14} aria-hidden="true" />
+                    </button>
+                    <button type="button" onClick={handleRecalibrate} title="System recalibration" className={`h-9 px-3 hidden sm:flex items-center justify-center gap-2 border ${theme.borderSubtle} ${theme.highlightText} hover:bg-accent-soft transition-colors cursor-pointer relative overflow-hidden group`}>
                         <div className="absolute inset-0 bg-white/5 group-hover:bg-transparent transition-all" />
                         <RefreshCw size={14} className="relative z-10" aria-hidden="true" />
                         <span className="font-mono text-[10px] tracking-widest uppercase relative z-10">Re-Calibrate</span>
@@ -568,7 +604,7 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                                 {/* Edit Profile button */}
                                 <button
                                     onClick={() => { setAccountStatus(null); setShowAccountModal(true); }}
-                                    className={`flex items-center gap-1 px-3 py-1 border ${theme.isDark ? 'border-amber-500/40 text-amber-500/80 hover:border-amber-500/80 hover:text-amber-400' : 'border-violet-400/50 text-[#5b21b6] hover:border-violet-500 hover:text-[#6d3ad0]'} transition-colors cursor-pointer`}
+                                    className={`flex items-center gap-1 px-3 py-1 border border-accent-line text-accent-ink hover:border-accent-line-strong ${theme.isDark ? 'hover:text-amber-400' : 'hover:text-[#6d3ad0]'} transition-colors cursor-pointer`}
                                 >
                                     <Edit2 size={9} />
                                     <span className="text-[8px] font-mono font-bold uppercase tracking-widest">Edit Profile</span>
@@ -612,6 +648,7 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                                                 {USER_RANKS.map((rank: any, idx: number) => {
                                                     const isReached = idx <= currentRankIdx;
                                                     const isCurrent = idx === currentRankIdx;
+                                                    // theme-color-ok: rank-track pips use the lighter -400 highlight shades, not the accent
                                                     const accentColor = theme.isDark ? '#fbbf24' : '#a78bfa';
                                                     return (
                                                         <div key={rank.label} className="relative flex flex-col items-center">
@@ -654,13 +691,13 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                                         ? 'shadow-[0_0_25px_rgba(251,191,36,0.25),0_0_8px_rgba(251,191,36,0.15)]'
                                         : 'shadow-[0_0_20px_rgba(124,58,237,0.2),0_4px_16px_rgba(124,58,237,0.15)]'
                                     }`} />
-                                    <div className={`absolute inset-0 rounded-full border ${theme.isDark ? 'border-amber-500/20' : 'border-violet-300/40'} pointer-events-none`} />
+                                    <div className={`absolute inset-0 rounded-full border border-accent-soft-strong pointer-events-none`} />
                                     <svg className="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 100 100">
                                         <defs>
                                             <linearGradient id="donutGrad2" x1="0%" y1="0%" x2="100%" y2="100%">
-                                                <stop offset="0%" stopColor={theme.isDark ? "#fcd34d" : "#cbb8f0"} />
-                                                <stop offset="50%" stopColor={theme.isDark ? "#fbbf24" : "#7c3aed"} />
-                                                <stop offset="100%" stopColor={theme.isDark ? "#b45309" : "#5b21b6"} />
+                                                <stop offset="0%" stopColor={theme.isDark ? "#fcd34d" : "#cbb8f0"} />{/* theme-color-ok: SVG donut ramp, three art shades per theme */}
+                                                <stop offset="50%" stopColor={theme.isDark ? "#fbbf24" : "#7c3aed"} />{/* theme-color-ok: SVG donut ramp */}
+                                                <stop offset="100%" stopColor={theme.isDark ? "#b45309" : "#5b21b6"} />{/* theme-color-ok: SVG donut ramp */}
                                             </linearGradient>
                                         </defs>
                                         <circle cx="50" cy="50" r="44" stroke="currentColor" strokeWidth="6" fill="transparent" className={theme.isDark ? 'text-white/10' : 'text-white/10'} />
@@ -712,6 +749,15 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                             ))}
                         </div>
                     </div>
+                </motion.div>
+
+                {/* READING ACTIVITY — the reading log, a year of days */}
+                <motion.div variants={itemVariants} className="w-full">
+                    <div className={`flex items-center gap-2 mb-2 ${theme.highlightText}`}>
+                        <Activity size={13} />
+                        <span className={`text-[10px] font-mono font-bold tracking-[0.3em] uppercase ${theme.isDark ? '' : `text-transparent bg-clip-text bg-gradient-to-r ${theme.labelGradient}`}`}>Reading Activity</span>
+                    </div>
+                    <ReadingActivity theme={theme} />
                 </motion.div>
 
                 {/* TOP ROW: CLASS DISTRIBUTION + TOP SERIES */}
@@ -872,7 +918,7 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                                 {/* ── HEADER ── */}
                                 <div className={`flex justify-between items-center px-5 py-3.5 border-b ${theme.borderSubtle} shrink-0 ${theme.isDark ? 'bg-black/40' : 'bg-violet-50/70'}`}>
                                     <span id="calibration-title" className={`${theme.highlightText} font-mono tracking-widest text-[11px] sm:text-sm flex items-center gap-2.5 uppercase`}>
-                                        <span aria-hidden="true" className={`w-1.5 h-1.5 rounded-full ${theme.isDark ? 'bg-amber-500' : 'bg-violet-500'} ${calibration.phase === 'running' ? 'animate-ping' : ''}`} />
+                                        <span aria-hidden="true" className={`w-1.5 h-1.5 rounded-full bg-accent-solid ${calibration.phase === 'running' ? 'animate-ping' : ''}`} />
                                         <Terminal size={14} className={calibration.phase === 'running' ? 'animate-pulse' : ''} />
                                         SYS_CALIBRATION_PROTOCOL
                                     </span>
@@ -1004,6 +1050,14 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                     </motion.div>
                 )}
             </AnimatePresence>
+
+            <TrashPanel
+                isOpen={showTrash}
+                onClose={() => setShowTrash(false)}
+                theme={theme}
+                onRestore={onRestoreQuest}
+                confirm={(message) => showNotification(message, 'WARNING', true)}
+            />
 
             {/* ACCOUNT SETTINGS MODAL */}
             <AnimatePresence>

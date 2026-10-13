@@ -32,10 +32,10 @@ const SystemNotification: React.FC<SystemNotificationProps> = ({
 
     const getIcon = () => {
         switch (type) {
-            case 'SUCCESS': return <CheckCircle className={theme.isDark ? 'text-amber-500' : 'text-violet-600'} size={24} />;
+            case 'SUCCESS': return <CheckCircle className="text-accent-icon" size={24} />;
             case 'WARNING': return <AlertTriangle style={{ color: theme.warningInk }} size={24} />;
             case 'ERROR': return <XCircle className={theme.isDark ? 'text-red-500' : 'text-red-600'} size={24} />;
-            default: return <Info className={theme.isDark ? 'text-amber-500' : 'text-violet-600'} size={24} />;
+            default: return <Info className="text-accent-icon" size={24} />;
         }
     };
 
@@ -116,7 +116,7 @@ const SystemNotification: React.FC<SystemNotificationProps> = ({
                                 ref={confirmRef}
                                 type="button"
                                 onClick={() => onClose(true)}
-                                className={`px-8 py-2 border ${theme.border} ${theme.isDark ? 'bg-amber-500/10' : 'bg-violet-500/10'} ${theme.highlightText} ${theme.isDark ? 'hover:bg-white/5' : 'hover:bg-black/5'} transition-all font-mono text-[10px] tracking-widest uppercase font-bold border-l-4`}
+                                className={`px-8 py-2 border ${theme.border} bg-accent-soft ${theme.highlightText} ${theme.isDark ? 'hover:bg-white/5' : 'hover:bg-black/5'} transition-all font-mono text-[10px] tracking-widest uppercase font-bold border-l-4`}
                             >
                                 {confirm ? 'Execute' : 'Acknowledged'}
                             </button>

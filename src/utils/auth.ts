@@ -88,10 +88,19 @@ export const isAuthenticated = (): boolean => {
  * Authorization header to attach — the browser handles it.
  * On 401, dispatches a custom event instead of a hard reload to prevent loops.
  */
+/**
+ * The reader's IANA timezone. The server counts streaks and daily reading in YOUR calendar
+ * day; without this it falls back to UTC, where the day rolls over at the wrong hour.
+ */
+const timeZone = (() => {
+    try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch { return ''; }
+})();
+
 export const systemFetch = async (url: string, options: RequestInit = {}) => {
     const headers = {
         ...options.headers,
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        ...(timeZone ? { 'X-Timezone': timeZone } : {})
     };
 
     const response = await fetch(url, {

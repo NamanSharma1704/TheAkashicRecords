@@ -1,11 +1,11 @@
-import React, { useState, useEffect, useMemo, Suspense, lazy, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useMemo, Suspense, lazy, useRef, useCallback } from 'react';
 import { flushSync } from 'react-dom';
 import { motion, AnimatePresence, Reorder, useDragControls } from 'motion/react';
 import { Quest } from './types';
 import SystemFrame from '../components/system/SystemFrame';
 import SystemLogo from '../components/system/SystemLogo';
 import ScrambleText from '../components/system/ScrambleText';
-import { Activity, ExternalLink, Sun, Moon, Plus, Zap, Crown, X, LayoutTemplate, GripVertical, ChevronLeft, ChevronRight, LogOut } from 'lucide-react';
+import { Activity, ExternalLink, Sun, Moon, Plus, Zap, Crown, X, LayoutTemplate, GripVertical, ChevronLeft, ChevronRight, LogOut, RefreshCw } from 'lucide-react';
 import { getPlayerRank, calculateQuestRank, USER_RANKS } from '../utils/ranks';
 import { THEMES, ITEMS_PER_FLOOR, ThemeId } from './constants';
 
@@ -14,17 +14,24 @@ import BootScreen from '../components/system/BootScreen';
 import BackgroundController from '../components/fx/BackgroundController';
 import EntityAvatar from '../components/system/EntityAvatar';
 import SystemNotification from '../components/system/SystemNotification';
+import SystemToast, { ToastSpec } from '../components/system/SystemToast';
 import SystemCompass from '../components/system/SystemCompass';
+import ChapterField from '../components/quest/ChapterField';
+import { FLOOR_DEFS, floorIndexForItem } from '../components/tower/floors';
+import { useHoldRepeat } from '../utils/useHoldRepeat';
+import { normalizeTitle } from '../utils/normalizeTitle';
 // Statically imported on purpose: the wrapper is tiny and defers its own `three`
 // import to idle, so a lazy boundary here would only put a Suspense hole over the hero.
 import HoloDais from '../components/dais/HoloDais';
 import Card3D from '../components/quest/Card3D';
+import CoverArt from '../components/quest/CoverArt';
 import ArcaneSigil from '../components/fx/ArcaneSigil';
 import SanctuaryRing from '../components/fx/SanctuaryRing';
 import { accentRGB, elevation, emphasis } from './depth';
+import { accentVars } from './tokens';
 import { InfinitePortalIcon, CalibratedPlusIcon, CalibratedMinusIcon } from '../components/system/CustomIcons';
 
-import { getProxiedImageUrl, unproxyImageUrl } from '../utils/api';
+import { unproxyImageUrl } from '../utils/api';
 import { saveAuthData, performLogout, systemFetch, isAuthenticated, getStoredUser } from '../utils/auth';
 import LoginScreen from '../components/system/LoginScreen';
 import GlitchOverlay from '../components/fx/GlitchOverlay';
@@ -46,6 +53,69 @@ const DEFAULT_QUEST: Quest = {
     link: ''
 };
 
+// ─── CHAPTER PROGRESS ─────────────────────────────────────────────────────────
+// See requestChapter in App for the full model. A "burst" is one run of chapter changes to
+// a single quest that ends in one save: merged taps, a held stepper, or a typed number.
+type ChapterPair = { current: number; total: number };
+interface ChapterBurst {
+    questId: string;
+    /** What the server last acknowledged. A failed save returns here. */
+    confirmed: ChapterPair;
+    /** Where this burst began. Undo returns here. */
+    start: ChapterPair;
+    /** The latest requested values, already on screen. */
+    target: ChapterPair;
+    typed: boolean;
+    undo: boolean;
+    timer: ReturnType<typeof setTimeout> | null;
+    inFlight: boolean;
+    /** A save was requested while one was already in the air. */
+    dirty: boolean;
+}
+interface ChapterRequestOpts {
+    /** 'merge' waits CHAPTER_MERGE_MS for more taps; 'now' sends at once; 'hold' waits for the stepper's release. */
+    mode: 'merge' | 'now' | 'hold';
+    /** Explicit total (Undo restores it). Defaults to the total on screen. */
+    total?: number;
+    /** Typed by hand: always offered for Undo, and allowed to raise the total. */
+    typed?: boolean;
+    /** This change is an Undo; its settle confirms the restore instead of offering another. */
+    undo?: boolean;
+}
+/** Taps closer together than this merge into one save. */
+const CHAPTER_MERGE_MS = 600;
+
+/**
+ * Should this device start in low-power effects mode? Conservative on purpose: only a
+ * Save-Data connection, or hardware reporting 2 GB of memory or 2 CPU cores or fewer. Most
+ * phones and every iPad report more than that and keep the full effects unless the reader
+ * switches them off. (Safari reports no deviceMemory, so it is judged on cores alone.)
+ */
+const prefersLowPower = (): boolean => {
+    try {
+        const nav = navigator as Navigator & { deviceMemory?: number; connection?: { saveData?: boolean } };
+        return !!nav.connection?.saveData
+            || (typeof nav.deviceMemory === 'number' && nav.deviceMemory <= 2)
+            || (typeof nav.hardwareConcurrency === 'number' && nav.hardwareConcurrency > 0 && nav.hardwareConcurrency <= 2);
+    } catch {
+        return false;
+    }
+};
+
+/** The dashboard's keyboard shortcuts, shown by "?" and by the console bar's KEYS button. */
+const SHORTCUT_HELP = [
+    'SYSTEM SHORTCUTS',
+    '→ / ←   Next / previous chapter. Hold the key to keep going.',
+    'Tap the chapter number to type a chapter in.',
+    'Enter   Open the reading link (when nothing else has focus).',
+    '/   Search the Divine Spire.',
+    'N   Open a new gate.',
+    'Ctrl+Z   Undo the last change while its notice is showing.',
+    '?   Show this list.',
+].join('\n');
+/** A burst that moves at least this many chapters gets an Undo toast. */
+const UNDO_THRESHOLD = 5;
+
 // Helper to normalize quest data from both MongoDB and local BASE_QUESTS
 const mapQuest = (q: any): Quest => ({
     id: String(q._id || q.id || ""),
@@ -56,19 +126,33 @@ const mapQuest = (q: any): Quest => ({
     // the cover. unproxyImageUrl also repairs records already written that way.
     coverUrl: unproxyImageUrl(q.cover || q.coverUrl || ""),
     link: q.readLink || q.link || q.siteUrl || "",
-    synopsis: q.synopsis || "",
+    // Undefined, not "", when the record came from the library list (which omits synopses):
+    // "" would read as "no synopsis" and an untouched edit form would save it over the real
+    // one. An undefined field is dropped from the save, so the stored synopsis is never hit.
+    synopsis: typeof q.synopsis === 'string' ? q.synopsis : undefined,
     currentChapter: Number(q.currentChapter) || 0,
     totalChapters: Number(q.totalChapters) || 0,
     status: (q.status || 'ACTIVE').toUpperCase(),
     classType: q.classType || "PLAYER",
-    lastUpdated: q.lastRead || q.lastUpdated || Date.now()
+    lastUpdated: q.lastRead || q.lastUpdated || Date.now(),
+    newChapters: Number(q.newChapters) || 0
 });
+
+/** One full record, synopsis included; the library list leaves synopses out. Null on failure. */
+const fetchFullQuest = async (id: string): Promise<Quest | null> => {
+    if (!id || id === DEFAULT_QUEST.id || id.startsWith('optimistic-')) return null;
+    try {
+        const res = await systemFetch(`${API_URL}/${id}`);
+        return res.ok ? mapQuest(await res.json()) : null;
+    } catch {
+        return null;
+    }
+};
 
 // SUB-COMPONENT: QuestListItem to handle individual drag controls and touch scrolling
 const QuestListItem = ({ item, theme, activeId, handleLogClick, onDragStateChange }: any) => {
     const dragControls = useDragControls();
     const isHighlighted = activeId === item.id;
-    const [thumbError, setThumbError] = React.useState(false);
 
     const handleDragStart = (e: React.PointerEvent) => {
         e.preventDefault();
@@ -120,31 +204,30 @@ const QuestListItem = ({ item, theme, activeId, handleLogClick, onDragStateChang
                         aria-current={isHighlighted ? 'true' : undefined}
                         className="flex items-center gap-2 min-w-0 text-left cursor-pointer after:content-[''] after:absolute after:inset-0"
                     >
-                    {item.coverUrl && (
-                        <div className={`w-8 h-[45px] xl:w-10 xl:h-[56px] flex-none rounded-sm border ${theme.isDark ? 'border-gray-800' : 'border-gray-300'} bg-black overflow-hidden opacity-80 group-hover:opacity-100 transition-opacity shadow-sm shrink-0`}>
-                            {!thumbError ? (
-                                <img
-                                    key={item.coverUrl}
-                                    src={getProxiedImageUrl(item.coverUrl)}
-                                    // Decorative: the title sits right beside it, and naming the
-                                    // image as well made every row announce its title twice.
-                                    alt=""
-                                    className="w-full h-full object-cover"
-                                    loading="eager"
-                                    onError={() => setThumbError(true)}
-                                />
-                            ) : (
-                                <div className="w-full h-full flex items-center justify-center bg-gray-900">
-                                    <span className="text-[6px] text-gray-400 font-mono uppercase">N/A</span>
-                                </div>
-                            )}
-                        </div>
-                    )}
+                    {/* Every row gets a thumbnail box, so titles line up: a row without a
+                        cover used to render none and sat out of line with its neighbours.
+                        Decorative (alt ""): the title is right beside it. */}
+                    <CoverArt
+                        url={item.coverUrl}
+                        title={item.title}
+                        size="thumb"
+                        className={`w-8 h-[45px] xl:w-10 xl:h-[56px] flex-none rounded-sm border ${theme.isDark ? 'border-gray-800' : 'border-gray-300'} opacity-80 group-hover:opacity-100 transition-opacity shadow-sm shrink-0`}
+                    />
                     <div className="flex flex-col min-w-0 pr-2">
                         <span className={`font-bold font-mono text-[11px] leading-tight ${isHighlighted ? theme.highlightText : `${theme.mutedText} group-hover:${theme.headingText}`} transition-colors duration-700 uppercase line-clamp-2`}>{item.title}</span>
-                        <div className="flex items-center gap-2 mt-1">
+                        <div className="flex items-center gap-2 mt-1 min-w-0">
                             <div className={`w-1 h-1 rounded-full flex-none ${item.status === 'ACTIVE' ? (theme.isDark ? 'bg-amber-400' : 'bg-[#7c3aed]') : 'bg-gray-400'}`} />
                             <span className={`text-[9px] ${theme.mutedText} uppercase font-mono tracking-widest transition-colors duration-700 truncate`}>{item.status}</span>
+                            {/* Released since you last read on (the chapter tracker). Reading
+                                forward clears it, server-side. */}
+                            {item.newChapters > 0 && (
+                                <span
+                                    className="flex-none px-1 border text-[9px] font-mono font-bold tracking-widest leading-[14px]"
+                                    style={{ color: theme.accentInk, borderColor: `${theme.accentColor}80` }}
+                                >
+                                    +{item.newChapters} NEW
+                                </span>
+                            )}
                         </div>
                     </div>
                     </button>
@@ -162,7 +245,7 @@ const QuestListItem = ({ item, theme, activeId, handleLogClick, onDragStateChang
 //   1. Keeps touchAction='pan-y' normally (allows vertical scroll)
 //   2. Switches to touchAction='none' the instant a drag begins (blocks scroll so Motion can move the item)
 //   3. Restores 'pan-y' when drag ends
-const ActiveQuestList = ({ orderedActiveQuests, handleReorderActiveQuests, theme, activeId, handleLogClick }: any) => {
+const ActiveQuestList = ({ orderedActiveQuests, handleReorderActiveQuests, theme, activeId, handleLogClick, loaded }: any) => {
     const [isDragging, setIsDragging] = React.useState(false);
 
     const handleDragStateChange = React.useCallback((dragging: boolean) => {
@@ -173,6 +256,14 @@ const ActiveQuestList = ({ orderedActiveQuests, handleReorderActiveQuests, theme
         <div
             className={`flex-1 min-h-0 overflow-y-auto hide-scrollbar overscroll-contain ${isDragging ? 'touch-none' : 'touch-pan-y'}`}
         >
+            {/* An empty list says how to fill it, rather than leaving a blank panel; but only
+                once the library has loaded and the ordered copy has caught up with it, or it
+                flashed on every load before the records arrived. */}
+            {loaded && orderedActiveQuests.length === 0 && (
+                <p className={`px-1 py-3 font-mono text-[11px] leading-relaxed ${theme.mutedText}`}>
+                    No active quests yet. Open a gate to add one, or set a record ACTIVE from its detail view in the Divine Spire.
+                </p>
+            )}
             <Reorder.Group
                 axis="y"
                 values={orderedActiveQuests}
@@ -258,8 +349,8 @@ html,body{height:100%;overflow:hidden;background:#030205}
 const App: React.FC = () => {
     // The awakening boot sequence plays for a visitor who is not signed in. Once a session
     // exists, a refresh skips it and lands straight on the dashboard — the intro is a first
-    // impression, not a toll booth on every reload. (This is also reused as a full-screen
-    // loader during CSV import via setBooting(true); that path is unaffected.)
+    // impression, not a toll booth on every reload. (CSV import used to reuse this as a
+    // full-screen loader; it reports progress in a toast now and leaves the app usable.)
     const [booting, setBooting] = useState<boolean>(() => !isAuthenticated());
     const [isMobile, setIsMobile] = useState(false);
 
@@ -293,15 +384,46 @@ const App: React.FC = () => {
     });
     const theme = THEMES[currentTheme];
 
+    // Low-power effects: the animated background, the hero rings or sigil, and the dais render
+    // one still frame instead of animating. The reader's own choice wins (saved); otherwise the
+    // device decides (prefersLowPower). Reduced motion is handled separately and always applies.
+    const [lowPower, setLowPower] = useState<boolean>(() => {
+        try {
+            const saved = localStorage.getItem('akashic_effects');
+            if (saved === 'low') return true;
+            if (saved === 'full') return false;
+        } catch { /* private mode: fall through to the device check */ }
+        return prefersLowPower();
+    });
+    const toggleLowPower = useCallback(() => {
+        setLowPower(prev => {
+            const next = !prev;
+            try { localStorage.setItem('akashic_effects', next ? 'low' : 'full'); } catch { /* private mode */ }
+            return next;
+        });
+    }, []);
+
     // The keyboard focus ring (styles/index.css, :focus-visible) draws in the theme's INK.
     // Set on the document root rather than the dashboard wrapper so the boot, login and
     // every overlay — including ones that render outside that wrapper — pick it up.
-    useEffect(() => {
-        document.documentElement.style.setProperty('--focus-ring', theme.accentInk);
-        document.documentElement.style.colorScheme = theme.isDark ? 'dark' : 'light';
-    }, [theme.accentInk, theme.isDark]);
+    // The accent family (src/core/tokens.ts) lives on :root too, so the `accent-*` utilities
+    // resolve everywhere: boot, login, and overlays outside the dashboard wrapper. A layout
+    // effect, so the variables are in place before paint, and before the theme toggle's
+    // view-transition snapshot of the new theme.
+    useLayoutEffect(() => {
+        const root = document.documentElement.style;
+        root.setProperty('--focus-ring', theme.accentInk);
+        for (const [name, value] of Object.entries(accentVars(theme))) root.setProperty(name, value);
+        root.colorScheme = theme.isDark ? 'dark' : 'light';
+    }, [theme]);
 
     const [library, setLibrary] = useState<Quest[]>([]);
+    /**
+     * The first library fetch has finished (either way). Until then an empty library means
+     * "not here yet", not "you have none": the empty-state prompts wait for this, or every
+     * load flashed "Archive empty / Open your first gate" before the records arrived.
+     */
+    const [libraryLoaded, setLibraryLoaded] = useState(false);
     const [activeId, setActiveId] = useState<string | null>(null);
     const [userState, setUserState] = useState({ streak: 0, dailyAbsorbed: 0 });
     const [isAuth, setIsAuth] = useState<boolean>(isAuthenticated());
@@ -323,6 +445,7 @@ const App: React.FC = () => {
         if (win) {
             try { win.opener = null; } catch { /* cross-origin guard */ }
             try {
+                // theme-color-ok: written into a new window's document, where there are no CSS variables
                 win.document.write(buildPortalLoader(target.href, theme.accentColor, theme.isDark ? '#fbbf24' : '#e6ddf8'));
                 win.document.close();
             } catch {
@@ -336,6 +459,8 @@ const App: React.FC = () => {
 
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isSpireOpen, setIsSpireOpen] = useState(false);
+    /** The "/" shortcut opens the Spire straight into its search; reset on close. */
+    const [spireStartInSearch, setSpireStartInSearch] = useState(false);
     const [isProfileOpen, setIsProfileOpen] = useState(false);
     const [isDetailOpen, setIsDetailOpen] = useState(false);
     const detailOpenedFromProfile = useRef(false);
@@ -481,6 +606,25 @@ const App: React.FC = () => {
         setSysNote(prev => ({ ...prev, isOpen: false }));
     };
 
+    // --- TOASTS ---
+    // Non-blocking notices (SystemToast): confirmations carrying Undo, task progress, soft
+    // failures. One at a time; a new toast replaces the current one. Questions that need an
+    // answer still go through showSystemNotification above.
+    const [toast, setToast] = useState<ToastSpec | null>(null);
+    const toastSeq = useRef(0);
+    const showToast = useCallback((spec: Omit<ToastSpec, 'id'>) => {
+        const id = ++toastSeq.current;
+        setToast({ ...spec, id });
+        return id;
+    }, []);
+    /** Patch the toast in place (progress updates) without restarting its timer. */
+    const updateToast = useCallback((id: number, patch: Partial<Omit<ToastSpec, 'id'>>) => {
+        setToast(prev => (prev && prev.id === id ? { ...prev, ...patch } : prev));
+    }, []);
+    const dismissToast = useCallback((id: number) => {
+        setToast(prev => (prev && prev.id === id ? null : prev));
+    }, []);
+
     const handleLoginSuccess = (auth: AuthResponse) => {
         // The session cookie is already set by the server; this only records display state.
         saveAuthData(auth);
@@ -489,7 +633,13 @@ const App: React.FC = () => {
     };
 
     const handleLogout = useCallback(async () => {
-        const confirmed = await showSystemNotification("TERMINATE_SESSION: Are you sure?", "WARNING", true);
+        // A guest's sign-out also deletes the demo library, which is worth saying before it happens.
+        const isGuest = getStoredUser()?.role === 'GUEST';
+        const confirmed = await showSystemNotification(
+            `TERMINATE_SESSION: Are you sure?\n${isGuest ? 'This signs you out and deletes the demo library you have been using.' : 'This signs you out on this device. Your archive is kept.'}`,
+            "WARNING",
+            true
+        );
         if (confirmed) {
             await performLogout();
             setIsAuth(false);
@@ -531,16 +681,16 @@ const App: React.FC = () => {
 
                 // Notifications for imminent portal collapse
                 if (remaining <= 60000 && remaining > 50000) {
-                    showSystemNotification("SYSTEM_ALERT: Portal destabilizing. 1 minute remaining.", "WARNING");
+                    showSystemNotification("SYSTEM_ALERT: Portal destabilizing. 1 minute remaining.\nThe guest session ends in 1 minute, and its demo data is deleted.", "WARNING");
                 } else if (remaining <= 300000 && remaining > 290000) {
-                    showSystemNotification("SYSTEM_ALERT: Connection failing. 5 minutes remaining.", "WARNING");
+                    showSystemNotification("SYSTEM_ALERT: Connection failing. 5 minutes remaining.\nThe guest session ends in 5 minutes, and its demo data is deleted.", "WARNING");
                 }
 
                 if (remaining <= 0) {
                     performLogout().then(() => {
                         setIsAuth(false);
                         setLibrary([]);
-                        showSystemNotification("PROTOCOL_COMPLETE: Trial experience expired. Data purged.", "INFO");
+                        showSystemNotification("PROTOCOL_COMPLETE: Trial experience expired. Data purged.\nThe 2-hour guest session has ended and its demo data was deleted. Start a new one any time.", "INFO");
                     });
                 }
             };
@@ -563,12 +713,25 @@ const App: React.FC = () => {
     // the reaper the scheduled workflow drives. A refresh now keeps the guest signed in,
     // which is how the demo behaved before.
 
+    /**
+     * Open the detail view. It shows the custom synopsis, which the library list omits, so
+     * the full record is fetched alongside; until it lands the view shows the metadata
+     * description, as it did for any record without an override.
+     */
+    const openDetail = (item: Quest) => {
+        setSelectedQuest(item);
+        setIsDetailOpen(true);
+        if (item.synopsis !== undefined) return;
+        void fetchFullQuest(item.id).then(full => {
+            if (!full) return;
+            setSelectedQuest(prev => (prev && prev.id === full.id ? { ...prev, synopsis: full.synopsis } : prev));
+            setLibrary(prev => prev.map(q => (q.id === full.id ? { ...q, synopsis: full.synopsis } : q)));
+        });
+    };
+
     const handleViewDetails = (id: string) => {
         const item = library.find(q => q.id === id);
-        if (item) {
-            setSelectedQuest(item);
-            setIsDetailOpen(true);
-        }
+        if (item) openDetail(item);
     };
 
     useEffect(() => {
@@ -634,6 +797,8 @@ const App: React.FC = () => {
             // import or a recalibration), and a transient failure there used to wipe a
             // perfectly good library off the screen. A real 401 is handled separately
             // by the session-expired listener, which does clear it.
+        } finally {
+            setLibraryLoaded(true);
         }
     };
 
@@ -710,10 +875,7 @@ const App: React.FC = () => {
     const handleActivate = (id: string) => {
         // Find item and set as selected for detail view
         const item = library.find(i => i.id === id);
-        if (item) {
-            setSelectedQuest(item);
-            setIsDetailOpen(true);
-        }
+        if (item) openDetail(item);
     }
 
     // Stable: reads nothing from render scope beyond setters and module constants.
@@ -728,15 +890,19 @@ const App: React.FC = () => {
                 method: 'PUT',
                 body: JSON.stringify({ lastUpdated: now })
             });
-            const updated = await res.json();
-            const mappedUpdated = mapQuest(updated);
+            // Only a real record replaces the one on screen. An error body used to go
+            // straight through mapQuest and swap the quest for an empty, untitled one.
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const mappedUpdated = mapQuest(await res.json());
             setLibrary(prev => prev.map(item => item.id === id ? mappedUpdated : item));
         } catch (e) {
+            // Only the recency stamp was at stake; the optimistic one is harmless to keep.
             console.error("Update failed", e);
         }
     }, []);
 
     const handleSetActiveQuest = async (id: string) => {
+        const previous = library.find(item => item.id === id);
         setActiveId(id);
         const now = Date.now();
         // OPTIMISTIC UPDATE
@@ -747,11 +913,19 @@ const App: React.FC = () => {
                 method: 'PUT',
                 body: JSON.stringify({ status: 'ACTIVE', lastRead: now })
             });
-            const updated = await res.json();
-            const mappedUpdated = mapQuest(updated);
+            if (res.status === 401) return; // the session-expired listener takes over
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const mappedUpdated = mapQuest(await res.json());
             setLibrary(prev => prev.map(item => item.id === id ? mappedUpdated : item));
         } catch (e) {
             console.error("Set active failed", e);
+            if (previous) setLibrary(prev => prev.map(item => item.id === id ? previous : item));
+            showToast({
+                tone: 'ERROR',
+                message: 'SYNC_FAILED',
+                detail: `Couldn't set "${previous?.title ?? 'this record'}" active. Check your connection and try again.`,
+                duration: 7000,
+            });
         }
     };
 
@@ -816,96 +990,492 @@ const App: React.FC = () => {
             } else {
                 setLibrary(prev => prev.filter(q => q.id !== tempId));
             }
-            showSystemNotification(`SYNC_FAILED: ${e.message}`, 'ERROR');
+            // The server's reason (a validation message, a duplicate) is the useful part.
+            showSystemNotification(`SYNC_FAILED\nYour changes were not saved: ${e.message}\nNothing else was changed. Check your connection or correct the details, then save again.`, 'ERROR');
         }
     };
 
-    const handleImportQuests = async (newItems: Quest[]) => {
-        setBooting(true);
-        let count = 0;
-        let updatedCount = 0;
-        let skippedCount = 0;
+    /**
+     * CSV import: create what is new, advance what the file has further along, leave the rest.
+     *
+     * What changed from the old version, and why:
+     *  - The merge compared totalChapters. A file exported a week ago carries the same totals
+     *    and a LOWER chapter, so it passed and set your reading position back. It now goes by
+     *    currentChapter: a row only updates a record it is ahead of (or level with, carrying a
+     *    higher total).
+     *  - Blank cells no longer wipe stored values: a row without a cover or link keeps yours,
+     *    and the total never drops.
+     *  - Titles match by the server's own rule (normalizeTitle), so a row the server would
+     *    refuse as a duplicate is recognised here instead of being POSTed into a 409.
+     *  - It used to run each row through handleSave, which opened a blocking error dialog per
+     *    failure and hid the app behind the boot screen. Progress is now a toast; failures are
+     *    collected into one report.
+     */
+    const handleImportQuests = async (rows: Quest[]) => {
+        // One row per title. When a file lists a title twice, the row further along wins.
+        const byKey = new Map<string, Quest>();
+        for (const row of rows) {
+            const key = normalizeTitle(row.title);
+            if (!key) continue;
+            const seen = byKey.get(key);
+            if (!seen || row.currentChapter > seen.currentChapter) byKey.set(key, row);
+        }
+        const existingByKey = new Map(library.map(q => [normalizeTitle(q.title), q] as const));
 
-        for (const item of newItems) {
-            try {
-                const existing = library.find(q => q.title.toLowerCase().trim() === item.title.toLowerCase().trim());
-
-                if (existing) {
-                    // SMART MERGE: Only update if the CSV progress is ahead or equal
-                    const shouldUpdate = item.totalChapters >= existing.totalChapters;
-
-                    if (shouldUpdate) {
-                        const { id: _, ...data } = item;
-                        await handleSave({ ...data, id: existing.id });
-                        updatedCount++;
-                    } else {
-                        skippedCount++;
-                        console.log(`[Import] Skipping outdated record: ${item.title} (CSV: ${item.totalChapters} < Library: ${existing.totalChapters})`);
-                    }
-                } else {
-                    const { id: _, ...data } = item;
-                    await handleSave(data);
-                    count++;
-                }
-            } catch (e) {
-                console.error(`[Import] Failed to process: ${item.title}`, e);
+        type Op = { kind: 'create' | 'update'; title: string; url: string; method: 'POST' | 'PUT'; body: Record<string, unknown> };
+        const ops: Op[] = [];
+        let unchanged = 0;
+        for (const [key, row] of byKey) {
+            const existing = existingByKey.get(key);
+            if (!existing) {
+                ops.push({
+                    kind: 'create', title: row.title, url: API_URL, method: 'POST',
+                    body: {
+                        title: row.title,
+                        currentChapter: row.currentChapter,
+                        totalChapters: Math.max(row.totalChapters, row.currentChapter),
+                        status: row.status || 'ACTIVE',
+                        classType: row.classType || 'PLAYER',
+                        ...(row.link ? { readLink: row.link } : {}),
+                        ...(row.coverUrl ? { cover: row.coverUrl } : {}),
+                    },
+                });
+                continue;
             }
+            const ahead = row.currentChapter > existing.currentChapter
+                || (row.currentChapter === existing.currentChapter && row.totalChapters > existing.totalChapters);
+            if (!ahead) { unchanged++; continue; }
+            ops.push({
+                // ?import=1: replaying a file is not reading today, so it moves no streak.
+                kind: 'update', title: existing.title, url: `${API_URL}/${existing.id}?import=1`, method: 'PUT',
+                body: {
+                    currentChapter: row.currentChapter,
+                    totalChapters: Math.max(row.totalChapters, existing.totalChapters, row.currentChapter),
+                    ...(row.status ? { status: row.status } : {}),
+                    ...(row.classType ? { classType: row.classType } : {}),
+                    ...(row.link ? { readLink: row.link } : {}),
+                    ...(row.coverUrl ? { cover: row.coverUrl } : {}),
+                },
+            });
         }
+
+        if (ops.length === 0) {
+            showToast({ tone: 'INFO', message: 'Archive already current', detail: `All ${byKey.size} records in the file match or trail your library.`, duration: 6000 });
+            return;
+        }
+
+        const toastId = showToast({ tone: 'INFO', message: `Importing · 0 / ${ops.length}`, detail: 'Writing records to the archive…', duration: 0, progress: 0 });
+        let created = 0, updated = 0, done = 0;
+        const failed: string[] = [];
+
+        // Three at a time: much faster than strictly sequential, gentle on the API.
+        let next = 0;
+        const worker = async () => {
+            while (next < ops.length) {
+                const op = ops[next++];
+                try {
+                    const res = await systemFetch(op.url, { method: op.method, body: JSON.stringify(op.body) });
+                    if (res.status === 401) throw new Error('session ended');
+                    if (res.status === 409) unchanged++; // the server already holds this title
+                    else if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                    else if (op.kind === 'create') created++;
+                    else updated++;
+                } catch (e) {
+                    console.error(`[Import] ${op.title}:`, e);
+                    failed.push(op.title);
+                }
+                done++;
+                updateToast(toastId, { message: `Importing · ${done} / ${ops.length}`, progress: done / ops.length });
+            }
+        };
+        await Promise.all([worker(), worker(), worker()]);
         await fetchInitialData();
-        setBooting(false);
-        showSystemNotification(`Archive Reputed. ${count} New Origins Formed. ${updatedCount} Records Enhanced. ${skippedCount} Outdated Clusters Ignored.`, 'SUCCESS');
+
+        const parts = [`${created} added`, `${updated} advanced`, `${unchanged} already current`];
+        if (failed.length) parts.push(`${failed.length} failed`);
+        dismissToast(toastId);
+        if (failed.length === 0) {
+            showToast({ tone: 'SUCCESS', message: 'Import complete', detail: parts.join(' · '), duration: 7000 });
+        } else {
+            showSystemNotification(
+                `IMPORT FINISHED WITH ERRORS\n${parts.join(' · ')}.\nNot imported: ${failed.slice(0, 8).join(', ')}${failed.length > 8 ? ` and ${failed.length - 8} more` : ''}.\nCheck your connection and import the file again; records already written will be left as they are.`,
+                'WARNING',
+            );
+        }
     };
 
-    const updateProgress = useCallback(async (amt: number) => {
-        // DEFAULT_QUEST stands in for an empty library; there is no record to advance, and
-        // activeId is null then, so the PUT would target /api/quests/null.
-        if (!activeQuest.id || activeQuest.id === DEFAULT_QUEST.id || !activeId) return;
-        const next = activeQuest.totalChapters > 0
-            ? Math.min(Math.max(0, activeQuest.currentChapter + amt), activeQuest.totalChapters)
-            : Math.max(0, activeQuest.currentChapter + amt);
+    // ─── CHAPTER PROGRESS ───────────────────────────────────────────────────────
+    // Every way of moving a chapter (a tap, a held stepper, a typed number, an arrow key, an
+    // Undo) goes through requestChapter. The screen changes at once; the save is batched:
+    //
+    //   - taps closer than CHAPTER_MERGE_MS merge into one save;
+    //   - a held stepper saves once, on release;
+    //   - a typed number saves immediately.
+    //
+    // Saves for a quest are single-flight. While one is in the air, later changes wait and go
+    // out together when it lands: two PUTs in flight can reach the server out of order and
+    // leave it on the older chapter. Replies that a newer change has overtaken are not applied
+    // either, so the number on screen never slips backwards.
+    //
+    // A failed save returns the quest to the last chapter the server confirmed and says so.
+    // (The old updateProgress kept showing the unsaved number until the next reload.)
+    const libraryRef = useRef(library);
+    libraryRef.current = library;
+    const activeQuestRef = useRef(activeQuest);
+    activeQuestRef.current = activeQuest;
+    const bursts = useRef(new Map<string, ChapterBurst>());
+    // announceBurst offers Undo, which is a requestChapter call; the ref breaks the cycle.
+    const requestChapterRef = useRef<(questId: string, wanted: number, opts: ChapterRequestOpts) => boolean>(() => false);
 
-        // OPTIMISTIC UPDATE: Zero-Latency
-        setLibrary(prev => prev.map(q => q.id === activeId ? { ...q, currentChapter: next } : q));
+    const applyChapter = useCallback((questId: string, pair: ChapterPair) => {
+        setLibrary(prev => prev.map(q => q.id === questId ? { ...q, currentChapter: pair.current, totalChapters: pair.total } : q));
+    }, []);
+
+    /** After a burst lands: offer Undo for a big move, and mark a climb to a higher floor. */
+    const announceBurst = useCallback((b: ChapterBurst, final: ChapterPair) => {
+        const quest = libraryRef.current.find(q => q.id === b.questId);
+        if (!quest) return;
+        if (b.undo) {
+            showToast({ tone: 'INFO', message: `Restored · CH ${final.current}`, detail: quest.title, duration: 3000 });
+            return;
+        }
+        const from = b.start;
+        const fromFloor = floorIndexForItem({ ...quest, currentChapter: from.current, totalChapters: from.total });
+        const toFloor = floorIndexForItem({ ...quest, currentChapter: final.current, totalChapters: final.total });
+        const ascended = toFloor > fromFloor;
+        const raised = final.total !== from.total;
+        const undoable = b.typed || raised || Math.abs(final.current - from.current) >= UNDO_THRESHOLD;
+        if (!ascended && !undoable) return;
+
+        const moved = `Chapter ${from.current} → ${final.current}`;
+        const totalNote = raised ? `total raised to ${final.total} (was ${from.total})` : '';
+        showToast({
+            tone: ascended ? 'SUCCESS' : 'INFO',
+            message: ascended ? `Ascended → ${FLOOR_DEFS[toFloor].name}` : `CH ${from.current} → ${final.current}`,
+            detail: ascended
+                ? [moved, totalNote].filter(Boolean).join(' · ')
+                : totalNote ? totalNote.charAt(0).toUpperCase() + totalNote.slice(1) : quest.title,
+            action: undoable
+                ? { label: 'Undo', onAction: () => { requestChapterRef.current(b.questId, from.current, { total: from.total, mode: 'now', undo: true }); } }
+                : undefined,
+            duration: undoable ? 8000 : 4500,
+        });
+    }, [showToast]);
+
+    /** Send a quest's pending chapter. Safe to call at any time; it never double-sends. */
+    const sendBurst = useCallback(async (questId: string, keepalive = false): Promise<void> => {
+        const b = bursts.current.get(questId);
+        if (!b) return;
+        if (b.timer) { clearTimeout(b.timer); b.timer = null; }
+        if (b.inFlight) { b.dirty = true; return; }
+
+        const sent = { ...b.target };
+        if (sent.current === b.confirmed.current && sent.total === b.confirmed.total) {
+            // Moved and moved back before the save went out: nothing to send.
+            bursts.current.delete(questId);
+            return;
+        }
+        b.inFlight = true;
+        b.dirty = false;
+        const body: Record<string, number> = { currentChapter: sent.current };
+        if (sent.total !== b.confirmed.total) body.totalChapters = sent.total;
 
         try {
-            const res = await systemFetch(`${API_URL}/${activeId}`, {
-                method: 'PUT',
-                body: JSON.stringify({ currentChapter: next, lastUpdated: new Date().toISOString() })
-            });
-            const updated = await res.json();
-            setLibrary(prev => prev.map(q => q.id === activeId ? mapQuest(updated) : q));
-
-            // The PUT response is the authoritative updated quest and has already been
-            // merged above, so there is nothing left to reconcile. This used to schedule
-            // a full fetchInitialData() 500ms after every increment, re-pulling the whole
-            // library on each chapter click. Streak and daily-absorbed counters are the
-            // only other state the server touches here, so refresh just those.
-            refreshUserState().catch(console.error);
-        } catch (e) {
-            console.error("Progress update failed", e);
-        }
-    }, [activeQuest, activeId, refreshUserState]);
-
-    const deleteQuest = async () => {
-        if (editingItem) {
-            const confirmed = await showSystemNotification(`PURGE ARTIFACT "${editingItem.title}"?`, 'WARNING', true);
-            if (!confirmed) return;
-
-            try {
-                await systemFetch(`${API_URL}/${editingItem.id}`, { method: 'DELETE' });
-                setLibrary(prev => prev.filter(i => i.id !== editingItem.id));
-                setIsModalOpen(false);
-                // A purge is irreversible; the glitch marks it as such.
-                setGlitchActive(true);
-            } catch (e) {
-                console.error("Deletion failure", e);
-                showSystemNotification("PURGE_PROTOCOL_FAILED. ARCHIVE CORE STABLE.", "ERROR");
+            const res = await systemFetch(`${API_URL}/${questId}`, { method: 'PUT', body: JSON.stringify(body), keepalive });
+            b.inFlight = false;
+            if (bursts.current.get(questId) !== b) return; // signed out meanwhile
+            if (res.status === 401) { bursts.current.delete(questId); return; } // session handler takes over
+            if (res.status === 404) {
+                // Deleted from another tab or device: the record is gone, not unsaved.
+                bursts.current.delete(questId);
+                setLibrary(prev => prev.filter(q => q.id !== questId));
+                showToast({ tone: 'WARNING', message: 'Record not found', detail: 'This series was removed elsewhere, so the chapter was not saved.', duration: 7000 });
+                return;
             }
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const saved = mapQuest(await res.json());
+            b.confirmed = sent;
+
+            if (b.dirty) { void sendBurst(questId); return; }      // more arrived mid-flight
+            if (b.target.current !== sent.current || b.target.total !== sent.total) return; // a merge timer will send the rest
+
+            // Settled. Adopt the server's copy (it carries lastRead and the like).
+            bursts.current.delete(questId);
+            setLibrary(prev => prev.map(q => q.id === questId ? saved : q));
+            announceBurst(b, sent);
+            // Streak and daily-absorbed are the only other state a chapter changes server-side.
+            refreshUserState().catch(() => { /* counters refresh on the next load */ });
+        } catch (e) {
+            b.inFlight = false;
+            console.error('Chapter save failed', e);
+            if (bursts.current.get(questId) !== b) return;
+            bursts.current.delete(questId);
+            applyChapter(questId, b.confirmed);
+            showToast({
+                tone: 'ERROR',
+                message: 'SYNC_FAILED',
+                detail: `Couldn't save — back to chapter ${b.confirmed.current}. Check your connection.`,
+                duration: 8000,
+            });
         }
+    }, [announceBurst, applyChapter, refreshUserState, showToast]);
+
+    /**
+     * Move a quest to `wanted`. Returns false when that is no change (a held stepper stops on it).
+     *
+     * Past the known total, a TYPED chapter raises the total to match (you read it, so it
+     * exists; Undo restores both), while a stepper stops at the total.
+     */
+    const requestChapter = useCallback((questId: string, wanted: number, opts: ChapterRequestOpts): boolean => {
+        const quest = libraryRef.current.find(q => q.id === questId);
+        if (!quest || questId === DEFAULT_QUEST.id || questId.startsWith('optimistic-')) return false;
+
+        let b = bursts.current.get(questId);
+        const shown: ChapterPair = b ? { ...b.target } : { current: quest.currentChapter, total: quest.totalChapters };
+        let total = Math.max(0, Math.floor(opts.total ?? shown.total));
+        let current = Math.max(0, Math.floor(wanted));
+        if (total > 0 && current > total) {
+            if (opts.typed) total = current;
+            else current = total;
+        }
+        if (current === shown.current && total === shown.total) return false;
+
+        if (!b) {
+            const now: ChapterPair = { current: quest.currentChapter, total: quest.totalChapters };
+            b = { questId, confirmed: now, start: { ...now }, target: { ...now }, typed: false, undo: false, timer: null, inFlight: false, dirty: false };
+            bursts.current.set(questId, b);
+        }
+        b.target = { current, total };
+        if (opts.typed) b.typed = true;
+        if (opts.undo) b.undo = true;
+        applyChapter(questId, b.target);
+
+        if (b.timer) { clearTimeout(b.timer); b.timer = null; }
+        if (opts.mode === 'now') void sendBurst(questId);
+        else if (opts.mode === 'merge') b.timer = setTimeout(() => { void sendBurst(questId); }, CHAPTER_MERGE_MS);
+        // 'hold': no timer; releasing the stepper commits.
+        return true;
+    }, [applyChapter, sendBurst]);
+    requestChapterRef.current = requestChapter;
+
+    /** One step on the active quest, from wherever its chapter currently shows. */
+    const stepChapter = useCallback((delta: number, mode: 'merge' | 'hold'): boolean => {
+        const q = activeQuestRef.current;
+        if (!q || q.id === DEFAULT_QUEST.id) return false;
+        const b = bursts.current.get(q.id);
+        return requestChapter(q.id, (b ? b.target.current : q.currentChapter) + delta, { mode });
+    }, [requestChapter]);
+
+    /** A typed chapter for the active quest: saved at once, and always offered for Undo. */
+    const commitTypedChapter = useCallback((chapter: number) => {
+        const q = activeQuestRef.current;
+        if (q && q.id !== DEFAULT_QUEST.id) requestChapter(q.id, chapter, { mode: 'now', typed: true });
+    }, [requestChapter]);
+
+    /** Stepper released: a hold commits now, a plain tap merges with its neighbours. */
+    const releaseStepper = useCallback((repeated: boolean) => {
+        const q = activeQuestRef.current;
+        const b = q ? bursts.current.get(q.id) : undefined;
+        if (!b) return;
+        if (repeated) void sendBurst(b.questId);
+        else {
+            if (b.timer) clearTimeout(b.timer);
+            b.timer = setTimeout(() => { void sendBurst(b.questId); }, CHAPTER_MERGE_MS);
+        }
+    }, [sendBurst]);
+
+    const holdPrev = useHoldRepeat(() => stepChapter(-1, 'hold'), releaseStepper);
+    const holdNext = useHoldRepeat(() => stepChapter(1, 'hold'), releaseStepper);
+
+    // Signing out (or a severed session) abandons anything pending; its replies are ignored.
+    useEffect(() => {
+        if (isAuth) return;
+        setLibraryLoaded(false); // the next session's first load starts over
+        bursts.current.forEach(b => { if (b.timer) clearTimeout(b.timer); });
+        bursts.current.clear();
+    }, [isAuth]);
+
+    /** Send everything pending now, e.g. when the page is going away. */
+    const flushChapters = useCallback((keepalive = false) => {
+        bursts.current.forEach((b, id) => { if (!b.inFlight) void sendBurst(id, keepalive); });
+    }, [sendBurst]);
+
+    // A tap merged in the last 600ms would be lost if the tab closed before its timer fired.
+    // keepalive lets that final save outlive the page.
+    useEffect(() => {
+        const onPageHide = () => flushChapters(true);
+        const onVisibility = () => { if (document.visibilityState === 'hidden') flushChapters(true); };
+        window.addEventListener('pagehide', onPageHide);
+        document.addEventListener('visibilitychange', onVisibility);
+        return () => {
+            window.removeEventListener('pagehide', onPageHide);
+            document.removeEventListener('visibilitychange', onVisibility);
+        };
+    }, [flushChapters]);
+
+    /** Bring a record back out of the server's Trash: a delete's Undo, or the Trash panel. */
+    const restoreQuest = useCallback(async (id: string): Promise<boolean> => {
+        try {
+            const res = await systemFetch(`${API_URL}/${id}/restore`, { method: 'POST' });
+            if (res.status === 401) return false;
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                throw new Error(err.message || `HTTP ${res.status}`);
+            }
+            const restored = mapQuest(await res.json());
+            setLibrary(prev => (prev.some(q => q.id === restored.id) ? prev : [restored, ...prev]));
+            showToast({ tone: 'SUCCESS', message: 'Record restored', detail: restored.title, duration: 3500 });
+            return true;
+        } catch (e: any) {
+            showToast({ tone: 'ERROR', message: 'Restore failed', detail: e?.message || 'Check your connection and try again.', duration: 8000 });
+            return false;
+        }
+    }, [showToast]);
+
+    /**
+     * Delete, with Undo in place of a confirmation dialog.
+     *
+     * The server moves the record to its Trash rather than erasing it (soft delete), so the
+     * delete can happen at once and the toast can take it back. A confirmation asks before
+     * every delete to protect against the rare mistake; Undo costs nothing when you meant it.
+     */
+    const deleteQuest = async () => {
+        const item = editingItem;
+        if (!item || item.id.startsWith('optimistic-')) return;
+
+        // Anything still pending for this record is moot now.
+        const pending = bursts.current.get(item.id);
+        if (pending?.timer) clearTimeout(pending.timer);
+        bursts.current.delete(item.id);
+
+        setLibrary(prev => prev.filter(q => q.id !== item.id));
+        setIsModalOpen(false);
+        setEditingItem(null);
+        if (selectedQuest?.id === item.id) setIsDetailOpen(false);
+        // The glitch still marks the purge; Undo is the way back.
+        setGlitchActive(true);
+
+        try {
+            const res = await systemFetch(`${API_URL}/${item.id}`, { method: 'DELETE' });
+            if (res.status === 401) return;
+            // 404 means it was already gone, which is the outcome we wanted.
+            if (!res.ok && res.status !== 404) throw new Error(`HTTP ${res.status}`);
+        } catch (e) {
+            console.error("Deletion failure", e);
+            setLibrary(prev => (prev.some(q => q.id === item.id) ? prev : [item, ...prev]));
+            showToast({ tone: 'ERROR', message: 'PURGE_PROTOCOL_FAILED', detail: `"${item.title}" was not deleted. Check your connection and try again.`, duration: 8000 });
+            return;
+        }
+
+        showToast({
+            tone: 'WARNING',
+            message: 'Record purged',
+            detail: `"${item.title}" moved to the Trash.`,
+            action: { label: 'Undo', onAction: () => { void restoreQuest(item.id); } },
+            duration: 10000,
+        });
     };
     // useCallback so the memoised header can list it as a dependency without being
     // rebuilt on every render. Its only input is currentTheme, which the header already
     // depends on, so this changes nothing about when the header recomputes.
+    // ─── NEW-CHAPTER CHECK ──────────────────────────────────────────────────────
+    // On demand, for whoever is signed in (the hourly workflow already covers the owner's
+    // archive). The server checks up to 12 series per call, least recently checked first,
+    // so pressing it again walks further through a large library.
+    const fetchInitialDataRef = useRef(fetchInitialData);
+    fetchInitialDataRef.current = fetchInitialData;
+    const [chapterCheckBusy, setChapterCheckBusy] = useState(false);
+    const checkNewChapters = useCallback(async () => {
+        setChapterCheckBusy(true);
+        const pendingId = showToast({ tone: 'INFO', message: 'Scanning for new chapters', detail: 'Checking up to 12 series against MangaDex and AniList…', duration: 0 });
+        try {
+            const res = await systemFetch('/api/quests/sync-chapters', { method: 'POST' });
+            if (res.status === 401) { dismissToast(pendingId); return; }
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(data.message || `HTTP ${res.status}`);
+            await fetchInitialDataRef.current();
+            const found: { title: string; added: number }[] = (data.updated || []).filter((u: { added: number }) => u.added > 0);
+            if (found.length > 0) {
+                const named = found.slice(0, 3).map(u => `${u.title} +${u.added}`).join(' · ');
+                showToast({ tone: 'SUCCESS', message: `New chapters · ${found.length} series`, detail: found.length > 3 ? `${named} · and ${found.length - 3} more` : named, duration: 9000 });
+            } else {
+                showToast({
+                    tone: 'INFO',
+                    message: 'No new chapters found',
+                    detail: `Checked ${data.checked ?? 0} series. Many licensed manhwa are not listed on MangaDex, so not every series can be tracked.`,
+                    duration: 8000,
+                });
+            }
+        } catch (e: any) {
+            showToast({ tone: 'ERROR', message: 'Scan failed', detail: e?.message || 'Try again in a while.', duration: 8000 });
+        } finally {
+            setChapterCheckBusy(false);
+        }
+    }, [showToast, dismissToast]);
+
+    // ─── KEYBOARD SHORTCUTS ─────────────────────────────────────────────────────
+    // Dashboard only, and never while typing. Listed by "?" (SHORTCUT_HELP); the steppers'
+    // and CREATE_GATE's tooltips name theirs too. Ctrl/Cmd+Z is the exception that works
+    // anywhere outside a text field: it takes the Undo on whatever notice is showing.
+    const toastRef = useRef(toast);
+    toastRef.current = toast;
+    const showShortcuts = useCallback(() => { void showSystemNotification(SHORTCUT_HELP, 'INFO'); }, [showSystemNotification]);
+    const shortcutsBlocked = !isAuth || booting || isSpireOpen || isModalOpen || isProfileOpen || isDetailOpen || sysNote.isOpen;
+    useEffect(() => {
+        const isTextEntry = (el: Element | null) =>
+            !!el && el.matches('input, textarea, select, [contenteditable=""], [contenteditable="true"]');
+
+        const onKey = (e: KeyboardEvent) => {
+            if (e.defaultPrevented || e.isComposing) return;
+            const focused = document.activeElement;
+            if (isTextEntry(focused)) return;
+
+            if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'z') {
+                const t = toastRef.current;
+                if (t?.action && t.action.label.toLowerCase() === 'undo') {
+                    e.preventDefault();
+                    t.action.onAction();
+                    dismissToast(t.id);
+                }
+                return;
+            }
+            if (shortcutsBlocked || e.ctrlKey || e.metaKey || e.altKey) return;
+
+            switch (e.key) {
+                case 'ArrowRight':
+                case 'ArrowLeft':
+                    e.preventDefault();
+                    stepChapter(e.key === 'ArrowRight' ? 1 : -1, 'merge');
+                    return;
+                case 'Enter': {
+                    // Only from the page itself: Enter on a focused control belongs to it.
+                    if (focused && focused !== document.body) return;
+                    const link = activeQuestRef.current.link;
+                    if (link) { e.preventDefault(); handleEnterPortal(link); }
+                    return;
+                }
+                case '/':
+                    e.preventDefault();
+                    setSpireStartInSearch(true);
+                    setIsSpireOpen(true);
+                    return;
+                case 'n':
+                case 'N':
+                    if (e.repeat) return;
+                    e.preventDefault();
+                    setEditingItem(null);
+                    setIsModalOpen(true);
+                    return;
+                case '?':
+                    e.preventDefault();
+                    showShortcuts();
+                    return;
+            }
+        };
+        window.addEventListener('keydown', onKey);
+        return () => window.removeEventListener('keydown', onKey);
+    }, [shortcutsBlocked, stepChapter, handleEnterPortal, dismissToast, showShortcuts]);
+
     // Stable identity so BootScreen's timeline effect is not re-created on every render.
     const finishBooting = useCallback(() => setBooting(false), []);
 
@@ -1016,7 +1586,7 @@ const App: React.FC = () => {
                         >
                             <Plus size={14} />
                         </button>
-                        <button type="button" onClick={() => { setEditingItem(null); setIsModalOpen(true); }} className={`hidden lg:flex px-4 py-1.5 border ${theme.borderSubtle} ${theme.highlightText} ${theme.isDark ? 'hover:bg-white/5' : 'hover:bg-black/5'} transition-colors duration-700 font-mono text-[10px] tracking-widest items-center gap-2 cursor-pointer`}>
+                        <button type="button" onClick={() => { setEditingItem(null); setIsModalOpen(true); }} title="New gate (N)" className={`hidden lg:flex px-4 py-1.5 border ${theme.borderSubtle} ${theme.highlightText} ${theme.isDark ? 'hover:bg-white/5' : 'hover:bg-black/5'} transition-colors duration-700 font-mono text-[10px] tracking-widest items-center gap-2 cursor-pointer`}>
                             <Plus size={12} /> CREATE_GATE
                         </button>
                     </div>
@@ -1025,12 +1595,11 @@ const App: React.FC = () => {
         </AnimatePresence>
     ), [theme, currentTheme, isHeaderVisible, guestTimeLeft, toggleTheme, handleLogout]);
 
-    // Track hero cover image error state — reset whenever the active quest changes
-    const [coverImgError, setCoverImgError] = React.useState(false);
-
     /** True while any full-screen view covers the dashboard. Both the background field
      *  and the hero dais stop their loops on this rather than rendering behind an overlay. */
     const overlayOpen = isModalOpen || isDetailOpen || isProfileOpen || isSpireOpen;
+    /** Hold the dashboard's animated layers still: behind an overlay, or in low-power mode. */
+    const effectsPaused = overlayOpen || lowPower;
 
     /**
      * The card's chrome is white/grey, not the accent.
@@ -1056,7 +1625,6 @@ const App: React.FC = () => {
     useEffect(() => {
         try { localStorage.setItem('akashic_sidebar_collapsed', sidebarCollapsed ? '1' : '0'); } catch { /* private mode */ }
     }, [sidebarCollapsed]);
-    useEffect(() => { setCoverImgError(false); }, [activeId]);
 
     const memoizedMain = useMemo(() => (
         <main id="content-scroll"
@@ -1155,13 +1723,13 @@ const App: React.FC = () => {
                                 {theme.isDark ? (
                                     <SanctuaryRing
                                         theme={theme}
-                                        isPaused={overlayOpen}
+                                        isPaused={effectsPaused}
                                         className="left-1/2 top-[54%] w-[380%] aspect-square -translate-x-1/2 -translate-y-1/2 z-0"
                                     />
                                 ) : (
                                     <ArcaneSigil
                                         theme={theme}
-                                        paused={overlayOpen}
+                                        paused={effectsPaused}
                                         className="left-1/2 top-[54%] w-[400%] aspect-square -translate-x-1/2 -translate-y-1/2 z-0"
                                     />
                                 )}
@@ -1251,7 +1819,7 @@ const App: React.FC = () => {
                                     to the middle of its own canvas. */}
                                 <HoloDais
                                     theme={theme}
-                                    paused={overlayOpen}
+                                    paused={effectsPaused}
                                     /* Narrower on a phone: the card is nearly the whole
                                        screen there, so 190% of it overflowed the viewport.
 
@@ -1325,35 +1893,22 @@ const App: React.FC = () => {
                                             WebkitMaskImage: 'linear-gradient(to top, transparent 0%, rgba(0,0,0,0.5) 2.5%, #000 8%)',
                                         }}
                                     >
-                                        {/* key=activeQuest.id forces a fresh <img> DOM node on quest change,
-                                            clearing any stale onError state from the previous entry. */}
-                                        {!coverImgError ? (
-                                            <img
-                                                key={activeQuest.id}
-                                                src={getProxiedImageUrl(activeQuest.coverUrl)}
-                                                alt={`Cover art for ${activeQuest.title}`}
-                                                className="w-full h-full object-cover transition-transform duration-[10s] group-hover:scale-110"
-                                                referrerPolicy="no-referrer"
-                                                loading="eager"
-
-                                                onError={() => setCoverImgError(true)}
-                                            />
-                                        ) : (
-                                            /* Fallback plate — shown when the proxy/CDN fails, and for the
-                                               empty-library placeholder, which has no cover at all. The
-                                               plate is deliberately dark in both themes (it stands in for
-                                               cover art), so its text is fixed pale ink at a readable
-                                               value rather than white at 20%. */
-                                            <div className="w-full h-full flex flex-col items-center justify-center gap-2 px-6 text-center bg-gradient-to-b from-gray-900 to-black">
-                                                <span className="text-2xl opacity-30" aria-hidden="true">📖</span>
-                                                <span className="text-[9px] font-mono text-stone-300 uppercase tracking-widest">
-                                                    {activeQuest.id === DEFAULT_QUEST.id ? 'Archive empty' : 'Cover unavailable'}
-                                                </span>
-                                                {activeQuest.id === DEFAULT_QUEST.id && (
-                                                    <span className="text-[9px] font-mono text-stone-400 uppercase tracking-widest">Tap to open a gate</span>
-                                                )}
-                                            </div>
-                                        )}
+                                        {/* The plate (monogram) is always underneath; the cover fades in
+                                            over it once loaded. A missing, slow or dead cover, and the
+                                            empty-library placeholder, all show the plate, never the
+                                            browser's broken-image icon. */}
+                                        <CoverArt
+                                            key={activeQuest.id}
+                                            url={activeQuest.coverUrl}
+                                            title={activeQuest.title}
+                                            alt={`Cover art for ${activeQuest.title}`}
+                                            size="hero"
+                                            className="w-full h-full"
+                                            imgClassName="transition-transform duration-[10s] group-hover:scale-110"
+                                            label={activeQuest.id === DEFAULT_QUEST.id ? (libraryLoaded ? 'Archive empty' : 'Syncing archive') : undefined}
+                                            hint={activeQuest.id === DEFAULT_QUEST.id && libraryLoaded ? 'Tap to open a gate' : undefined}
+                                            glyph={activeQuest.id === DEFAULT_QUEST.id ? (libraryLoaded ? '+' : '◈') : undefined}
+                                        />
 
                                         {/* THEME-ADAPTIVE TINT OVERLAY (Color Unity) */}
                                         <div
@@ -1406,11 +1961,25 @@ const App: React.FC = () => {
                             <div className="hidden md:flex flex-col items-start justify-center gap-4 md:gap-6 xl:gap-10 self-stretch flex-1 basis-0 min-w-0 shrink">
                                 <div className="flex flex-col items-start w-max max-w-none">
                                     <div className={`text-[10px] font-mono tracking-[0.3em] uppercase mb-1 ${theme.isDark ? theme.mutedText : `text-transparent bg-clip-text bg-gradient-to-r ${theme.labelGradient}`}`}>SEQUENCE DATA</div>
-                                    <div className={`text-5xl xl:text-[70px] font-black font-mono tabular-nums leading-none text-left transition-colors duration-700 ${theme.isDark ? 'text-[var(--accent-ink)]' : `text-transparent bg-clip-text bg-gradient-to-b ${theme.inkGradient}`}`}>
-                                        {String(activeQuest.currentChapter).padStart(3, '0')}
-                                    </div>
-                                    <div className={`text-[11px] font-mono tracking-widest mt-2 ${theme.mutedText}`}>
-                                        OF <span className={`font-bold`} style={{ color: theme.accentInk }}>{activeQuest.totalChapters}</span> CHAPTERS
+                                    {/* Tap (or Enter) to type a chapter: one save however far
+                                        the jump, where the steppers would take a tap per chapter. */}
+                                    <ChapterField
+                                        value={activeQuest.currentChapter}
+                                        pad={3}
+                                        disabled={activeQuest.id === DEFAULT_QUEST.id}
+                                        label={`Chapter ${activeQuest.currentChapter}${activeQuest.totalChapters > 0 ? ` of ${activeQuest.totalChapters}` : ''}. Set chapter`}
+                                        onCommit={commitTypedChapter}
+                                        className="text-5xl xl:text-[70px] font-black font-mono tabular-nums leading-none text-left"
+                                        displayClassName={`transition-colors duration-700 ${theme.isDark ? 'text-[var(--accent-ink)]' : `text-transparent bg-clip-text bg-gradient-to-b ${theme.inkGradient}`}`}
+                                        inkColor={theme.accentInk}
+                                    />
+                                    <div className={`text-[11px] font-mono tracking-widest mt-2 ${theme.mutedText} flex items-center gap-2`}>
+                                        <span>OF <span className={`font-bold`} style={{ color: theme.accentInk }}>{activeQuest.totalChapters}</span> CHAPTERS</span>
+                                        {(activeQuest.newChapters ?? 0) > 0 && (
+                                            <span className="px-1 border font-bold leading-[16px]" style={{ color: theme.accentInk, borderColor: `${theme.accentColor}80` }}>
+                                                +{activeQuest.newChapters} NEW
+                                            </span>
+                                        )}
                                     </div>
                                 </div>
 
@@ -1467,9 +2036,29 @@ const App: React.FC = () => {
 
                             {/* Progress */}
                             <div className="space-y-1.5 max-w-3xl w-full mx-auto">
-                                <div className={`flex justify-between text-[11px] sm:text-xs font-mono font-bold tracking-widest drop-shadow-md`}>
+                                <div className={`flex justify-between items-center gap-2 text-[11px] sm:text-xs font-mono font-bold tracking-widest drop-shadow-md`}>
                                     <span className={`flex items-center gap-1.5 ${theme.headingText}`}><Zap size={14} style={{ color: theme.accentInk }} /> COMPLETION_RATE</span>
-                                    <span style={{ color: theme.accentInk }}>{progressPercent}%</span>
+                                    <span className="flex items-center gap-2.5">
+                                        {/* Below md the SEQUENCE DATA column, and with it the chapter
+                                            number, is hidden, so phones saw only the percentage. This
+                                            is their chapter readout, and it takes a typed chapter too. */}
+                                        {activeQuest.id !== DEFAULT_QUEST.id && (
+                                            <span className={`md:hidden flex items-center gap-1 ${theme.mutedText}`}>
+                                                CH
+                                                <ChapterField
+                                                    value={activeQuest.currentChapter}
+                                                    label={`Chapter ${activeQuest.currentChapter}${activeQuest.totalChapters > 0 ? ` of ${activeQuest.totalChapters}` : ''}. Set chapter`}
+                                                    onCommit={commitTypedChapter}
+                                                    className="font-mono font-bold tabular-nums text-[11px] sm:text-xs tracking-widest inline-block min-w-[2.75rem] px-1 py-1.5 -my-1.5 text-center"
+                                                    displayClassName="text-[var(--accent-ink)]"
+                                                    inkColor={theme.accentInk}
+                                                    minChars={2}
+                                                />
+                                                <span>/ {activeQuest.totalChapters || '?'}</span>
+                                            </span>
+                                        )}
+                                        <span style={{ color: theme.accentInk }}>{progressPercent}%</span>
+                                    </span>
                                 </div>
                                 <div className={`h-1.5 ${theme.isDark ? 'bg-gray-900/40' : 'bg-gray-300/40'} w-full relative overflow-hidden backdrop-blur-md rounded-full shadow-inner`}>
                                     {/* animate-gradient-x drifts a highlight along the fill; the gradient
@@ -1487,12 +2076,35 @@ const App: React.FC = () => {
                             {/* The two chapter steppers are icon-only, so the glyph IS the label:
                                 it draws in the ink (the decorative cyan was 2.36:1, under the 3:1
                                 a meaningful graphic needs) and the button carries the name. */}
+                            {activeQuest.id === DEFAULT_QUEST.id && libraryLoaded ? (
+                                /* Empty library: the steppers and the portal have nothing to act
+                                   on (they sat there disabled at 40%), so the controls become the
+                                   one thing worth doing here. */
+                                <div className="flex gap-2 w-full justify-center mt-2">
+                                    <motion.button
+                                        whileHover={{ scale: 1.02 }}
+                                        whileTap={{ scale: 0.96 }}
+                                        type="button"
+                                        onClick={() => { setEditingItem(null); setIsModalOpen(true); }}
+                                        title="New gate (N)"
+                                        className="h-12 flex-1 max-w-[400px] flex items-center justify-center gap-2 font-mono font-bold tracking-widest text-[12px] rounded-sm bg-accent text-accent-on cursor-pointer"
+                                        style={{ boxShadow: emphasis(theme, accentRGB(theme)) }}
+                                    >
+                                        <Plus size={16} aria-hidden="true" /> OPEN YOUR FIRST GATE
+                                    </motion.button>
+                                </div>
+                            ) : (
                             <div className="flex gap-2 w-full justify-center mt-2">
-                                <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => updateProgress(-1)}
+                                {/* Press and hold to repeat, accelerating; one save on release.
+                                    A keyboard click (detail 0) never reaches the pointer handlers,
+                                    so it steps here and merges with its neighbours like a tap. */}
+                                <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+                                    {...holdPrev}
+                                    onClick={(e) => { if (e.detail === 0) stepChapter(-1, 'merge'); }}
                                     type="button"
                                     aria-label="Previous chapter"
-                                    title="Previous chapter"
-                                    className={`w-14 h-12 flex-none border ${theme.isDark ? 'bg-black/80 backdrop-blur-md' : 'bg-white/80 backdrop-blur-md'} flex items-center justify-center transition-colors cursor-pointer rounded-sm`}
+                                    title="Previous chapter (←) · hold to repeat"
+                                    className={`w-14 h-12 flex-none border ${theme.isDark ? 'bg-black/80 backdrop-blur-md' : 'bg-white/80 backdrop-blur-md'} flex items-center justify-center transition-colors cursor-pointer rounded-sm touch-manipulation select-none [-webkit-touch-callout:none]`}
                                     style={{ borderColor: `${theme.accentColor}33` }}
                                 >
                                     <CalibratedMinusIcon size={20} color={theme.accentInk} />
@@ -1503,28 +2115,31 @@ const App: React.FC = () => {
                                     type="button"
                                     onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleEnterPortal(activeQuest.link || '#'); }}
                                     disabled={!activeQuest.link || activeQuest.link === '#'}
-                                    /* Near-black on the fill, not white. Both accents are mid-luminance
-                                       brights — white measured 2.43:1 on the cyan and 2.15:1 on the
-                                       amber, so the primary CTA failed in BOTH themes. Slate-900 reads
-                                       8.29:1 on amber and 7.33:1 on cyan, and the icon follows because
-                                       it draws in currentColor. `drop-shadow-md` went with the white:
-                                       a dark shadow under dark text only muddies it. */
-                                    className={`h-12 flex-1 max-w-[400px] backdrop-blur-md flex items-center justify-center gap-2 transition-all font-mono font-bold tracking-widest text-[12px] group cursor-pointer rounded-sm text-[#241a06] disabled:opacity-40 disabled:cursor-not-allowed`}
+                                    title="Open the reading link (Enter)"
+                                    /* The label takes `accent-on`, the ink chosen per theme for a solid
+                                       accent fill: black on amber (9.8:1), white on violet (5.7:1). It was
+                                       a fixed near-black (#241a06), right for the old amber and cyan but
+                                       3.01:1 on the amethyst light accent, under AA for 12px text. The
+                                       icon follows, as it draws in currentColor. */
+                                    className={`h-12 flex-1 max-w-[400px] backdrop-blur-md flex items-center justify-center gap-2 transition-all font-mono font-bold tracking-widest text-[12px] group cursor-pointer rounded-sm text-accent-on disabled:opacity-40 disabled:cursor-not-allowed`}
                                     style={{ backgroundColor: theme.accentColor, borderColor: theme.accentColor, boxShadow: emphasis(theme, accentRGB(theme)) }}
                                 >
                                     <InfinitePortalIcon size={18} className="group-hover:rotate-12 transition-transform" /> ENTER PORTAL
                                 </motion.button>
-                                <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => updateProgress(1)}
+                                <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+                                    {...holdNext}
+                                    onClick={(e) => { if (e.detail === 0) stepChapter(1, 'merge'); }}
                                     type="button"
                                     aria-label="Next chapter"
-                                    title="Next chapter"
-                                    className={`w-14 h-12 flex-none border ${theme.isDark ? 'bg-black/80 backdrop-blur-md' : 'bg-white/80 backdrop-blur-md'} flex items-center justify-center transition-colors cursor-pointer rounded-sm`}
+                                    title="Next chapter (→) · hold to repeat"
+                                    className={`w-14 h-12 flex-none border ${theme.isDark ? 'bg-black/80 backdrop-blur-md' : 'bg-white/80 backdrop-blur-md'} flex items-center justify-center transition-colors cursor-pointer rounded-sm touch-manipulation select-none [-webkit-touch-callout:none]`}
                                     style={{ borderColor: `${theme.accentColor}33` }}
                                 >
                                     <CalibratedPlusIcon size={20} color={theme.accentInk} />
                                 </motion.button>
 
                             </div>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -1545,7 +2160,7 @@ const App: React.FC = () => {
                     {!sidebarCollapsed && (
                         <div
                             aria-hidden="true"
-                            className={`hidden lg:block absolute -left-2 top-12 bottom-12 w-px z-30 pointer-events-none bg-gradient-to-b from-transparent to-transparent ${theme.isDark ? 'via-[#f59e0b]/45' : 'via-[#7c3aed]/40'}`}
+                            className={`hidden lg:block absolute -left-2 top-12 bottom-12 w-px z-30 pointer-events-none bg-gradient-to-b from-transparent to-transparent via-accent-line`}
                         />
                     )}
                     <button
@@ -1555,7 +2170,11 @@ const App: React.FC = () => {
                         aria-controls="system-sidebar"
                         aria-label={sidebarCollapsed ? 'Expand system panel' : 'Collapse system panel'}
                         title={sidebarCollapsed ? 'Expand system panel' : 'Collapse system panel'}
-                        className={`hidden lg:flex top-1/2 -translate-y-1/2 z-40 w-[22px] h-16 items-center justify-center border transition-[opacity,background-color,border-color,color] duration-300 cursor-pointer ${theme.isDark ? 'bg-[#14120e] border-[#f59e0b]/55 text-[#f59e0b] hover:bg-[#f59e0b] hover:border-[#f59e0b] hover:text-black' : 'bg-[#f6f1fc] border-[#7c3aed]/45 text-[#7c3aed] hover:bg-[#7c3aed] hover:border-[#7c3aed] hover:text-white'} ${sidebarCollapsed ? 'fixed right-0 rounded-l-xl opacity-0 hover:opacity-100 focus-visible:opacity-100' : 'absolute -left-[19px] rounded-full'}`}
+                        /* Collapsed, the grip hides until hovered. A touch screen has no hover,
+                           so there (hover:none) it stays faintly visible instead of vanishing
+                           with no way to find it. The ::before pad widens the hit area to the
+                           LEFT only: rightward it would sit over the quest rows' drag handles. */
+                        className={`hidden lg:flex top-1/2 -translate-y-1/2 z-40 w-[22px] h-16 items-center justify-center border transition-[opacity,background-color,border-color,color] duration-300 cursor-pointer before:absolute before:content-[''] before:-inset-y-2 before:-left-3 before:right-0 bg-accent-surface border-accent-edge text-accent hover:bg-accent hover:border-accent hover:text-accent-on ${sidebarCollapsed ? 'fixed right-0 rounded-l-xl opacity-0 hover:opacity-100 focus-visible:opacity-100 [@media(hover:none)]:opacity-70' : 'absolute -left-[19px] rounded-full'}`}
                     >
                         {sidebarCollapsed ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
                     </button>
@@ -1653,13 +2272,28 @@ const App: React.FC = () => {
 
                     {/* ACTIVE QUESTS LIST - only scrollable region allowed */}
                     <div className="flex-1 flex flex-col min-h-0 gap-1 mt-2 overflow-hidden max-h-[380px] lg:max-h-none">
-                        <div className={`text-[10px] font-mono uppercase tracking-widest border-b ${theme.borderSubtle} pb-1.5 mb-1 transition-colors duration-700 shrink-0 ${theme.isDark ? theme.headingText : `text-transparent bg-clip-text bg-gradient-to-r ${theme.labelGradient}`}`}>ACTIVE QUESTS</div>
+                        <div className={`flex items-center justify-between gap-2 border-b ${theme.borderSubtle} pb-1 mb-1 shrink-0`}>
+                            <span className={`text-[10px] font-mono uppercase tracking-widest transition-colors duration-700 ${theme.isDark ? theme.headingText : `text-transparent bg-clip-text bg-gradient-to-r ${theme.labelGradient}`}`}>ACTIVE QUESTS</span>
+                            {/* Asks the chapter tracker about this library now; the hourly job
+                                does the owner's archive anyway. Results land as "+N NEW". */}
+                            <button
+                                type="button"
+                                onClick={checkNewChapters}
+                                disabled={chapterCheckBusy || activeQuest.id === DEFAULT_QUEST.id}
+                                title="Check for new chapters"
+                                className={`h-6 -my-1 px-1.5 flex items-center gap-1.5 font-mono text-[9px] font-bold tracking-widest uppercase ${theme.highlightText} ${theme.isDark ? 'hover:bg-white/5' : 'hover:bg-black/5'} transition-colors disabled:opacity-50 disabled:cursor-wait`}
+                            >
+                                <RefreshCw size={11} aria-hidden="true" className={chapterCheckBusy ? 'animate-spin' : ''} />
+                                New chapters
+                            </button>
+                        </div>
                         <ActiveQuestList
                             orderedActiveQuests={orderedActiveQuests}
                             handleReorderActiveQuests={handleReorderActiveQuests}
                             theme={theme}
                             activeId={activeId}
                             handleLogClick={handleLogClick}
+                            loaded={libraryLoaded && orderedActiveQuests.length === activeQuests.length}
                         />
                     </div>
 
@@ -1670,11 +2304,12 @@ const App: React.FC = () => {
                 </div>
             </div>
         </main>
-        // activeQuests, currentTheme and userState were listed but never read in this
-        // block, so they only forced needless recomputation. overlayOpen IS read — the
-        // hero dais pauses on it — and the four flags behind it only change on an
-        // explicit open/close, so recomputing then is correct rather than wasteful.
-    ), [theme, activeQuest, progressPercent, activeId, handleLogClick, orderedActiveQuests, handleReorderActiveQuests, totalChaptersRead, playerRank, updateProgress, coverImgError, handleEnterPortal, overlayOpen, sidebarCollapsed, holoEdge, holoSoft]);
+        // currentTheme and userState were listed but never read in this block, so they only
+        // forced needless recomputation. (activeQuests is read: the list's empty message
+        // waits for the ordered copy to catch up with it.) effectsPaused IS read (the
+        // hero rings, sigil and dais hold still on it), and it only changes on an explicit
+        // open/close or a low-power toggle, so recomputing then is correct, not wasteful.
+    ), [theme, activeQuest, progressPercent, activeId, handleLogClick, orderedActiveQuests, handleReorderActiveQuests, totalChaptersRead, playerRank, stepChapter, commitTypedChapter, holdPrev, holdNext, checkNewChapters, chapterCheckBusy, handleEnterPortal, effectsPaused, libraryLoaded, activeQuests, sidebarCollapsed, holoEdge, holoSoft]);
 
     if (booting) return <BootScreen onComplete={finishBooting} theme={theme} />;
 
@@ -1690,19 +2325,11 @@ const App: React.FC = () => {
     return (
         <div 
             id="main-scroll-area" 
-            className={`relative h-[100dvh] overflow-hidden ${theme.appBg} ${theme.baseText} font-sans ${theme.isDark ? 'selection:bg-amber-500/30' : 'selection:bg-[#7c3aed]/25'} transition-colors duration-700 ease-in-out`}
-            style={{
-                // Two accents, deliberately. `--accent-color` and its two derivatives are
-                // decorative — fills, glows and washes, where chroma is the whole point and
-                // nothing has to stay legible on top of them. `--accent-ink` is structural:
-                // anything a reader has to actually read. On the light theme the decorative
-                // cyan measures 2.08:1 against the page, which fails even the 3:1 large-text
-                // floor, so display type reads in the ink and the fills keep the chroma.
-                '--accent-color': theme.accentColor,
-                '--accent-glow': `${theme.accentColor}88`,
-                '--accent-faint': `${theme.accentColor}22`,
-                '--accent-ink': theme.accentInk
-            } as React.CSSProperties}
+            className={`relative h-[100dvh] overflow-hidden ${theme.appBg} ${theme.baseText} font-sans selection:bg-accent-wash transition-colors duration-700 ease-in-out`}
+            /* The accent variables (--accent-color, --accent-ink, …) are set on :root from
+               src/core/tokens.ts; see the layout effect near the top of App. Two accents,
+               deliberately: --accent-color and its derivatives are decorative (fills, glows),
+               --accent-ink is structural, for anything a reader has to read. */
         >
             {/* Paused whenever a full-screen view covers it. It used to pause only for the
                 gate modal, so it kept animating behind the Detail, Profile and Spire — and the
@@ -1711,6 +2338,7 @@ const App: React.FC = () => {
                 theme={theme}
                 isPaused={overlayOpen}
                 isMobile={isMobile}
+                lowPower={lowPower}
             />
             {/* Edge falloff. Neutral black suits the void; on the light page the same 20%
                 black dragged every edge to grey, which is both the "grime" the depth system
@@ -1734,7 +2362,7 @@ const App: React.FC = () => {
                 !isModalOpen &&
                 !isProfileOpen &&
                 !isDetailOpen && (
-                    <SystemConsole theme={theme} />
+                    <SystemConsole theme={theme} onShowShortcuts={showShortcuts} />
                 )}
 
             <Suspense fallback={<HeavyLoader theme={theme} />}>
@@ -1749,6 +2377,9 @@ const App: React.FC = () => {
                         onRefresh={fetchInitialData}
                         onLogout={handleLogout}
                         showNotification={showSystemNotification}
+                        onRestoreQuest={restoreQuest}
+                        lowPower={lowPower}
+                        onToggleLowPower={toggleLowPower}
                         onSelectManhwa={(id) => {
                             detailOpenedFromProfile.current = true;
                             setIsProfileOpen(false);
@@ -1788,7 +2419,8 @@ const App: React.FC = () => {
                     <div className="fixed inset-0 z-[200]">
                         <DivineSpire
                             isOpen={isSpireOpen}
-                            onClose={() => setIsSpireOpen(false)}
+                            onClose={() => { setIsSpireOpen(false); setSpireStartInSearch(false); }}
+                            startInSearch={spireStartInSearch}
                             theme={theme}
                             items={spireItems}
                             onActivate={handleActivate}
@@ -1966,6 +2598,8 @@ const App: React.FC = () => {
                 onClose={handleSysNoteClose}
                 theme={theme}
             />
+
+            <SystemToast toast={toast} onDismiss={dismissToast} theme={theme} />
 
             <GlitchOverlay isActive={glitchActive} onComplete={endGlitch} />
         </div>

@@ -20,7 +20,8 @@ interface SystemCompassProps {
  */
 const SystemCompass: React.FC<SystemCompassProps> = ({ theme }) => {
   const isDark = theme.isDark;
-  const col   = isDark ? '#f59e0b' : '#7c3aed';
+  const col   = theme.accentColor;
+  // theme-color-ok: SVG compass; the north mark takes the lighter -400 highlight, not the accent
   const col2  = isDark ? '#fbbf24' : '#a78bfa';
   const dim   = (a: number) =>
     isDark ? `rgba(245,158,11,${a})` : `rgba(124,58,237,${a})`;

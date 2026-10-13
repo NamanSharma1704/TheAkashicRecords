@@ -333,3 +333,11 @@ html.theme-switching *::after {
 @media (prefers-reduced-motion: reduce) {
     .elev-1 { transition: none; }
 }
+
+/* Toast countdown bar (SystemToast). Visual only: the dismissal itself is timed in JS, so the
+   reduced-motion reset above, which collapses this to its end state, cannot dismiss a toast
+   early. Paused with the timer while the toast is hovered or focused. */
+@keyframes toast-countdown {
+    from { transform: scaleX(1); }
+    to { transform: scaleX(0); }
+}

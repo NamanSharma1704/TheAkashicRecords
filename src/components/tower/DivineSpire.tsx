@@ -20,11 +20,20 @@ interface DivineSpireProps {
     playerRank: { name: string; color: string };
     streak: number;
     dailyAbsorbed: number;
+    /**
+     * Open in the floor view, where the search field lives and takes focus, instead of the
+     * tower. Set by the dashboard's "/" shortcut. The Spire is mounted afresh on each open,
+     * so this only needs to seed the initial view (it also skips building the WebGL tower).
+     */
+    startInSearch?: boolean;
 }
 
-const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items, onActivate, itemsPerFloor, playerRank, streak, dailyAbsorbed }) => {
+const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items, onActivate, itemsPerFloor, playerRank, streak, dailyAbsorbed, startInSearch = false }) => {
     // TOWER SYSTEM STATE
-    const [viewMode, setViewMode] = useState<'TOWER' | 'FLOOR'>('TOWER'); // 'TOWER' | 'FLOOR'
+    const [viewMode, setViewMode] = useState<'TOWER' | 'FLOOR'>(startInSearch ? 'FLOOR' : 'TOWER');
+    // Entered by "/" to search: stepping "back" from that floor view means leaving the Spire,
+    // not walking into a tower you never opened. Cleared once you navigate the tower yourself.
+    const [searchEntry, setSearchEntry] = useState(startInSearch);
     const [selectedFloorIndex, setSelectedFloorIndex] = useState(0);
     const [isFocused, setIsFocused] = useState(false); // New state for camera focus
     const [search, setSearch] = useState('');
@@ -91,11 +100,19 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
         // This prevents Sector 8 from showing Floor 1 data if library is small.
         setSelectedFloorIndex(index);
         setViewMode('FLOOR');
+        setSearchEntry(false);
     };
 
     const handleBackToTower = () => {
         setViewMode('TOWER');
         setSearch(''); // Clear search when going back
+        setSearchEntry(false);
+    };
+
+    /** Back one level: from a search entry that means out of the Spire entirely. */
+    const stepBack = () => {
+        if (viewMode === 'FLOOR' && !searchEntry) handleBackToTower();
+        else onClose();
     };
 
     // KEYBOARD NAVIGATION FOR CAROUSEL
@@ -128,11 +145,13 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
     // Keyboard: Escape steps back one level — out of the filter menu, then from a floor to
     // the tower, then out of the Spire — matching what the close button does in each mode.
     const spireRef = useRef<HTMLDivElement>(null);
+    // Opened by "/", the search field must end up focused. Its autoFocus alone is not enough:
+    // the dialog hook runs after it and moves focus to the dialog, unless told otherwise.
+    const searchInputRef = useRef<HTMLInputElement>(null);
     useDialogFocus(spireRef, isOpen, () => {
         if (isFilterOpen) setIsFilterOpen(false);
-        else if (viewMode === 'FLOOR') handleBackToTower();
-        else onClose();
-    });
+        else stepBack();
+    }, startInSearch ? searchInputRef : undefined);
 
     if (!isOpen) return null;
 
@@ -149,8 +168,8 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
             {/* AMBIENT BACKGROUND GLOW (Root-level to cover header) */}
             {viewMode === 'FLOOR' && (
                 <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
-                    <div className={`absolute -top-[20%] -right-[20%] w-[60%] h-[60%] ${theme.isDark ? 'bg-amber-500/10 mix-blend-screen' : 'bg-violet-500/10 mix-blend-multiply'} rounded-full blur-[150px] z-10 transition-colors duration-700`} />
-                    <div className={`absolute -bottom-[20%] -left-[20%] w-[60%] h-[60%] ${theme.isDark ? 'bg-yellow-500/10 mix-blend-screen' : 'bg-violet-500/10 mix-blend-multiply'} rounded-full blur-[150px] z-10 transition-colors duration-700`} />
+                    <div className={`absolute -top-[20%] -right-[20%] w-[60%] h-[60%] bg-accent-soft ${theme.isDark ? 'mix-blend-screen' : 'mix-blend-multiply'} rounded-full blur-[150px] z-10 transition-colors duration-700`} />
+                    <div className={`absolute -bottom-[20%] -left-[20%] w-[60%] h-[60%] bg-accent-soft ${theme.isDark ? 'mix-blend-screen' : 'mix-blend-multiply'} rounded-full blur-[150px] z-10 transition-colors duration-700`} />
                 </div>
             )}
 
@@ -204,9 +223,9 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
                     </div>
                     <button
                         type="button"
-                        onClick={viewMode === 'FLOOR' ? handleBackToTower : onClose}
-                        aria-label={viewMode === 'FLOOR' ? 'Back to the tower' : 'Close Divine Spire'}
-                        title={viewMode === 'FLOOR' ? 'Back to the tower' : 'Close Divine Spire'}
+                        onClick={stepBack}
+                        aria-label={viewMode === 'FLOOR' && !searchEntry ? 'Back to the tower' : 'Close Divine Spire'}
+                        title={viewMode === 'FLOOR' && !searchEntry ? 'Back to the tower' : 'Close Divine Spire'}
                         className={`group relative p-1.5 md:p-2 ${theme.mutedText} hover:${theme.baseText} transition-all duration-300 rounded-md border border-transparent ${theme.isDark ? 'hover:border-white/10 hover:bg-white/5' : 'hover:border-stone-300 hover:bg-black/5'}`}
                     >
                         <X size={22} aria-hidden="true" className="relative z-10 transition-transform duration-500 group-hover:rotate-90" />
@@ -233,6 +252,7 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
                                         full muted strength (it was muted at 50%, ~2.3:1), and the
                                         field carries a real name. */}
                                     <input
+                                        ref={searchInputRef}
                                         type="search"
                                         aria-label="Search archives"
                                         placeholder="SEARCH ARCHIVES..."
@@ -274,9 +294,9 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
                                             <div>
                                                 <div className={`text-[10px] font-mono text-white/60 tracking-widest mb-2 uppercase flex items-center gap-1.5`}><Filter size={10} /> Classification Protocol</div>
                                                 <div className="flex flex-wrap gap-2">
-                                                    <button onClick={() => setFilterClass('ALL')} className={`px-3 py-1 text-xs font-mono rounded border ${filterClass === 'ALL' ? `${theme.isDark ? 'border-amber-500 bg-amber-500/20' : 'border-violet-500 bg-violet-500/20'} text-white` : `border-white/10 text-white/50 hover:border-white/30 hover:text-white/80`} transition-all`}>ALL</button>
+                                                    <button onClick={() => setFilterClass('ALL')} className={`px-3 py-1 text-xs font-mono rounded border ${filterClass === 'ALL' ? `border-accent-solid bg-accent-soft-strong text-white` : `border-white/10 text-white/50 hover:border-white/30 hover:text-white/80`} transition-all`}>ALL</button>
                                                     {availableClasses.map(c => (
-                                                        <button key={c} onClick={() => setFilterClass(c)} className={`px-3 py-1 text-xs font-mono rounded border ${filterClass === c ? `${theme.isDark ? 'border-amber-500 bg-amber-500/20' : 'border-violet-500 bg-violet-500/20'} text-white` : `border-white/10 text-white/50 hover:border-white/30 hover:text-white/80`} transition-all uppercase`}>{c}</button>
+                                                        <button key={c} onClick={() => setFilterClass(c)} className={`px-3 py-1 text-xs font-mono rounded border ${filterClass === c ? `border-accent-solid bg-accent-soft-strong text-white` : `border-white/10 text-white/50 hover:border-white/30 hover:text-white/80`} transition-all uppercase`}>{c}</button>
                                                     ))}
                                                 </div>
                                             </div>
@@ -284,9 +304,9 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
                                             <div>
                                                 <div className={`text-[10px] font-mono text-white/60 tracking-widest mb-2 uppercase flex items-center gap-1.5`}><Filter size={10} /> Operational Status</div>
                                                 <div className="flex flex-wrap gap-2">
-                                                    <button onClick={() => setFilterStatus('ALL')} className={`px-3 py-1 text-xs font-mono rounded border ${filterStatus === 'ALL' ? `${theme.isDark ? 'border-amber-500 bg-amber-500/20' : 'border-violet-500 bg-violet-500/20'} text-white` : `border-white/10 text-white/50 hover:border-white/30 hover:text-white/80`} transition-all`}>ALL</button>
+                                                    <button onClick={() => setFilterStatus('ALL')} className={`px-3 py-1 text-xs font-mono rounded border ${filterStatus === 'ALL' ? `border-accent-solid bg-accent-soft-strong text-white` : `border-white/10 text-white/50 hover:border-white/30 hover:text-white/80`} transition-all`}>ALL</button>
                                                     {availableStatuses.map(s => (
-                                                        <button key={s} onClick={() => setFilterStatus(s)} className={`px-3 py-1 text-xs font-mono rounded border ${filterStatus === s ? `${theme.isDark ? 'border-amber-500 bg-amber-500/20' : 'border-violet-500 bg-violet-500/20'} text-white` : `border-white/10 text-white/50 hover:border-white/30 hover:text-white/80`} transition-all uppercase`}>{s}</button>
+                                                        <button key={s} onClick={() => setFilterStatus(s)} className={`px-3 py-1 text-xs font-mono rounded border ${filterStatus === s ? `border-accent-solid bg-accent-soft-strong text-white` : `border-white/10 text-white/50 hover:border-white/30 hover:text-white/80`} transition-all uppercase`}>{s}</button>
                                                     ))}
                                                 </div>
                                             </div>
@@ -294,8 +314,11 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
                                             <div>
                                                 <div className={`text-[10px] font-mono text-white/60 tracking-widest mb-2 uppercase border-t border-white/5 pt-3 mt-1`}>Direct Access Layer</div>
                                                 <div className="grid grid-cols-5 gap-2 max-h-[130px] overflow-y-auto hide-scrollbar">
+                                                    {/* The digit is each button's only visible label. At white/40 it
+                                                        measured 3.8:1 (dark) and 3.69:1 (light) on this plate, under
+                                                        the 4.5:1 12px text needs; white/60 clears it in both. */}
                                                     {floors.map((f, i) => (
-                                                        <button key={f.index} onClick={() => { setSelectedFloorIndex(i); setIsFilterOpen(false); }} className={`p-2 text-xs font-black font-orbitron rounded border ${selectedFloorIndex === i ? `border-white text-white bg-white/10` : `border-white/5 text-white/40 hover:border-white/30 hover:text-white/80 bg-white/5`} transition-all flex items-center justify-center`}>
+                                                        <button key={f.index} type="button" aria-label={`Go to layer ${i + 1}, ${f.name}`} onClick={() => { setSelectedFloorIndex(i); setIsFilterOpen(false); }} className={`p-2 text-xs font-black font-orbitron rounded border ${selectedFloorIndex === i ? `border-white text-white bg-white/10` : `border-white/5 text-white/60 hover:border-white/30 hover:text-white/90 bg-white/5`} transition-all flex items-center justify-center`}>
                                                             {i + 1}
                                                         </button>
                                                     ))}
@@ -351,8 +374,8 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
                                             return (
                                                 <div key={item.id} className="h-full max-h-[55vh] sm:max-h-[60vh] md:max-h-[65vh] aspect-[3/4] shrink-0 snap-center transition-all duration-700 hover:scale-[1.03] group relative">
                                                     {/* Reflection Glow */}
-                                                    <div className={`absolute -bottom-6 left-1/2 -translate-x-1/2 w-3/4 h-6 bg-gradient-to-t ${theme.isDark ? 'from-amber-500/40' : 'from-violet-500/40'} to-transparent blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-700`} />
-                                                    <div className={`absolute -inset-6 ${theme.isDark ? 'bg-amber-500/10' : 'bg-violet-500/10'} blur-[40px] rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none`} />
+                                                    <div className={`absolute -bottom-6 left-1/2 -translate-x-1/2 w-3/4 h-6 bg-gradient-to-t from-accent-line to-transparent blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-700`} />
+                                                    <div className={`absolute -inset-6 bg-accent-soft blur-[40px] rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none`} />
                                                     <div className="relative z-10 w-full h-full">
                                                         <QuestCard id={`item-${item.id}`} item={item} onClick={onActivate} index={index} theme={theme} rankStyle={rawRank} />
                                                     </div>

@@ -10,7 +10,8 @@ const cloneFromTemplate = async (targetConn, templateConn) => {
         const SourceQuest = getModel(templateConn, 'Quest');
         const TargetQuest = getModel(targetConn, 'Quest');
 
-        const templateQuests = await SourceQuest.find({});
+        // Trashed template records stay out of new sandboxes.
+        const templateQuests = await SourceQuest.find({ deletedAt: null });
         
         if (templateQuests.length > 0) {
             console.log(`[INIT] Cloning ${templateQuests.length} quests from [${templateConn.name}] to [${targetConn.name}]...`);
@@ -39,7 +40,8 @@ const deduplicateDB = async (Quest) => {
     try {
         // Only _id and title are needed to decide what to drop; fetching full documents
         // pulled every synopsis across the wire on each sandbox initialisation.
-        const allQuests = await Quest.find()
+        // Live records only: a trashed copy must never win over, and delete, a live one.
+        const allQuests = await Quest.find({ deletedAt: null })
             .select('title')
             .sort({ lastRead: -1 })
             .lean();

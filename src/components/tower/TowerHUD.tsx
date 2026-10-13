@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { Quest } from '../../core/types';
 import SystemFrame from '../system/SystemFrame';
 import { getPlayerRank } from '../../utils/ranks';
-import { getProxiedImageUrl } from '../../utils/api';
+import CoverArt from '../quest/CoverArt';
 import { FLOOR_DEFS, floorIndexForItem } from './floors';
 import { Activity, Target, Layers, Database, Sword } from 'lucide-react';
 
@@ -235,9 +235,9 @@ const TowerHUD: React.FC<TowerHUDProps> = ({ items, theme, onActivate, isFocused
                         <div className="flex flex-col gap-2">
                             {recents.map(item => (
                                 <button type="button" key={item.id} onClick={() => onActivate(item.id)} className="w-full text-right group flex flex-row-reverse items-center gap-3 cursor-pointer p-1 transition-all">
-                                    <div className="w-8 h-8 lg:w-10 lg:h-10 shrink-0 overflow-hidden border border-white/5 grayscale group-hover:grayscale-0 transition-all duration-500">
-                                        <img src={getProxiedImageUrl(item.coverUrl)} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-                                    </div>
+                                    {/* A dead or missing cover hid the img and left an empty square;
+                                        CoverArt keeps a monogram plate underneath. */}
+                                    <CoverArt url={item.coverUrl} title={item.title} size="thumb" className="w-8 h-8 lg:w-10 lg:h-10 shrink-0 border border-white/5 grayscale group-hover:grayscale-0 transition-all duration-500" />
                                     <div className="flex-1 min-w-0">
                                         <div className={`text-[clamp(9px,0.9vw,11px)] font-bold truncate ${theme.headingText} group-hover:${theme.highlightText} transition-colors uppercase font-orbitron`}>{item.title}</div>
                                         <div className={`text-[clamp(8px,0.8vw,10px)] font-mono ${theme.mutedText}`}>CH. {item.currentChapter}</div>

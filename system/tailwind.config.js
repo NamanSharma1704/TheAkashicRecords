@@ -39,7 +39,28 @@ export default {
         "../src/**/*.{js,ts,jsx,tsx}",
     ],
     theme: {
-        extend: {},
+        extend: {
+            // The accent family, read from CSS custom properties that App sets on :root from
+            // the active theme (src/core/tokens.ts). One literal class serves both themes, so
+            // there is no per-theme class to forget. No opacity modifiers on these: each alpha
+            // step is its own token (soft / soft-strong / wash / line / line-strong).
+            colors: {
+                accent: {
+                    DEFAULT: 'var(--accent-color)',
+                    ink: 'var(--accent-ink)',
+                    solid: 'var(--accent-solid)',
+                    icon: 'var(--accent-icon)',
+                    soft: 'var(--accent-soft)',
+                    'soft-strong': 'var(--accent-soft-strong)',
+                    wash: 'var(--accent-wash)',
+                    line: 'var(--accent-line)',
+                    'line-strong': 'var(--accent-line-strong)',
+                    surface: 'var(--accent-surface)',
+                    edge: 'var(--accent-edge)',
+                    on: 'var(--accent-on)',
+                },
+            },
+        },
     },
     safelist: [
         ...themeClasses,

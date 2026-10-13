@@ -220,6 +220,7 @@ const TowerStructure: React.FC<TowerStructureProps> = ({ onSelectFloor, theme, o
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
                 ctx.letterSpacing = "20px";
+                // theme-color-ok: drawn on a 2D canvas, which cannot read CSS variables
                 const themeColor = isDark ? '#f59e0b' : '#5b21b6';
                 if (isDark) {
                     ctx.lineWidth = 15;

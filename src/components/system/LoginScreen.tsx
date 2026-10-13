@@ -31,6 +31,20 @@ const SectionLabel: React.FC<{ theme: Theme; children: React.ReactNode }> = ({ t
     </div>
 );
 
+/**
+ * Plain-language meaning of a sign-in error: the screen's own codes, plus the server's
+ * stock refusals. Anything unrecognised is already the server's own sentence, shown as is.
+ */
+const plainLoginError = (error: string): string | null => {
+    if (error === 'COMMUNICATION_LINK_SEVERED') return "Couldn't reach the server. Check your connection and try again.";
+    if (error === 'GUEST_LINK_SEVERED') return "Couldn't start a guest session: the server didn't answer. Try again in a moment.";
+    if (error === 'AUTHENTICATION_PROTOCOL_FAILURE') return 'Sign-in failed. Try again.';
+    if (error === 'GUEST_PROTO_FAILURE') return "Couldn't start a guest session. Try again in a moment.";
+    if (/invalid credentials/i.test(error)) return 'That ID and access key do not match.';
+    if (/too many/i.test(error)) return 'Too many attempts from this network. Wait about 15 minutes, then try again.';
+    return null;
+};
+
 const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, theme, onToggleTheme, isMobile = false }) => {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
@@ -241,9 +255,11 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, theme, onTogg
                                         role="alert"
                                         /* red-500 on red-50 measures 3.44:1, short of AA for 10px
                                            text; red-700 there is 5.9:1. The void keeps red-500 (5.2:1). */
-                                        className={`p-3 border-l-2 border-red-500 text-[10px] tracking-[0.2em] font-bold uppercase ${theme.isDark ? 'bg-red-950/30 text-red-500' : 'bg-red-50 text-red-700'}`}
+                                        className={`p-3 border-l-2 border-red-500 flex flex-col gap-1 ${theme.isDark ? 'bg-red-950/30 text-red-500' : 'bg-red-50 text-red-700'}`}
                                     >
-                                        [!] SYS_ERR: {error}
+                                        <span className="text-[10px] tracking-[0.2em] font-bold uppercase">[!] SYS_ERR: {error}</span>
+                                        {/* The System's code, then what it means in plain words. */}
+                                        {plainLoginError(error) && <span className="text-[11px] font-mono leading-snug">{plainLoginError(error)}</span>}
                                     </motion.div>
                                 )}
 

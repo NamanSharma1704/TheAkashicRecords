@@ -10,9 +10,14 @@ interface BackgroundControllerProps {
     theme: Theme;
     isPaused?: boolean;
     isMobile?: boolean;
+    /**
+     * Low-power effects: every animated layer holds a still frame (the starfield, the light
+     * aurora) or stays off (the ripples), so the background costs nothing per frame.
+     */
+    lowPower?: boolean;
 }
 
-const BackgroundController: React.FC<BackgroundControllerProps> = ({ theme, isPaused = false, isMobile = false }) => {
+const BackgroundController: React.FC<BackgroundControllerProps> = ({ theme, isPaused = false, isMobile = false, lowPower = false }) => {
     const isDivineMode = theme.id === 'LIGHT';
 
     return (
@@ -23,11 +28,11 @@ const BackgroundController: React.FC<BackgroundControllerProps> = ({ theme, isPa
                 concentric ring system is no longer here — it is the card-centred ArcaneSigil in the
                 hero now (both themes), so it stays aligned to the card instead of the viewport. */}
             {isDivineMode ? (
-                <IlluminatedCodex theme={theme} isPaused={isPaused} />
+                <IlluminatedCodex theme={theme} isPaused={isPaused || lowPower} />
             ) : (
                 <>
-                    <OmniscientField isDivineMode={isDivineMode} isPaused={isPaused} isMobile={isMobile} />
-                    {!isMobile && (
+                    <OmniscientField isDivineMode={isDivineMode} isPaused={isPaused} isMobile={isMobile} still={lowPower} />
+                    {!isMobile && !lowPower && (
                         <GoldenRipples colorRGB={theme.starColor} isPaused={isPaused} isDark={theme.isDark} />
                     )}
                 </>

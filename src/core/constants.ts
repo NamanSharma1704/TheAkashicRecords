@@ -39,6 +39,13 @@ export const THEMES: Record<ThemeId, Theme> = {
         accentColor: '#f59e0b',
         accentInk: '#f59e0b',
         warningInk: '#f59e0b',
+        // Accent family (see Theme): amber-500 throughout.
+        accentFillRGB: '245, 158, 11',
+        accentSolid: '#f59e0b',
+        accentIcon: '#f59e0b',
+        accentSurface: '#14120e',
+        accentEdge: '#f59e0b8c',
+        accentOn: '#000000',
         isDark: true
     },
     // Aureic — the light theme, an illuminated-manuscript surface: gold and lapis ink on warm
@@ -83,6 +90,13 @@ export const THEMES: Record<ThemeId, Theme> = {
         accentColor: '#7c3aed',
         accentInk: '#5b21b6',
         warningInk: '#b0431a',
+        // Accent family (see Theme): fills and lines on violet-500, icons on violet-600.
+        accentFillRGB: '139, 92, 246',
+        accentSolid: '#8b5cf6',
+        accentIcon: '#7c3aed',
+        accentSurface: '#f6f1fc',
+        accentEdge: '#7c3aed73',
+        accentOn: '#ffffff',
         isDark: false
     },
 };

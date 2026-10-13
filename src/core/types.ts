@@ -49,6 +49,25 @@ export interface Theme {
      * theme is cyan. Light uses amber-800, because amber-500 on the page is 1.84:1.
      */
     warningInk: string;
+    /*
+     * The accent FAMILY, one raw value per role. src/core/tokens.ts turns these into CSS custom
+     * properties on :root and the `accent-*` Tailwind utilities (system/tailwind.config.js) read
+     * them, so a component writes `bg-accent-soft` rather than `theme.isDark ? 'bg-amber-500/10'
+     * : 'bg-violet-500/10'`. Per-call-site ternaries like that are how violet leaked into the
+     * dark theme and cyan into the light compass: each site had to remember both themes.
+     */
+    /** RGB channels ('245, 158, 11') for the translucent fills and lines. */
+    accentFillRGB: string;
+    /** A solid accent mark: status dots, active pips. */
+    accentSolid: string;
+    /** Accent icon glyphs. */
+    accentIcon: string;
+    /** An opaque accent-tinted surface (the sidebar grip). */
+    accentSurface: string;
+    /** The accent edge drawn on that surface. */
+    accentEdge: string;
+    /** Ink on a solid accent fill. */
+    accentOn: string;
     isDark: boolean;
 }
 
@@ -80,6 +99,8 @@ export interface Quest {
     link?: string;     // CHANGED FROM readLink
     lastUpdated?: number | string; // CHANGED FROM lastRead
     synopsis?: string; // ADDED
+    /** Chapters the tracker found released since you last read on ("+N NEW"). */
+    newChapters?: number;
 }
 
 export interface User {

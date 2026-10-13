@@ -423,4 +423,74 @@ const fetchGenresOnly = async (title) => {
     }
 };
 
-module.exports = { fetchAniList, fetchMangaDex, fetchJikan, fetchBest, fetchGenresOnly };
+/** Same rule as normalizeTitle: lowercase letters and digits only. */
+const titleKey = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+
+/**
+ * Best-effort count of released chapters, for new-chapter tracking. Returns a whole number,
+ * or null when no source knows.
+ *
+ * The sources are patchy, and this is honest about it:
+ *  - MangaDex's /aggregate lists every chapter it hosts in English, ongoing series included,
+ *    but many licensed manhwa have been removed from MangaDex entirely.
+ *  - AniList (`chapters`) only reports a count once a series has FINISHED.
+ * So a match is accepted ONLY on an exact title (or alt-title) match: a fuzzy hit on the wrong
+ * series could invent hundreds of chapters. The highest figure wins, and the caller never
+ * lowers a stored total on it (a source is often behind the site you read on).
+ */
+const fetchLatestChapter = async (title) => {
+    const key = titleKey(title);
+    if (!key) return null;
+    const counts = [];
+
+    try {
+        const search = await fetchWithTimeout(
+            `https://api.mangadex.org/manga?title=${encodeURIComponent(title)}&limit=10&order[relevance]=desc&contentRating[]=safe&contentRating[]=suggestive&contentRating[]=erotica`,
+            {}, 8000
+        );
+        const data = await search.json();
+        const match = (data.data || []).find((m) => {
+            const a = m.attributes || {};
+            const titles = [...Object.values(a.title || {}), ...(a.altTitles || []).flatMap((t) => Object.values(t))];
+            return titles.some((t) => titleKey(t) === key);
+        });
+        if (match) {
+            const last = parseFloat(match.attributes.lastChapter);
+            if (Number.isFinite(last) && last > 0) counts.push(Math.floor(last));
+            const agg = await fetchWithTimeout(`https://api.mangadex.org/manga/${match.id}/aggregate?translatedLanguage[]=en`, {}, 8000);
+            const aggregate = await agg.json();
+            let highest = 0;
+            for (const volume of Object.values(aggregate.volumes || {})) {
+                for (const chapter of Object.values(volume.chapters || {})) {
+                    const n = parseFloat(chapter.chapter);
+                    if (Number.isFinite(n) && n > highest) highest = n;
+                }
+            }
+            if (highest > 0) counts.push(Math.floor(highest));
+        }
+    } catch (e) {
+        console.warn(`[Chapters] MangaDex unavailable for "${title}": ${e.message}`);
+    }
+
+    try {
+        const res = await fetchWithTimeout('https://graphql.anilist.co', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            body: JSON.stringify({
+                query: 'query ($s: String) { Media(search: $s, type: MANGA, sort: SEARCH_MATCH) { chapters title { english romaji native } synonyms } }',
+                variables: { s: title }
+            })
+        }, 8000);
+        const media = (await res.json())?.data?.Media;
+        if (media && media.chapters > 0) {
+            const names = [...Object.values(media.title || {}), ...(media.synonyms || [])];
+            if (names.some((t) => titleKey(t) === key)) counts.push(media.chapters);
+        }
+    } catch (e) {
+        console.warn(`[Chapters] AniList unavailable for "${title}": ${e.message}`);
+    }
+
+    return counts.length ? Math.max(...counts) : null;
+};
+
+module.exports = { fetchAniList, fetchMangaDex, fetchJikan, fetchBest, fetchGenresOnly, fetchLatestChapter };

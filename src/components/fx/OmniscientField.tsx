@@ -4,9 +4,11 @@ interface OmniscientFieldProps {
     isDivineMode?: boolean;
     isPaused?: boolean;
     isMobile?: boolean;
+    /** Low-power mode: draw one frame and stop, as under reduced motion. */
+    still?: boolean;
 }
 
-const OmniscientField: React.FC<OmniscientFieldProps> = ({ isDivineMode, isPaused = false, isMobile = false }) => {
+const OmniscientField: React.FC<OmniscientFieldProps> = ({ isDivineMode, isPaused = false, isMobile = false, still = false }) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const requestRef = useRef<number>();
 
@@ -35,10 +37,11 @@ const OmniscientField: React.FC<OmniscientFieldProps> = ({ isDivineMode, isPause
         // when `isPaused` flips back, so there is nothing to keep alive in the meantime.
         if (isPaused) return;
 
-        // Under reduced motion the field is drawn once and left still: the drift toward
-        // the pointer is ambient motion with no information in it.
-        const reducedMotion = typeof window.matchMedia === 'function'
-            && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        // Under reduced motion, or in low-power mode (`still`), the field is drawn once and
+        // left still: the drift toward the pointer is ambient motion with no information in
+        // it, and a still frame costs nothing per frame.
+        const reducedMotion = still || (typeof window.matchMedia === 'function'
+            && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
 
         const animate = () => {
             ctx.clearRect(0, 0, width, height);
@@ -128,7 +131,7 @@ const OmniscientField: React.FC<OmniscientFieldProps> = ({ isDivineMode, isPause
             window.removeEventListener('mousemove', handleMouse);
             if (requestRef.current) cancelAnimationFrame(requestRef.current);
         };
-    }, [isDivineMode, isPaused, isMobile]);
+    }, [isDivineMode, isPaused, isMobile, still]);
 
     return <canvas ref={canvasRef} className="fixed inset-0 z-0 pointer-events-none opacity-60" />;
 };

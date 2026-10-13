@@ -4,6 +4,7 @@ import { Theme, Quest, Rank } from '../../core/types';
 import { Fingerprint, BookOpen } from 'lucide-react';
 import { getProxiedImageUrl } from '../../utils/api';
 import RankSigil from './RankSigil';
+import CoverArt from './CoverArt';
 
 interface DivineMonolithProps {
     item: Quest;
@@ -62,7 +63,12 @@ const QuestCard = React.memo<DivineMonolithProps>(({ item, onClick, index, id, t
                     <div className={`mt-4 text-[10px] font-mono ${theme.mutedText} tracking-[0.3em] uppercase transition-colors duration-700`}>Stasis Locked</div>
                 </div>
                 <div className="absolute inset-0 z-10 opacity-40 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity duration-700 grayscale group-hover:grayscale-0 group-focus-visible:grayscale-0">
-                    <motion.img layoutId={`cover-${item.id}`} src={getProxiedImageUrl(item.coverUrl)} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                    {/* The monogram plate sits under the cover: a missing or dead cover (the
+                        img hides itself on error) used to leave the card an empty panel. */}
+                    <CoverArt title={item.title} size="card" className="absolute inset-0" />
+                    {item.coverUrl && (
+                        <motion.img layoutId={`cover-${item.id}`} src={getProxiedImageUrl(item.coverUrl)} alt="" className="relative w-full h-full object-cover" referrerPolicy="no-referrer" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                    )}
                     <div className={`absolute inset-0 bg-gradient-to-t ${theme.isDark ? 'from-black via-black/20' : 'from-black via-black/20'} to-transparent transition-colors duration-700`} />
                 </div>
                 <div className={`absolute inset-0 border-2 ${rankStyle.border} opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity duration-500 shadow-[inset_0_0_30px_currentColor]`} />

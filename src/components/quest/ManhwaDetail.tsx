@@ -9,6 +9,7 @@ import { useDialogFocus } from '../../utils/useDialogFocus';
 import { Theme, Quest } from '../../core/types';
 import ScrambleText from '../system/ScrambleText';
 import RankSigil from './RankSigil';
+import CoverArt from './CoverArt';
 import { getQuestRankObj } from '../../utils/ranks';
 import './ManhwaDetail.css';
 
@@ -108,6 +109,9 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
 
     const isCustomCover = !!(quest?.coverUrl && quest.coverUrl !== "");
     const finalCover = isCustomCover ? quest.coverUrl : (media?.coverImage?.extraLarge || media?.coverImage?.large || quest?.coverUrl || "");
+    // The cover URL that failed to load. Keyed by URL, so a different cover (metadata arriving,
+    // or another record) gets its own attempt.
+    const [failedCover, setFailedCover] = useState<string | null>(null);
 
     // Same-class entries from the library, used by the SIMILAR_RECORDS row far below.
     //
@@ -382,15 +386,21 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                 <span className={`absolute -bottom-px -left-px w-3 h-3 border-b-2 border-l-2 ${accentBorder} z-20`} style={bracketStyle} />
                                 <span className={`absolute -bottom-px -right-px w-3 h-3 border-b-2 border-r-2 ${accentBorder} z-20`} style={bracketStyle} />
                                 <div className="relative aspect-[2/3] rounded-md overflow-hidden border border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.5)]">
-                                    <motion.img
-                                        layoutId={`cover-${quest.id}`}
-                                        src={getProxiedImageUrl(finalCover)}
-                                        alt={`Cover art for ${quest.title}`}
-                                        width={280}
-                                        height={420}
-                                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
-                                        referrerPolicy="no-referrer"
-                                    />
+                                    {/* Monogram plate underneath; the poster hides itself if it fails,
+                                        instead of showing a broken-image icon with its alt text. */}
+                                    <CoverArt title={quest.title} size="card" className="absolute inset-0" />
+                                    {finalCover && failedCover !== finalCover && (
+                                        <motion.img
+                                            layoutId={`cover-${quest.id}`}
+                                            src={getProxiedImageUrl(finalCover)}
+                                            alt={`Cover art for ${quest.title}`}
+                                            width={280}
+                                            height={420}
+                                            onError={() => setFailedCover(finalCover)}
+                                            className="relative w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
+                                            referrerPolicy="no-referrer"
+                                        />
+                                    )}
                                     {/* Scanline sweep */}
                                     <div className={`absolute left-0 right-0 h-[2px] ${accentBg} opacity-70 pointer-events-none manhwa-detail-cover-scan`} />
                                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
@@ -533,7 +543,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                 <textarea
                                     value={draftSynopsis}
                                     onChange={(e) => setDraftSynopsis(e.target.value)}
-                                    className={`w-full h-48 rounded-lg p-4 text-sm font-sans resize-y shadow-inner transition-colors focus:outline-none focus-visible:ring-2 ${theme.isDark ? 'bg-black/40 border border-white/10 text-white/90 focus-visible:ring-amber-400/60' : 'bg-white/80 border border-stone-400 text-stone-800 focus-visible:ring-violet-400/60'}`}
+                                    className={`w-full h-48 rounded-lg p-4 text-sm font-sans resize-y shadow-inner transition-colors focus:outline-none focus-visible:ring-2 ${theme.isDark ? 'bg-black/40 border border-white/10 text-white/90' : 'bg-white/80 border border-stone-400 text-stone-800'} focus-visible:ring-accent-line-strong`}
                                     placeholder="Enter custom synopsis override…"
                                     aria-label="Custom synopsis override"
                                 />

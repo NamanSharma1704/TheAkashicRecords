@@ -27,3 +27,15 @@ jobs:
           curl -sf -X POST \
             -H "x-system-secret: $SYSTEM_ADMIN_SECRET" \
             https://the-akashic-records.vercel.app/api/admin/reap-sandboxes
+
+      # New-chapter tracking: each run checks the 15 least-recently-checked ACTIVE/PLANNED
+      # series against MangaDex and AniList, so the whole library is covered over the day.
+      # Best-effort by design: a failed run is retried by the next one.
+      - name: Check for new chapters
+        env:
+          SYSTEM_ADMIN_SECRET: ${{ secrets.SYSTEM_ADMIN_SECRET }}
+        run: |
+          if [ -z "$SYSTEM_ADMIN_SECRET" ]; then exit 0; fi
+          curl -s -X POST --max-time 58 \
+            -H "x-system-secret: $SYSTEM_ADMIN_SECRET" \
+            "https://the-akashic-records.vercel.app/api/admin/sync-chapters?limit=15" || true

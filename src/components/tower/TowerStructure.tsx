@@ -236,15 +236,22 @@ const TowerStructure: React.FC<TowerStructureProps> = ({ onSelectFloor, theme, o
                     ctx.shadowOffsetY = 0;
                     ctx.fillText(text, canvas.width / 2, 512);
                 } else {
-                    // A pale halo under the ink, as dark has its amber stroke: labels now draw
-                    // over the rock, and violet ink on the violet crystal faces vanished.
+                    // A pale capsule under the ink, the light theme's panel in miniature. Labels
+                    // draw over the rock, and violet ink on the violet crystal faces vanished;
+                    // a thin pale stroke was tried first, but at label size it blended with the
+                    // ink into lavender. The capsule keeps the ink on its own ground.
                     ctx.shadowColor = 'transparent';
                     ctx.shadowBlur = 0;
-                    ctx.lineJoin = 'round';
-                    ctx.lineWidth = 36;
-                    ctx.strokeStyle = 'rgba(251, 249, 255, 0.92)';
-                    ctx.strokeText(text, canvas.width / 2, 512);
-                    ctx.fillStyle = themeColor;
+                    const plateW = canvas.width - 20;
+                    const plateH = 560;
+                    const x0 = 10;
+                    const y0 = 512 - plateH / 2;
+                    ctx.fillStyle = 'rgba(251, 249, 255, 0.9)';
+                    ctx.beginPath();
+                    if (ctx.roundRect) ctx.roundRect(x0, y0, plateW, plateH, plateH / 2);
+                    else ctx.rect(x0, y0, plateW, plateH);
+                    ctx.fill();
+                    ctx.fillStyle = '#4c1d95'; // theme-color-ok: canvas ink; violet-900 on the capsule
                     ctx.fillText(text, canvas.width / 2, 512);
                 }
                 if (tex) tex.needsUpdate = true;
@@ -267,8 +274,9 @@ const TowerStructure: React.FC<TowerStructureProps> = ({ onSelectFloor, theme, o
             label.renderOrder = 10;
             label.center.set(0, 0.5);
             label.position.set(s * 1.35 + 3, s * 0.4, 0);
-            label.userData = { type: 'floor', index: i };
+            // `aspect` and `baseScale` feed the per-frame minimum size (see LABEL_MIN_PX).
             const scaleY = isMobile ? 3.5 : 5;
+            label.userData = { type: 'floor', index: i, aspect: canvas.width / canvas.height, baseScale: scaleY };
             label.scale.set(scaleY * (canvas.width / canvas.height), scaleY, 1);
             isle.add(label);
             disposables.push(labelMat, labelTex);
@@ -616,6 +624,9 @@ const TowerStructure: React.FC<TowerStructureProps> = ({ onSelectFloor, theme, o
         const reduceMotion = typeof window.matchMedia === 'function'
             && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
         const AUTO_SPIN_SPEED = reduceMotion ? 0 : 0.05;
+        // Minimum on-screen height of a floor label's sprite. The letters fill ~27% of it
+        // (400px Orbitron caps on a 1024px canvas), so 40px gives ~11px capitals.
+        const LABEL_MIN_PX = 40;
         const tempVec = new THREE.Vector3();
 
         const animate = () => {
@@ -655,15 +666,33 @@ const TowerStructure: React.FC<TowerStructureProps> = ({ onSelectFloor, theme, o
                 mp.needsUpdate = true;
             }
 
+            // World units per screen pixel at the tower's depth, for the label floor.
+            const viewW = mountRef.current?.clientWidth || window.innerWidth;
+            const worldPerPx = (2 * zPos * Math.tan((camera.fov * Math.PI) / 360)) / (mountRef.current?.clientHeight || window.innerHeight);
+            const LABEL_EDGE_PX = 8;
+
             // Hover styling & focus highlight
             floorObjects.forEach((obj, idx) => {
                 const isHover = (obj.hitbox === hoveredFloor) || (focusedFloorIndex === idx);
                 obj.edges.forEach(e => { e.material = isHover ? edgeHoverMat : edgeMat; });
                 obj.pad.material = isHover ? padHoverMat : padMat;
                 obj.label.material.opacity = isHover ? 1 : 0.8;
+                // Never smaller than LABEL_MIN_PX on screen: a fixed world size let the names
+                // shrink to ~4px letters at tablet widths, where the camera sits far back.
+                const { aspect, baseScale } = obj.label.userData;
+                const sy = Math.max(baseScale, LABEL_MIN_PX * worldPerPx);
+                obj.label.scale.set(sy * aspect, sy, 1);
                 obj.label.getWorldPosition(tempVec);
-                const anchorX = Math.max(0, Math.min(1, 0.5 - (tempVec.x / 36)));
-                obj.label.center.set(anchorX, 0.5);
+                // Lean outward from the spiral's centre (the original anchor), then clamp so
+                // the whole label stays on screen: at the larger phone sizes the far-left and
+                // far-right names ran off the edge.
+                const preferred = Math.max(0, Math.min(1, 0.5 - (tempVec.x / 36)));
+                const labelPx = (sy * aspect) / worldPerPx;
+                const posPx = ((tempVec.project(camera).x + 1) / 2) * viewW;
+                const minA = (posPx + labelPx - (viewW - LABEL_EDGE_PX)) / labelPx; // keeps the right edge in
+                const maxA = (posPx - LABEL_EDGE_PX) / labelPx;                      // keeps the left edge in
+                const anchorX = minA > maxA ? 0.5 : Math.max(minA, Math.min(maxA, preferred));
+                obj.label.center.set(Math.max(0, Math.min(1, anchorX)), 0.5);
             });
 
             // Raycast

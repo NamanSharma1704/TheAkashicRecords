@@ -1987,17 +1987,22 @@ const COVER_RECHECK_MS = 7 * 24 * 60 * 60 * 1000;
 
 /**
  * True when the metadata is plainly the same series: one of its titles normalizes to the
- * record's, or starts with it ("Omniscient Reader" -> "Omniscient Reader's Viewpoint").
- * AUTO's scoring will return a loose match rather than nothing, and a wrong cover is worse
- * than the monogram plate, so anything looser is left alone.
+ * record's, or starts with it and adds one word at most ("Omniscient Reader" -> "Omniscient
+ * Reader's Viewpoint"). The limit is what stops "Necromancer Academy" from taking the cover
+ * of "Necromancer Academy's Genius Summoner" (two more words, a different name). AUTO's
+ * scoring will return a loose match rather than nothing, and a wrong cover is worse than the
+ * monogram plate; a cover the rule misses can still be set by hand.
  */
+const wordCount = (s) => String(s).trim().split(/\s+/).filter(Boolean).length;
 const sameSeries = (questTitle, data) => {
     const want = normalizeTitle(questTitle);
     if (want.length < 4) return false;
-    const names = [data?.title?.english, data?.title?.romaji, ...(data?.altTitles || [])]
-        .filter(Boolean)
-        .map(normalizeTitle);
-    return names.some((n) => n === want || (want.length >= 8 && n.startsWith(want)));
+    const names = [data?.title?.english, data?.title?.romaji, ...(data?.altTitles || [])].filter(Boolean);
+    return names.some((name) => {
+        const n = normalizeTitle(name);
+        return n === want
+            || (want.length >= 8 && n.startsWith(want) && wordCount(name) - wordCount(questTitle) <= 1);
+    });
 };
 
 /**

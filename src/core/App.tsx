@@ -15,6 +15,7 @@ import BackgroundController from '../components/fx/BackgroundController';
 import EntityAvatar from '../components/system/EntityAvatar';
 import SystemNotification from '../components/system/SystemNotification';
 import SystemToast, { ToastSpec } from '../components/system/SystemToast';
+import ErrorBoundary from '../components/system/ErrorBoundary';
 import SystemCompass from '../components/system/SystemCompass';
 import ChapterField from '../components/quest/ChapterField';
 import { FLOOR_DEFS, floorIndexForItem } from '../components/tower/floors';
@@ -2394,6 +2395,9 @@ const App: React.FC = () => {
                     <SystemConsole theme={theme} onShowShortcuts={showShortcuts} />
                 )}
 
+            {/* Each overlay has its own boundary, outside its Suspense so a chunk that fails
+                to load is caught too: a fault closes that view, not the whole app. */}
+            <ErrorBoundary scope="the profile" dark={theme.isDark} onDismiss={() => setIsProfileOpen(false)}>
             <Suspense fallback={<HeavyLoader theme={theme} />}>
                 {isProfileOpen && (
                     <HunterProfile
@@ -2417,7 +2421,9 @@ const App: React.FC = () => {
                     />
                 )}
             </Suspense>
+            </ErrorBoundary>
 
+            <ErrorBoundary scope="the record view" dark={theme.isDark} onDismiss={() => setIsDetailOpen(false)}>
             <Suspense fallback={<HeavyLoader theme={theme} />}>
                 {isDetailOpen && (
                     <ManhwaDetail
@@ -2442,7 +2448,9 @@ const App: React.FC = () => {
                     />
                 )}
             </Suspense>
+            </ErrorBoundary>
 
+            <ErrorBoundary scope="the Divine Spire" dark={theme.isDark} onDismiss={() => { setIsSpireOpen(false); setSpireStartInSearch(false); }}>
             <Suspense fallback={<HeavyLoader theme={theme} />}>
                 {isSpireOpen && (
                     <div className="fixed inset-0 z-[200]">
@@ -2461,8 +2469,10 @@ const App: React.FC = () => {
                     </div>
                 )}
             </Suspense>
+            </ErrorBoundary>
 
 
+            <ErrorBoundary scope="the editor" dark={theme.isDark} onDismiss={() => { setIsModalOpen(false); setEditingItem(null); }}>
             <Suspense fallback={null}>
                 <AnimatePresence>
                     {isModalOpen && (
@@ -2478,6 +2488,7 @@ const App: React.FC = () => {
                     )}
                 </AnimatePresence>
             </Suspense>
+            </ErrorBoundary>
 
 
             {/* HUD / SYSTEM OVERLAYS (HOLOGRAPHIC) */}

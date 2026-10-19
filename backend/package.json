@@ -6,7 +6,5 @@
     "start": "node server.js",
     "dev": "nodemon server.js"
   },
-  "type": "commonjs",
-  "comment": "Runtime dependencies are hoisted from the root manifest, which is what Vercel installs for the lambda. The scraper stack (axios/cheerio/playwright/playwright-chromium/string-similarity/node-cache) was removed along with the reader feature it served.",
-  "dependencies": {}
+  "type": "commonjs"
 }

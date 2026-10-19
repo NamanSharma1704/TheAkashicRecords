@@ -35,7 +35,7 @@ const SystemConsole: React.FC<SystemConsoleProps> = ({ theme, onShowShortcuts })
             <div className="flex items-center gap-3 w-full max-w-[1920px] mx-auto">
                 <Activity size={10} className={`${theme.highlightText} animate-pulse transition-colors duration-700`} />
                 <span className={`${theme.highlightText} font-bold opacity-100 transition-colors duration-700`}>OMNI_LOG //</span>
-                <span className={`truncate ${theme.headingText} font-bold opacity-100 transition-colors duration-700`}>{sysLog.msg}</span>
+                <span className={`truncate ${theme.headingText} font-bold opacity-100 transition-colors duration-700`}>{sysLog}</span>
                 {onShowShortcuts && (
                     <button
                         type="button"

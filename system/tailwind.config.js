@@ -66,9 +66,6 @@ export default {
     safelist: [
         ...themeClasses,
         ...VARIANTS.flatMap(v => themeClasses.map(c => `${v}:${c}`)),
-        // Not theme tokens, so constants.ts never mentions them: the rank and error-state
-        // colours. (These were once returned by getThemedRankStyle, since removed as dead.)
-        'text-cyan-400', 'text-red-500', 'bg-slate-50', 'bg-black',
     ],
     plugins: [],
 }

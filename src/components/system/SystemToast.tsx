@@ -4,7 +4,7 @@ import { AlertTriangle, CheckCircle, Info, XCircle, X } from 'lucide-react';
 import { Theme } from '../../core/types';
 import SystemFrame from './SystemFrame';
 
-export type ToastTone = 'INFO' | 'SUCCESS' | 'WARNING' | 'ERROR';
+type ToastTone = 'INFO' | 'SUCCESS' | 'WARNING' | 'ERROR';
 
 export interface ToastSpec {
     /** Unique per toast; a new id restarts the timer even when the text is unchanged. */

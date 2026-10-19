@@ -32,7 +32,6 @@ interface AniListCharacter {
 }
 
 interface AniListMedia {
-    id: number;
     title: { english: string; romaji: string; native: string };
     description: string;
     coverImage: { extraLarge: string; large: string };
@@ -153,7 +152,6 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
     // Manual Data for OEL/Missing Titles
     const MANUAL_METADATA: Record<string, AniListMedia> = {
         "The Beginning After The End": {
-            id: 999999,
             title: {
                 english: "The Beginning After The End",
                 romaji: "The Beginning After The End",

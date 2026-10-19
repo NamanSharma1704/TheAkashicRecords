@@ -8,7 +8,6 @@ import { useDialogFocus } from '../../utils/useDialogFocus';
 import { systemFetch } from '../../utils/auth';
 
 interface SystemGateModalProps {
-    isOpen: boolean;
     onClose: () => void;
     onSave: (data: Partial<Quest>) => void;
     onDelete: () => void;

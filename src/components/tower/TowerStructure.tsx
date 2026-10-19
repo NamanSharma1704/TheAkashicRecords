@@ -18,7 +18,6 @@ interface TowerStructureProps {
     theme: { isDark: boolean };
     onFocus?: (isFocused: boolean, floorIndex?: number) => void;
     items?: any[]; // Pass items to detect empty floors
-    itemsPerFloor?: number;
     isPaused?: boolean;
 }
 

@@ -12,7 +12,6 @@ interface TowerHUDProps {
     onActivate: (id: string) => void;
     isFocused?: boolean;
     selectedFloorIndex?: number;
-    itemsPerFloor?: number;
     streak?: number;
     dailyAbsorbed?: number;
 }

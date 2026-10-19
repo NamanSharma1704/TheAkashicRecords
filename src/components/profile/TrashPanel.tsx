@@ -10,7 +10,6 @@ interface TrashedQuest {
     title: string;
     currentChapter: number;
     totalChapters: number;
-    deletedAt: string;
     purgeAt: string;
 }
 

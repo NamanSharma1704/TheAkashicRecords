@@ -7,7 +7,7 @@ import SystemLogo from '../components/system/SystemLogo';
 import ScrambleText from '../components/system/ScrambleText';
 import { Activity, ExternalLink, Sun, Moon, Plus, Zap, Crown, X, LayoutTemplate, GripVertical, ChevronLeft, ChevronRight, LogOut, RefreshCw, Search } from 'lucide-react';
 import { getPlayerRank, calculateQuestRank, USER_RANKS } from '../utils/ranks';
-import { THEMES, ITEMS_PER_FLOOR, ThemeId } from './constants';
+import { THEMES, ThemeId } from './constants';
 
 import SystemConsole from '../components/system/SystemConsole';
 import BootScreen from '../components/system/BootScreen';
@@ -2226,7 +2226,7 @@ const App: React.FC = () => {
 
                                     <div className="flex flex-col items-start text-left flex-1 min-w-0 sm:-mt-6">
                                         <div className={`text-[10px] font-black font-mono uppercase tracking-[0.2em] mb-1 mt-0.5 opacity-90 transition-colors duration-700 whitespace-nowrap ${theme.isDark ? theme.highlightText : `text-transparent bg-clip-text bg-gradient-to-r ${theme.labelGradient}`}`}>ENTITY CLASSIFICATION</div>
-                                        <div className="text-3xl sm:text-4xl lg:text-2xl xl:text-4xl font-black font-manifold tracking-tight drop-shadow-sm flex items-baseline leading-normal overflow-hidden h-[1.5em] sm:h-[1.5em] lg:h-[1.8em] xl:h-[1.5em]">
+                                        <div className="text-3xl sm:text-4xl lg:text-2xl xl:text-4xl font-black font-orbitron tracking-tight drop-shadow-sm flex items-baseline leading-normal overflow-hidden h-[1.5em] sm:h-[1.5em] lg:h-[1.8em] xl:h-[1.5em]">
                                             <span className={`inline-block pr-[6px] text-transparent bg-clip-text bg-gradient-to-r ${theme.inkGradient} transition-colors duration-700 truncate`} style={{ lineHeight: '1.2' }}>{playerRank.name}</span>
                                         </div>
                                     </div>
@@ -2461,7 +2461,6 @@ const App: React.FC = () => {
                             theme={theme}
                             items={spireItems}
                             onActivate={handleActivate}
-                            itemsPerFloor={ITEMS_PER_FLOOR}
                             playerRank={playerRank}
                             streak={userState.streak}
                             dailyAbsorbed={userState.dailyAbsorbed}
@@ -2477,7 +2476,6 @@ const App: React.FC = () => {
                 <AnimatePresence>
                     {isModalOpen && (
                         <SystemGateModal
-                            isOpen={isModalOpen}
                             onClose={() => setIsModalOpen(false)}
                             onSave={handleSave}
                             onDelete={deleteQuest}

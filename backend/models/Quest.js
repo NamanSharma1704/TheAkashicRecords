@@ -36,7 +36,4 @@ const QuestSchema = new mongoose.Schema({
     collection: 'manhwas'
 });
 
-module.exports = {
-    QuestSchema,
-    Quest: mongoose.models.Quest || mongoose.model('Quest', QuestSchema)
-};
+module.exports = { QuestSchema };

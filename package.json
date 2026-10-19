@@ -8,8 +8,7 @@
     "dev-frontend": "cd system && vite",
     "build": "cd system && npm run build",
     "lint": "eslint src backend api --ext js,jsx,ts,tsx --report-unused-disable-directives",
-    "type-check": "cd system && npx tsc --noEmit",
-    "postinstall": "echo 'Root dependencies installed. Sub-modules will use root packages when possible.'"
+    "type-check": "cd system && npx tsc --noEmit"
   },
   "dependencies": {
     "@vitejs/plugin-react": "^4.2.1",

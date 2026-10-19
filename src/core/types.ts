@@ -72,16 +72,13 @@ export interface Theme {
 
 export interface Rank {
     name: string;
-    threshold: number;
     color: string;
     bg: string;
     border?: string;
-    glow?: string;
 }
 
 export interface Quest {
     id: string;      // The frontend ID, mapped from MongoDB _id
-    _id?: string;    // The actual MongoDB ID
     title: string;
     coverUrl?: string; // CHANGED FROM cover
     totalChapters: number;

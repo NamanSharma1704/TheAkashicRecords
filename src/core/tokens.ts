@@ -25,7 +25,6 @@ export const accentVars = (theme: Theme): Record<string, string> => ({
     '--accent-color': theme.accentColor,
     '--accent-ink': theme.accentInk,
     '--accent-glow': `${theme.accentColor}88`,
-    '--accent-faint': `${theme.accentColor}22`,
     '--accent-solid': theme.accentSolid,
     '--accent-icon': theme.accentIcon,
     '--accent-soft': `rgba(${theme.accentFillRGB}, 0.10)`,

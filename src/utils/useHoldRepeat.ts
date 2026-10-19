@@ -7,7 +7,7 @@ const HOLD_DELAY_MS = 380;
 /** Repeat interval by how long the press has been held: it speeds up the longer you hold. */
 const repeatInterval = (heldMs: number) => (heldMs > 2200 ? 45 : heldMs > 1100 ? 80 : 130);
 
-export interface HoldRepeatHandlers {
+interface HoldRepeatHandlers {
     onPointerDown: (e: React.PointerEvent<HTMLElement>) => void;
     onPointerUp: () => void;
     onPointerCancel: () => void;

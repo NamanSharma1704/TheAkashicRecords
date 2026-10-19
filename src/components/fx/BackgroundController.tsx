@@ -28,7 +28,7 @@ const BackgroundController: React.FC<BackgroundControllerProps> = ({ theme, isPa
                 concentric ring system is no longer here — it is the card-centred ArcaneSigil in the
                 hero now (both themes), so it stays aligned to the card instead of the viewport. */}
             {isDivineMode ? (
-                <IlluminatedCodex theme={theme} isPaused={isPaused || lowPower} />
+                <IlluminatedCodex isPaused={isPaused || lowPower} />
             ) : (
                 <>
                     <OmniscientField isDivineMode={isDivineMode} isPaused={isPaused} isMobile={isMobile} still={lowPower} />

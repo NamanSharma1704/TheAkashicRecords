@@ -12,7 +12,7 @@ import { Quest } from '../../core/types';
  * Index 0 is the base isle, the last index the summit. `label` is the short all-caps tag the 3D
  * sprite can carry without overflowing; `name` and `meaning` are the fuller forms the HUD shows.
  */
-export interface FloorDef {
+interface FloorDef {
     label: string;
     name: string;
     meaning: string;

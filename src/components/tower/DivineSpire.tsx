@@ -16,8 +16,7 @@ interface DivineSpireProps {
     theme: Theme;
     items: Quest[];
     onActivate: (id: string) => void;
-    itemsPerFloor: number;
-    playerRank: { name: string; color: string };
+    playerRank: { name: string };
     streak: number;
     dailyAbsorbed: number;
     /**
@@ -28,7 +27,7 @@ interface DivineSpireProps {
     startInSearch?: boolean;
 }
 
-const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items, onActivate, itemsPerFloor, playerRank, streak, dailyAbsorbed, startInSearch = false }) => {
+const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items, onActivate, playerRank, streak, dailyAbsorbed, startInSearch = false }) => {
     // TOWER SYSTEM STATE
     const [viewMode, setViewMode] = useState<'TOWER' | 'FLOOR'>(startInSearch ? 'FLOOR' : 'TOWER');
     // Entered by "/" to search: stepping "back" from that floor view means leaving the Spire,
@@ -176,8 +175,8 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
             {/* TOWER BACKGROUND LAYER (FULLSCREEN) */}
             {viewMode === 'TOWER' && (
                 <div className="absolute inset-0 z-0 animate-in fade-in duration-700">
-                    <TowerHUD items={items} theme={theme} onActivate={onActivate} isFocused={isFocused} selectedFloorIndex={selectedFloorIndex} itemsPerFloor={itemsPerFloor} streak={streak} dailyAbsorbed={dailyAbsorbed} />
-                    <TowerStructure theme={theme} onSelectFloor={handleSelectFloor} onFocus={handleFocus} items={items} itemsPerFloor={itemsPerFloor} isPaused={false} />
+                    <TowerHUD items={items} theme={theme} onActivate={onActivate} isFocused={isFocused} selectedFloorIndex={selectedFloorIndex} streak={streak} dailyAbsorbed={dailyAbsorbed} />
+                    <TowerStructure theme={theme} onSelectFloor={handleSelectFloor} onFocus={handleFocus} items={items} isPaused={false} />
                 </div>
             )}
 

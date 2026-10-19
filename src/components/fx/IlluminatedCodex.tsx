@@ -1,6 +1,5 @@
 import React, { useMemo } from 'react';
 import { motion, useReducedMotion } from 'motion/react';
-import { Theme } from '../../core/types';
 
 /**
  * The light theme's living atmosphere — the flowing motion over the radiant amethyst sky that
@@ -20,7 +19,6 @@ const frac = (n: number) => n - Math.floor(n);
 const hash = (n: number, seed: number) => frac(Math.sin(n * seed) * 43758.5453123);
 
 interface Props {
-    theme: Theme;
     isPaused?: boolean;
 }
 

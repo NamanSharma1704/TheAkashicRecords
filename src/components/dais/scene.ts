@@ -19,7 +19,7 @@ export interface DaisHandle {
     dispose: () => void;
 }
 
-export interface DaisOptions {
+interface DaisOptions {
     /**
      * Element the renderer's canvas is appended to.
      *

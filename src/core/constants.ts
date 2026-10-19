@@ -83,9 +83,9 @@ export const THEMES: Record<ThemeId, Theme> = {
         isDark: false
     },
 };
+/** The footer console cycles through these. */
 export const SYSTEM_LOGS = [
-    { type: 'init', msg: 'System initializing...', time: 0 },
-    { type: 'scan', msg: 'Scanning neural pathways...', time: 800 },
-    { type: 'link', msg: 'Establishing connection to the Spire...', time: 1600 }
+    'System initializing...',
+    'Scanning neural pathways...',
+    'Establishing connection to the Spire...',
 ];
-export const ITEMS_PER_FLOOR = 20;

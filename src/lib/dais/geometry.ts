@@ -29,7 +29,7 @@ export const MEASUREMENT = {
     projection: 'long-lens (locally orthographic)',
 } as const;
 
-export interface Tier {
+interface Tier {
     /** Outer radius of this step's top face. */
     rOuter: number;
     /** Inner radius; the next tier up starts here. */

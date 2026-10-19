@@ -755,7 +755,7 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                                 <div className="order-last basis-full sm:order-none sm:basis-0 flex flex-col justify-start flex-1 min-w-0">
                                     <div className="text-[9px] lg:text-[10px] font-mono tracking-[0.2em] font-bold uppercase mb-0.5 text-accent-plate">HUNTER DESIGNATION</div>
                                     <div className="drop-shadow-sm leading-normal overflow-hidden">
-                                        <span className={`inline-block pr-[6px] text-4xl sm:text-5xl lg:text-[56px] font-black font-manifold tracking-tight text-transparent bg-clip-text bg-gradient-to-r ${theme.isDark ? theme.inkGradient : 'from-[#c4b5fd] via-[#ddd6fe] to-white'} mb-4`}>
+                                        <span className={`inline-block pr-[6px] text-4xl sm:text-5xl lg:text-[56px] font-black font-orbitron tracking-tight text-transparent bg-clip-text bg-gradient-to-r ${theme.isDark ? theme.inkGradient : 'from-[#c4b5fd] via-[#ddd6fe] to-white'} mb-4`}>
                                             {playerRank.name}
                                         </span>
                                     </div>

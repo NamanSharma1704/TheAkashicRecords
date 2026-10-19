@@ -1,5 +1,4 @@
 {
-    "version": 2,
     "outputDirectory": "dist",
     "rewrites": [
         {
@@ -7,7 +6,7 @@
             "destination": "/api/index.js"
         },
         {
-            "source": "/((?!assets|public|favicon.ico).*|[^.]+)",
+            "source": "/((?!api/)[^.]*)",
             "destination": "/index.html"
         }
     ],
@@ -31,6 +30,12 @@
                     "value": "geolocation=(), microphone=(), camera=(), payment=(), usb=(), interest-cohort=()"
                 },
                 { "key": "Cross-Origin-Opener-Policy", "value": "same-origin" }
+            ]
+        },
+        {
+            "source": "/assets/(.*)",
+            "headers": [
+                { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
             ]
         }
     ],

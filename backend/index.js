@@ -2004,6 +2004,13 @@ app.post('/api/admin/backfill-covers', async (req, res) => {
     }
 });
 
+// ─── UNKNOWN ENDPOINTS ────────────────────────────────────────────────────────
+// Registered after every route. Vercel sends only /api traffic here, and an unknown path
+// used to get Express's default HTML page ("Cannot GET /api/…") from a JSON API.
+app.use((req, res) => {
+    res.status(404).json({ message: 'No such endpoint.' });
+});
+
 // ─── TERMINAL ERROR HANDLER ───────────────────────────────────────────────────
 // Last line of defence. Without this, anything thrown outside a route's own try/catch
 // (a malformed JSON body, for instance) reaches Express's default handler, which returns

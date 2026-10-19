@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, useReducedMotion } from 'motion/react';
-import { X, Users, Share2, Zap, Edit2, Target, AlignLeft, Check, Activity, ExternalLink } from 'lucide-react';
+import { X, Users, Share2, Zap, Edit2, Target, AlignLeft, Check, Activity, ExternalLink, Crown } from 'lucide-react';
 import { getProxiedImageUrl, cleanDescription } from '../../utils/api';
 import { systemFetch } from '../../utils/auth';
 import { sanitizeHtml } from '../../utils/sanitize';
@@ -112,6 +112,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
     // The cover URL that failed to load. Keyed by URL, so a different cover (metadata arriving,
     // or another record) gets its own attempt.
     const [failedCover, setFailedCover] = useState<string | null>(null);
+    const [conquering, setConquering] = useState(false);
 
     // Same-class entries from the library, used by the SIMILAR_RECORDS row far below.
     //
@@ -238,14 +239,17 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
     // previous `bg-${theme.accent}-500/10` form built classes Tailwind never generated
     // (accent = yellow/indigo, absent from safelist and source), so every badge except
     // FINISHED rendered with no colour at all.
+    // Light used pale -300 inks from when this backdrop was dark; on the lilac backdrop
+    // "ONGOING" measured 1.24:1. Light now takes the CLASS chip's construction: a near-white
+    // plate with deep ink, so the badge reads whatever the aura behind it does.
     const getStatusColor = (status: string) => {
         const finished = ['FINISHED', 'COMPLETED'].includes((status || '').toUpperCase());
         if (finished) return theme.isDark
             ? 'bg-amber-500/10 text-amber-400 border-amber-500/30'
-            : 'bg-indigo-500/15 text-indigo-300 border-indigo-500/40';
+            : 'bg-indigo-50 text-indigo-900 border-indigo-400';
         return theme.isDark
             ? 'bg-amber-500/10 text-amber-400 border-amber-500/30'
-            : 'bg-violet-500/15 text-violet-300 border-violet-500/40';
+            : 'bg-violet-50 text-violet-900 border-violet-400';
     };
 
     const containerVariants = {
@@ -297,6 +301,11 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
     const progress = totalCh > 0 ? Math.min(1, quest.currentChapter / totalCh) : 0;
     const TICKS = 40;
     const filledTicks = Math.round(TICKS * progress);
+
+    // Caught up on a series its source reports as finished: there is nothing left to wait
+    // for, so offer to close it (CONQUERED) instead of leaving it among the active ones.
+    const sourceFinished = ['FINISHED', 'COMPLETED'].includes((media?.status || '').toUpperCase());
+    const canConquer = !!onUpdate && sourceFinished && quest.status !== 'CONQUERED' && totalCh > 0 && quest.currentChapter >= totalCh;
 
     return (
 
@@ -470,6 +479,26 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                     <span className="text-[10px] tracking-[0.2em] font-orbitron">MARK_TARGET</span>
                                 </button>
                             </div>
+
+                            {canConquer && (
+                                <div className="mt-4 w-full max-w-md flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 rounded-sm border border-accent-line bg-accent-soft text-left">
+                                    <Crown size={16} aria-hidden="true" className="shrink-0 text-accent-icon" />
+                                    <span className={`flex-1 min-w-[12rem] text-[11px] font-mono leading-snug ${theme.isDark ? 'text-white/85' : 'text-stone-800'}`}>
+                                        This series has finished, and you are on its last chapter.
+                                    </span>
+                                    <button
+                                        type="button"
+                                        disabled={conquering}
+                                        onClick={async () => {
+                                            setConquering(true);
+                                            try { await onUpdate!(quest.id, { status: 'CONQUERED' }); } finally { setConquering(false); }
+                                        }}
+                                        className="px-4 py-2 rounded-sm bg-accent text-accent-on font-orbitron font-bold text-[10px] tracking-[0.2em] hover:brightness-110 disabled:opacity-60 disabled:cursor-wait transition"
+                                    >
+                                        MARK_CONQUERED
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     </motion.div>
 
@@ -695,7 +724,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                                 <CharacterAvatar char={char} theme={theme} />
                                                 <div className="text-center w-full">
                                                     <div className={`text-[10px] font-bold truncate w-full ${theme.isDark ? 'text-white' : 'text-stone-800'}`} title={char.name.full}>{char.name.full}</div>
-                                                    <div className={`text-[8px] uppercase truncate w-full mt-1 ${theme.isDark ? 'text-white/60' : 'text-stone-500'}`}>{char.role}</div>
+                                                    <div className={`text-[8px] uppercase truncate w-full mt-1 ${theme.isDark ? 'text-white/60' : 'text-stone-600'}`}>{char.role}</div>
                                                 </div>
                                             </div>
                                         ))
@@ -725,7 +754,10 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                             aria-label={`Open ${rec.title}`}
                                             className="w-[160px] shrink-0 snap-start group relative aspect-[2/3] rounded-lg overflow-hidden cursor-pointer shadow-lg border border-white/5 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
                                         >
-                                            <img src={getProxiedImageUrl(rec.coverUrl)} width={160} height={240} loading="lazy" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" referrerPolicy="no-referrer" alt="" />
+                                            <CoverArt title={rec.title} size="card" className="absolute inset-0" />
+                                            {rec.coverUrl && (
+                                                <img src={getProxiedImageUrl(rec.coverUrl)} width={160} height={240} loading="lazy" className="relative w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" referrerPolicy="no-referrer" alt="" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                                            )}
                                             <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/20 to-transparent opacity-80 group-hover:opacity-100 transition-opacity duration-300" />
                                             {/* Rank chip (Floor-view language) */}
                                             <span className={`absolute top-2 right-2 z-20 w-6 h-6 flex items-center justify-center text-[11px] font-black font-mono border ${recRank.border} ${recRank.color} bg-black/60 backdrop-blur-sm`}>
@@ -737,7 +769,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                                 </div>
                                                 {/* The card is always a dark scrim over art, so light mode takes fixed pale ink here:
                                                     the page ink (#5b21b6) on near-black was ~2.6:1. */}
-                                                <div className={`text-[8px] font-mono mt-1 uppercase ${theme.isDark ? theme.highlightText : 'text-violet-300'}`}>
+                                                <div className="text-[8px] font-mono mt-1 uppercase text-accent-plate">
                                                     {rec.status}
                                                 </div>
                                             </div>

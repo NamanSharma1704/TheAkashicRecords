@@ -58,6 +58,7 @@ export default {
                     surface: 'var(--accent-surface)',
                     edge: 'var(--accent-edge)',
                     on: 'var(--accent-on)',
+                    plate: 'var(--accent-plate)',
                 },
             },
         },

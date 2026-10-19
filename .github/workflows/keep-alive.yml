@@ -39,3 +39,15 @@ jobs:
           curl -s -X POST --max-time 58 \
             -H "x-system-secret: $SYSTEM_ADMIN_SECRET" \
             "https://the-akashic-records.vercel.app/api/admin/sync-chapters?limit=15" || true
+
+      # Cover backfill: up to 6 records with no cover are looked up (through the metadata
+      # cache) and given one when a source has the same series. A title no source has a
+      # cover for is retried weekly, not hourly. Best-effort, like the chapter check.
+      - name: Fill missing covers
+        env:
+          SYSTEM_ADMIN_SECRET: ${{ secrets.SYSTEM_ADMIN_SECRET }}
+        run: |
+          if [ -z "$SYSTEM_ADMIN_SECRET" ]; then exit 0; fi
+          curl -s -X POST --max-time 58 \
+            -H "x-system-secret: $SYSTEM_ADMIN_SECRET" \
+            "https://the-akashic-records.vercel.app/api/admin/backfill-covers?limit=6" || true

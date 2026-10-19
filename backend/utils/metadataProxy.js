@@ -25,6 +25,7 @@ const fetchAniList = async (title) => {
       Media (search: $search, type: MANGA, sort: SEARCH_MATCH) {
         id
         title { english romaji native }
+        synonyms
         description
         coverImage { extraLarge large }
         bannerImage
@@ -95,6 +96,11 @@ const fetchAniList = async (title) => {
 
     if (media) {
         media.description = cleanDescription(media.description);
+        // Every source reports its other names as `altTitles`: AUTO's exact-match scoring and
+        // the cover backfill's same-series check both read it, and without it a series filed
+        // under its official English title ("Return of the Blossoming Blade") never matched
+        // the name it is better known by ("Return of the Mount Hua Sect").
+        media.altTitles = media.synonyms || [];
         if (media.characters && media.characters.edges) {
             media.characters.nodes = media.characters.edges.map(e => ({ ...e.node, role: e.role }));
             console.log(`[AniList] Success: ${media.characters.nodes.length} entities detected for "${media.title.english || title}"`);
@@ -189,6 +195,7 @@ const fetchMangaDex = async (title) => {
                 romaji: attributes.title.en || Object.values(attributes.title)[0],
                 native: attributes.altTitles.find(t => t.ja || t.ko)?.ja || attributes.altTitles.find(t => t.ko)?.ko || ""
             },
+            altTitles: (attributes.altTitles || []).flatMap((at) => Object.values(at)).filter(Boolean),
             description: cleanDescription(attributes.description.en),
             coverImage: { extraLarge: coverUrl, large: coverUrl },
             genres: attributes.tags.map(t => t.attributes.name.en),
@@ -263,6 +270,7 @@ const fetchJikan = async (title) => {
                     romaji: manga.title,
                     native: manga.title_japanese || ""
                 },
+                altTitles: [...(manga.title_synonyms || []), ...(manga.titles || []).map((t) => t.title)].filter(Boolean),
                 description: cleanDescription(manga.synopsis),
                 chapters: manga.chapters || 0,
                 coverImage: {

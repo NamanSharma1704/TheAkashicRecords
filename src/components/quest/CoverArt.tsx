@@ -47,8 +47,12 @@ const CoverArt: React.FC<CoverArtProps> = ({ url, title, alt = '', className = '
     const showImage = !!url && state !== 'failed';
 
     const mono = size === 'hero' ? 'text-7xl' : size === 'card' ? 'text-5xl' : 'text-sm';
+    // `relative` only when the caller has not positioned the frame. Tailwind emits .relative
+    // after .absolute, so "relative … absolute inset-0" resolved to relative and the plate
+    // collapsed to 0px tall — every absolutely-placed plate was invisible.
+    const positioned = /(^|\s)(absolute|fixed|sticky)(\s|$)/.test(className);
     return (
-        <div className={`relative overflow-hidden bg-gradient-to-b from-gray-900 to-black ${className}`}>
+        <div className={`${positioned ? '' : 'relative '}overflow-hidden bg-gradient-to-b from-gray-900 to-black ${className}`}>
             <div
                 aria-hidden="true"
                 className={`absolute inset-0 flex flex-col items-center justify-center gap-2 px-3 text-center transition-opacity duration-500 ${state === 'loaded' ? 'opacity-0' : 'opacity-100'}`}

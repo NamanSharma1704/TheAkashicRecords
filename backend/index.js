@@ -9,6 +9,7 @@ const { normalizeTitle } = require('./utils/normalizeTitle');
 const { fetchAniList, fetchMangaDex, fetchJikan, fetchBest, fetchGenresOnly, fetchLatestChapter } = require('./utils/metadataProxy');
 const crypto = require('crypto');
 const User = require('./models/User');
+const MetadataCache = require('./models/MetadataCache');
 const {
     hashPassword, comparePassword, generateToken, verifyToken,
     getTokenTtlMs, setAuthCookie, clearAuthCookie, readAuthCookie
@@ -115,6 +116,8 @@ const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
  */
 const LIVE = Object.freeze({ deletedAt: null });
 
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
 /** How long the Trash keeps a deleted quest before it is purged for good. */
 const TRASH_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
 
@@ -179,8 +182,12 @@ app.use(cors({
 }));
 
 // Cap the body size. Nothing this API accepts is large, and the default 100kb is more
-// room than any quest payload needs.
-app.use(express.json({ limit: '64kb' }));
+// room than any quest payload needs. The one exception is restoring a full backup
+// (synopses and the reading log), which parses its own body, after authentication, with
+// a larger cap; the 64kb parser would otherwise refuse it before the route ever ran.
+const BACKUP_PATH = '/api/backup';
+const jsonBody = express.json({ limit: '64kb' });
+app.use((req, res, next) => (req.method === 'POST' && req.path === BACKUP_PATH ? next() : jsonBody(req, res, next)));
 
 // ─── RATE LIMITING ────────────────────────────────────────────────────────────
 const authLimiter = rateLimit({
@@ -239,6 +246,24 @@ const chapterSyncLimiter = rateLimit({
     legacyHeaders: false,
     message: { message: 'Chapter checks are limited to a few an hour. Try again later.' }
 });
+
+// Writes to a library. Guest sessions are free to start (10 an hour per address), and each
+// sandbox lives on the shared cluster, so a guest's writes get a ceiling: far above a real
+// reading session (a chapter burst is one save per 600ms merge window) but well below a
+// script. Keyed per account, so it runs after authenticate. The owner's re-verified account
+// is exempt: importing a whole library is a few hundred writes in a row.
+const writeLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 600,
+    standardHeaders: true,
+    legacyHeaders: false,
+    keyGenerator: (req) => `user:${req.user._id}`,
+    skip: (req) => req.user?.role === 'SOVEREIGN',
+    message: { message: 'Too many changes in a short time. Wait a few minutes and try again.' }
+});
+
+/** Most records a guest sandbox may hold, Trash included. The owner's archive has no cap. */
+const GUEST_RECORD_CAP = 500;
 
 // ─── SSRF BLOCKLIST (Permissive for Public Images) ───────────────────────────
 const isInternalHostname = (hostname) => {
@@ -357,16 +382,18 @@ app.get('/api/health', async (req, res) => {
             3: 'disconnecting'
         };
 
-        const Quest = getModel(conn, 'Quest');
-        const questCount = await Quest.countDocuments(LIVE);
-
-        res.json({
+        const body = {
             status: 'Pulse Active',
             database: statusMap[dbStatus] || 'unknown',
-            documentCount: questCount,
             environment: process.env.NODE_ENV || 'development',
             timestamp: new Date().toISOString()
-        });
+        };
+        // The probe is public (the uptime workflow pings it), so the size of the owner's
+        // library is reported only to a caller holding the admin secret.
+        if (secretMatches(req.headers['x-system-secret'])) {
+            body.documentCount = await getModel(conn, 'Quest').countDocuments(LIVE);
+        }
+        res.json(body);
     } catch (err) {
         return sendError(res, 500, 'Health probe failed: archive link unavailable.', err);
     }
@@ -944,11 +971,15 @@ const recordReading = async (req, questId) => {
     );
 };
 
-app.post('/api/quests', authenticate, async (req, res) => {
+app.post('/api/quests', authenticate, writeLimiter, async (req, res) => {
     try {
         const Quest = getModel(req.dbConn, 'Quest');
         const { value: safeBody, error } = validateQuest(req.body, null);
         if (error) return res.status(400).json({ message: error });
+
+        if (req.user.role === 'GUEST' && await Quest.estimatedDocumentCount() >= GUEST_RECORD_CAP) {
+            return res.status(403).json({ message: `Guest archives hold up to ${GUEST_RECORD_CAP} records.` });
+        }
 
         // 1. DUPLICATE CHECK (ignores punctuation, apostrophes and casing)
         const normalizedTitle = normalizeTitle(safeBody.title);
@@ -993,7 +1024,7 @@ app.post('/api/quests', authenticate, async (req, res) => {
 });
 
 // PUT /api/quests/:id - Update a quest
-app.put('/api/quests/:id', authenticate, async (req, res) => {
+app.put('/api/quests/:id', authenticate, writeLimiter, async (req, res) => {
     try {
         const Quest = getModel(req.dbConn, 'Quest');
         const questId = req.params.id;
@@ -1059,7 +1090,7 @@ app.put('/api/quests/:id', authenticate, async (req, res) => {
 });
 
 // DELETE /api/quests/:id - Move a quest to the Trash (soft delete; see LIVE)
-app.delete('/api/quests/:id', authenticate, async (req, res) => {
+app.delete('/api/quests/:id', authenticate, writeLimiter, async (req, res) => {
     try {
         const Quest = getModel(req.dbConn, 'Quest');
         if (!isQuestId(req.params.id)) return res.status(404).json({ message: 'Quest record not found.' });
@@ -1105,7 +1136,7 @@ app.get('/api/quests/:id', authenticate, async (req, res) => {
 
 // DELETE /api/quests/:id/permanent - Erase a quest from the Trash now. Only trashed quests:
 // a live one has to be deleted (and so be undoable) first.
-app.delete('/api/quests/:id/permanent', authenticate, async (req, res) => {
+app.delete('/api/quests/:id/permanent', authenticate, writeLimiter, async (req, res) => {
     try {
         const Quest = getModel(req.dbConn, 'Quest');
         if (!isQuestId(req.params.id)) return res.status(404).json({ message: 'Quest record not found.' });
@@ -1118,7 +1149,7 @@ app.delete('/api/quests/:id/permanent', authenticate, async (req, res) => {
 });
 
 // POST /api/quests/:id/restore - Bring a quest back out of the Trash (Undo)
-app.post('/api/quests/:id/restore', authenticate, async (req, res) => {
+app.post('/api/quests/:id/restore', authenticate, writeLimiter, async (req, res) => {
     try {
         const Quest = getModel(req.dbConn, 'Quest');
         if (!isQuestId(req.params.id)) return res.status(404).json({ message: 'Quest record not found.' });
@@ -1156,7 +1187,6 @@ app.post('/api/admin/bulk-classify', authenticate, checkRole('SOVEREIGN'), async
         const Quest = getModel(req.dbConn, 'Quest');
         console.log("[Admin] Starting Full Metadata-Based SSE Classification...");
         const quests = await Quest.find(LIVE);
-        const sleep = (ms) => new Promise(r => setTimeout(r, ms));
         let updated = 0;
 
         let isAborted = false;
@@ -1273,50 +1303,72 @@ app.post('/api/admin/purge-duplicates', authenticate, checkRole('SOVEREIGN'), as
         res.status(500).json({ error: "Deduplication Engine Failure" });
     }
 });
+// ─── METADATA (cached) ────────────────────────────────────────────────────────
+
+const META_SOURCES = ['ANILIST', 'MAL', 'MANGADEX'];
+const META_HIT_TTL_MS = 3 * 24 * 60 * 60 * 1000;
+// Short on purpose: a miss can be a source's outage or rate limit rather than a title no
+// one knows, and a long-remembered miss would hide the cover and synopsis for days.
+const META_MISS_TTL_MS = 30 * 60 * 1000;
+const MAX_META_TITLE = 200;
+
+
+/** One live lookup: the chosen source first and the others as fallbacks, or AUTO's
+ *  parallel scoring across all three. */
+const fetchMetadataFrom = async (title, source) => {
+    const order = {
+        ANILIST: [['AniList', fetchAniList], ['MangaDex', fetchMangaDex], ['MAL', fetchJikan]],
+        MAL: [['MAL', fetchJikan], ['MangaDex', fetchMangaDex], ['AniList', fetchAniList]],
+        MANGADEX: [['MangaDex', fetchMangaDex], ['AniList', fetchAniList], ['MAL', fetchJikan]],
+    }[source];
+    if (!order) return fetchBest(title);
+    for (const [name, fetcher] of order) {
+        const data = await fetcher(title);
+        if (data) return data;
+        debugLog(`[Proxy] ${name} miss for: ${title}`);
+    }
+    return null;
+};
+
+/**
+ * Metadata for a title, from the shared cache while it is fresh, otherwise live (and then
+ * cached). A cache fault never fails the lookup: it just falls through to the sources.
+ * Returns `{ data, cached }`; `data` is null when no source knows the title.
+ */
+const lookupMetadata = async (title, source) => {
+    const src = META_SOURCES.includes(source) ? source : 'AUTO';
+    // normalizeTitle keeps only a-z0-9, so a title in another script would collapse to "".
+    const key = `${src}|${normalizeTitle(title) || title.trim().toLowerCase()}`;
+    await connectDB();
+    try {
+        const hit = await MetadataCache.findOne({ key, expiresAt: { $gt: new Date() } }).lean();
+        if (hit) return { data: hit.data, cached: true };
+    } catch (err) {
+        console.warn('[MetaCache] read failed:', err.message);
+    }
+    const data = await fetchMetadataFrom(title, src);
+    try {
+        await MetadataCache.updateOne(
+            { key },
+            { $set: { data: data || null, expiresAt: new Date(Date.now() + (data ? META_HIT_TTL_MS : META_MISS_TTL_MS)) } },
+            { upsert: true },
+        );
+    } catch (err) {
+        console.warn('[MetaCache] write failed:', err.message);
+    }
+    return { data, cached: false };
+};
+
 app.get('/api/proxy/metadata', authenticate, async (req, res) => {
     const { title, source } = req.query;
-    if (!title) return res.status(400).json({ error: "Title required." });
+    if (typeof title !== 'string' || !title.trim()) return res.status(400).json({ error: "Title required." });
+    if (title.length > MAX_META_TITLE) return res.status(400).json({ error: "Title too long." });
 
-    debugLog(`[Proxy] Fetching metadata for: ${title} (Source: ${source || 'AUTO'})`);
+    debugLog(`[Proxy] Metadata for: ${title} (Source: ${source || 'AUTO'})`);
 
     try {
-        let data = null;
-
-        if (source === 'ANILIST') {
-            data = await fetchAniList(title);
-            if (!data) {
-                debugLog(`[Proxy] AniList miss — falling back to MangaDex for: ${title}`);
-                data = await fetchMangaDex(title);
-            }
-            if (!data) {
-                debugLog(`[Proxy] MangaDex miss — falling back to MAL for: ${title}`);
-                data = await fetchJikan(title);
-            }
-        } else if (source === 'MAL') {
-            data = await fetchJikan(title);
-            if (!data) {
-                debugLog(`[Proxy] MAL miss — falling back to MangaDex for: ${title}`);
-                data = await fetchMangaDex(title);
-            }
-            if (!data) {
-                debugLog(`[Proxy] MangaDex miss — falling back to AniList for: ${title}`);
-                data = await fetchAniList(title);
-            }
-        } else if (source === 'MANGADEX') {
-            data = await fetchMangaDex(title);
-            if (!data) {
-                debugLog(`[Proxy] MangaDex miss — falling back to AniList for: ${title}`);
-                data = await fetchAniList(title);
-            }
-            if (!data) {
-                debugLog(`[Proxy] AniList miss — falling back to MAL for: ${title}`);
-                data = await fetchJikan(title);
-            }
-        } else {
-            // AUTO Logic: Parallel scoring competition
-            data = await fetchBest(title);
-        }
-
+        const { data, cached } = await lookupMetadata(title.trim(), source);
+        res.set('X-Metadata-Cache', cached ? 'HIT' : 'MISS');
         if (data) {
             res.json(data);
         } else {
@@ -1732,7 +1784,6 @@ const syncChapters = async (conn, limit) => {
         .lean();
 
     const updated = [];
-    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     for (let i = 0; i < due.length; i += 2) {
         await Promise.all(due.slice(i, i + 2).map(async (q) => {
             const latest = await fetchLatestChapter(q.title).catch(() => null);
@@ -1778,6 +1829,242 @@ app.post('/api/admin/sync-chapters', async (req, res) => {
         res.json({ message: 'Chapter sync complete.', ...(await syncChapters(conn, limit)) });
     } catch (err) {
         return sendError(res, 500, 'Chapter sync failed.', err);
+    }
+});
+
+// ─── FULL BACKUP ──────────────────────────────────────────────────────────────
+
+const BACKUP_FORMAT = 'akashic-records-backup';
+const BACKUP_VERSION = 1;
+const MAX_BACKUP_QUESTS = 5000;
+const MAX_BACKUP_LOG = 100000;
+const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+// GET /api/backup - Everything a library holds, as one JSON document: every record with its
+// synopsis (Trash included), the reading log behind the stats, and the streak. The CSV
+// export stays the spreadsheet view; this is the one that restores completely.
+app.get(BACKUP_PATH, authenticate, async (req, res) => {
+    try {
+        const [quests, readingLog, settings] = await Promise.all([
+            getModel(req.dbConn, 'Quest').find({})
+                .select('-__v -normalizedTitle -chaptersCheckedAt -coverCheckedAt')
+                .lean(),
+            getModel(req.dbConn, 'ReadingLog').find({}).select('-__v -_id').sort({ at: 1 }).lean(),
+            getModel(req.dbConn, 'UserSettings').findOne({ userId: req.user._id })
+                .select('-_id streak lastReadDate activeQuestId')
+                .lean(),
+        ]);
+        res.json({
+            format: BACKUP_FORMAT,
+            version: BACKUP_VERSION,
+            exportedAt: new Date().toISOString(),
+            quests,
+            readingLog,
+            settings: settings || null,
+        });
+    } catch (err) {
+        return sendError(res, 500, 'Backup failed.', err);
+    }
+});
+
+/**
+ * POST /api/backup - Restore a backup by MERGING it into the library, never by replacing it,
+ * so restoring an old file cannot cost anything read since:
+ *   - a title the library lacks is added (a record trashed in the backup lands in the Trash);
+ *   - a title it has moves forward only (chapter, total) and gains a cover, synopsis or
+ *     link only where its own is empty; a trashed copy the backup has live comes back out;
+ *   - reading-log entries are added unless the same move is already recorded;
+ *   - the streak is taken only when the backup's last reading day is the later one.
+ * Every record goes through validateQuest, as any write does.
+ */
+app.post(BACKUP_PATH, authenticate, writeLimiter, express.json({ limit: '4mb' }), async (req, res) => {
+    const b = req.body || {};
+    if (b.format !== BACKUP_FORMAT || b.version !== BACKUP_VERSION || !Array.isArray(b.quests)) {
+        return res.status(400).json({ message: 'That file is not an Akashic Records backup.' });
+    }
+    const log = Array.isArray(b.readingLog) ? b.readingLog : [];
+    if (b.quests.length > MAX_BACKUP_QUESTS || log.length > MAX_BACKUP_LOG) {
+        return res.status(400).json({ message: 'That backup is larger than this archive accepts.' });
+    }
+
+    try {
+        const Quest = getModel(req.dbConn, 'Quest');
+        const ReadingLog = getModel(req.dbConn, 'ReadingLog');
+        const UserSettings = getModel(req.dbConn, 'UserSettings');
+
+        const existing = await Quest.find({})
+            .select('title normalizedTitle currentChapter totalChapters cover synopsis readLink deletedAt')
+            .lean();
+        const byNorm = new Map(existing.map((q) => [q.normalizedTitle || normalizeTitle(q.title), q]));
+        const idMap = new Map(); // the backup's record id -> the id it has here
+        let room = req.user.role === 'GUEST' ? Math.max(0, GUEST_RECORD_CAP - existing.length) : Infinity;
+
+        const inserts = [];
+        const updates = [];
+        let skipped = 0;
+        for (const raw of b.quests) {
+            const { value: v, error } = validateQuest(raw, null);
+            if (error) { skipped++; continue; }
+            const norm = normalizeTitle(v.title);
+            const trashedInBackup = !!raw.deletedAt && !Number.isNaN(Date.parse(raw.deletedAt));
+            const have = byNorm.get(norm);
+            if (have) {
+                if (raw._id) idMap.set(String(raw._id), have._id);
+                const set = {};
+                if ((v.currentChapter ?? 0) > (have.currentChapter ?? 0)) set.currentChapter = v.currentChapter;
+                if ((v.totalChapters ?? 0) > (have.totalChapters ?? 0)) set.totalChapters = v.totalChapters;
+                for (const f of ['cover', 'synopsis', 'readLink']) if (v[f] && !have[f]) set[f] = v[f];
+                if (have.deletedAt && !trashedInBackup) set.deletedAt = null;
+                if (Object.keys(set).length) {
+                    updates.push({ updateOne: { filter: { _id: have._id }, update: { $set: set } } });
+                    Object.assign(have, set);
+                }
+                continue;
+            }
+            if (room <= 0) { skipped++; continue; }
+            const _id = new mongoose.Types.ObjectId();
+            const doc = { _id, ...v, normalizedTitle: norm, deletedAt: trashedInBackup ? new Date(raw.deletedAt) : null };
+            inserts.push(doc);
+            byNorm.set(norm, doc);
+            if (raw._id) idMap.set(String(raw._id), _id);
+            room--;
+        }
+
+        let added = inserts.length;
+        if (inserts.length) {
+            try {
+                await Quest.insertMany(inserts, { ordered: false });
+            } catch (err) {
+                // A record refused here (a title another one already holds, say) is skipped;
+                // its reading-log entries are dropped with it rather than left pointing nowhere.
+                const failed = (err.writeErrors || []).map((w) => inserts[w.index ?? w.err?.index]?._id).filter(Boolean);
+                if (!failed.length) throw err;
+                const gone = new Set(failed.map(String));
+                for (const [k, id] of idMap) if (gone.has(String(id))) idMap.delete(k);
+                added -= failed.length;
+                skipped += failed.length;
+            }
+        }
+        if (updates.length) await Quest.bulkWrite(updates, { ordered: false });
+
+        // Reading log: same record, same moment, same move = already recorded.
+        const rows = [];
+        for (const e of log) {
+            const questId = idMap.get(String(e?.questId));
+            const from = Number(e?.from), to = Number(e?.to), delta = Number(e?.delta);
+            const at = new Date(e?.at);
+            if (!questId || ![from, to, delta].every(Number.isInteger) || !DAY_RE.test(String(e?.day)) || Number.isNaN(at.getTime())) continue;
+            rows.push({ questId, title: String(e.title || '').slice(0, 300), from, to, delta, day: e.day, at });
+        }
+        const keyOf = (r) => `${r.questId}|${+new Date(r.at)}|${r.from}|${r.to}`;
+        const seen = new Set((await ReadingLog.find({ questId: { $in: [...new Set(rows.map((r) => r.questId))] } })
+            .select('questId at from to').lean()).map(keyOf));
+        const fresh = rows.filter((r) => !seen.has(keyOf(r)) && seen.add(keyOf(r)));
+        if (fresh.length) await ReadingLog.insertMany(fresh, { ordered: false });
+
+        // Streak: only when the backup has read more recently than this library.
+        let streakRestored = false;
+        const s = b.settings;
+        if (s && DAY_RE.test(String(s.lastReadDate)) && Number.isInteger(s.streak) && s.streak >= 0) {
+            await ensureUserSettings(UserSettings, req.user._id);
+            const r = await UserSettings.updateOne(
+                { userId: req.user._id, $or: [{ lastReadDate: null }, { lastReadDate: { $lt: s.lastReadDate } }] },
+                { $set: { streak: s.streak, lastReadDate: s.lastReadDate } },
+            );
+            streakRestored = r.modifiedCount > 0;
+        }
+
+        res.json({ added, updated: updates.length, skipped, logEntries: fresh.length, streakRestored });
+    } catch (err) {
+        return sendError(res, 500, 'Restore failed.', err);
+    }
+});
+
+// ─── COVER BACKFILL ───────────────────────────────────────────────────────────
+
+/** How long a title that no source had a cover for waits before it is looked up again. */
+const COVER_RECHECK_MS = 7 * 24 * 60 * 60 * 1000;
+
+/**
+ * True when the metadata is plainly the same series: one of its titles normalizes to the
+ * record's, or starts with it ("Omniscient Reader" -> "Omniscient Reader's Viewpoint").
+ * AUTO's scoring will return a loose match rather than nothing, and a wrong cover is worse
+ * than the monogram plate, so anything looser is left alone.
+ */
+const sameSeries = (questTitle, data) => {
+    const want = normalizeTitle(questTitle);
+    if (want.length < 4) return false;
+    const names = [data?.title?.english, data?.title?.romaji, ...(data?.altTitles || [])]
+        .filter(Boolean)
+        .map(normalizeTitle);
+    return names.some((n) => n === want || (want.length >= 8 && n.startsWith(want)));
+};
+
+/**
+ * Fill in missing covers for up to `limit` records, least recently tried first, through the
+ * cached metadata lookup. Only an empty cover is ever written, so a cover set meanwhile (or
+ * by hand) is never replaced. Two at a time, as the chapter sync does, to stay polite to the
+ * sources.
+ */
+const backfillCovers = async (conn, limit) => {
+    const Quest = getModel(conn, 'Quest');
+    const noCover = { ...LIVE, cover: { $in: ['', null] } };
+    const due = await Quest.find({
+        ...noCover,
+        $or: [{ coverCheckedAt: null }, { coverCheckedAt: { $lt: new Date(Date.now() - COVER_RECHECK_MS) } }],
+    })
+        .sort({ coverCheckedAt: 1, _id: 1 }) // never tried (null) sorts first
+        .limit(limit)
+        .select('title')
+        .lean();
+
+    const filled = [];
+    for (let i = 0; i < due.length; i += 2) {
+        await Promise.all(due.slice(i, i + 2).map(async (q) => {
+            const { data } = await lookupMetadata(q.title, 'AUTO').catch(() => ({ data: null }));
+            const url = data && sameSeries(q.title, data)
+                ? (data.coverImage?.extraLarge || data.coverImage?.large || '')
+                : '';
+            const set = { coverCheckedAt: new Date() };
+            if (url && isWebUrl(url)) set.cover = url;
+            const r = await Quest.updateOne({ _id: q._id, cover: { $in: ['', null] } }, { $set: set });
+            if (set.cover && r.modifiedCount) filled.push({ id: q._id, title: q.title });
+        }));
+        if (i + 2 < due.length) await sleep(400);
+    }
+    const remaining = await Quest.countDocuments(noCover);
+    return { checked: due.length, filled, remaining };
+};
+
+// Each call can fan out to three public APIs per title, hence its own limiter.
+const coverBackfillLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000, // 1 hour
+    max: 6,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { message: 'Cover searches are limited to a few an hour. Try again later.' }
+});
+
+// POST /api/quests/backfill-covers - "Find missing covers" in the profile.
+app.post('/api/quests/backfill-covers', coverBackfillLimiter, authenticate, async (req, res) => {
+    try {
+        res.json(await backfillCovers(req.dbConn, 8));
+    } catch (err) {
+        return sendError(res, 500, 'Cover search failed.', err);
+    }
+});
+
+// POST /api/admin/backfill-covers - The scheduled workflow's call, for the owner's archive.
+app.post('/api/admin/backfill-covers', async (req, res) => {
+    if (!secretMatches(req.headers['x-system-secret'])) {
+        return res.status(403).json({ message: 'Forbidden: System Authority Refused.' });
+    }
+    try {
+        const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 6, 1), 12);
+        const conn = await getTenantDb(process.env.SYNC_TENANT || 'akashic_records');
+        res.json({ message: 'Cover backfill complete.', ...(await backfillCovers(conn, limit)) });
+    } catch (err) {
+        return sendError(res, 500, 'Cover backfill failed.', err);
     }
 });
 

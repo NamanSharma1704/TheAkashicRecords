@@ -236,21 +236,35 @@ const TowerStructure: React.FC<TowerStructureProps> = ({ onSelectFloor, theme, o
                     ctx.shadowOffsetY = 0;
                     ctx.fillText(text, canvas.width / 2, 512);
                 } else {
-                    ctx.fillStyle = themeColor;
+                    // A pale halo under the ink, as dark has its amber stroke: labels now draw
+                    // over the rock, and violet ink on the violet crystal faces vanished.
                     ctx.shadowColor = 'transparent';
                     ctx.shadowBlur = 0;
+                    ctx.lineJoin = 'round';
+                    ctx.lineWidth = 36;
+                    ctx.strokeStyle = 'rgba(251, 249, 255, 0.92)';
+                    ctx.strokeText(text, canvas.width / 2, 512);
+                    ctx.fillStyle = themeColor;
                     ctx.fillText(text, canvas.width / 2, 512);
                 }
                 if (tex) tex.needsUpdate = true;
             };
             drawLabel();
             const labelTex = new THREE.CanvasTexture(canvas);
-            labelTex.minFilter = THREE.LinearFilter;
+            // Mipmapped: the 1024px-tall canvas lands at ~10px on screen, and plain linear
+            // sampling at that ratio skipped most texels, so the letters shimmered and broke up.
+            labelTex.minFilter = THREE.LinearMipmapLinearFilter;
+            labelTex.generateMipmaps = true;
             labelTex.magFilter = THREE.LinearFilter;
             labelTex.anisotropy = renderer.capabilities.getMaxAnisotropy();
             document.fonts.ready.then(() => { drawLabel(labelTex); });
-            const labelMat = new THREE.SpriteMaterial({ map: labelTex, transparent: true, opacity: 1.0, depthWrite: false });
+            // The label is how a floor is read, so it draws over the rock rather than in the
+            // scene's depth: the isles carry a random spin and the tower turns, which kept
+            // parking a label behind a crystal ("…NT" for ASCENT). Each floor sits at its own
+            // height, so labels on top of everything do not collide with one another.
+            const labelMat = new THREE.SpriteMaterial({ map: labelTex, transparent: true, opacity: 1.0, depthWrite: false, depthTest: false });
             const label = new THREE.Sprite(labelMat);
+            label.renderOrder = 10;
             label.center.set(0, 0.5);
             label.position.set(s * 1.35 + 3, s * 0.4, 0);
             label.userData = { type: 'floor', index: i };

@@ -216,9 +216,9 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
                         </div>
                         <div className="flex flex-col leading-none">
                             <span className={`font-mono text-[9px] tracking-[0.2em] ${theme.mutedText} uppercase transition-colors duration-700`}>SYSTEM.ACCESS // {playerRank.name}</span>
-                            {/* Light ran sky-600 -> cyan-400 -> indigo-200 (1.23:1 at the last stop).
-                                Same fix as the profile header: read text takes the ink ramp. */}
-                            <h2 id="divine-spire-title" className={`font-orbitron text-base tracking-[0.2em] font-bold bg-clip-text text-transparent bg-gradient-to-r ${theme.isDark ? 'from-amber-600 via-yellow-400 to-white' : theme.inkGradient} transition-colors duration-700`}>THE DIVINE SPIRE</h2>
+                            {/* Same as the profile header: 16px is body-size, so light takes the
+                                label ramp (the ink ramp's #a855f7 middle measured 3.14:1). */}
+                            <h2 id="divine-spire-title" className={`font-orbitron text-base tracking-[0.2em] font-bold bg-clip-text text-transparent bg-gradient-to-r ${theme.isDark ? 'from-amber-600 via-yellow-400 to-white' : theme.labelGradient} transition-colors duration-700`}>THE DIVINE SPIRE</h2>
                         </div>
                     </div>
                     <button
@@ -242,8 +242,9 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
 
 
 
-                        {/* Search Bar HUD */}
-                        <div className="relative z-20 shrink-0 w-full max-w-xl mx-auto px-4 mb-2 md:mb-4">
+                        {/* Search Bar HUD. Top margin: it sat flush against the 64px header, and
+                            its glow ran up into the title. */}
+                        <div className="relative z-20 shrink-0 w-full max-w-xl mx-auto px-4 mt-3 md:mt-6 mb-2 md:mb-4">
                             <div className="relative group">
                                 <div className={`absolute -inset-1 bg-gradient-to-r ${theme.gradient} opacity-20 blur-md group-focus-within:opacity-40 transition-all duration-500 rounded-full`} />
                                 <div className={`relative ${theme.isDark ? 'bg-black/60' : 'bg-white/80'} backdrop-blur-xl border border-white/10 rounded-full px-3 py-2 md:px-4 md:py-3 flex items-center shadow-2xl transition-all duration-700`}>

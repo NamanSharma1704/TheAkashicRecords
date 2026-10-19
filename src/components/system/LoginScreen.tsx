@@ -135,9 +135,11 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, theme, onTogg
                         title={theme.isDark ? 'Switch to light theme' : 'Switch to dark theme'}
                         className={`w-8 h-8 flex items-center justify-center border ${theme.borderSubtle} ${theme.isDark ? 'bg-white/5 hover:bg-white/10' : 'bg-violet-50 hover:bg-black/5'} rounded transition-colors duration-700`}
                     >
+                        {/* Light's sun was amber-600, 2.9:1 on the violet-50 plate; it takes the
+                            accent icon ink like the in-app toggle. */}
                         {theme.isDark
-                            ? <Moon size={14} className="transition-colors duration-700" style={{ color: theme.accentInk }} />
-                            : <Sun size={14} className="text-amber-600 transition-colors duration-700" />}
+                            ? <Moon size={14} className="text-accent-icon transition-colors duration-700" />
+                            : <Sun size={14} className="text-accent-icon transition-colors duration-700" />}
                     </button>
                 </div>
             )}

@@ -46,6 +46,7 @@ export const THEMES: Record<ThemeId, Theme> = {
         accentSurface: '#14120e',
         accentEdge: '#f59e0b8c',
         accentOn: '#000000',
+        accentPlateInk: '#f59e0b',
         isDark: true
     },
     // Aureic — the light theme, an illuminated-manuscript surface: gold and lapis ink on warm
@@ -97,6 +98,8 @@ export const THEMES: Record<ThemeId, Theme> = {
         accentSurface: '#f6f1fc',
         accentEdge: '#7c3aed73',
         accentOn: '#ffffff',
+        // violet-300: the pale amethyst that reads on the near-black plates light keeps.
+        accentPlateInk: '#c4b5fd',
         isDark: false
     },
 };

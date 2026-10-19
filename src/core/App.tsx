@@ -5,7 +5,7 @@ import { Quest } from './types';
 import SystemFrame from '../components/system/SystemFrame';
 import SystemLogo from '../components/system/SystemLogo';
 import ScrambleText from '../components/system/ScrambleText';
-import { Activity, ExternalLink, Sun, Moon, Plus, Zap, Crown, X, LayoutTemplate, GripVertical, ChevronLeft, ChevronRight, LogOut, RefreshCw } from 'lucide-react';
+import { Activity, ExternalLink, Sun, Moon, Plus, Zap, Crown, X, LayoutTemplate, GripVertical, ChevronLeft, ChevronRight, LogOut, RefreshCw, Search } from 'lucide-react';
 import { getPlayerRank, calculateQuestRank, USER_RANKS } from '../utils/ranks';
 import { THEMES, ITEMS_PER_FLOOR, ThemeId } from './constants';
 
@@ -945,17 +945,22 @@ const App: React.FC = () => {
             else body[key] = value;
         });
 
-        // 2. OPTIMISTIC UPDATE — close modal & update UI instantly, sync in background
+        // 2. OPTIMISTIC UPDATE — close modal & update UI instantly, sync in background.
+        // An edit MERGES into the stored record: the detail view saves partial updates
+        // ({ id, status }, { id, synopsis }), and replacing the record with one left it
+        // without a title, which crashed the next render.
         const tempId = `optimistic-${Date.now()}`;
+        const previous = isEditing ? library.find(q => q.id === targetId) : undefined;
         const optimisticItem: Quest = {
+            ...(previous as Quest),
             ...(data as Quest),
             id: isEditing ? targetId! : tempId,
             lastUpdated: new Date().toISOString(),
         };
 
         if (isEditing) {
-            setLibrary(prev => prev.map(q => q.id === targetId ? optimisticItem : q));
-            if (selectedQuest?.id === targetId) setSelectedQuest(optimisticItem);
+            setLibrary(prev => prev.map(q => q.id === targetId ? { ...q, ...optimisticItem } : q));
+            if (selectedQuest?.id === targetId) setSelectedQuest({ ...selectedQuest, ...optimisticItem });
         } else {
             setLibrary(prev => [optimisticItem, ...prev]);
             handleActivate(optimisticItem.id);
@@ -986,7 +991,11 @@ const App: React.FC = () => {
             console.error("Save failure — rolling back:", e);
             // Rollback optimistic update on failure
             if (isEditing) {
-                setLibrary(prev => prev.map(q => q.id === targetId ? (editingItem || q) : q));
+                // Back to the record as it was before this save (editingItem is null when
+                // the save came from the detail view, which used to leave the edit in place).
+                const restore = previous || editingItem;
+                setLibrary(prev => prev.map(q => q.id === targetId ? (restore || q) : q));
+                if (restore && selectedQuest?.id === targetId) setSelectedQuest(restore);
             } else {
                 setLibrary(prev => prev.filter(q => q.id !== tempId));
             }
@@ -1518,19 +1527,23 @@ const App: React.FC = () => {
                     animate={{ y: 0, opacity: 1 }}
                     exit={{ y: -100, opacity: 0 }}
                     transition={{ type: 'spring', damping: 20, stiffness: 100 }}
-                    className="fixed top-0 w-full z-40 bg-transparent h-16 px-4 flex items-center justify-between"
+                    className="fixed top-0 w-full z-40 bg-transparent h-16 px-4 flex items-center justify-between gap-2"
                 >
-                    <div className="flex items-center gap-4">
-                        <div className="relative w-12 h-12 flex items-center justify-center">
+                    {/* A guest's header carries the countdown plus three glyphs, which measured
+                        408px of content on a 375px phone and pushed Create off the screen. Phones
+                        get a smaller emblem, a smaller wordmark (dropped entirely under 360px)
+                        and tighter gaps; Log out moves to the profile panel below sm. */}
+                    <div className="flex items-center gap-3 sm:gap-4">
+                        <div className="relative w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center">
                             <SystemLogo theme={theme} className="w-full h-full" />
                         </div>
-                        <div className="flex flex-col leading-none">
+                        <div className="flex flex-col leading-none max-[359px]:hidden">
                             <div className="flex gap-2 items-baseline">
                                 <span className={`font-mono text-[10px] tracking-[0.2em] ${theme.headingText} font-bold transition-colors duration-700`}>SYSTEM.ROOT</span>
                             </div>
                             <ScrambleText
                                 text="AKASHIC"
-                                className="font-orbitron text-lg tracking-[0.3em] font-bold drop-shadow-sm transition-colors duration-700"
+                                className="font-orbitron text-base sm:text-lg tracking-[0.3em] font-bold drop-shadow-sm transition-colors duration-700"
                                 animatedGradient={true}
                                 /* Light used sky-500 -> cyan-500, which measured 2.08:1 on the
                                    page for 18px text. The wordmark is read, so it takes the ink
@@ -1539,9 +1552,9 @@ const App: React.FC = () => {
                             />
                         </div>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 sm:gap-3 shrink-0">
                         {guestTimeLeft !== null && (
-                            <div className="flex flex-col items-end leading-none mr-2">
+                            <div className="flex flex-col items-end leading-none sm:mr-2">
                                 {/* A countdown is a warning, so it stays amber even when the theme is
                                     cyan — but amber-500 belongs to the dark theme and measures 1.84:1
                                     on the page. `warningInk` keeps the meaning and drops four steps on
@@ -1570,7 +1583,7 @@ const App: React.FC = () => {
                             onClick={handleLogout}
                             aria-label="Log out"
                             title="Log out"
-                            className={`w-8 h-8 flex items-center justify-center border ${theme.borderSubtle} ${theme.isDark ? 'bg-white/5 hover:bg-red-500/80 hover:border-red-500' : 'bg-black/5 hover:bg-red-500 hover:border-red-500'} rounded transition-colors duration-300 group/logout`}
+                            className={`hidden sm:flex w-8 h-8 items-center justify-center border ${theme.borderSubtle} ${theme.isDark ? 'bg-white/5 hover:bg-red-500/80 hover:border-red-500' : 'bg-black/5 hover:bg-red-500 hover:border-red-500'} rounded transition-colors duration-300 group/logout`}
                         >
                             <LogOut size={14} className={`${theme.mutedText} group-hover/logout:text-white transition-colors duration-300`} />
                         </button>
@@ -1612,7 +1625,7 @@ const App: React.FC = () => {
     const holoSoft = theme.isDark ? '#d8d8de' : '#8d95a1';
 
     /** Text ink for the mobile HUD plates, which stay dark in both themes. See the HUD. */
-    const hudInk = theme.isDark ? theme.highlightText : 'text-violet-300';
+    const hudInk = 'text-accent-plate';
 
     /**
      * Sidebar collapse. Desktop only — below `lg` the sidebar stacks under the hero
@@ -2195,9 +2208,12 @@ const App: React.FC = () => {
 
                                         <div className="relative p-0.5">
                                             <EntityAvatar theme={theme} size={84} />
+                                            {/* accent-on, not fixed black: black on light's violet
+                                                measured 3.69:1 at 7px; white on it is 5.7:1. */}
                                             <button
+                                                type="button"
                                                 onClick={() => setIsProfileOpen(true)}
-                                                className={`absolute -bottom-1 -right-2 px-1 py-0.5 ${theme.id === 'LIGHT' ? 'bg-[#7c3aed]' : 'bg-[#f59e0b]'} text-black text-[7px] font-black font-mono tracking-tighter uppercase cursor-pointer hover:scale-110 active:scale-95 transition-transform duration-200 shadow-lg z-20`}
+                                                className="absolute -bottom-1 -right-2 px-1 py-0.5 bg-accent text-accent-on text-[8px] font-black font-mono tracking-tighter uppercase cursor-pointer hover:scale-110 active:scale-95 transition-transform duration-200 shadow-lg z-20"
                                             >
                                                 ACTIVE_PROFILE
                                             </button>
@@ -2274,6 +2290,18 @@ const App: React.FC = () => {
                     <div className="flex-1 flex flex-col min-h-0 gap-1 mt-2 overflow-hidden max-h-[380px] lg:max-h-none">
                         <div className={`flex items-center justify-between gap-2 border-b ${theme.borderSubtle} pb-1 mb-1 shrink-0`}>
                             <span className={`text-[10px] font-mono uppercase tracking-widest transition-colors duration-700 ${theme.isDark ? theme.headingText : `text-transparent bg-clip-text bg-gradient-to-r ${theme.labelGradient}`}`}>ACTIVE QUESTS</span>
+                            {/* Search used to be the "/" key alone, so a phone had no way in.
+                                Same action: the Spire opens on its search field. */}
+                            <div className="flex items-center gap-1">
+                            <button
+                                type="button"
+                                onClick={() => { setSpireStartInSearch(true); setIsSpireOpen(true); }}
+                                title="Search the library (/)"
+                                aria-label="Search the library"
+                                className={`h-6 w-7 -my-1 flex items-center justify-center ${theme.highlightText} ${theme.isDark ? 'hover:bg-white/5' : 'hover:bg-black/5'} transition-colors`}
+                            >
+                                <Search size={12} aria-hidden="true" />
+                            </button>
                             {/* Asks the chapter tracker about this library now; the hourly job
                                 does the owner's archive anyway. Results land as "+N NEW". */}
                             <button
@@ -2286,6 +2314,7 @@ const App: React.FC = () => {
                                 <RefreshCw size={11} aria-hidden="true" className={chapterCheckBusy ? 'animate-spin' : ''} />
                                 New chapters
                             </button>
+                            </div>
                         </div>
                         <ActiveQuestList
                             orderedActiveQuests={orderedActiveQuests}

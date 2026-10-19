@@ -68,6 +68,9 @@ export interface Theme {
     accentEdge: string;
     /** Ink on a solid accent fill. */
     accentOn: string;
+    /** Read accent on a plate that stays dark in BOTH themes (the profile banner, the mobile
+     *  HUD, cover scrims). accentInk is the light page's deep violet, ~2:1 on near-black. */
+    accentPlateInk: string;
     isDark: boolean;
 }
 
@@ -75,13 +78,6 @@ export interface Rank {
     name: string;
     threshold: number;
     color: string;
-    /**
-     * Rank colour for use on a LIGHT surface (the -800 rung). `color` is the -400 rung,
-     * which is tuned for the void and sits near 2.3:1 on a white card. Only surfaces that are actually pale
-     * should reach for this — ManhwaDetail keeps `color`, because its backdrop is dark in
-     * both themes.
-     */
-    colorLight?: string;
     bg: string;
     border?: string;
     glow?: string;

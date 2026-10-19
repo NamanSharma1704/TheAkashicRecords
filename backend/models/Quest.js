@@ -23,6 +23,9 @@ const QuestSchema = new mongoose.Schema({
     newChapters: { type: Number, default: 0 },
     chaptersCheckedAt: { type: Date, default: null, index: true },
     chaptersUpdatedAt: { type: Date, default: null },
+    // Cover backfill (see backfillCovers in index.js): when a missing cover was last looked
+    // up, so a title no source knows is retried weekly rather than on every run.
+    coverCheckedAt: { type: Date, default: null },
     // Soft delete. A deleted quest is kept, hidden, so the app can offer Undo and a Trash;
     // it is purged for good after the retention window (see TRASH_RETENTION_MS in index.js).
     // Every read of the library filters on `deletedAt: null`, which also matches documents

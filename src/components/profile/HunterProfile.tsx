@@ -5,9 +5,10 @@ import SystemLogo from '../system/SystemLogo';
 import SystemFrame from '../system/SystemFrame';
 import EntityAvatar from '../system/EntityAvatar';
 import StatBox from '../system/StatBox';
-import { X, Database, Layers, Target, Download, Upload, RefreshCw, LogOut, Terminal, Edit2, KeyRound, User2, AlertCircle, CheckCircle2, Trash2, Activity, Gauge } from 'lucide-react';
+import { X, Database, Layers, Target, Download, Upload, RefreshCw, LogOut, Terminal, Edit2, KeyRound, User2, AlertCircle, CheckCircle2, Trash2, Activity, Gauge, ImagePlus } from 'lucide-react';
 import TrashPanel from './TrashPanel';
 import ReadingActivity from './ReadingActivity';
+import CoverArt from '../quest/CoverArt';
 import { USER_RANKS } from '../../utils/ranks';
 import { getProxiedImageUrl } from '../../utils/api';
 import GalaxyNebula from '../fx/GalaxyNebula';
@@ -254,6 +255,37 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
         }
     }, [calibration?.log.length]);
 
+    // ─── COVER BACKFILL ───
+    // Looks up records with no cover (up to 8 per press, never-tried first) and stores a cover
+    // when a source has the same series. The hourly job does the owner's archive anyway.
+    const [coverBusy, setCoverBusy] = useState(false);
+    const findMissingCovers = async () => {
+        setCoverBusy(true);
+        try {
+            const res = await systemFetch('/api/quests/backfill-covers', { method: 'POST' });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(data.message || `HTTP ${res.status}`);
+            const filled: { title: string }[] = data.filled || [];
+            const remaining: number = data.remaining ?? 0;
+            const left = remaining ? `\n${remaining} record${remaining === 1 ? '' : 's'} still without a cover.` : '';
+            if (filled.length) {
+                await onRefresh();
+                const named = filled.slice(0, 3).map(f => f.title).join(', ') + (filled.length > 3 ? ` and ${filled.length - 3} more` : '');
+                showNotification(`COVERS RECOVERED: ${filled.length}.\n${named}.${left}`, 'SUCCESS');
+            } else if (data.checked) {
+                showNotification(`NO MATCHING COVERS.\nChecked ${data.checked} record${data.checked === 1 ? '' : 's'}; no source had the same series. They are tried again in a week.${left}`, 'INFO');
+            } else if (remaining) {
+                showNotification(`NOTHING NEW TO CHECK.\n${remaining} record${remaining === 1 ? ' has' : 's have'} no cover, and each was looked up in the last week. Add one by hand from the editor.`, 'INFO');
+            } else {
+                showNotification('EVERY RECORD HAS A COVER.\nNothing to look up.', 'SUCCESS');
+            }
+        } catch (e) {
+            showNotification(`COVER SEARCH FAILED.\n${e instanceof Error ? e.message : 'Try again in a while.'}`, 'ERROR');
+        } finally {
+            setCoverBusy(false);
+        }
+    };
+
     const handleRecalibrate = async () => {
         const confirmed = await showNotification(
             "INITIALIZE GLOBAL RE-CLASSIFICATION PROTOCOL?\nRe-checks every title's genres on AniList, MangaDex and MyAnimeList and updates its class (Player, Mage and so on). Only the class changes; chapters and covers are left alone.\nWARNING: This takes about 75 seconds. You can stop it part-way.",
@@ -328,10 +360,84 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
         }
     };
 
-    const exportToCSV = async () => {
-        const confirmed = await showNotification("INITIATE DATA EXTRACTION PROTOCOL?\nDownloads your library as a CSV file you can keep or import later.", 'INFO', true);
-        if (!confirmed) return;
+    const [exportMenuOpen, setExportMenuOpen] = useState(false);
+    const exportMenuRef = useRef<HTMLDivElement>(null);
+    // While the export menu is open, a press outside it closes it, and Escape closes the menu
+    // alone. Escape is caught on window in the capture phase, ahead of the profile's own
+    // document listener, wherever focus happens to be.
+    useEffect(() => {
+        if (!exportMenuOpen) return;
+        const close = (e: PointerEvent) => {
+            if (!exportMenuRef.current?.contains(e.target as Node)) setExportMenuOpen(false);
+        };
+        const onKey = (e: KeyboardEvent) => {
+            if (e.key !== 'Escape') return;
+            e.stopPropagation();
+            setExportMenuOpen(false);
+            exportMenuRef.current?.querySelector<HTMLButtonElement>('button')?.focus();
+        };
+        document.addEventListener('pointerdown', close);
+        window.addEventListener('keydown', onKey, true);
+        return () => {
+            document.removeEventListener('pointerdown', close);
+            window.removeEventListener('keydown', onKey, true);
+        };
+    }, [exportMenuOpen]);
 
+    /** Hand `content` to the browser as a download. */
+    const downloadFile = (content: string, type: string, name: string) => {
+        const url = URL.createObjectURL(new Blob([content], { type }));
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = name;
+        link.style.display = 'none';
+        document.body.appendChild(link);
+        link.click();
+        setTimeout(() => {
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        }, 100);
+    };
+    const today = () => new Date().toISOString().split('T')[0];
+
+    // ─── FULL BACKUP ───
+    // The CSV carries titles and progress only. The backup is the whole library as the server
+    // holds it: synopses, the Trash, the reading log behind the stats, and the streak.
+    const exportBackup = async () => {
+        try {
+            const res = await systemFetch('/api/backup');
+            const data = await res.json().catch(() => null);
+            if (!res.ok || !data) throw new Error(data?.message || `HTTP ${res.status}`);
+            downloadFile(JSON.stringify(data), 'application/json', `akashic_backup_${today()}.json`);
+            showNotification(`BACKUP SEALED.\nSaved ${data.quests.length} record${data.quests.length === 1 ? '' : 's'} (Trash included) and ${data.readingLog.length} reading-log entr${data.readingLog.length === 1 ? 'y' : 'ies'}. Import the file here to restore it.`, 'SUCCESS');
+        } catch (e) {
+            showNotification(`BACKUP FAILED.\n${e instanceof Error ? e.message : 'Try again in a while.'}`, 'ERROR');
+        }
+    };
+
+    const restoreBackup = async (text: string) => {
+        let data: { format?: string; exportedAt?: string; quests?: unknown[] } | null = null;
+        try { data = JSON.parse(text); } catch { /* reported below */ }
+        if (!data || data.format !== 'akashic-records-backup') {
+            showNotification("NOT A BACKUP.\nThat file is not an Akashic Records backup. Backups are the .json files saved from Export.", 'WARNING');
+            return;
+        }
+        const when = data.exportedAt ? new Date(data.exportedAt).toLocaleDateString() : 'an unknown date';
+        const confirmed = await showNotification(`RESTORE FROM BACKUP?\n${data.quests?.length ?? 0} records saved ${when}. They are merged in: missing titles are added, and nothing in your library is moved backwards or overwritten.`, 'WARNING', true);
+        if (!confirmed) return;
+        try {
+            const res = await systemFetch('/api/backup', { method: 'POST', body: text });
+            const r = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(r.message || `HTTP ${res.status}`);
+            await onRefresh();
+            const parts = [`${r.added} added`, `${r.updated} updated`, `${r.logEntries} reading-log entr${r.logEntries === 1 ? 'y' : 'ies'}`];
+            showNotification(`ARCHIVE RESTORED.\n${parts.join(', ')}${r.skipped ? `; ${r.skipped} skipped` : ''}${r.streakRestored ? '; streak restored' : ''}.`, 'SUCCESS');
+        } catch (e) {
+            showNotification(`RESTORE FAILED.\n${e instanceof Error ? e.message : 'Try again in a while.'}`, 'ERROR');
+        }
+    };
+
+    const exportToCSV = () => {
         const headers = ['Title', 'Current Ch', 'Max Ch', 'Link', 'Cover URL', 'Status', 'Class'];
         const csvRows = items.map(item => [
             item.title,
@@ -344,19 +450,7 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
         ].map(val => `"${(val || '').toString().replace(/"/g, '""')}"`).join(','));
 
         const csvContent = [headers.join(','), ...csvRows].join('\n');
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `akashic_records_${new Date().toISOString().split('T')[0]}.csv`;
-        link.style.display = 'none';
-        document.body.appendChild(link);
-        link.click();
-        
-        setTimeout(() => {
-            document.body.removeChild(link);
-            window.URL.revokeObjectURL(url);
-        }, 100);
+        downloadFile(csvContent, 'text/csv;charset=utf-8;', `akashic_records_${today()}.csv`);
 
         showNotification(`ARCHIVE EXTRACTED SUCCESSFULLY.\nSaved ${items.length} record${items.length === 1 ? '' : 's'} to your downloads as a CSV file.`, "SUCCESS");
     };
@@ -494,29 +588,64 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
 
             {/* HEADER. On a phone the five tools plus logo and title ran 35px past the right
                 edge, which put the close button off-screen — the profile could not be closed.
-                Below sm the logo and divider drop out and the gaps tighten; sm+ is unchanged. */}
-            <div className={`relative z-10 h-16 flex items-center justify-between gap-2 px-4 sm:px-6 bg-transparent shrink-0`}>
+                Below sm the logo and divider drop out and the gaps tighten; sm+ is unchanged.
+                z-20, one above the content: the export menu drops out of here over the banner. */}
+            <div className={`relative z-20 h-16 flex items-center justify-between gap-2 px-4 sm:px-6 bg-transparent shrink-0`}>
                 <div className="flex items-center gap-4 min-w-0">
                     <div className="relative w-10 h-10 hidden sm:flex items-center justify-center">
                         <SystemLogo theme={theme} className="w-full h-full" />
                     </div>
-                    <div className="flex flex-col leading-none">
+                    {/* With Trash, covers and low-power there are eight tools, which leave a phone
+                        ~47px for the title, so it wrapped under the icons. Below sm the title is
+                        visually hidden (it still names the dialog); the banner says where you are. */}
+                    <div className="flex flex-col leading-none max-sm:sr-only">
                         <span className={`font-mono text-[9px] tracking-[0.2em] ${theme.mutedText} uppercase`}>SYSTEM.ROOT</span>
-                        {/* Light ran sky-600 -> cyan-400 -> indigo-200, whose last stop measured
-                            1.23:1 on the page; the heading is read, so it takes the ink ramp. */}
-                        <h2 id="hunter-profile-title" className={`font-orbitron text-base tracking-[0.2em] font-bold bg-clip-text text-transparent bg-gradient-to-r ${theme.isDark ? 'from-amber-600 via-yellow-400 to-white' : theme.inkGradient} transition-colors duration-700`}>HUNTER PROFILE</h2>
+                        {/* Light takes the label ramp: at 16px this is body-size text, and the ink
+                            ramp's bright #a855f7 middle measured 3.43:1 on the page. */}
+                        <h2 id="hunter-profile-title" className={`font-orbitron text-base tracking-[0.2em] font-bold bg-clip-text text-transparent bg-gradient-to-r ${theme.isDark ? 'from-amber-600 via-yellow-400 to-white' : theme.labelGradient} transition-colors duration-700`}>HUNTER PROFILE</h2>
                     </div>
                 </div>
                 <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
                     {/* Compact Sys Admin Tools */}
-                    <button type="button" onClick={exportToCSV} title="Export archive (CSV)" aria-label="Export archive (CSV)" className={`w-9 h-9 flex items-center justify-center border ${theme.borderSubtle} ${theme.mutedText} hover:${theme.headingText} ${theme.isDark ? 'hover:bg-white/5' : 'hover:bg-black/5'} transition-colors cursor-pointer`}>
-                        <Download size={14} aria-hidden="true" />
-                    </button>
+                    {/* Export: the full backup or the spreadsheet. A menu rather than another
+                        button, because a phone's toolbar has no room left. */}
+                    <div ref={exportMenuRef} className="relative">
+                        <button type="button" onClick={() => setExportMenuOpen(o => !o)} aria-haspopup="menu" aria-expanded={exportMenuOpen} title="Export archive" aria-label="Export archive" className={`w-9 h-9 flex items-center justify-center border ${theme.borderSubtle} ${theme.mutedText} hover:${theme.headingText} ${theme.isDark ? 'hover:bg-white/5' : 'hover:bg-black/5'} transition-colors cursor-pointer`}>
+                            <Download size={14} aria-hidden="true" />
+                        </button>
+                        {exportMenuOpen && (
+                            <div role="menu" aria-label="Export archive" className={`absolute left-0 top-full mt-1.5 z-50 w-64 p-1 border ${theme.borderSubtle} ${theme.panelBg} shadow-xl`}>
+                                {[
+                                    { label: 'Full backup (.json)', hint: 'Everything: synopses, reading history, Trash. Restores completely.', run: exportBackup },
+                                    { label: 'Spreadsheet (.csv)', hint: 'Titles and progress, for Excel or Sheets.', run: exportToCSV },
+                                ].map((item, i) => (
+                                    <button
+                                        key={item.label}
+                                        type="button"
+                                        role="menuitem"
+                                        autoFocus={i === 0}
+                                        onClick={() => { setExportMenuOpen(false); item.run(); }}
+                                        className={`w-full text-left px-3 py-2.5 flex flex-col gap-0.5 ${theme.isDark ? 'hover:bg-white/5 focus-visible:bg-white/5' : 'hover:bg-black/5 focus-visible:bg-black/5'} transition-colors cursor-pointer`}
+                                    >
+                                        <span className={`font-mono text-[11px] font-bold ${theme.headingText}`}>{item.label}</span>
+                                        <span className={`font-mono text-[10px] leading-snug ${theme.mutedText}`}>{item.hint}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                    </div>
                     {/* The file input was `hidden` (display:none), which takes it out of the tab
                         order — import was mouse-only. Visually hidden instead, so it still takes
-                        focus, and the label draws the ring for it. */}
-                    <label title="Import archive (CSV)" className={`w-9 h-9 flex items-center justify-center border ${theme.borderSubtle} ${theme.mutedText} hover:${theme.headingText} ${theme.isDark ? 'hover:bg-white/5' : 'hover:bg-black/5'} transition-colors cursor-pointer has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-[color:var(--focus-ring)]`}>
-                        <input type="file" accept=".csv" aria-label="Import archive (CSV)" onChange={async (e) => {
+                        focus, and the label draws the ring for it. Takes a CSV or a backup. */}
+                    <label title="Import archive (CSV or backup)" className={`w-9 h-9 flex items-center justify-center border ${theme.borderSubtle} ${theme.mutedText} hover:${theme.headingText} ${theme.isDark ? 'hover:bg-white/5' : 'hover:bg-black/5'} transition-colors cursor-pointer has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-[color:var(--focus-ring)]`}>
+                        <input type="file" accept=".csv,.json,application/json" aria-label="Import archive (CSV or backup)" onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (file && /\.json$/i.test(file.name)) {
+                                const text = await file.text();
+                                e.target.value = "";
+                                restoreBackup(text);
+                                return;
+                            }
                             const confirmed = await showNotification("RE-SYNCHRONIZE DATABASE?\nImports this CSV: new titles are added, and titles the file has further along are updated. Nothing in your library is moved backwards.", "WARNING", true);
                             if (confirmed) handleImport(e);
                             else e.target.value = "";
@@ -525,6 +654,9 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                     </label>
                     <button type="button" onClick={() => setShowTrash(true)} title="Trash (deleted records)" aria-label="Open the Trash" className={`w-9 h-9 flex items-center justify-center border ${theme.borderSubtle} ${theme.mutedText} hover:${theme.headingText} ${theme.isDark ? 'hover:bg-white/5' : 'hover:bg-black/5'} transition-colors cursor-pointer`}>
                         <Trash2 size={14} aria-hidden="true" />
+                    </button>
+                    <button type="button" onClick={findMissingCovers} disabled={coverBusy} aria-busy={coverBusy} title="Find missing covers" aria-label="Find missing covers" className={`w-9 h-9 flex items-center justify-center border ${theme.borderSubtle} ${theme.mutedText} hover:${theme.headingText} ${theme.isDark ? 'hover:bg-white/5' : 'hover:bg-black/5'} transition-colors cursor-pointer disabled:cursor-wait`}>
+                        <ImagePlus size={14} aria-hidden="true" className={coverBusy ? 'animate-pulse' : ''} />
                     </button>
                     {/* Low-power effects: holds the animated background, rings and dais still.
                         A toggle, so it announces its state (aria-pressed) and shows it (fill). */}
@@ -602,9 +734,12 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                                     </div>
                                 </div>
                                 {/* Edit Profile button */}
+                                {/* The banner is a near-black plate in both themes, so everything on it
+                                    takes plate inks: light's page inks measured 1.2-2.8:1 here. */}
                                 <button
+                                    type="button"
                                     onClick={() => { setAccountStatus(null); setShowAccountModal(true); }}
-                                    className={`flex items-center gap-1 px-3 py-1 border border-accent-line text-accent-ink hover:border-accent-line-strong ${theme.isDark ? 'hover:text-amber-400' : 'hover:text-[#6d3ad0]'} transition-colors cursor-pointer`}
+                                    className="flex items-center gap-1 px-3 py-1 border border-accent-line text-accent-plate hover:border-accent-line-strong hover:text-white transition-colors cursor-pointer"
                                 >
                                     <Edit2 size={9} />
                                     <span className="text-[8px] font-mono font-bold uppercase tracking-widest">Edit Profile</span>
@@ -618,9 +753,9 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                                 {/* basis-full, not just w-full: flex-1's 0% basis is what line
                                     breaking reads, so without it this never wrapped. */}
                                 <div className="order-last basis-full sm:order-none sm:basis-0 flex flex-col justify-start flex-1 min-w-0">
-                                    <div className={`text-[9px] lg:text-[10px] font-mono tracking-[0.2em] font-bold uppercase mb-0.5 ${theme.isDark ? theme.highlightText : `text-transparent bg-clip-text bg-gradient-to-r ${theme.labelGradient}`}`}>HUNTER DESIGNATION</div>
+                                    <div className="text-[9px] lg:text-[10px] font-mono tracking-[0.2em] font-bold uppercase mb-0.5 text-accent-plate">HUNTER DESIGNATION</div>
                                     <div className="drop-shadow-sm leading-normal overflow-hidden">
-                                        <span className={`inline-block pr-[6px] text-4xl sm:text-5xl lg:text-[56px] font-black font-manifold tracking-tight text-transparent bg-clip-text bg-gradient-to-r ${theme.inkGradient} mb-4`}>
+                                        <span className={`inline-block pr-[6px] text-4xl sm:text-5xl lg:text-[56px] font-black font-manifold tracking-tight text-transparent bg-clip-text bg-gradient-to-r ${theme.isDark ? theme.inkGradient : 'from-[#c4b5fd] via-[#ddd6fe] to-white'} mb-4`}>
                                             {playerRank.name}
                                         </span>
                                     </div>
@@ -669,7 +804,7 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                                                                 width without overprinting, so only the current
                                                                 rank is named there; the nodes still show the rest. */}
                                                             <div className={`absolute top-[20px] lg:top-[24px] whitespace-nowrap text-[7px] lg:text-[8px] font-mono tracking-[0.12em] font-bold uppercase transition-all
-                                                                ${isCurrent ? theme.highlightText : `hidden sm:block ${isReached ? theme.headingText : theme.mutedText}`}`}>
+                                                                ${isCurrent ? 'text-accent-plate' : `hidden sm:block ${isReached ? 'text-white' : 'text-gray-400'}`}`}>
                                                                 {rank.label}
                                                             </div>
                                                         </div>
@@ -809,7 +944,7 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                                     {item.coverUrl && (
                                         <div className="absolute inset-0 z-0 overflow-hidden">
                                             <div className={`absolute inset-0 bg-gradient-to-r ${theme.isDark ? 'from-[#050505] via-[#050505]/95' : 'from-[#fcfaff] via-[#fcfaff]/95'} to-transparent z-10 transition-colors duration-500`} />
-                                            <img src={getProxiedImageUrl(item.coverUrl)} className="absolute right-0 top-1/2 -translate-y-1/2 w-1/2 h-[150%] object-cover object-center opacity-70 lg:opacity-85 select-none mix-blend-luminosity group-hover:mix-blend-normal group-hover:scale-110 transition-all duration-700" alt="" />
+                                            <img src={getProxiedImageUrl(item.coverUrl)} className="absolute right-0 top-1/2 -translate-y-1/2 w-1/2 h-[150%] object-cover object-center opacity-70 lg:opacity-85 select-none mix-blend-luminosity group-hover:mix-blend-normal group-hover:scale-110 transition-all duration-700" alt="" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
                                         </div>
                                     )}
                                     <div className={`w-7 h-7 flex items-center justify-center shrink-0 relative z-20 rounded shadow-sm ${theme.isDark ? 'bg-amber-500/20 text-amber-400 border border-amber-400/50' : 'bg-[#a855f7] text-black shadow-[#a855f7]/40'}`}>
@@ -845,19 +980,19 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                                     onClick={() => onSelectManhwa && onSelectManhwa(item.id)}
                                     className={`text-left relative overflow-hidden rounded-xl border cursor-pointer group transition-all duration-300 shrink-0 w-44 h-24 ${theme.isDark ? 'border-white/5 hover:border-white/20' : 'border-black/5 hover:border-violet-200'} shadow-sm hover:shadow-lg hover:-translate-y-0.5`}
                                 >
-                                    {item.coverUrl ? (
-                                        <div className="absolute inset-0 z-0 overflow-hidden">
-                                            <img src={getProxiedImageUrl(item.coverUrl)} className="w-full h-full object-cover object-center opacity-75 group-hover:opacity-95 group-hover:scale-105 transition-all duration-700 select-none" alt="" />
-                                            {/* One scrim for both themes: the card is a dark plate either way, and light's
-                                                lighter black/75 let bright cover art under the 9px title (3.9:1). */}
-                                            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
-                                        </div>
-                                    ) : (
-                                        /* Dark in both themes: the title on these cards is fixed white
-                                           (it normally sits on a scrim over art), and bg-violet-50 on
-                                           light put it white-on-white whenever a cover was missing. */
-                                        <div className={`absolute inset-0 ${theme.isDark ? 'bg-gray-900' : 'bg-gray-900'}`} />
-                                    )}
+                                    {/* Dark in both themes: the title is fixed white over a scrim. The
+                                        monogram plate (top, clear of the title) sits under the cover,
+                                        which hides itself on error; a dead link used to show the
+                                        browser's broken-image icon here. */}
+                                    <div className="absolute inset-0 z-0 overflow-hidden bg-black">
+                                        <CoverArt title={item.title} size="thumb" className="absolute inset-x-0 top-0 h-3/5" />
+                                        {item.coverUrl && (
+                                            <img src={getProxiedImageUrl(item.coverUrl)} className="relative w-full h-full object-cover object-center opacity-75 group-hover:opacity-95 group-hover:scale-105 transition-all duration-700 select-none" alt="" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                                        )}
+                                        {/* One scrim for both themes: light's lighter black/75 let bright
+                                            cover art under the 9px title (3.9:1). */}
+                                        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
+                                    </div>
                                     <div className="relative z-10 h-full flex flex-col justify-end p-2.5">
                                         <span className="text-[9px] font-bold text-white leading-tight line-clamp-2 mb-1.5 drop-shadow-lg">{item.title}</span>
                                         <div className="flex items-center gap-1.5">

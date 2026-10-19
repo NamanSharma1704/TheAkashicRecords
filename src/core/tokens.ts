@@ -19,6 +19,7 @@ import { Theme } from './types';
  *   accent-surface      opaque accent-tinted surface
  *   accent-edge         the edge drawn on that surface
  *   accent-on           ink on a solid accent fill
+ *   accent-plate        read accent on a plate dark in both themes  amber-500 / violet-300
  */
 export const accentVars = (theme: Theme): Record<string, string> => ({
     '--accent-color': theme.accentColor,
@@ -35,4 +36,5 @@ export const accentVars = (theme: Theme): Record<string, string> => ({
     '--accent-surface': theme.accentSurface,
     '--accent-edge': theme.accentEdge,
     '--accent-on': theme.accentOn,
+    '--accent-plate': theme.accentPlateInk,
 });

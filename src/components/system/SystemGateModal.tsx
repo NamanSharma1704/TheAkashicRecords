@@ -20,8 +20,23 @@ interface SystemGateModalProps {
 /** Plain-language line shown under each of the form's System-voice errors. */
 const PLAIN_ERRORS: Record<string, string> = {
     'TITLE IS REQUIRED': 'Give the record a title.',
-    'LINK (COORDINATES) REQUIRED': 'Add the web address where you read this series.',
     'ARTIFACT ALREADY EXISTS IN DATABASE': 'This title is already in your library.',
+};
+
+/**
+ * A field label: the System's name for the field, then its plain name. The System half is
+ * aria-hidden, so a screen reader announces "Current chapter", not "Wisdom underscore floor".
+ * Without `htmlFor` it is a group heading (a div), not a label.
+ */
+const FieldLabel: React.FC<{ theme: Theme; system: string; plain: string; htmlFor?: string }> = ({ theme, system, plain, htmlFor }) => {
+    const body = (
+        <>
+            <span aria-hidden="true" className={`${theme.mutedText} uppercase text-[8px] tracking-[0.25em] font-orbitron`}>{system}</span>
+            <span className={`${theme.baseText} font-mono text-[10px]`}>{plain}</span>
+        </>
+    );
+    const cls = 'flex flex-wrap items-baseline gap-x-2 gap-y-0.5';
+    return htmlFor ? <label htmlFor={htmlFor} className={cls}>{body}</label> : <div className={cls}>{body}</div>;
 };
 
 // --- SYSTEM GATE MODAL (Controlled Form with Scan Logic) ---
@@ -241,10 +256,8 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
             setError("TITLE IS REQUIRED");
             return;
         }
-        if (!formData.link?.trim()) {
-            setError("LINK (COORDINATES) REQUIRED");
-            return;
-        }
+        // No link check: a series can be tracked before (or without) a place to read it.
+        // ENTER PORTAL already disables itself when a record has no link.
 
         // DUPLICATE CHECK
         const isEditing = !!initialData;
@@ -327,8 +340,10 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
 
                         {/* ── LINK COORDINATES ── */}
                         <div className="space-y-2">
-                            <div className={`flex justify-between items-center pb-1.5 border-b ${theme.borderSubtle}`}>
-                                <label htmlFor="quest-link" className={`${theme.mutedText} uppercase text-[8px] tracking-[0.3em] font-orbitron`}>Link_Coordinates</label>
+                            {/* Wraps: on a phone the label and the four sources need ~330px of a
+                                ~310px row, which pushed MANGADEX out and scrolled the form sideways. */}
+                            <div className={`flex flex-wrap justify-between items-center gap-x-3 gap-y-1.5 pb-1.5 border-b ${theme.borderSubtle}`}>
+                                <FieldLabel theme={theme} htmlFor="quest-link" system="Link_Coordinates" plain="Reading link (optional)" />
                                 <div className="flex gap-0.5" role="group" aria-label="Metadata source">
                                     {['AUTO', 'ANILIST', 'MAL', 'MANGADEX'].map(src => (
                                         <button
@@ -392,7 +407,7 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
 
                         {/* ── ARTIFACT NOMENCLATURE ── */}
                         <div className="space-y-2">
-                            <label htmlFor="quest-title" className={`block ${theme.mutedText} uppercase text-[8px] tracking-[0.3em] font-orbitron`}>Artifact_Nomenclature</label>
+                            <FieldLabel theme={theme} htmlFor="quest-title" system="Artifact_Nomenclature" plain="Series title" />
                             <div className="relative group">
                                 <input
                                     id="quest-title"
@@ -425,13 +440,12 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
 
                             {/* WISDOM FLOOR */}
                             <div className="space-y-1.5">
-                                <label htmlFor="quest-current" className={`block ${theme.mutedText} uppercase text-[8px] font-orbitron tracking-[0.2em] truncate`}>Wisdom_Floor</label>
+                                <FieldLabel theme={theme} htmlFor="quest-current" system="Wisdom_Floor" plain="Current chapter" />
                                 <div className="relative">
                                     <input
                                         id="quest-current"
                                         name="currentChapter"
                                         min={0}
-                                        aria-describedby="quest-current-hint"
                                         type="number"
                                         value={formData.currentChapter}
                                         onFocus={(e) => e.target.select()}
@@ -440,20 +454,17 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
                                     />
                                     <div className={`absolute top-0 right-0 w-0.5 h-full bg-gradient-to-b from-accent-wash to-transparent`} />
                                 </div>
-                                {/* Full-strength muted ink: at opacity-50 these hints fell to ~2.3:1. */}
-                                <p id="quest-current-hint" className={`text-[7px] font-orbitron ${theme.mutedText} tracking-widest`}>CURRENT CH.</p>
                             </div>
 
                             {/* TERMINAL STATE */}
                             <div className="space-y-1.5">
-                                <label htmlFor="quest-total" className={`block ${theme.mutedText} uppercase text-[8px] font-orbitron tracking-[0.2em] truncate`}>Terminal_State</label>
+                                <FieldLabel theme={theme} htmlFor="quest-total" system="Terminal_State" plain="Total chapters" />
                                 <div className="relative">
                                     <input
                                         id="quest-total"
                                         name="totalChapters"
                                         min={0}
-                                        aria-describedby="quest-total-hint"
-                                        aria-invalid={formData.totalChapters === 0 ? true : undefined}
+                                        aria-describedby={formData.totalChapters === 0 ? 'quest-total-hint' : undefined}
                                         type="number"
                                         value={formData.totalChapters}
                                         onFocus={(e) => e.target.select()}
@@ -465,20 +476,20 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
                                     />
                                     <div className={`absolute top-0 left-0 w-0.5 h-full bg-gradient-to-b from-accent-wash to-transparent`} />
                                 </div>
-                                {formData.totalChapters === 0 ? (
-                                    <p id="quest-total-hint" className={`text-[7px] font-orbitron ${errorInk} tracking-widest flex items-center gap-1`}>
+                                {/* It said REQUIRED, but saving never needed it: 0 means unknown.
+                                    What a missing total actually costs is the progress readout. */}
+                                {formData.totalChapters === 0 && (
+                                    <p id="quest-total-hint" className={`text-[10px] font-mono ${errorInk} flex items-center gap-1.5`}>
                                         <span className="w-1 h-1 bg-red-500 rounded-full animate-pulse shrink-0" aria-hidden="true" />
-                                        REQUIRED
+                                        Not set: progress needs it
                                     </p>
-                                ) : (
-                                    <p id="quest-total-hint" className={`text-[7px] font-orbitron ${theme.mutedText} tracking-widest`}>TOTAL CH.</p>
                                 )}
                             </div>
                         </div>
 
                         {/* ── VISUAL MANIFEST ── */}
                         <div className="space-y-2">
-                            <label className={`block ${theme.mutedText} uppercase text-[8px] tracking-[0.3em] font-orbitron`}>Visual_Manifest</label>
+                            <FieldLabel theme={theme} system="Visual_Manifest" plain="Cover image" />
                             <div className="flex flex-col sm:flex-row gap-3">
                                 <div className="group relative shrink-0 self-start">
                                     <div className={`absolute inset-0 bg-gradient-to-b ${theme.gradient} opacity-0 group-hover:opacity-20 blur transition-opacity`} />
@@ -497,7 +508,7 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
                                     )}
                                 </div>
                                 <div className="flex-1 space-y-2 min-w-0">
-                                    <label htmlFor="quest-cover" className={`block ${theme.mutedText} uppercase text-[7px] tracking-[0.3em] font-orbitron`}>Image URL Encoding</label>
+                                    <label htmlFor="quest-cover" className={`block ${theme.baseText} font-mono text-[10px]`}>Image link</label>
                                     <input
                                         id="quest-cover"
                                         type="url"
@@ -518,7 +529,7 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
                         {/* ── CLASSIFICATION GRID ── */}
                         <div className="grid grid-cols-2 gap-3">
                             <div className="space-y-1.5">
-                                <label htmlFor="quest-status" className={`block ${theme.mutedText} uppercase text-[8px] font-orbitron tracking-[0.2em]`}>Protocol_Status</label>
+                                <FieldLabel theme={theme} htmlFor="quest-status" system="Protocol_Status" plain="Status" />
                                 <div className="relative">
                                     <select
                                         id="quest-status"
@@ -540,7 +551,7 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
                                 </div>
                             </div>
                             <div className="space-y-1.5">
-                                <label htmlFor="quest-class" className={`block ${theme.mutedText} uppercase text-[8px] font-orbitron tracking-[0.2em]`}>Entity_Class</label>
+                                <FieldLabel theme={theme} htmlFor="quest-class" system="Entity_Class" plain="Category" />
                                 <div className="relative">
                                     <select
                                         id="quest-class"
@@ -565,7 +576,7 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
 
                         {/* ── SYNOPSIS ── */}
                         <div className="space-y-1.5">
-                            <label htmlFor="quest-synopsis" className={`block ${theme.mutedText} uppercase text-[8px] font-orbitron tracking-[0.3em]`}>Memetic_Imprint</label>
+                            <FieldLabel theme={theme} htmlFor="quest-synopsis" system="Memetic_Imprint" plain="Synopsis" />
                             <div className="relative group">
                                 <div className={`absolute top-0 right-0 w-3 h-3 border-t border-r ${theme.border} opacity-30`} />
                                 <div className={`absolute bottom-0 left-0 w-3 h-3 border-b border-l ${theme.border} opacity-30`} />

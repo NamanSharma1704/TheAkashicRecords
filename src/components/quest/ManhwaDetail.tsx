@@ -13,8 +13,6 @@ import CoverArt from './CoverArt';
 import { getQuestRankObj } from '../../utils/ranks';
 import './ManhwaDetail.css';
 
-
-
 interface ManhwaDetailProps {
     isOpen: boolean;
     onClose: () => void;

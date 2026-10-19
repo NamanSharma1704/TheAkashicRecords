@@ -2397,7 +2397,7 @@ const App: React.FC = () => {
 
             {/* Each overlay has its own boundary, outside its Suspense so a chunk that fails
                 to load is caught too: a fault closes that view, not the whole app. */}
-            <ErrorBoundary scope="the profile" dark={theme.isDark} onDismiss={() => setIsProfileOpen(false)}>
+            <ErrorBoundary scope="the profile" theme={theme} onDismiss={() => setIsProfileOpen(false)}>
             <Suspense fallback={<HeavyLoader theme={theme} />}>
                 {isProfileOpen && (
                     <HunterProfile
@@ -2423,7 +2423,7 @@ const App: React.FC = () => {
             </Suspense>
             </ErrorBoundary>
 
-            <ErrorBoundary scope="the record view" dark={theme.isDark} onDismiss={() => setIsDetailOpen(false)}>
+            <ErrorBoundary scope="the record view" theme={theme} onDismiss={() => setIsDetailOpen(false)}>
             <Suspense fallback={<HeavyLoader theme={theme} />}>
                 {isDetailOpen && (
                     <ManhwaDetail
@@ -2450,7 +2450,7 @@ const App: React.FC = () => {
             </Suspense>
             </ErrorBoundary>
 
-            <ErrorBoundary scope="the Divine Spire" dark={theme.isDark} onDismiss={() => { setIsSpireOpen(false); setSpireStartInSearch(false); }}>
+            <ErrorBoundary scope="the Divine Spire" theme={theme} onDismiss={() => { setIsSpireOpen(false); setSpireStartInSearch(false); }}>
             <Suspense fallback={<HeavyLoader theme={theme} />}>
                 {isSpireOpen && (
                     <div className="fixed inset-0 z-[200]">
@@ -2472,7 +2472,7 @@ const App: React.FC = () => {
             </ErrorBoundary>
 
 
-            <ErrorBoundary scope="the editor" dark={theme.isDark} onDismiss={() => { setIsModalOpen(false); setEditingItem(null); }}>
+            <ErrorBoundary scope="the editor" theme={theme} onDismiss={() => { setIsModalOpen(false); setEditingItem(null); }}>
             <Suspense fallback={null}>
                 <AnimatePresence>
                     {isModalOpen && (
@@ -2625,10 +2625,6 @@ const App: React.FC = () => {
                         )}
                     </AnimatePresence>
                 )}
-
-
-
-
 
             <SystemNotification
                 isOpen={sysNote.isOpen}

@@ -11,7 +11,7 @@ import { FLOOR_DEFS, floorIndexForItem } from './floors';
 
 /** Isles in the spire — one per progress floor (see floors.ts). The keyboard layer list in
  *  DivineSpire mirrors this. */
-export const TOWER_FLOORS = FLOOR_DEFS.length;
+const TOWER_FLOORS = FLOOR_DEFS.length;
 
 interface TowerStructureProps {
     onSelectFloor: (floorIndex: number) => void;

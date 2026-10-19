@@ -93,5 +93,5 @@ const initDatabase = async (getConnection, templateConn = null) => {
     }
 };
 
-module.exports = { initDatabase, cloneFromTemplate };
+module.exports = { initDatabase };
 

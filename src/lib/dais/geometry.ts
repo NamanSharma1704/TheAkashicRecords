@@ -54,11 +54,6 @@ export const TIERS: readonly Tier[] = [
     { rOuter: 0.160, rInner: 0.000, top: 0.124 },
 ];
 
-/** Total height of the body — a twentieth of its own diameter. */
-export const BODY_HEIGHT = TIERS[TIERS.length - 1].top;
-/** Radius of the body where it meets the floor. */
-export const BODY_RADIUS = TIERS[0].rOuter;
-
 /**
  * The two hairline rings lying on the floor outside the body. Both traced to Z=0 and
  * are ~2px wide in a 1200px reference, so they are drawn as lines, never as ribbons.
@@ -85,7 +80,7 @@ export const TABS = {
  */
 export const STATIONS = 12;
 
-/** Radial dash band on a tier face. Count is a design choice — see UNCERTAIN. */
+/** Radial dash band on a tier face. Count is a design choice (see the note below). */
 export const TICKS = {
     tierIndex: 1,
     count: 72,
@@ -93,18 +88,16 @@ export const TICKS = {
     lengthFraction: 0.45,
 } as const;
 
-/**
- * What the single reference view could not establish. These are stylisation choices,
- * not measurements, and are the first things to revisit if the dais reads wrong.
- *
- * The reference's floor grid is not listed: it was dropped from the build entirely,
- * so its (unmeasurable) cell size no longer matters.
+/*
+ * What the single reference view could not establish. These are stylisation choices, not
+ * measurements, and are the first things to revisit if the dais reads wrong:
+ *  - Tick count: dashes resolve at ~4.5px near the foreshortened back of the ring,
+ *    indistinguishable from compression noise. TICKS.count is a design choice.
+ *  - Station phase: recovering an angle near the front of the ellipse is ill-conditioned,
+ *    so the 30-degree spacing is a reading of the traced angles, not a measurement.
+ *  - The back half of every feature is inferred from rotational symmetry; one view
+ *    cannot show it.
  */
-export const UNCERTAIN = [
-    'Tick count: dashes resolve at ~4.5px near the foreshortened back of the ring, indistinguishable from compression noise. TICKS.count is a design choice.',
-    'Station phase: recovering an angle near the front of the ellipse is ill-conditioned, so the 30-degree spacing is a reading of the traced angles rather than a measurement of them.',
-    'The back half of every feature is inferred from rotational symmetry; one view cannot show it.',
-] as const;
 
 /** Angle of station `i`, radians. Station 0 faces the camera. */
 export const stationAngle = (i: number, count: number = STATIONS): number =>

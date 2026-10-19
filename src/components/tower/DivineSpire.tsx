@@ -240,8 +240,6 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
                 {viewMode === 'FLOOR' && (
                     <div className="flex-1 min-h-0 flex flex-col w-full animate-in slide-in-from-bottom-10 duration-500 pointer-events-auto overflow-hidden">
 
-
-
                         {/* Search Bar HUD. Top margin: it sat flush against the 64px header, and
                             its glow ran up into the title. */}
                         <div className="relative z-20 shrink-0 w-full max-w-xl mx-auto px-4 mt-3 md:mt-6 mb-2 md:mb-4">

@@ -401,62 +401,6 @@ app.get('/api/health', async (req, res) => {
 
 // --- AUTH ROUTES ---
 
-// POST /api/auth/register - Create a new hunter
-//
-// Disabled by default. This deployment is single-owner: the app has no registration UI,
-// the owner's account is provisioned through /api/auth/upsert-sovereign, and visitors use
-// guest mode. Left open, this route lets anyone mint accounts whose private tenant
-// databases the sandbox reaper does not match and therefore never reclaims.
-// Set ALLOW_REGISTRATION=true to re-enable it.
-app.post('/api/auth/register', async (req, res) => {
-    if (process.env.ALLOW_REGISTRATION !== 'true') {
-        return res.status(403).json({ message: 'Registration is closed. Use guest access to explore the archive.' });
-    }
-
-    try {
-        // `role` is deliberately NOT read from the body. authenticate() trusts the role
-        // inside the JWT, so a client-supplied role here would mint a SOVEREIGN token and
-        // route the caller to the live akashic_records tenant. Elevation has exactly one
-        // legitimate path: POST /api/auth/upsert-sovereign, gated on SYSTEM_ADMIN_SECRET.
-        const { username, password } = req.body || {};
-
-        // Validate before touching the database — a malformed payload should not cost a connection.
-        if (typeof username !== 'string' || !username.trim()) {
-            return res.status(400).json({ message: 'Username is required.' });
-        }
-        if (typeof password !== 'string' || password.length < 8) {
-            return res.status(400).json({ message: 'Password must be at least 8 characters.' });
-        }
-
-        await connectDB();
-        const trimmedUsername = username.trim();
-
-        // Login resolves usernames case-insensitively, so registration must reject
-        // case-variant collisions — otherwise "Hunter" and "hunter" both exist but only
-        // one of them can ever authenticate.
-        const existing = await User.findOne({
-            username: { $regex: new RegExp(`^${escapeRegex(trimmedUsername)}$`, 'i') }
-        });
-        if (existing) return res.status(409).json({ message: 'Archive Collision: Username already registered.' });
-
-        const passwordHash = await hashPassword(password);
-        const user = await User.create({
-            username: trimmedUsername,
-            passwordHash,
-            role: 'GUEST'
-        });
-
-        const token = generateToken(user);
-        setAuthCookie(res, token, user.role);
-        res.status(201).json({
-            user: { id: user._id, username: user.username, role: user.role },
-            expiresAt: Date.now() + getTokenTtlMs(user.role)
-        });
-    } catch (err) {
-        return sendError(res, 500, 'Registration failed. Please try again.', err);
-    }
-});
-
 // POST /api/auth/upsert-sovereign - Administrative Identity Sync (Internal)
 app.post('/api/auth/upsert-sovereign', async (req, res) => {
     try {
@@ -678,8 +622,6 @@ app.put('/api/auth/update', authenticate, async (req, res) => {
         return sendError(res, 500, 'Failed to update hunter credentials.', err);
     }
 });
-
-
 
 // GET /api/boot/initial-data - Batched fetch for instant loading
 app.get('/api/boot/initial-data', authenticate, async (req, res) => {
@@ -1691,17 +1633,6 @@ const classifyBest = (title, genres, oldClass) => {
     if (bestScore > 0) return best;
     return oldClass || 'PLAYER';
 };
-
-// The former classifyFromGenres / inferClassFromTitle wrappers were removed: nothing
-// called them, and classifyBest above supersedes both by combining the two score sets
-// rather than choosing between them.
-
-
-
-
-
-
-
 
 // ─── STALE SANDBOX REAPER ─────────────────────────────────────────────────────
 

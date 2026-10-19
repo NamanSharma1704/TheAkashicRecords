@@ -279,11 +279,6 @@ html.theme-switching *::after {
         box-shadow: 0 0 12px 1px currentColor;
         will-change: transform;
     }
-
-    .text-bloom {
-        filter: drop-shadow(0 0 10px var(--bloom-color, currentColor));
-        will-change: filter;
-    }
 }
 /* Hero card scanlines. The band drifts slowly downward so the projection reads as
    live signal rather than a static texture. Distance is one 4px band period, so the

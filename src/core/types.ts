@@ -1,11 +1,7 @@
 export interface Theme {
     id: string;
-    name: string;
-    primary: string;
-    accent: string;
     appBg: string;
     panelBg: string;
-    modalBg: string;
     inputBg: string;
     baseText: string;
     headingText: string;

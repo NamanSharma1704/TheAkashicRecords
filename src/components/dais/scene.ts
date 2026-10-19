@@ -335,9 +335,6 @@ export const createDais = ({ host, isDark, reducedMotion }: DaisOptions): DaisHa
         dais.add(tabs);
     }
 
-
-
-
     // ---- loop ----------------------------------------------------------------
     let time = 0;
     /** Latched by dispose: a late resize or frame must never draw through a released context. */

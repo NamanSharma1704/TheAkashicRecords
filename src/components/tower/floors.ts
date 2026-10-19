@@ -31,8 +31,6 @@ export const FLOOR_DEFS: FloorDef[] = [
     { label: 'THRONE', name: 'The Throne', meaning: 'Conquered — the gate cleared', rule: 'Conquered' },
 ];
 
-export const SPIRE_FLOOR_COUNT = FLOOR_DEFS.length;
-
 /**
  * The floor a title belongs on, by progress. Exactly one floor per title; precedence runs
  * status first (a severed or conquered gate is off the progress ladder), then completion.

@@ -119,9 +119,6 @@ const readAuthCookie = (req) => {
 };
 
 module.exports = {
-    JWT_SECRET,
-    AUTH_COOKIE,
-    TOKEN_TTL_MS,
     getTokenTtlMs,
     hashPassword,
     comparePassword,

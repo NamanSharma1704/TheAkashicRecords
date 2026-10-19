@@ -26,7 +26,7 @@ export const calculateQuestRank = (quest: Quest) => {
     return 'E';
 };
 
-export const QUEST_RANKS: Record<string, Rank> = {
+const QUEST_RANKS: Record<string, Rank> = {
     'S': { name: 'S', threshold: 0, color: 'text-amber-400', bg: 'bg-amber-500/20', border: 'border-amber-500/30', glow: 'shadow-[0_0_15px_rgba(251,191,36,0.5)]' },
     'A': { name: 'A', threshold: 0, color: 'text-rose-400', bg: 'bg-rose-500/20', border: 'border-rose-500/30' },
     'B': { name: 'B', threshold: 0, color: 'text-purple-400', bg: 'bg-purple-500/20', border: 'border-purple-500/30' },

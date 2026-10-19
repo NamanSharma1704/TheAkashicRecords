@@ -45,7 +45,7 @@ export const saveAuthData = (data: AuthResponse) => {
     purgeLegacyToken();
 };
 
-export const clearAuthData = () => {
+const clearAuthData = () => {
     try {
         localStorage.removeItem(USER_KEY);
         localStorage.removeItem(EXPIRY_KEY);

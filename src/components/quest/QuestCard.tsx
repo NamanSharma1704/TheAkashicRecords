@@ -99,7 +99,6 @@ const QuestCard = React.memo<DivineMonolithProps>(({ item, onClick, index, id, t
                     </div>
                 </div>
             </div>
-            {/* REFLECTION REMOVED PER USER REQUEST */}
         </motion.div>
     );
 });

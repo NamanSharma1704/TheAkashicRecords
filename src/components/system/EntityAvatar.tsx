@@ -1,15 +1,8 @@
 import React from 'react';
+import { Theme } from '../../core/types';
 
 interface EntityAvatarProps {
-    theme: {
-        id: string;
-        highlightText: string;
-        accentInk: string;
-        border: string;
-        isDark: boolean;
-        gradient: string;
-        primary: string;
-    };
+    theme: Pick<Theme, 'id' | 'accentInk' | 'accentFillRGB' | 'border' | 'isDark'>;
     size?: number;
     className?: string;
 }
@@ -32,7 +25,9 @@ const EntityAvatar: React.FC<EntityAvatarProps> = ({ theme, size = 64, className
             style={{
                 width: size,
                 height: size,
-                ['--primary-rgb' as any]: theme.id === 'LIGHT' ? '6, 182, 212' : '245, 158, 11'
+                // The hover glow takes the accent fill: light still carried the cyan
+                // ('6, 182, 212') from before the amethyst theme.
+                ['--primary-rgb' as any]: theme.accentFillRGB
             }}
         >
             {/* 1. BACKGROUND HUD RINGS (DEFINED AS PHYSICAL HOLOGRAMS) */}

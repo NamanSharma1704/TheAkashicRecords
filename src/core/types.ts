@@ -90,6 +90,8 @@ export interface Quest {
     synopsis?: string; // ADDED
     /** Chapters the tracker found released since you last read on ("+N NEW"). */
     newChapters?: number;
+    /** The reader's own score, 1-10 (the Hunter's Appraisal); null until given. */
+    rating?: number | null;
 }
 
 export interface User {

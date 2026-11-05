@@ -26,6 +26,11 @@ const QuestSchema = new mongoose.Schema({
     // Cover backfill (see backfillCovers in index.js): when a missing cover was last looked
     // up, so a title no source knows is retried weekly rather than on every run.
     coverCheckedAt: { type: Date, default: null },
+    // The reader's own score, 1-10 (the Hunter's Appraisal); null until they give one.
+    rating: { type: Number, default: null, min: 1, max: 10 },
+    // When the series became CONQUERED (server-stamped; cleared if it is reopened). Records
+    // conquered before this field existed have no date.
+    conqueredAt: { type: Date, default: null },
     // Soft delete. A deleted quest is kept, hidden, so the app can offer Undo and a Trash;
     // it is purged for good after the retention window (see TRASH_RETENTION_MS in index.js).
     // Every read of the library filters on `deletedAt: null`, which also matches documents

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Terminal, XCircle, RotateCw, X } from 'lucide-react';
 import { Theme } from '../../core/types';
-import { THEMES } from '../../core/constants';
+import { THEMES, startingThemeId } from '../../core/constants';
 import { accentVars } from '../../core/tokens';
 import SystemFrame from './SystemFrame';
 import SystemLogo from './SystemLogo';
@@ -16,14 +16,8 @@ interface ErrorBoundaryProps {
     theme?: Theme;
 }
 
-/** The theme App would start in: the saved choice, else the Void (App's own rule). */
-const savedTheme = (): Theme => {
-    try {
-        return THEMES[localStorage.getItem('akashic_theme') === 'LIGHT' ? 'LIGHT' : 'DARK'];
-    } catch {
-        return THEMES.DARK;
-    }
-};
+/** The theme App would start in (the saved choice, else the device's preference). */
+const savedTheme = (): Theme => THEMES[startingThemeId()];
 
 interface FaultScreenProps {
     error: Error;

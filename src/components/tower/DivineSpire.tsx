@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Theme, Quest } from '../../core/types';
+import { statusLabel } from '../../core/constants';
 import { elevation } from '../../core/depth';
 import TowerHUD from './TowerHUD';
 import TowerStructure from './TowerStructure';
@@ -7,7 +8,7 @@ import { FLOOR_DEFS, floorIndexForItem } from './floors';
 import QuestCard from '../quest/QuestCard';
 import SystemLogo from '../system/SystemLogo';
 import { getQuestRankObj } from '../../utils/ranks';
-import { ChevronLeft, ChevronRight, X, Search, AlertCircle, ChevronDown, Filter } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X, Search, AlertCircle, ChevronDown, Filter, ArrowDownUp } from 'lucide-react';
 import { useDialogFocus } from '../../utils/useDialogFocus';
 
 interface DivineSpireProps {
@@ -27,6 +28,26 @@ interface DivineSpireProps {
     startInSearch?: boolean;
 }
 
+/** How a floor (and the search results) is ordered. Remembered per browser. */
+type SpireSort = 'RECENT' | 'TITLE' | 'PROGRESS' | 'APPRAISAL' | 'NEW';
+const SPIRE_SORTS: { value: SpireSort; label: string }[] = [
+    { value: 'RECENT', label: 'Recent' },
+    { value: 'TITLE', label: 'Title' },
+    { value: 'PROGRESS', label: 'Progress' },
+    { value: 'APPRAISAL', label: 'Appraisal' },
+    { value: 'NEW', label: 'New chapters' },
+];
+const recency = (q: Quest) => new Date(q.lastUpdated || 0).getTime();
+const progressOf = (q: Quest) => (q.totalChapters > 0 ? q.currentChapter / q.totalChapters : 0);
+const SPIRE_COMPARE: Record<SpireSort, (a: Quest, b: Quest) => number> = {
+    RECENT: (a, b) => recency(b) - recency(a),
+    TITLE: (a, b) => a.title.localeCompare(b.title),
+    PROGRESS: (a, b) => progressOf(b) - progressOf(a) || recency(b) - recency(a),
+    // Unrated records go last, then by title.
+    APPRAISAL: (a, b) => (b.rating ?? 0) - (a.rating ?? 0) || a.title.localeCompare(b.title),
+    NEW: (a, b) => (b.newChapters ?? 0) - (a.newChapters ?? 0) || recency(b) - recency(a),
+};
+
 const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items, onActivate, playerRank, streak, dailyAbsorbed, startInSearch = false }) => {
     // TOWER SYSTEM STATE
     const [viewMode, setViewMode] = useState<'TOWER' | 'FLOOR'>(startInSearch ? 'FLOOR' : 'TOWER');
@@ -39,6 +60,18 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
     const [isFilterOpen, setIsFilterOpen] = useState(false);
     const [filterClass, setFilterClass] = useState<string>('ALL');
     const [filterStatus, setFilterStatus] = useState<string>('ALL');
+    const [sortBy, setSortBy] = useState<SpireSort>(() => {
+        try {
+            const saved = localStorage.getItem('akashic_spire_sort') as SpireSort | null;
+            return saved && saved in SPIRE_COMPARE ? saved : 'RECENT';
+        } catch {
+            return 'RECENT';
+        }
+    });
+    const chooseSort = (next: SpireSort) => {
+        setSortBy(next);
+        try { localStorage.setItem('akashic_spire_sort', next); } catch { /* a preference only */ }
+    };
 
     const availableClasses = useMemo(() => Array.from(new Set(items.map(i => i.classType))).sort(), [items]);
     const availableStatuses = useMemo(() => Array.from(new Set(items.map(i => i.status))).sort(), [items]);
@@ -82,9 +115,9 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
             label: def.label,
             name: def.name,
             meaning: def.meaning,
-            items: buckets[index],
+            items: buckets[index].sort(SPIRE_COMPARE[sortBy]),
         }));
-    }, [activeLibrary]);
+    }, [activeLibrary, sortBy]);
 
     // Fallback to ensure selected floor is valid if list shrinks
     useEffect(() => {
@@ -138,8 +171,8 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
     // Filtered items memoization
     const filteredItems = useMemo(() => {
         if (!search) return [];
-        return items.filter(i => i.title.toLowerCase().includes(search.toLowerCase()));
-    }, [search, items]);
+        return items.filter(i => i.title.toLowerCase().includes(search.toLowerCase())).sort(SPIRE_COMPARE[sortBy]);
+    }, [search, items, sortBy]);
 
     // Keyboard: Escape steps back one level — out of the filter menu, then from a floor to
     // the tower, then out of the Spire — matching what the close button does in each mode.
@@ -304,7 +337,16 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
                                                 <div className="flex flex-wrap gap-2">
                                                     <button onClick={() => setFilterStatus('ALL')} className={`px-3 py-1 text-xs font-mono rounded border ${filterStatus === 'ALL' ? `border-accent-solid bg-accent-soft-strong text-white` : `border-white/10 text-white/50 hover:border-white/30 hover:text-white/80`} transition-all`}>ALL</button>
                                                     {availableStatuses.map(s => (
-                                                        <button key={s} onClick={() => setFilterStatus(s)} className={`px-3 py-1 text-xs font-mono rounded border ${filterStatus === s ? `border-accent-solid bg-accent-soft-strong text-white` : `border-white/10 text-white/50 hover:border-white/30 hover:text-white/80`} transition-all uppercase`}>{s}</button>
+                                                        <button key={s} onClick={() => setFilterStatus(s)} className={`px-3 py-1 text-xs font-mono rounded border ${filterStatus === s ? `border-accent-solid bg-accent-soft-strong text-white` : `border-white/10 text-white/50 hover:border-white/30 hover:text-white/80`} transition-all uppercase`}>{statusLabel(s)}</button>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                            {/* Sort Order: how each floor (and the search results) is ordered. */}
+                                            <div>
+                                                <div className={`text-[10px] font-mono text-white/60 tracking-widest mb-2 uppercase flex items-center gap-1.5`}><ArrowDownUp size={10} /> Sort Order</div>
+                                                <div className="flex flex-wrap gap-2">
+                                                    {SPIRE_SORTS.map(o => (
+                                                        <button key={o.value} type="button" aria-pressed={sortBy === o.value} onClick={() => chooseSort(o.value)} className={`px-3 py-1 text-xs font-mono rounded border ${sortBy === o.value ? `border-accent-solid bg-accent-soft-strong text-white` : `border-white/10 text-white/50 hover:border-white/30 hover:text-white/80`} transition-all uppercase`}>{o.label}</button>
                                                     ))}
                                                 </div>
                                             </div>

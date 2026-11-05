@@ -6,8 +6,8 @@ import SystemFrame from '../components/system/SystemFrame';
 import SystemLogo from '../components/system/SystemLogo';
 import ScrambleText from '../components/system/ScrambleText';
 import { Activity, ExternalLink, Sun, Moon, Plus, Zap, Crown, X, LayoutTemplate, GripVertical, ChevronLeft, ChevronRight, LogOut, RefreshCw, Search } from 'lucide-react';
-import { getPlayerRank, calculateQuestRank, USER_RANKS } from '../utils/ranks';
-import { THEMES, ThemeId } from './constants';
+import { getPlayerRank, calculateQuestRank, USER_RANKS, expOf } from '../utils/ranks';
+import { THEMES, ThemeId, statusLabel, startingThemeId, hasSavedTheme } from './constants';
 
 import SystemConsole from '../components/system/SystemConsole';
 import BootScreen from '../components/system/BootScreen';
@@ -136,7 +136,8 @@ const mapQuest = (q: any): Quest => ({
     status: (q.status || 'ACTIVE').toUpperCase(),
     classType: q.classType || "PLAYER",
     lastUpdated: q.lastRead || q.lastUpdated || Date.now(),
-    newChapters: Number(q.newChapters) || 0
+    newChapters: Number(q.newChapters) || 0,
+    rating: Number.isInteger(q.rating) ? q.rating : null,
 });
 
 /** One full record, synopsis included; the library list leaves synopses out. Null on failure. */
@@ -218,7 +219,7 @@ const QuestListItem = ({ item, theme, activeId, handleLogClick, onDragStateChang
                         <span className={`font-bold font-mono text-[11px] leading-tight ${isHighlighted ? theme.highlightText : `${theme.mutedText} group-hover:${theme.headingText}`} transition-colors duration-700 uppercase line-clamp-2`}>{item.title}</span>
                         <div className="flex items-center gap-2 mt-1 min-w-0">
                             <div className={`w-1 h-1 rounded-full flex-none ${item.status === 'ACTIVE' ? (theme.isDark ? 'bg-amber-400' : 'bg-[#7c3aed]') : 'bg-gray-400'}`} />
-                            <span className={`text-[9px] ${theme.mutedText} uppercase font-mono tracking-widest transition-colors duration-700 truncate`}>{item.status}</span>
+                            <span className={`text-[9px] ${theme.mutedText} uppercase font-mono tracking-widest transition-colors duration-700 truncate`}>{statusLabel(item.status)}</span>
                             {/* Released since you last read on (the chapter tracker). Reading
                                 forward clears it, server-side. */}
                             {item.newChapters > 0 && (
@@ -372,18 +373,23 @@ const App: React.FC = () => {
             clearTimeout(timeoutId);
         };
     }, []);
-    // Restored from the previous visit. Without this the boot sequence and login screen
-    // always render in Void regardless of the palette the user chose, since both run
-    // before any in-app toggle is reachable.
-    const [currentTheme, setCurrentTheme] = useState<ThemeId>(() => {
-        try {
-            const saved = localStorage.getItem('akashic_theme');
-            return saved === 'LIGHT' || saved === 'DARK' ? saved : 'DARK';
-        } catch {
-            return 'DARK'; // storage can throw outright in private mode
-        }
-    });
+    // Restored from the previous visit, or on a first visit the device's preference. The boot
+    // sequence and login screen run before any in-app toggle is reachable, so this is what
+    // they render in.
+    const [currentTheme, setCurrentTheme] = useState<ThemeId>(startingThemeId);
     const theme = THEMES[currentTheme];
+
+    // Until the reader picks a theme with the toggle, keep following the device (a phone
+    // switching to dark at sunset). Once a choice is saved, the device no longer decides.
+    useEffect(() => {
+        const media = window.matchMedia?.('(prefers-color-scheme: light)');
+        if (!media) return;
+        const follow = (e: MediaQueryListEvent) => {
+            if (!hasSavedTheme()) setCurrentTheme(e.matches ? 'LIGHT' : 'DARK');
+        };
+        media.addEventListener('change', follow);
+        return () => media.removeEventListener('change', follow);
+    }, []);
 
     // Low-power effects: the animated background, the hero rings or sigil, and the dais render
     // one still frame instead of animating. The reader's own choice wins (saved); otherwise the
@@ -416,6 +422,10 @@ const App: React.FC = () => {
         root.setProperty('--focus-ring', theme.accentInk);
         for (const [name, value] of Object.entries(accentVars(theme))) root.setProperty(name, value);
         root.colorScheme = theme.isDark ? 'dark' : 'light';
+        // The browser chrome (Android's address bar, the installed app's title bar) takes the
+        // page colour of the theme in use, not index.html's Void default.
+        const page = theme.appBg.match(/#[0-9a-f]{6}/i)?.[0];
+        if (page) document.querySelector('meta[name="theme-color"]')?.setAttribute('content', page);
     }, [theme]);
 
     const [library, setLibrary] = useState<Quest[]>([]);
@@ -824,21 +834,43 @@ const App: React.FC = () => {
     }, [library, activeId]);
 
     const progressPercent = useMemo(() => Math.min(100, Math.round((activeQuest.currentChapter / (activeQuest.totalChapters || 1)) * 100)), [activeQuest]);
-    const totalChaptersRead = useMemo(() => library.reduce((acc, item) => acc + (item.currentChapter || 0), 0), [library]);
+    // EXP: chapters read across the library. It earns the player rank.
+    const totalChaptersRead = useMemo(() => expOf(library), [library]);
 
-    // Player rank, plus how far the library is toward the next one — that is what the
-    // EXP bar under the rank name shows. It used to be pinned at scaleX(0.6) whatever the
-    // library held. (A themed `style` field also lived here; nothing read it, and it
-    // compared against 'Sovereign' while every label is upper-case.)
+    // Player rank, plus how far EXP is toward the next one: that is what the bar under the
+    // rank name shows. Ranks used to count titles, which rewarded adding series, not reading.
     const playerRank = useMemo(() => {
-        const titles = library.length;
-        const rawPlayerRank = getPlayerRank(titles);
+        const rawPlayerRank = getPlayerRank(totalChaptersRead);
         const next = USER_RANKS[USER_RANKS.indexOf(rawPlayerRank) + 1] ?? null;
         const progress = next
-            ? Math.min(1, Math.max(0, (titles - rawPlayerRank.minTitles) / (next.minTitles - rawPlayerRank.minTitles)))
+            ? Math.min(1, Math.max(0, (totalChaptersRead - rawPlayerRank.minExp) / (next.minExp - rawPlayerRank.minExp)))
             : 1;
-        return { ...rawPlayerRank, name: rawPlayerRank.label, next, progress, titles };
-    }, [library.length]);
+        return { ...rawPlayerRank, name: rawPlayerRank.label, next, progress, exp: totalChaptersRead };
+    }, [totalChaptersRead]);
+
+    // A rank earned while reading is announced once: the payoff of EXP. Not on load (the first
+    // rank seen is the baseline), not when a correction drops a rank. It waits for any toast
+    // already showing, so it never pushes a chapter's Undo off the screen.
+    const rankBaseline = useRef<number | null>(null);
+    const [rankUpPending, setRankUpPending] = useState<Omit<ToastSpec, 'id'> | null>(null);
+    useEffect(() => {
+        if (!libraryLoaded) return;
+        const idx = USER_RANKS.findIndex(r => r.label === playerRank.name);
+        if (rankBaseline.current !== null && idx > rankBaseline.current) {
+            setRankUpPending({
+                tone: 'SUCCESS',
+                message: `Rank up · ${playerRank.name}`,
+                detail: `${playerRank.exp.toLocaleString()} EXP reached. ${playerRank.next ? `Next: ${playerRank.next.label} at ${playerRank.next.minExp.toLocaleString()} EXP.` : 'There is no rank above this one.'}`,
+                duration: 8000,
+            });
+        }
+        rankBaseline.current = idx;
+    }, [libraryLoaded, playerRank]);
+    useEffect(() => {
+        if (!rankUpPending || toast) return;
+        showToast(rankUpPending);
+        setRankUpPending(null);
+    }, [rankUpPending, toast, showToast]);
 
     const activeQuests = useMemo(() => {
         return library.filter(item => item.status === 'ACTIVE');
@@ -1048,6 +1080,7 @@ const App: React.FC = () => {
                         classType: row.classType || 'PLAYER',
                         ...(row.link ? { readLink: row.link } : {}),
                         ...(row.coverUrl ? { cover: row.coverUrl } : {}),
+                        ...(row.rating ? { rating: row.rating } : {}),
                     },
                 });
                 continue;
@@ -1065,6 +1098,8 @@ const App: React.FC = () => {
                     ...(row.classType ? { classType: row.classType } : {}),
                     ...(row.link ? { readLink: row.link } : {}),
                     ...(row.coverUrl ? { cover: row.coverUrl } : {}),
+                    // An appraisal fills an unrated record; it never overwrites one you gave.
+                    ...(row.rating && !existing.rating ? { rating: row.rating } : {}),
                 },
             });
         }
@@ -1142,9 +1177,13 @@ const App: React.FC = () => {
     }, []);
 
     /** After a burst lands: offer Undo for a big move, and mark a climb to a higher floor. */
-    const announceBurst = useCallback((b: ChapterBurst, final: ChapterPair) => {
+    const announceBurst = useCallback((b: ChapterBurst, final: ChapterPair, savedStatus: string) => {
         const quest = libraryRef.current.find(q => q.id === b.questId);
         if (!quest) return;
+        // Reading on in a SEALED or STASIS series opens it (server-side); `quest` is still the
+        // copy from before the save, so it carries the old status.
+        const reopened = (quest.status === 'PLANNED' || quest.status === 'STASIS') && savedStatus === 'ACTIVE';
+        const reopenNote = reopened ? `Gate opened: ${statusLabel(quest.status)} → ACTIVE` : '';
         if (b.undo) {
             showToast({ tone: 'INFO', message: `Restored · CH ${final.current}`, detail: quest.title, duration: 3000 });
             return;
@@ -1155,16 +1194,22 @@ const App: React.FC = () => {
         const ascended = toFloor > fromFloor;
         const raised = final.total !== from.total;
         const undoable = b.typed || raised || Math.abs(final.current - from.current) >= UNDO_THRESHOLD;
-        if (!ascended && !undoable) return;
+        if (!ascended && !undoable) {
+            if (reopened) showToast({ tone: 'SUCCESS', message: 'Gate opened', detail: `${quest.title} moved from ${statusLabel(quest.status)} to your active quests.`, duration: 5000 });
+            return;
+        }
 
         const moved = `Chapter ${from.current} → ${final.current}`;
         const totalNote = raised ? `total raised to ${final.total} (was ${from.total})` : '';
         showToast({
             tone: ascended ? 'SUCCESS' : 'INFO',
             message: ascended ? `Ascended → ${FLOOR_DEFS[toFloor].name}` : `CH ${from.current} → ${final.current}`,
-            detail: ascended
-                ? [moved, totalNote].filter(Boolean).join(' · ')
-                : totalNote ? totalNote.charAt(0).toUpperCase() + totalNote.slice(1) : quest.title,
+            detail: [
+                ascended
+                    ? [moved, totalNote].filter(Boolean).join(' · ')
+                    : totalNote ? totalNote.charAt(0).toUpperCase() + totalNote.slice(1) : quest.title,
+                reopenNote,
+            ].filter(Boolean).join(' · '),
             action: undoable
                 ? { label: 'Undo', onAction: () => { requestChapterRef.current(b.questId, from.current, { total: from.total, mode: 'now', undo: true }); } }
                 : undefined,
@@ -1212,7 +1257,7 @@ const App: React.FC = () => {
             // Settled. Adopt the server's copy (it carries lastRead and the like).
             bursts.current.delete(questId);
             setLibrary(prev => prev.map(q => q.id === questId ? saved : q));
-            announceBurst(b, sent);
+            announceBurst(b, sent, saved.status);
             // Streak and daily-absorbed are the only other state a chapter changes server-side.
             refreshUserState().catch(() => { /* counters refresh on the next load */ });
         } catch (e) {
@@ -2231,13 +2276,12 @@ const App: React.FC = () => {
                                         </div>
                                     </div>
                                 </div>
-                                {/* EXP readout. The bar is progress toward the NEXT rank — ranks are
-                                    earned by titles tracked, so that is the number that moves it —
-                                    and the right-hand legend says so. It was a fixed 60% before. */}
+                                {/* EXP readout. The bar is progress toward the NEXT rank, and ranks
+                                    are earned by EXP (chapters read), so the legend counts EXP. */}
                                 <div className="mt-3">
                                     <div className={`flex justify-between gap-3 text-[8px] font-mono ${theme.highlightText} mb-0.5 transition-colors duration-700 uppercase`}>
-                                        <span className="truncate">EXP ACQUIRED · {totalChaptersRead} PTS</span>
-                                        <span className="shrink-0">{playerRank.next ? `NEXT ${playerRank.next.label} ${playerRank.titles}/${playerRank.next.minTitles}` : 'MAX RANK'}</span>
+                                        <span className="truncate">EXP ACQUIRED · {totalChaptersRead.toLocaleString()} PTS</span>
+                                        <span className="shrink-0">{playerRank.next ? `NEXT ${playerRank.next.label} ${totalChaptersRead.toLocaleString()}/${playerRank.next.minExp.toLocaleString()}` : 'MAX RANK'}</span>
                                     </div>
                                     <div
                                         role="progressbar"
@@ -2279,7 +2323,8 @@ const App: React.FC = () => {
                                     </div>
                                     <div className="flex flex-col gap-0.5">
                                         <div className={`text-[8px] ${theme.mutedText} font-mono uppercase tracking-widest`}>GATE</div>
-                                        <div className={`text-xl font-bold font-mono tabular-nums leading-tight ${activeQuest.status === 'CONQUERED' ? theme.mutedText : (theme.isDark ? theme.highlightText : `text-transparent bg-clip-text bg-gradient-to-b ${theme.inkGradient}`)}`}>{activeQuest.status === 'CONQUERED' ? 'CLOSED' : 'OPEN'}</div>
+                                        {/* OPEN while reading; otherwise the gate's state (CLOSED once conquered). */}
+                                        <div className={`text-xl font-bold font-mono tabular-nums leading-tight ${activeQuest.status !== 'ACTIVE' ? theme.mutedText : (theme.isDark ? theme.highlightText : `text-transparent bg-clip-text bg-gradient-to-b ${theme.inkGradient}`)}`}>{activeQuest.status === 'ACTIVE' ? 'OPEN' : activeQuest.status === 'CONQUERED' ? 'CLOSED' : statusLabel(activeQuest.status)}</div>
                                         <div className={`text-[7px] ${theme.mutedText} font-mono uppercase`}>STATUS</div>
                                     </div>
                                 </div>

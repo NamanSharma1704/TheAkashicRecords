@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { Quest } from '../../core/types';
 import SystemFrame from '../system/SystemFrame';
-import { getPlayerRank } from '../../utils/ranks';
+import { getPlayerRank, expOf } from '../../utils/ranks';
 import CoverArt from '../quest/CoverArt';
 import { FLOOR_DEFS, floorIndexForItem } from './floors';
 import { Activity, Target, Layers, Database, Sword } from 'lucide-react';
@@ -57,8 +57,8 @@ const TowerHUD: React.FC<TowerHUDProps> = ({ items, theme, onActivate, isFocused
         };
     }, [items, isFocused, selectedFloorIndex]);
 
-    // Derived Rank (Always based on global titles) - Memoize separately for clarity
-    const rawRank = useMemo(() => getPlayerRank(items.length), [items.length]);
+    // The player rank, from EXP (chapters read) across the whole library, as on the dashboard.
+    const rawRank = useMemo(() => getPlayerRank(expOf(items)), [items]);
 
     return (
         <div className="absolute inset-0 z-30 pointer-events-none flex flex-col overflow-hidden">

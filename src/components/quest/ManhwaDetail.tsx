@@ -1,15 +1,17 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, useReducedMotion } from 'motion/react';
-import { X, Users, Share2, Zap, Edit2, Target, AlignLeft, Check, Activity, ExternalLink, Crown } from 'lucide-react';
+import { X, Users, Share2, Zap, Edit2, Target, AlignLeft, Check, Activity, ExternalLink, Crown, Gauge, History } from 'lucide-react';
 import { getProxiedImageUrl, cleanDescription } from '../../utils/api';
 import { systemFetch } from '../../utils/auth';
 import { sanitizeHtml } from '../../utils/sanitize';
 import { useDialogFocus } from '../../utils/useDialogFocus';
 
 import { Theme, Quest } from '../../core/types';
+import { statusLabel } from '../../core/constants';
 import ScrambleText from '../system/ScrambleText';
 import RankSigil from './RankSigil';
 import CoverArt from './CoverArt';
+import AppraisalPips from './AppraisalPips';
 import { getQuestRankObj } from '../../utils/ranks';
 import './ManhwaDetail.css';
 
@@ -23,6 +25,36 @@ interface ManhwaDetailProps {
     onUpdate?: (id: string, updates: Partial<Quest>) => Promise<void>;
     onEdit?: (quest: Quest) => void;
 }
+
+/** One series' Chronicle, from GET /api/quests/:id/history. */
+interface Chronicle {
+    addedAt: string | null;
+    firstReadDay: string | null;
+    lastReadAt: number | string | null;
+    conqueredAt: string | null;
+    daysRead: number;
+    chapters30: number;
+    recent: { from: number; to: number; delta: number; day: string }[];
+}
+
+/** A 'YYYY-MM-DD' day or a timestamp, as "12 Mar 2026" in the reader's locale. */
+const formatDay = (value: string | number | null): string => {
+    if (value === null || value === undefined || value === '') return '—';
+    const d = typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)
+        ? new Date(Number(value.slice(0, 4)), Number(value.slice(5, 7)) - 1, Number(value.slice(8, 10)))
+        : new Date(value);
+    return Number.isNaN(d.getTime()) ? '—' : d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+};
+
+/** How long ago, in whole days: "today", "yesterday", "5 days ago". */
+const daysAgo = (value: number | string | null): string => {
+    if (!value) return '—';
+    const then = new Date(value);
+    if (Number.isNaN(then.getTime())) return '—';
+    const startOf = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+    const days = Math.round((startOf(new Date()) - startOf(then)) / 86400000);
+    return days <= 0 ? 'today' : days === 1 ? 'yesterday' : `${days} days ago`;
+};
 
 interface AniListCharacter {
     id: number;
@@ -110,6 +142,18 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
     // or another record) gets its own attempt.
     const [failedCover, setFailedCover] = useState<string | null>(null);
     const [conquering, setConquering] = useState(false);
+    // The series' Chronicle (GET /api/quests/:id/history). Refetched when the record or its
+    // chapter changes, so a status or chapter saved from here shows up.
+    const [chronicle, setChronicle] = useState<Chronicle | null>(null);
+    useEffect(() => {
+        if (!isOpen || !quest?.id) return;
+        let alive = true;
+        systemFetch(`/api/quests/${quest.id}/history`)
+            .then(res => (res.ok ? res.json() : null))
+            .then(data => { if (alive) setChronicle(data); })
+            .catch(() => { if (alive) setChronicle(null); });
+        return () => { alive = false; };
+    }, [isOpen, quest?.id, quest?.currentChapter, quest?.status]);
 
     // Same-class entries from the library, used by the SIMILAR_RECORDS row far below.
     //
@@ -379,7 +423,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                         <div className="shrink-0 w-[180px] md:w-[240px] lg:w-[280px] relative group mx-auto md:mx-0">
                             {/* Data spine */}
                             <div className="hidden md:flex flex-col justify-between items-center absolute top-4 bottom-4 -left-5 z-20">
-                                {[`CH ${quest.currentChapter}`, `${Math.round(progress * 100)}%`, quest.status].map((s, i) => (
+                                {[`CH ${quest.currentChapter}`, `${Math.round(progress * 100)}%`, statusLabel(quest.status)].map((s, i) => (
                                     <span key={i} className={`manhwa-detail-spine text-[9px] font-mono tracking-[0.15em] ${theme.id === 'LIGHT' ? 'text-violet-950' : 'text-amber-400/80'}`}>{s}</span>
                                 ))}
                             </div>
@@ -511,7 +555,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                         <div className={`text-[10px] font-mono font-bold tracking-[0.4em] ${inkText} uppercase`}>SYNCHRONIZATION_THREAD</div>
                                     </div>
                                     <div className={`text-[10px] font-mono ${faintText} tracking-widest uppercase`}>
-                                        STATUS: {quest.status}
+                                        STATUS: {statusLabel(quest.status)}
                                     </div>
                                 </div>
 
@@ -585,8 +629,70 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                             )}
                         </div>
 
-                        {/* RIGHT: System Metrics + Genres */}
+                        {/* RIGHT: Appraisal, Chronicle, System Metrics, Genres */}
                         <div className="flex flex-col gap-4">
+                            {/* HUNTER_APPRAISAL: your own score, beside the source's RESONANCE below. */}
+                            <div className={`p-6 backdrop-blur-xl rounded-xl flex flex-col gap-4 border ${panelClass}`}>
+                                <div className="flex items-center gap-2">
+                                    <Gauge size={16} aria-hidden="true" className={theme.isDark ? 'text-white/60' : 'text-stone-600'} />
+                                    <span className={`text-[10px] font-mono tracking-[0.3em] font-bold uppercase ${theme.isDark ? 'text-white/60' : 'text-stone-600'}`}>HUNTER_APPRAISAL</span>
+                                </div>
+                                <AppraisalPips
+                                    value={quest.rating}
+                                    onChange={(rating) => { if (onUpdate) onUpdate(quest.id, { rating }); }}
+                                    theme={theme}
+                                />
+                            </div>
+
+                            {/* CHRONICLE: this series' own history, from the reading log. */}
+                            <div className={`p-6 backdrop-blur-xl rounded-xl flex flex-col gap-4 border ${panelClass}`}>
+                                <div className="flex items-center gap-2">
+                                    <History size={16} aria-hidden="true" className={theme.isDark ? 'text-white/60' : 'text-stone-600'} />
+                                    <span className={`text-[10px] font-mono tracking-[0.3em] font-bold uppercase ${theme.isDark ? 'text-white/60' : 'text-stone-600'}`}>CHRONICLE</span>
+                                </div>
+                                {chronicle ? (
+                                    <>
+                                        <dl className="grid grid-cols-2 gap-3">
+                                            {[
+                                                ['ADDED', formatDay(chronicle.addedAt)],
+                                                ['FIRST READ', formatDay(chronicle.firstReadDay)],
+                                                ['LAST READ', daysAgo(chronicle.lastReadAt)],
+                                                ['DAYS READ', String(chronicle.daysRead)],
+                                                ['LAST 30 DAYS', `${chronicle.chapters30} CH`],
+                                                ['CONQUERED', formatDay(chronicle.conqueredAt)],
+                                            ].map(([term, detail]) => (
+                                                <div key={term} className={metricCellClass}>
+                                                    <dt className={labelClass}>{term}</dt>
+                                                    <dd className={`text-sm font-bold font-mono tabular-nums ${strongText}`}>{detail}</dd>
+                                                </div>
+                                            ))}
+                                        </dl>
+                                        {chronicle.recent.length > 0 ? (
+                                            <div className="flex flex-col gap-1.5">
+                                                <span className={labelClass}>RECENT MOVES</span>
+                                                <ul className="flex flex-col gap-1">
+                                                    {chronicle.recent.map((e, i) => (
+                                                        <li key={i} className={`flex items-center justify-between gap-3 text-[11px] font-mono tabular-nums ${theme.isDark ? 'text-white/80' : 'text-stone-700'}`}>
+                                                            <span>{formatDay(e.day)}</span>
+                                                            <span>CH {e.from} → {e.to}</span>
+                                                            <span className={e.delta > 0 ? 'text-accent-ink font-bold' : ''}>{e.delta > 0 ? `+${e.delta}` : e.delta}</span>
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            </div>
+                                        ) : (
+                                            <p className={`text-[11px] font-mono leading-relaxed ${theme.isDark ? 'text-white/60' : 'text-stone-600'}`}>
+                                                No chapters logged yet. Every move from here on is recorded.
+                                            </p>
+                                        )}
+                                    </>
+                                ) : (
+                                    <div className="grid grid-cols-2 gap-3 animate-pulse" aria-hidden="true">
+                                        {Array.from({ length: 4 }).map((_, i) => <div key={i} className={`h-14 rounded-lg ${theme.isDark ? 'bg-white/5' : 'bg-black/5'}`} />)}
+                                    </div>
+                                )}
+                            </div>
+
                             {/* RECORD METRICS (AniList-derived: score, year, chapters, source) */}
                             {(isLoadingMedia || media) && (
                                 <div className={`p-6 backdrop-blur-xl rounded-xl flex flex-col gap-5 border ${panelClass}`}>
@@ -766,7 +872,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                                 {/* The card is always a dark scrim over art, so light mode takes fixed pale ink here:
                                                     the page ink (#5b21b6) on near-black was ~2.6:1. */}
                                                 <div className="text-[8px] font-mono mt-1 uppercase text-accent-plate">
-                                                    {rec.status}
+                                                    {statusLabel(rec.status)}
                                                 </div>
                                             </div>
                                         </button>

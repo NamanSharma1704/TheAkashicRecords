@@ -784,7 +784,7 @@ app.get('/api/quests', authenticate, async (req, res) => {
 });
 
 // Allowed fields for quest creation/update (prevents mass assignment)
-const QUEST_ALLOWED_FIELDS = ['title', 'cover', 'synopsis', 'totalChapters', 'currentChapter', 'status', 'classType', 'readLink', 'lastRead'];
+const QUEST_ALLOWED_FIELDS = ['title', 'cover', 'synopsis', 'totalChapters', 'currentChapter', 'status', 'classType', 'readLink', 'lastRead', 'rating'];
 
 const sanitizeQuestBody = (body) => {
     const safe = {};
@@ -798,7 +798,8 @@ const sanitizeQuestBody = (body) => {
 // The allowlist above decides WHICH fields a client may write; this decides what values.
 // Before it, negative chapters, text in number fields, a `javascript:` reading link and any
 // status string at all went straight into the database.
-const QUEST_STATUSES = ['ACTIVE', 'PLANNED', 'CONQUERED', 'SEVERED'];
+// PLANNED shows in the app as SEALED (plan to read); STASIS is on hold.
+const QUEST_STATUSES = ['ACTIVE', 'PLANNED', 'STASIS', 'CONQUERED', 'SEVERED'];
 const QUEST_CLASSES = ['PLAYER', 'IRREGULAR', 'MAGE', 'CONSTELLATION', 'NECROMANCER', 'UNKNOWN'];
 const MAX_CHAPTER = 100000;
 const MAX_URL = 2048;
@@ -861,6 +862,18 @@ const validateQuest = (raw, existing = null) => {
         v[f] = v[f].trim().toUpperCase();
         if (!allowed.includes(v[f]) && v[f] !== existing?.[f]) {
             return fail(`${f} must be one of: ${allowed.join(', ')}.`);
+        }
+    }
+
+    // The Hunter's Appraisal: a whole 1-10, or null (or "") to clear it.
+    if (v.rating !== undefined) {
+        if (v.rating === null || v.rating === '') v.rating = null;
+        else {
+            const n = typeof v.rating === 'string' ? Number(v.rating) : v.rating;
+            if (typeof n !== 'number' || !Number.isInteger(n) || n < 1 || n > 10) {
+                return fail('The appraisal must be a whole number from 1 to 10.');
+            }
+            v.rating = n;
         }
     }
 
@@ -1001,6 +1014,15 @@ app.put('/api/quests/:id', authenticate, writeLimiter, async (req, res) => {
         const imported = req.query.import === '1';
         // Moving past chapters the tracker flagged as new means they are no longer new.
         if (moved && to > from) body.newChapters = 0;
+        if (body.status !== undefined && body.status !== existing.status) {
+            if (body.status === 'CONQUERED') body.conqueredAt = new Date();
+            else if (existing.status === 'CONQUERED') body.conqueredAt = null;
+        }
+        // Reading on in a sealed (PLANNED) or STASIS series opens it again, unless the same
+        // save sets a status itself (the editor does). An import replays history, not reading.
+        if (moved && to > from && !imported && body.status === undefined && ['PLANNED', 'STASIS'].includes(existing.status)) {
+            body.status = 'ACTIVE';
+        }
 
         const updatedQuest = await Quest.findOneAndUpdate(
             { _id: questId, ...LIVE },
@@ -1073,6 +1095,43 @@ app.get('/api/quests/:id', authenticate, async (req, res) => {
         res.json(quest);
     } catch (err) {
         return sendError(res, 500, 'Failed to retrieve the quest record.', err);
+    }
+});
+
+// GET /api/quests/:id/history - One series' Chronicle, from the reading log: when it was
+// added, first and last read, conquered; the days it was read; the last 30 days; and the
+// most recent moves. Days are the reader's own (X-Timezone), as the stats use.
+app.get('/api/quests/:id/history', authenticate, async (req, res) => {
+    try {
+        if (!isQuestId(req.params.id)) return res.status(404).json({ message: 'Quest record not found.' });
+        const quest = await getModel(req.dbConn, 'Quest').findOne({ _id: req.params.id, ...LIVE })
+            .select('createdAt conqueredAt')
+            .lean();
+        if (!quest) return res.status(404).json({ message: 'Quest record not found.' });
+
+        const log = await getModel(req.dbConn, 'ReadingLog').find({ questId: req.params.id })
+            .sort({ at: 1 })
+            .select('-_id from to delta day at')
+            .lean();
+        const byDay = new Map();
+        for (const e of log) byDay.set(e.day, (byDay.get(e.day) || 0) + e.delta);
+        const since = shiftDay(todayFor(req), -29);
+        const forward = log.filter((e) => e.delta > 0);
+
+        res.json({
+            addedAt: quest.createdAt || null,
+            firstReadDay: forward.length ? forward[0].day : null,
+            // The last chapter actually read forward. The record's lastRead is touched by any
+            // save (an appraisal, MARK_TARGET), so it means "last touched", not "last read".
+            lastReadAt: forward.length ? forward[forward.length - 1].at : null,
+            conqueredAt: quest.conqueredAt || null,
+            // A day counts when its moves net forward, as in the reading stats.
+            daysRead: [...byDay.values()].filter((n) => n > 0).length,
+            chapters30: [...byDay].filter(([day]) => day >= since).reduce((sum, [, n]) => sum + n, 0),
+            recent: log.slice(-6).reverse(),
+        });
+    } catch (err) {
+        return sendError(res, 500, 'Failed to read the series history.', err);
     }
 });
 
@@ -1693,8 +1752,9 @@ app.post('/api/admin/reap-sandboxes', async (req, res) => {
 
 // ─── NEW-CHAPTER TRACKING ─────────────────────────────────────────────────────
 
-/** Statuses worth checking: a CONQUERED or SEVERED series has nothing you are waiting for. */
-const SYNC_STATUSES = ['ACTIVE', 'PLANNED'];
+/** Statuses worth checking: a CONQUERED or SEVERED series has nothing you are waiting for,
+ *  while a planned or paused one still releases chapters you will want to know about. */
+const SYNC_STATUSES = ['ACTIVE', 'PLANNED', 'STASIS'];
 
 /**
  * Check up to `limit` series for newly released chapters, least recently checked first, so
@@ -1824,7 +1884,7 @@ app.post(BACKUP_PATH, authenticate, writeLimiter, express.json({ limit: '4mb' })
         const UserSettings = getModel(req.dbConn, 'UserSettings');
 
         const existing = await Quest.find({})
-            .select('title normalizedTitle currentChapter totalChapters cover synopsis readLink deletedAt')
+            .select('title normalizedTitle currentChapter totalChapters cover synopsis readLink rating deletedAt')
             .lean();
         const byNorm = new Map(existing.map((q) => [q.normalizedTitle || normalizeTitle(q.title), q]));
         const idMap = new Map(); // the backup's record id -> the id it has here
@@ -1844,7 +1904,7 @@ app.post(BACKUP_PATH, authenticate, writeLimiter, express.json({ limit: '4mb' })
                 const set = {};
                 if ((v.currentChapter ?? 0) > (have.currentChapter ?? 0)) set.currentChapter = v.currentChapter;
                 if ((v.totalChapters ?? 0) > (have.totalChapters ?? 0)) set.totalChapters = v.totalChapters;
-                for (const f of ['cover', 'synopsis', 'readLink']) if (v[f] && !have[f]) set[f] = v[f];
+                for (const f of ['cover', 'synopsis', 'readLink', 'rating']) if (v[f] && !have[f]) set[f] = v[f];
                 if (have.deletedAt && !trashedInBackup) set.deletedAt = null;
                 if (Object.keys(set).length) {
                     updates.push({ updateOne: { filter: { _id: have._id }, update: { $set: set } } });
@@ -1854,7 +1914,9 @@ app.post(BACKUP_PATH, authenticate, writeLimiter, express.json({ limit: '4mb' })
             }
             if (room <= 0) { skipped++; continue; }
             const _id = new mongoose.Types.ObjectId();
-            const doc = { _id, ...v, normalizedTitle: norm, deletedAt: trashedInBackup ? new Date(raw.deletedAt) : null };
+            // The conquest date is server-owned, so validateQuest drops it; a restore carries it.
+            const conqueredAt = v.status === 'CONQUERED' && raw.conqueredAt && !Number.isNaN(Date.parse(raw.conqueredAt)) ? new Date(raw.conqueredAt) : null;
+            const doc = { _id, ...v, normalizedTitle: norm, conqueredAt, deletedAt: trashedInBackup ? new Date(raw.deletedAt) : null };
             inserts.push(doc);
             byNorm.set(norm, doc);
             if (raw._id) idMap.set(String(raw._id), _id);

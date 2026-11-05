@@ -11,6 +11,25 @@ import { Theme } from './types';
  */
 export type ThemeId = 'DARK' | 'LIGHT';
 
+/** Whether the reader has picked a theme with the toggle (it is saved when they do). */
+export const hasSavedTheme = (): boolean => {
+    try {
+        const saved = localStorage.getItem('akashic_theme');
+        return saved === 'LIGHT' || saved === 'DARK';
+    } catch {
+        return false; // storage can throw outright in private mode
+    }
+};
+
+/**
+ * The theme to start in: the reader's saved choice, else the device's own preference, so a
+ * first visit on a light-mode phone opens in Arcanum rather than always in the Void.
+ */
+export const startingThemeId = (): ThemeId => {
+    if (hasSavedTheme()) return localStorage.getItem('akashic_theme') as ThemeId;
+    return typeof window !== 'undefined' && window.matchMedia?.('(prefers-color-scheme: light)').matches ? 'LIGHT' : 'DARK';
+};
+
 export const THEMES: Record<ThemeId, Theme> = {
     DARK: {
         id: 'DARK',
@@ -83,6 +102,22 @@ export const THEMES: Record<ThemeId, Theme> = {
         isDark: false
     },
 };
+/**
+ * Record statuses: the stored value, the System's name for it, and its plain meaning, in
+ * the order the editor lists them. PLANNED shows as SEALED, a gate not yet opened. Reading
+ * a chapter of a SEALED or STASIS series makes it ACTIVE again (server-side).
+ */
+export const STATUS_INFO: { value: string; label: string; plain: string }[] = [
+    { value: 'ACTIVE', label: 'ACTIVE', plain: 'Reading' },
+    { value: 'PLANNED', label: 'SEALED', plain: 'Plan to read' },
+    { value: 'STASIS', label: 'STASIS', plain: 'On hold' },
+    { value: 'CONQUERED', label: 'CONQUERED', plain: 'Finished' },
+    { value: 'SEVERED', label: 'SEVERED', plain: 'Dropped' },
+];
+
+/** The System's name for a stored status (PLANNED reads SEALED); unknown values pass through. */
+export const statusLabel = (status: string) => STATUS_INFO.find(s => s.value === status)?.label ?? status;
+
 /** The footer console cycles through these. */
 export const SYSTEM_LOGS = [
     'System initializing...',

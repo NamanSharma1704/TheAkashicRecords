@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion } from 'motion/react';
 import { Theme, Quest, Rank } from '../../core/types';
+import { statusLabel } from '../../core/constants';
 import { Fingerprint, BookOpen } from 'lucide-react';
 import { getProxiedImageUrl } from '../../utils/api';
 import RankSigil from './RankSigil';
@@ -93,8 +94,12 @@ const QuestCard = React.memo<DivineMonolithProps>(({ item, onClick, index, id, t
 
                         <div className="h-[1px] w-full bg-white/10 overflow-hidden relative"><div className={`absolute inset-0 w-full h-full ${rankStyle.bg} -translate-x-full group-hover:translate-x-0 group-focus-visible:translate-x-0 transition-transform duration-1000 delay-100`} /></div>
                         <div className="flex justify-between items-center text-xs md:text-sm font-mono text-gray-400 group-hover:text-gray-300 transition-colors delay-300 duration-700">
-                            <span className="flex items-center gap-2"><BookOpen size={14} aria-hidden="true" /> CH: {item.currentChapter}</span>
-                            <span className={`px-2 md:px-3 py-1 border ${item.status === 'SEVERED' ? 'bg-accent-soft text-accent-plate border-accent-line' : 'border-white/10 bg-white/5'} uppercase tracking-widest`}>{item.status}</span>
+                            <span className="flex items-center gap-2">
+                                <BookOpen size={14} aria-hidden="true" /> CH: {item.currentChapter}
+                                {/* The Hunter's Appraisal, when given. Dark-plate ink: this row is on the scrim. */}
+                                {item.rating ? <span className="text-accent-plate font-bold">· {item.rating}/10</span> : null}
+                            </span>
+                            <span className={`px-2 md:px-3 py-1 border ${item.status === 'SEVERED' ? 'bg-accent-soft text-accent-plate border-accent-line' : 'border-white/10 bg-white/5'} uppercase tracking-widest`}>{statusLabel(item.status)}</span>
                         </div>
                     </div>
                 </div>

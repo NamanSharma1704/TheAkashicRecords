@@ -1,19 +1,28 @@
 import { Quest, Rank } from '../core/types';
 
+/**
+ * Player ranks, earned by EXP: chapters read. They used to count titles in the library, so
+ * adding 150 records reached MONARCH without reading a chapter. The thresholds are the old
+ * title steps at ~100 chapters a title, so a reader lands near the rank their library implied.
+ */
 export const USER_RANKS = [
-    { label: 'DRIFTER', minTitles: 0 },
-    { label: 'AWAKENED', minTitles: 1 },
-    { label: 'ADEPT', minTitles: 5 },
-    { label: 'VANGUARD', minTitles: 15 },
-    { label: 'ASCENDANT', minTitles: 30 },
-    { label: 'PARAGON', minTitles: 50 },
-    { label: 'SOVEREIGN', minTitles: 75 },
-    { label: 'ECLIPSE', minTitles: 100 },
-    { label: 'MONARCH', minTitles: 150 }
+    { label: 'DRIFTER', minExp: 0 },
+    { label: 'AWAKENED', minExp: 100 },
+    { label: 'ADEPT', minExp: 500 },
+    { label: 'VANGUARD', minExp: 1500 },
+    { label: 'ASCENDANT', minExp: 3000 },
+    { label: 'PARAGON', minExp: 5000 },
+    { label: 'SOVEREIGN', minExp: 7500 },
+    { label: 'ECLIPSE', minExp: 10000 },
+    { label: 'MONARCH', minExp: 15000 }
 ];
 
-export const getPlayerRank = (titlesTracked: number) => {
-    return [...USER_RANKS].reverse().find(r => titlesTracked >= r.minTitles) || USER_RANKS[0];
+/** EXP: chapters read across the library, each record's current chapter (so reading done
+ *  before the tracker existed counts too). */
+export const expOf = (items: { currentChapter: number }[]) => items.reduce((sum, q) => sum + (q.currentChapter || 0), 0);
+
+export const getPlayerRank = (exp: number) => {
+    return [...USER_RANKS].reverse().find(r => exp >= r.minExp) || USER_RANKS[0];
 };
 
 export const calculateQuestRank = (quest: Quest) => {

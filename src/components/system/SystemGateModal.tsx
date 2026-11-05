@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'motion/react';
 import { Theme, Quest } from '../../core/types';
 import SystemFrame from './SystemFrame';
+import AppraisalPips from '../quest/AppraisalPips';
+import { STATUS_INFO } from '../../core/constants';
 import { X, RefreshCw, AlertCircle, CheckCircle, Database, Search, Activity, Trash2 } from 'lucide-react';
 import { fetchMangadex, fetchAuto, fetchAnilistCover, fetchJikanCover, getProxiedImageUrl, cleanDescription } from '../../utils/api';
 import { useDialogFocus } from '../../utils/useDialogFocus';
@@ -15,6 +17,15 @@ interface SystemGateModalProps {
     theme: Theme;
     existingQuests: Quest[];
 }
+
+// Each status option's ink. Light rungs sit at -700/-800: the -500s on the white option list
+// measured 2.3-3.8:1.
+const STATUS_OPTION_INK_DARK: Record<string, string> = {
+    ACTIVE: 'text-amber-500', PLANNED: 'text-slate-300', STASIS: 'text-sky-400', CONQUERED: 'text-blue-500', SEVERED: 'text-red-500',
+};
+const STATUS_OPTION_INK_LIGHT: Record<string, string> = {
+    ACTIVE: 'text-orange-700', PLANNED: 'text-slate-700', STASIS: 'text-sky-800', CONQUERED: 'text-violet-700', SEVERED: 'text-red-700',
+};
 
 /** Plain-language line shown under each of the form's System-voice errors. */
 const PLAIN_ERRORS: Record<string, string> = {
@@ -537,11 +548,13 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
                                         onChange={handleChange}
                                         className={`w-full appearance-none ${theme.inputBg} border-b-2 ${theme.borderSubtle} focus:border-accent-line-strong px-3 py-2.5 ${theme.headingText} hover:bg-black/5 outline-none transition-all font-orbitron font-bold text-[9px] tracking-widest cursor-pointer`}
                                     >
-                                        {/* Light rungs moved down to -700: orange/sky/red-500 on the
-                                            white option list measured 2.3-3.8:1. */}
-                                        <option value="ACTIVE" className={`${theme.isDark ? 'bg-black text-amber-500' : 'bg-white text-orange-700'}`}>_ACTIVE</option>
-                                        <option value="CONQUERED" className={`${theme.isDark ? 'bg-black text-blue-500' : 'bg-white text-violet-700'}`}>_CONQUERED</option>
-                                        <option value="SEVERED" className={`${theme.isDark ? 'bg-black text-red-500' : 'bg-white text-red-700'}`}>_SEVERED</option>
+                                        {/* From STATUS_INFO (the System's name, then the plain meaning),
+                                            so the editor and the rest of the app cannot disagree. */}
+                                        {STATUS_INFO.map(s => (
+                                            <option key={s.value} value={s.value} className={`${theme.isDark ? 'bg-black' : 'bg-white'} ${(theme.isDark ? STATUS_OPTION_INK_DARK : STATUS_OPTION_INK_LIGHT)[s.value] ?? ''}`}>
+                                                _{s.label} · {s.plain.toLowerCase()}
+                                            </option>
+                                        ))}
                                     </select>
                                     <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none opacity-40">
                                         <div className={`w-0 h-0 border-l-[4px] border-l-transparent border-r-[4px] border-r-transparent border-t-[5px] ${theme.isDark ? 'border-t-white' : 'border-t-slate-800'}`} />
@@ -571,6 +584,16 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
                                     <div className={`absolute bottom-0 left-0 h-[2px] w-full bg-gradient-to-r ${theme.gradient} opacity-20`} />
                                 </div>
                             </div>
+                        </div>
+
+                        {/* ── APPRAISAL ── */}
+                        <div className="space-y-2">
+                            <FieldLabel theme={theme} system="Hunter_Appraisal" plain="Your rating (optional)" />
+                            <AppraisalPips
+                                value={formData.rating}
+                                onChange={(rating) => setFormData(prev => ({ ...prev, rating }))}
+                                theme={theme}
+                            />
                         </div>
 
                         {/* ── SYNOPSIS ── */}

@@ -438,7 +438,7 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
     };
 
     const exportToCSV = () => {
-        const headers = ['Title', 'Current Ch', 'Max Ch', 'Link', 'Cover URL', 'Status', 'Class'];
+        const headers = ['Title', 'Current Ch', 'Max Ch', 'Link', 'Cover URL', 'Status', 'Class', 'Appraisal'];
         const csvRows = items.map(item => [
             item.title,
             item.currentChapter,
@@ -446,7 +446,8 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
             item.link,
             item.coverUrl,
             item.status,
-            item.classType
+            item.classType,
+            item.rating ?? ''
         ].map(val => `"${(val || '').toString().replace(/"/g, '""')}"`).join(','));
 
         const csvContent = [headers.join(','), ...csvRows].join('\n');
@@ -514,6 +515,8 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                         // class rather than overwriting them with a default.
                         status: clean(fields[5]).toUpperCase(),
                         classType: clean(fields[6]).toUpperCase(),
+                        // Optional 8th column (older exports have 7): the Hunter's Appraisal.
+                        rating: (() => { const n = parseInt(clean(fields[7])); return n >= 1 && n <= 10 ? n : null; })(),
                         lastUpdated: Date.now()
                     });
                 }
@@ -759,6 +762,10 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                                             {playerRank.name}
                                         </span>
                                     </div>
+                                    {/* Ranks are earned by EXP (chapters read); say how far the next one is. */}
+                                    <div className="-mt-3 mb-3 text-[10px] font-mono tracking-widest uppercase text-gray-300">
+                                        {(playerRank.exp ?? 0).toLocaleString()} EXP{playerRank.next ? ` · ${(playerRank.next.minExp - (playerRank.exp ?? 0)).toLocaleString()} to ${playerRank.next.label}` : ' · highest rank'}
+                                    </div>
 
                                     {/* TIMELINE — starts here, right below stats text */}
                                     <div className="relative pb-5">
@@ -786,7 +793,7 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                                                     // theme-color-ok: rank-track pips use the lighter -400 highlight shades, not the accent
                                                     const accentColor = theme.isDark ? '#fbbf24' : '#a78bfa';
                                                     return (
-                                                        <div key={rank.label} className="relative flex flex-col items-center">
+                                                        <div key={rank.label} className="relative flex flex-col items-center" title={`${rank.label} · ${rank.minExp.toLocaleString()} EXP`}>
                                                             {isCurrent ? (
                                                                 <div
                                                                     className={`w-4 h-4 lg:w-[18px] lg:h-[18px] rounded-full border-[2.5px] bg-transparent transition-all duration-500`}

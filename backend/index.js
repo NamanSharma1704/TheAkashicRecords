@@ -6,6 +6,7 @@ const { connectDB, getTenantDb } = require('./config/db');
 const { initDatabase } = require('./config/init');
 const { getModel } = require('./models/modelFactory');
 const { normalizeTitle } = require('./utils/normalizeTitle');
+const { ACHIEVEMENTS, ACHIEVEMENT_KEYS, measureArchive } = require('./utils/achievements');
 const { fetchAniList, fetchMangaDex, fetchJikan, fetchBest, fetchGenresOnly, fetchLatestChapter } = require('./utils/metadataProxy');
 const crypto = require('crypto');
 const User = require('./models/User');
@@ -753,6 +754,88 @@ app.get('/api/stats', authenticate, async (req, res) => {
         });
     } catch (err) {
         return sendError(res, 500, 'Failed to read reading stats.', err);
+    }
+});
+
+// POST /api/achievements/sync - Weigh the archive against the titles (utils/achievements.js),
+// grant what is newly earned, and list the whole catalogue with progress.
+//
+// A POST because it writes: a title is granted the first time an evaluation finds it earned.
+// Each grant is an upsert keyed on the title, so two evaluations racing grant it once, and
+// only the one that inserted it reports it as fresh. The first evaluation of an archive
+// grants what its records already earn as "recognised" and reports how many, rather than
+// announcing a dozen titles at once.
+app.post('/api/achievements/sync', authenticate, writeLimiter, async (req, res) => {
+    try {
+        const Achievement = getModel(req.dbConn, 'Achievement');
+        const UserSettings = getModel(req.dbConn, 'UserSettings');
+        const readHeld = async () => new Map(
+            (await Achievement.find({}).select('-_id key unlockedAt recognised').lean()).map((a) => [a.key, a])
+        );
+        const [settings, held] = await Promise.all([ensureUserSettings(UserSettings, req.user._id), readHeld()]);
+        const values = await measureArchive(req.dbConn, tzOf(req), { skipNight: held.has('night') });
+        const seeding = !settings.achievementsSeededAt;
+
+        const due = ACHIEVEMENTS.filter((a) => !held.has(a.key) && values[a.measure] >= a.target);
+        const fresh = [];
+        if (due.length) {
+            const now = new Date();
+            const r = await Achievement.bulkWrite(due.map((a) => ({
+                updateOne: {
+                    filter: { key: a.key },
+                    update: { $setOnInsert: { key: a.key, unlockedAt: now, recognised: seeding } },
+                    upsert: true,
+                },
+            })), { ordered: false });
+            for (const i of Object.keys(r.upsertedIds || {})) fresh.push(due[Number(i)].key);
+        }
+        if (seeding) {
+            await UserSettings.updateOne(
+                { userId: req.user._id, achievementsSeededAt: null },
+                { $set: { achievementsSeededAt: new Date() } }
+            );
+        }
+        // Read back after a grant: a racing evaluation may have granted some of these first.
+        const earned = due.length ? await readHeld() : held;
+
+        res.json({
+            // Shown only while it is still a title the catalogue knows and the archive holds.
+            equipped: settings.equippedTitle && earned.has(settings.equippedTitle) && ACHIEVEMENT_KEYS.has(settings.equippedTitle)
+                ? settings.equippedTitle
+                : null,
+            achievements: ACHIEVEMENTS.map(({ key, name, kind, description, measure, target }) => ({
+                key, name, kind, description, target,
+                value: values[measure],
+                unlockedAt: earned.get(key)?.unlockedAt || null,
+                recognised: earned.get(key)?.recognised === true,
+            })),
+            fresh: seeding ? [] : fresh,
+            recognised: seeding ? fresh.length : 0,
+        });
+    } catch (err) {
+        return sendError(res, 500, 'Failed to evaluate titles.', err);
+    }
+});
+
+// PUT /api/achievements/equipped - Choose the title shown under the hunter's name: { key },
+// a title the archive has earned, or { key: null } for none.
+app.put('/api/achievements/equipped', authenticate, writeLimiter, async (req, res) => {
+    try {
+        const key = req.body?.key ?? null;
+        if (key !== null) {
+            if (typeof key !== 'string' || !ACHIEVEMENT_KEYS.has(key)) {
+                return res.status(400).json({ message: 'That is not a title.' });
+            }
+            if (!(await getModel(req.dbConn, 'Achievement').exists({ key }))) {
+                return res.status(403).json({ message: 'That title has not been earned yet.' });
+            }
+        }
+        const UserSettings = getModel(req.dbConn, 'UserSettings');
+        await ensureUserSettings(UserSettings, req.user._id);
+        await UserSettings.updateOne({ userId: req.user._id }, { $set: { equippedTitle: key } });
+        res.json({ equipped: key });
+    } catch (err) {
+        return sendError(res, 500, 'Failed to equip the title.', err);
     }
 });
 
@@ -1836,14 +1919,15 @@ const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
 // export stays the spreadsheet view; this is the one that restores completely.
 app.get(BACKUP_PATH, authenticate, async (req, res) => {
     try {
-        const [quests, readingLog, settings] = await Promise.all([
+        const [quests, readingLog, settings, achievements] = await Promise.all([
             getModel(req.dbConn, 'Quest').find({})
                 .select('-__v -normalizedTitle -chaptersCheckedAt -coverCheckedAt')
                 .lean(),
             getModel(req.dbConn, 'ReadingLog').find({}).select('-__v -_id').sort({ at: 1 }).lean(),
             getModel(req.dbConn, 'UserSettings').findOne({ userId: req.user._id })
-                .select('-_id streak lastReadDate activeQuestId')
+                .select('-_id streak lastReadDate activeQuestId equippedTitle')
                 .lean(),
+            getModel(req.dbConn, 'Achievement').find({}).select('-_id key unlockedAt recognised').lean(),
         ]);
         res.json({
             format: BACKUP_FORMAT,
@@ -1852,6 +1936,8 @@ app.get(BACKUP_PATH, authenticate, async (req, res) => {
             quests,
             readingLog,
             settings: settings || null,
+            // Optional in version 1: older files have none, and a restore treats that as none.
+            achievements,
         });
     } catch (err) {
         return sendError(res, 500, 'Backup failed.', err);
@@ -1955,6 +2041,26 @@ app.post(BACKUP_PATH, authenticate, writeLimiter, express.json({ limit: '4mb' })
         const fresh = rows.filter((r) => !seen.has(keyOf(r)) && seen.add(keyOf(r)));
         if (fresh.length) await ReadingLog.insertMany(fresh, { ordered: false });
 
+        // Titles: each one the catalogue still knows is granted, keeping the earlier date when
+        // this archive holds it already. A future date is a bad file, not an early grant.
+        const titleDates = new Map();
+        for (const a of Array.isArray(b.achievements) ? b.achievements : []) {
+            const at = new Date(a?.unlockedAt);
+            if (!ACHIEVEMENT_KEYS.has(a?.key) || isNaN(at) || at.getTime() > Date.now() + 86400000) continue;
+            if (!titleDates.has(a.key) || at < titleDates.get(a.key).at) titleDates.set(a.key, { at, recognised: a.recognised === true });
+        }
+        let titlesRestored = 0;
+        if (titleDates.size) {
+            const r = await getModel(req.dbConn, 'Achievement').bulkWrite([...titleDates].map(([key, t]) => ({
+                updateOne: {
+                    filter: { key },
+                    update: { $min: { unlockedAt: t.at }, $setOnInsert: { recognised: t.recognised } },
+                    upsert: true,
+                },
+            })), { ordered: false });
+            titlesRestored = r.upsertedCount || 0;
+        }
+
         // Streak: only when the backup has read more recently than this library.
         let streakRestored = false;
         const s = b.settings;
@@ -1967,7 +2073,17 @@ app.post(BACKUP_PATH, authenticate, writeLimiter, express.json({ limit: '4mb' })
             streakRestored = r.modifiedCount > 0;
         }
 
-        res.json({ added, updated: updates.length, skipped, logEntries: fresh.length, streakRestored });
+        // The equipped title, when this archive has none and holds that title (after the merge).
+        if (s && typeof s.equippedTitle === 'string' && ACHIEVEMENT_KEYS.has(s.equippedTitle)
+            && await getModel(req.dbConn, 'Achievement').exists({ key: s.equippedTitle })) {
+            await ensureUserSettings(UserSettings, req.user._id);
+            await UserSettings.updateOne(
+                { userId: req.user._id, equippedTitle: null },
+                { $set: { equippedTitle: s.equippedTitle } }
+            );
+        }
+
+        res.json({ added, updated: updates.length, skipped, logEntries: fresh.length, streakRestored, titlesRestored });
     } catch (err) {
         return sendError(res, 500, 'Restore failed.', err);
     }

@@ -94,6 +94,23 @@ export interface Quest {
     rating?: number | null;
 }
 
+/** A title the System grants (the server's catalogue, backend/utils/achievements.js). */
+export interface Achievement {
+    key: string;
+    name: string;
+    /** Picks the icon: FIRST, STREAK, SURGE, BREADTH, NIGHT, RETURN, CONQUEST, DEPTH, CLASSES, APPRAISAL, ARCHIVE. */
+    kind: string;
+    /** What earns it, in plain words. */
+    description: string;
+    /** The measure's bar, and where the archive stands on it (it can pass the bar). */
+    target: number;
+    value: number;
+    /** ISO time it was granted; null while locked. */
+    unlockedAt: string | null;
+    /** Granted on the first evaluation, from records that predate titles. */
+    recognised: boolean;
+}
+
 export interface User {
     id: string;
     username: string;

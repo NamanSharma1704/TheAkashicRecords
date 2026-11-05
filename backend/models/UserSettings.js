@@ -7,6 +7,11 @@ const userSettingsSchema = new mongoose.Schema({
     theme: { type: String, default: 'DARK', enum: ['DARK', 'LIGHT', 'SYSTEM'] },
     streak: { type: Number, default: 0 },           // Consecutive days read
     lastReadDate: { type: String, default: null },   // ISO date string (YYYY-MM-DD) of last read day
+    // When titles were first evaluated for this archive. Until then, an evaluation grants what
+    // the records already earn as "recognised" rather than announcing each one.
+    achievementsSeededAt: { type: Date, default: null },
+    // The title shown under the hunter's name (an achievement key), or none.
+    equippedTitle: { type: String, default: null },
 }, {
     timestamps: true,
     collection: 'user_settings'

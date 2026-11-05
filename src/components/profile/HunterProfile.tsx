@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Theme, Quest } from '../../core/types';
+import { Theme, Quest, Achievement } from '../../core/types';
 import SystemLogo from '../system/SystemLogo';
 import SystemFrame from '../system/SystemFrame';
 import EntityAvatar from '../system/EntityAvatar';
@@ -8,6 +8,7 @@ import StatBox from '../system/StatBox';
 import { X, Database, Layers, Target, Download, Upload, RefreshCw, LogOut, Terminal, Edit2, KeyRound, User2, AlertCircle, CheckCircle2, Trash2, Activity, Gauge, ImagePlus } from 'lucide-react';
 import TrashPanel from './TrashPanel';
 import ReadingActivity from './ReadingActivity';
+import HunterTitles from './HunterTitles';
 import CoverArt from '../quest/CoverArt';
 import { USER_RANKS } from '../../utils/ranks';
 import { getProxiedImageUrl } from '../../utils/api';
@@ -150,6 +151,12 @@ interface HunterProfileProps {
     theme: Theme;
     items: Quest[];
     playerRank: any;
+    /** Titles from the last sync; null until the first one lands. */
+    achievements: Achievement[] | null;
+    /** The equipped title's key, shown under the name; null for none. */
+    equippedTitle: string | null;
+    /** Equip a title (null for none). Resolves false when the save failed. */
+    onEquipTitle: (key: string | null) => Promise<boolean>;
     onImport: (newItems: Quest[]) => void;
     onRefresh: () => Promise<void>;
     onLogout: () => void;
@@ -162,10 +169,14 @@ interface HunterProfileProps {
     onToggleLowPower: () => void;
 }
 
-const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, items, playerRank, onImport, onRefresh, onLogout, showNotification, onSelectManhwa, onRestoreQuest, lowPower, onToggleLowPower }) => {
+const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, items, playerRank, achievements, equippedTitle, onEquipTitle, onImport, onRefresh, onLogout, showNotification, onSelectManhwa, onRestoreQuest, lowPower, onToggleLowPower }) => {
     const [showTrash, setShowTrash] = useState(false);
     const totalChapters = useMemo(() => items.reduce((acc, i) => acc + (i.currentChapter || 0), 0), [items]);
     const totalManhwa = items.length;
+    const equippedName = useMemo(
+        () => (equippedTitle && achievements?.find(a => a.key === equippedTitle && a.unlockedAt)?.name) || null,
+        [equippedTitle, achievements]
+    );
     const conquered = useMemo(() => items.filter(i => i.status === 'CONQUERED').length, [items]);
     const active = useMemo(() => items.filter(i => i.status === 'ACTIVE').length, [items]);
     const totalPossible = useMemo(() => items.reduce((acc, i) => acc + (i.totalChapters || 0), 0), [items]);
@@ -431,7 +442,7 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
             if (!res.ok) throw new Error(r.message || `HTTP ${res.status}`);
             await onRefresh();
             const parts = [`${r.added} added`, `${r.updated} updated`, `${r.logEntries} reading-log entr${r.logEntries === 1 ? 'y' : 'ies'}`];
-            showNotification(`ARCHIVE RESTORED.\n${parts.join(', ')}${r.skipped ? `; ${r.skipped} skipped` : ''}${r.streakRestored ? '; streak restored' : ''}.`, 'SUCCESS');
+            showNotification(`ARCHIVE RESTORED.\n${parts.join(', ')}${r.skipped ? `; ${r.skipped} skipped` : ''}${r.streakRestored ? '; streak restored' : ''}${r.titlesRestored ? `; ${r.titlesRestored} title${r.titlesRestored === 1 ? '' : 's'} restored` : ''}.`, 'SUCCESS');
         } catch (e) {
             showNotification(`RESTORE FAILED.\n${e instanceof Error ? e.message : 'Try again in a while.'}`, 'ERROR');
         }
@@ -736,6 +747,13 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                                         >{storedUser?.username || 'SOVEREIGN'}</span>
                                     </div>
                                 </div>
+                                {/* The equipped title, under the name. Plate ink: the banner is a
+                                    near-black plate in both themes. Long names wrap to two lines. */}
+                                {equippedName && (
+                                    <p className="w-[110px] text-center text-[9px] font-mono font-bold uppercase tracking-[0.15em] leading-snug text-accent-plate">
+                                        <span className="sr-only">Title: </span>{equippedName}
+                                    </p>
+                                )}
                                 {/* Edit Profile button */}
                                 {/* The banner is a near-black plate in both themes, so everything on it
                                     takes plate inks: light's page inks measured 1.2-2.8:1 here. */}
@@ -891,6 +909,11 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                             ))}
                         </div>
                     </div>
+                </motion.div>
+
+                {/* HUNTER TITLES — what the System has granted, and what is next */}
+                <motion.div variants={itemVariants} className="w-full">
+                    <HunterTitles theme={theme} achievements={achievements} equipped={equippedTitle} onEquip={onEquipTitle} />
                 </motion.div>
 
                 {/* READING ACTIVITY — the reading log, a year of days */}

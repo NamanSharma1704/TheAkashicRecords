@@ -1,10 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { AlertTriangle, CheckCircle, Info, XCircle, X } from 'lucide-react';
+import { AlertTriangle, Award, CheckCircle, Info, XCircle, X } from 'lucide-react';
 import { Theme } from '../../core/types';
 import SystemFrame from './SystemFrame';
 
-type ToastTone = 'INFO' | 'SUCCESS' | 'WARNING' | 'ERROR';
+/** REWARD is the System granting something: a rank, a title. */
+type ToastTone = 'INFO' | 'SUCCESS' | 'WARNING' | 'ERROR' | 'REWARD';
 
 export interface ToastSpec {
     /** Unique per toast; a new id restarts the timer even when the text is unchanged. */
@@ -70,6 +71,7 @@ const SystemToast: React.FC<SystemToastProps> = ({ toast, onDismiss, theme }) =>
         const accentIcon = 'text-accent-icon';
         switch (tone) {
             case 'SUCCESS': return <CheckCircle size={18} className={accentIcon} />;
+            case 'REWARD': return <Award size={18} className={accentIcon} />;
             case 'WARNING': return <AlertTriangle size={18} style={{ color: theme.warningInk }} />;
             case 'ERROR': return <XCircle size={18} className={theme.isDark ? 'text-red-500' : 'text-red-600'} />;
             default: return <Info size={18} className={accentIcon} />;

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useLayoutEffect, useMemo, Suspense, lazy, useRef, useCallback } from 'react';
 import { flushSync } from 'react-dom';
 import { motion, AnimatePresence, Reorder, useDragControls } from 'motion/react';
-import { Quest } from './types';
+import { Quest, Achievement } from './types';
 import SystemFrame from '../components/system/SystemFrame';
 import SystemLogo from '../components/system/SystemLogo';
 import ScrambleText from '../components/system/ScrambleText';
@@ -848,29 +848,99 @@ const App: React.FC = () => {
         return { ...rawPlayerRank, name: rawPlayerRank.label, next, progress, exp: totalChaptersRead };
     }, [totalChaptersRead]);
 
-    // A rank earned while reading is announced once: the payoff of EXP. Not on load (the first
-    // rank seen is the baseline), not when a correction drops a rank. It waits for any toast
-    // already showing, so it never pushes a chapter's Undo off the screen.
-    const rankBaseline = useRef<number | null>(null);
-    const [rankUpPending, setRankUpPending] = useState<Omit<ToastSpec, 'id'> | null>(null);
+    // Rewards (a rank, a title) wait their turn: each shows once no other toast is up, so one
+    // never pushes a chapter's Undo off the screen, and several arrive one after another.
+    const [rewardQueue, setRewardQueue] = useState<Omit<ToastSpec, 'id'>[]>([]);
+    const queueReward = useCallback((spec: Omit<ToastSpec, 'id'>) => setRewardQueue(q => [...q, spec]), []);
     useEffect(() => {
-        if (!libraryLoaded) return;
+        if (!rewardQueue.length || toast) return;
+        showToast(rewardQueue[0]);
+        setRewardQueue(q => q.slice(1));
+    }, [rewardQueue, toast, showToast]);
+
+    // A rank earned while reading is announced once: the payoff of EXP. Not on load (the first
+    // rank seen is the baseline, and each session takes its own), not when a correction drops
+    // a rank.
+    const rankBaseline = useRef<number | null>(null);
+    useEffect(() => {
+        if (!libraryLoaded) { rankBaseline.current = null; return; }
         const idx = USER_RANKS.findIndex(r => r.label === playerRank.name);
         if (rankBaseline.current !== null && idx > rankBaseline.current) {
-            setRankUpPending({
-                tone: 'SUCCESS',
+            queueReward({
+                tone: 'REWARD',
                 message: `Rank up · ${playerRank.name}`,
                 detail: `${playerRank.exp.toLocaleString()} EXP reached. ${playerRank.next ? `Next: ${playerRank.next.label} at ${playerRank.next.minExp.toLocaleString()} EXP.` : 'There is no rank above this one.'}`,
                 duration: 8000,
             });
         }
         rankBaseline.current = idx;
-    }, [libraryLoaded, playerRank]);
+    }, [libraryLoaded, playerRank, queueReward]);
+
+    // TITLES. The server weighs the archive against its catalogue and grants what is newly
+    // earned (POST /api/achievements/sync). That runs once the library has loaded, then a few
+    // seconds after the library last changed (a settled chapter save, an appraisal, a
+    // conquest, an import), so a burst of reading finishes and an Undo lands first. A sync is
+    // never cancelled once sent: the server may already have granted a title, and dropping
+    // the reply would lose its announcement. Replies from a session since closed are ignored.
+    const [achievements, setAchievements] = useState<Achievement[] | null>(null);
+    // The title shown under the hunter's name. A sync reports it too, but one that left before
+    // the latest equip would carry the old choice back, so it is taken only when none has
+    // happened since the sync was sent.
+    const [equippedTitle, setEquippedTitle] = useState<string | null>(null);
+    const equipSeq = useRef(0);
+    const achievementsChecked = useRef(false);
+    const achievementsSession = useRef(0);
+    const syncAchievements = useCallback(async () => {
+        const session = achievementsSession.current;
+        const equipAt = equipSeq.current;
+        try {
+            const res = await systemFetch('/api/achievements/sync', { method: 'POST' });
+            if (!res.ok || session !== achievementsSession.current) return;
+            const data: { achievements: Achievement[]; fresh: string[]; recognised: number; equipped: string | null } = await res.json();
+            if (session !== achievementsSession.current) return;
+            setAchievements(data.achievements);
+            if (equipAt === equipSeq.current) setEquippedTitle(data.equipped ?? null);
+            if (data.recognised > 0) {
+                queueReward({
+                    tone: 'REWARD',
+                    message: `Titles recognised · ${data.recognised}`,
+                    detail: 'Your records already earn these. They are listed under Hunter Titles in your profile.',
+                    duration: 9000,
+                });
+            }
+            const fresh = data.achievements.filter(a => data.fresh.includes(a.key));
+            if (fresh.length > 2) {
+                queueReward({ tone: 'REWARD', message: `Titles acquired · ${fresh.length}`, detail: fresh.map(a => a.name).join(' · '), duration: 9000 });
+            } else {
+                fresh.forEach(a => queueReward({ tone: 'REWARD', message: `Title acquired · ${a.name}`, detail: a.description, duration: 8000 }));
+            }
+        } catch {
+            // Titles are weighed again on the next change; nothing is lost by a missed sync.
+        }
+    }, [queueReward]);
+    /** Equip a title (or null for none). Shown at once; put back if the save fails. */
+    const equipTitle = useCallback(async (key: string | null): Promise<boolean> => {
+        const previous = equippedTitle;
+        const seq = ++equipSeq.current;
+        setEquippedTitle(key);
+        try {
+            const res = await systemFetch('/api/achievements/equipped', { method: 'PUT', body: JSON.stringify({ key }) });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            return true;
+        } catch {
+            if (seq === equipSeq.current) setEquippedTitle(previous);
+            showToast({ tone: 'ERROR', message: 'Title not changed', detail: 'Check your connection and try again.', duration: 6000 });
+            return false;
+        }
+    }, [equippedTitle, showToast]);
     useEffect(() => {
-        if (!rankUpPending || toast) return;
-        showToast(rankUpPending);
-        setRankUpPending(null);
-    }, [rankUpPending, toast, showToast]);
+        if (!libraryLoaded) { achievementsChecked.current = false; return; }
+        const t = setTimeout(() => {
+            achievementsChecked.current = true;
+            void syncAchievements();
+        }, achievementsChecked.current ? 4000 : 1500);
+        return () => clearTimeout(t);
+    }, [library, libraryLoaded, syncAchievements]);
 
     const activeQuests = useMemo(() => {
         return library.filter(item => item.status === 'ACTIVE');
@@ -1346,6 +1416,10 @@ const App: React.FC = () => {
     useEffect(() => {
         if (isAuth) return;
         setLibraryLoaded(false); // the next session's first load starts over
+        achievementsSession.current++;
+        setAchievements(null);
+        setEquippedTitle(null);
+        setRewardQueue([]);
         bursts.current.forEach(b => { if (b.timer) clearTimeout(b.timer); });
         bursts.current.clear();
     }, [isAuth]);
@@ -2451,6 +2525,9 @@ const App: React.FC = () => {
                         theme={theme}
                         items={library}
                         playerRank={playerRank}
+                        achievements={achievements}
+                        equippedTitle={equippedTitle}
+                        onEquipTitle={equipTitle}
                         onImport={handleImportQuests}
                         onRefresh={fetchInitialData}
                         onLogout={handleLogout}

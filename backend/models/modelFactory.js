@@ -2,12 +2,14 @@ const { QuestSchema } = require('./Quest');
 const { dailyQuestSchema } = require('./DailyQuest');
 const { userSettingsSchema } = require('./UserSettings');
 const { readingLogSchema } = require('./ReadingLog');
+const { achievementSchema } = require('./Achievement');
 
 const schemas = {
     Quest: QuestSchema,
     DailyQuest: dailyQuestSchema,
     UserSettings: userSettingsSchema,
-    ReadingLog: readingLogSchema
+    ReadingLog: readingLogSchema,
+    Achievement: achievementSchema
 };
 
 /**

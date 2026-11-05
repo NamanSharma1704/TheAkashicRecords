@@ -56,6 +56,41 @@ const daysAgo = (value: number | string | null): string => {
     return days <= 0 ? 'today' : days === 1 ? 'yesterday' : `${days} days ago`;
 };
 
+/** Whole days from one 'YYYY-MM-DD' to another, as calendar days. */
+const daysBetween = (from: string, to: string) => {
+    const at = (d: string) => Date.UTC(Number(d.slice(0, 4)), Number(d.slice(5, 7)) - 1, Number(d.slice(8, 10)));
+    return Math.round((at(to) - at(from)) / 86400000);
+};
+/** A day count in the largest unit that reads naturally: "4 days", "3 weeks", "5 months". */
+const roughSpan = (days: number) =>
+    days <= 1 ? '1 day'
+        : days < 14 ? `${days} days`
+            : days < 60 ? `${Math.round(days / 7)} weeks`
+                : days < 730 ? `${Math.round(days / 30)} months`
+                    : `${(days / 365).toFixed(1)} years`;
+
+/**
+ * TIME TO CLEAR: the chapters left, at this series' own recent pace. The pace is the last 30
+ * days' net chapters over the days since you started the series, when that is shorter, but
+ * never over fewer than 7 days, so one opening binge does not promise a clear by tomorrow.
+ * For an ongoing series the total is the latest release, so "clear" means caught up.
+ */
+const timeToClear = (current: number, total: number, status: string, c: Chronicle): { value: string; note: string } => {
+    if (status === 'CONQUERED') return { value: 'Cleared', note: 'This gate is closed.' };
+    if (!(total > 0)) return { value: '—', note: 'No chapter total is recorded for this series.' };
+    const left = total - current;
+    if (left <= 0) return { value: 'Caught up', note: 'You are at the latest known chapter.' };
+    const now = new Date();
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const sinceStart = c.firstReadDay ? daysBetween(c.firstReadDay, today) + 1 : 30;
+    const pace = Math.max(0, c.chapters30) / Math.min(30, Math.max(7, sinceStart));
+    if (pace <= 0) return { value: '—', note: `${left.toLocaleString()} chapters left. Read a few to set a pace.` };
+    return {
+        value: `~${roughSpan(Math.ceil(left / pace))}`,
+        note: `${left.toLocaleString()} chapters left at ${pace < 10 ? pace.toFixed(1) : Math.round(pace)} a day.`,
+    };
+};
+
 interface AniListCharacter {
     id: number;
     name: { full: string; native: string };
@@ -666,6 +701,16 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                                     <dd className={`text-sm font-bold font-mono tabular-nums ${strongText}`}>{detail}</dd>
                                                 </div>
                                             ))}
+                                            {(() => {
+                                                const eta = timeToClear(quest.currentChapter, quest.totalChapters, quest.status, chronicle);
+                                                return (
+                                                    <div className={`${metricCellClass} col-span-2`}>
+                                                        <dt className={labelClass}>TIME TO CLEAR</dt>
+                                                        <dd className={`text-sm font-bold font-mono tabular-nums ${strongText}`}>{eta.value}</dd>
+                                                        <dd className={`text-[11px] font-mono mt-0.5 ${theme.isDark ? 'text-white/60' : 'text-stone-600'}`}>{eta.note}</dd>
+                                                    </div>
+                                                );
+                                            })()}
                                         </dl>
                                         {chronicle.recent.length > 0 ? (
                                             <div className="flex flex-col gap-1.5">

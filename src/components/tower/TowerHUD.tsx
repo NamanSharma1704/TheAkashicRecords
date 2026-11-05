@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
-import { Quest } from '../../core/types';
+import { Quest, QuestGoals } from '../../core/types';
 import SystemFrame from '../system/SystemFrame';
+import QuestPanel from './QuestPanel';
 import { getPlayerRank, expOf } from '../../utils/ranks';
 import CoverArt from '../quest/CoverArt';
 import { FLOOR_DEFS, floorIndexForItem } from './floors';
@@ -13,10 +14,11 @@ interface TowerHUDProps {
     isFocused?: boolean;
     selectedFloorIndex?: number;
     streak?: number;
-    dailyAbsorbed?: number;
+    goals?: QuestGoals | null;
+    onSaveGoals?: (daily: { kind: 'SERIES' | 'CHAPTERS'; target: number }, weeklyTarget: number) => Promise<string | null>;
 }
 
-const TowerHUD: React.FC<TowerHUDProps> = ({ items, theme, onActivate, isFocused = false, selectedFloorIndex = 0, streak = 0, dailyAbsorbed }) => {
+const TowerHUD: React.FC<TowerHUDProps> = ({ items, theme, onActivate, isFocused = false, selectedFloorIndex = 0, streak = 0, goals, onSaveGoals }) => {
     // 1. Memoize Stats and Data Slicing
     const { displayItems, totalManhwa, displayChapters, completedManhwa, recents, classEntries } = useMemo(() => {
         // Focused: the stats describe the titles resting on this progress floor, not a page range.
@@ -66,10 +68,12 @@ const TowerHUD: React.FC<TowerHUDProps> = ({ items, theme, onActivate, isFocused
             <div className="h-16 sm:h-20 shrink-0 transition-all duration-700" />
 
             {/* 2. Master HUD Content Container */}
-            <div className="flex-1 w-full max-w-[1920px] mx-auto px-2 sm:px-4 md:px-4 lg:px-6 xl:px-8 flex justify-between items-start gap-2 lg:gap-4 xl:gap-12 pb-6 md:pb-10 transition-all duration-700">
+            <div className="flex-1 min-h-0 w-full max-w-[1920px] mx-auto px-2 sm:px-4 md:px-4 lg:px-6 xl:px-8 flex justify-between items-start gap-2 lg:gap-4 xl:gap-12 pb-6 md:pb-10 transition-all duration-700">
 
-                {/* LEFT WING: PLAYER METRICS & RANK */}
-                <aside className={`hidden lg:flex flex-col gap-3 xl:gap-8 pointer-events-auto w-[26%] xl:w-[22%] min-w-[180px] lg:min-w-[200px] xl:min-w-[320px] max-w-[360px] xl:max-w-[440px] transition-all duration-1000 ease-in-out ${isFocused ? 'translate-x-0' : 'translate-x-0 opacity-100'}`}>
+                {/* LEFT WING: PLAYER METRICS & RANK. Scrolls within the HUD when it runs
+                    taller than the screen (a short laptop with the quest form open); the
+                    layer above clips anything that overflows it. */}
+                <aside className={`hidden lg:flex flex-col gap-3 xl:gap-8 pointer-events-auto max-h-full overflow-y-auto hide-scrollbar overscroll-contain w-[26%] xl:w-[22%] min-w-[180px] lg:min-w-[200px] xl:min-w-[320px] max-w-[360px] xl:max-w-[440px] transition-all duration-1000 ease-in-out ${isFocused ? 'translate-x-0' : 'translate-x-0 opacity-100'}`}>
                     {/* frosted={false}: brackets only, no panel. This frame always asked for a
                         transparent background via className, but that lands on the outer wrapper
                         and the solid inner surface still painted — frosted is the switch for it. */}
@@ -111,9 +115,29 @@ const TowerHUD: React.FC<TowerHUDProps> = ({ items, theme, onActivate, isFocused
                         </div>
                     </SystemFrame>
 
-                    {/* RANK + TITLES DISCOVERED + DIVINE MANDATE — in a bracketed box like PLAYER_METRICS */}
+                    {/* TITLES DISCOVERED + QUESTS, then the FLOOR LEGEND: bracketed boxes like PLAYER_METRICS */}
                     {!isFocused && (
                         <div className="flex flex-col gap-4">
+                            {/* TITLES DISCOVERED + QUESTS: above the legend, so on a short screen the column
+                                scrolls past the static key, not the day's quests. */}
+                            <SystemFrame variant="brackets" theme={theme} frosted={false} className="shadow-none w-full">
+                                <div className="p-3 lg:p-4 space-y-3">
+                                    {/* TITLES DISCOVERED */}
+                                    <div className="space-y-1.5">
+                                        <div className={`flex justify-between text-[clamp(9px,1vw,11px)] font-mono font-bold ${theme.highlightText}`}>
+                                            <span className="tracking-widest">TITLES DISCOVERED</span>
+                                            <span>{totalManhwa} / 1000</span>
+                                        </div>
+                                        <div className={`h-1.5 w-full ${theme.isDark ? 'bg-white/10' : 'bg-black/10'} relative overflow-hidden`}>
+                                            <div className={`h-full bg-gradient-to-r ${theme.gradient} progress-bloom transition-all duration-1000 ease-out`} style={{ width: `${Math.min(100, (totalManhwa / 10))}%`, color: theme.id === 'LIGHT' ? '#7c3aed' : '#fbbf24' }} />
+                                        </div>
+                                    </div>
+
+                                    {/* QUESTS: the daily mandate and the weekly decree, adjustable */}
+                                    {goals && onSaveGoals && <QuestPanel theme={theme} goals={goals} onSave={onSaveGoals} />}
+                                </div>
+                            </SystemFrame>
+
                             {/* FLOOR LEGEND — the key to what each tier of the Spire means, so the
                                 climb is legible at a glance (replaces the old rank/avatar card). */}
                             <SystemFrame variant="brackets" theme={theme} frosted={false} className="shadow-none w-full">
@@ -134,42 +158,6 @@ const TowerHUD: React.FC<TowerHUDProps> = ({ items, theme, onActivate, isFocused
                                             </div>
                                         ))}
                                     </div>
-                                </div>
-                            </SystemFrame>
-
-                            {/* TITLES DISCOVERED + DIVINE MANDATE — bracketed box */}
-                            <SystemFrame variant="brackets" theme={theme} frosted={false} className="shadow-none w-full">
-                                <div className="p-3 lg:p-4 space-y-3">
-                                    {/* TITLES DISCOVERED */}
-                                    <div className="space-y-1.5">
-                                        <div className={`flex justify-between text-[clamp(9px,1vw,11px)] font-mono font-bold ${theme.highlightText}`}>
-                                            <span className="tracking-widest">TITLES DISCOVERED</span>
-                                            <span>{totalManhwa} / 1000</span>
-                                        </div>
-                                        <div className={`h-1.5 w-full ${theme.isDark ? 'bg-white/10' : 'bg-black/10'} relative overflow-hidden`}>
-                                            <div className={`h-full bg-gradient-to-r ${theme.gradient} progress-bloom transition-all duration-1000 ease-out`} style={{ width: `${Math.min(100, (totalManhwa / 10))}%`, color: theme.id === 'LIGHT' ? '#7c3aed' : '#fbbf24' }} />
-                                        </div>
-                                    </div>
-
-                                    {/* DIVINE MANDATE */}
-                                    {dailyAbsorbed !== undefined && (
-                                        <div className={`pt-3 border-t ${theme.isDark ? 'border-white/10' : 'border-black/10'} space-y-1.5`}>
-                                            <div className="flex justify-between items-center">
-                                                <div className={`flex items-center gap-2 ${theme.highlightText} font-mono text-[clamp(8px,0.9vw,10px)] tracking-widest font-bold`}>
-                                                    <span>⚡</span> DIVINE_MANDATE
-                                                </div>
-                                                <span className={`text-[clamp(7px,0.8vw,9px)] font-mono ${theme.mutedText}`}>{dailyAbsorbed >= 5 ? '✓ CONQUERED' : 'PENDING'}</span>
-                                            </div>
-                                            <div className={`text-[clamp(7px,0.8vw,9px)] ${theme.mutedText} font-mono tracking-widest uppercase`}>OBJECTIVE</div>
-                                            <div className="flex justify-between items-end">
-                                                <span className={`text-[clamp(10px,1vw,12px)] font-black italic ${theme.headingText} tracking-wide`}>ABSORB 5 STORIES</span>
-                                                <span className={`${theme.highlightText} font-mono font-bold text-[clamp(12px,1.2vw,16px)]`}>{Math.min(5, dailyAbsorbed)}<span className={`${theme.mutedText} text-[clamp(9px,0.9vw,11px)]`}>/5</span></span>
-                                            </div>
-                                            <div className={`h-1 w-full ${theme.isDark ? 'bg-white/10' : 'bg-black/10'} relative overflow-hidden`}>
-                                                <div className={`h-full bg-gradient-to-r ${theme.gradient} progress-bloom transition-all duration-700`} style={{ width: `${Math.min(100, (dailyAbsorbed / 5) * 100)}%`, color: theme.id === 'LIGHT' ? '#7c3aed' : '#fbbf24' }} />
-                                            </div>
-                                        </div>
-                                    )}
                                 </div>
                             </SystemFrame>
                         </div>

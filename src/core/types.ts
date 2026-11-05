@@ -94,6 +94,16 @@ export interface Quest {
     rating?: number | null;
 }
 
+/** The daily and weekly quests with today's progress (GET /api/user/state, PUT /api/user/goals). */
+export interface QuestGoals {
+    /** The reader's own day, 'YYYY-MM-DD'. */
+    today: string;
+    /** SERIES: read in N different series today. CHAPTERS: read N chapters today. */
+    daily: { kind: 'SERIES' | 'CHAPTERS'; target: number; progress: number };
+    /** Chapters read Monday to Sunday. */
+    weekly: { target: number; progress: number; startsOn: string; endsOn: string };
+}
+
 /** A title the System grants (the server's catalogue, backend/utils/achievements.js). */
 export interface Achievement {
     key: string;

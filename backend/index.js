@@ -73,6 +73,44 @@ const liveStreak = (settings, today) =>
         ? settings.streak || 0
         : 0;
 
+/** The Monday of the week holding `day` ('YYYY-MM-DD'): quest weeks run Monday to Sunday. */
+const weekStartOf = (day) => {
+    const [y, m, d] = day.split('-').map(Number);
+    return shiftDay(day, -((new Date(Date.UTC(y, m - 1, d)).getUTCDay() + 6) % 7));
+};
+/** Highest target each quest accepts. */
+const GOAL_MAX = { SERIES: 25, CHAPTERS: 500, WEEKLY: 5000 };
+
+/**
+ * The daily and weekly quests with progress. A SERIES day counts the series read forward
+ * today (the absorbed ids); chapter counts are the reading log's net per day, a day that
+ * nets backwards counting as none, exactly as the reading stats count them.
+ */
+const readGoals = async (req, settings, daily, today) => {
+    const weekStart = weekStartOf(today);
+    const rows = await getModel(req.dbConn, 'ReadingLog').aggregate([
+        { $match: { day: { $gte: weekStart, $lte: today } } },
+        { $group: { _id: '$day', net: { $sum: '$delta' } } },
+    ]);
+    const kind = settings?.dailyGoalKind === 'CHAPTERS' ? 'CHAPTERS' : 'SERIES';
+    return {
+        today,
+        daily: {
+            kind,
+            target: settings?.dailyGoalTarget || 5,
+            progress: kind === 'SERIES'
+                ? (daily?.absorbedIds?.length || 0)
+                : Math.max(0, rows.find((r) => r._id === today)?.net || 0),
+        },
+        weekly: {
+            target: settings?.weeklyGoalTarget || 50,
+            progress: rows.reduce((sum, r) => sum + Math.max(0, r.net), 0),
+            startsOn: weekStart,
+            endsOn: shiftDay(weekStart, 6),
+        },
+    };
+};
+
 /**
  * Fetch-or-create for the two per-tenant singletons, as ONE atomic operation.
  *
@@ -663,7 +701,9 @@ app.get('/api/boot/initial-data', authenticate, async (req, res) => {
                 streak: liveStreak(settings, today),
                 lastReadDate: settings?.lastReadDate || null,
                 dailyAbsorbed: daily?.absorbedIds.length || 0,
-                absorbedIds: daily?.absorbedIds || []
+                absorbedIds: daily?.absorbedIds || [],
+                goals: await readGoals(req, settings, daily, today),
+                questOrder: settings?.questOrder || [],
             }
         });
 
@@ -697,12 +737,65 @@ app.get('/api/user/state', authenticate, async (req, res) => {
             streak: liveStreak(settings, today),
             lastReadDate: settings.lastReadDate,
             dailyAbsorbed: daily.absorbedIds.length,
-            absorbedIds: daily.absorbedIds
+            absorbedIds: daily.absorbedIds,
+            goals: await readGoals(req, settings, daily, today),
         });
         debugLog(`[PERF] Total User State Duration: ${Date.now() - start}ms`);
     } catch (err) {
         console.error(`[PERF] User State Failure (${Date.now() - start}ms):`, err.message);
         return sendError(res, 500, 'Failed to load hunter state.', err);
+    }
+});
+
+// PUT /api/user/goals - Set the quests: { daily: { kind: 'SERIES'|'CHAPTERS', target },
+// weekly: { target } }. Answers with the quests and their progress as they now stand.
+app.put('/api/user/goals', authenticate, writeLimiter, async (req, res) => {
+    try {
+        const { daily, weekly } = req.body || {};
+        const kind = daily?.kind;
+        if (kind !== 'SERIES' && kind !== 'CHAPTERS') {
+            return res.status(400).json({ message: 'The daily quest counts either series or chapters.' });
+        }
+        const inRange = (n, max) => Number.isInteger(n) && n >= 1 && n <= max;
+        if (!inRange(daily?.target, GOAL_MAX[kind])) {
+            return res.status(400).json({ message: `The daily target must be a whole number from 1 to ${GOAL_MAX[kind]}.` });
+        }
+        if (!inRange(weekly?.target, GOAL_MAX.WEEKLY)) {
+            return res.status(400).json({ message: `The weekly target must be a whole number from 1 to ${GOAL_MAX.WEEKLY}.` });
+        }
+        const UserSettings = getModel(req.dbConn, 'UserSettings');
+        const today = todayFor(req);
+        await ensureUserSettings(UserSettings, req.user._id);
+        const [settings, dailyDoc] = await Promise.all([
+            UserSettings.findOneAndUpdate(
+                { userId: req.user._id },
+                { $set: { dailyGoalKind: kind, dailyGoalTarget: daily.target, weeklyGoalTarget: weekly.target } },
+                { returnDocument: 'after' }
+            ),
+            ensureDailyQuest(getModel(req.dbConn, 'DailyQuest'), today),
+        ]);
+        res.json(await readGoals(req, settings, dailyDoc, today));
+    } catch (err) {
+        return sendError(res, 500, 'Failed to save the quests.', err);
+    }
+});
+
+// PUT /api/user/quest-order - The ACTIVE QUESTS list order: { order: [questId, ...] }. Kept
+// on the server so a phone and a desktop show the same list. Ids are not checked against the
+// library: an unknown one sorts nowhere, and a deleted record's id is harmless.
+const QUEST_ID_RE = /^[a-f0-9]{24}$/i;
+app.put('/api/user/quest-order', authenticate, writeLimiter, async (req, res) => {
+    try {
+        const order = req.body?.order;
+        if (!Array.isArray(order) || order.length > 2000 || !order.every((id) => typeof id === 'string' && QUEST_ID_RE.test(id))) {
+            return res.status(400).json({ message: 'The order must be a list of record ids.' });
+        }
+        const UserSettings = getModel(req.dbConn, 'UserSettings');
+        await ensureUserSettings(UserSettings, req.user._id);
+        await UserSettings.updateOne({ userId: req.user._id }, { $set: { questOrder: [...new Set(order)] } });
+        res.status(204).end();
+    } catch (err) {
+        return sendError(res, 500, 'Failed to save the quest order.', err);
     }
 });
 

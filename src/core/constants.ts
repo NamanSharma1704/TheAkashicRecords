@@ -107,6 +107,14 @@ export const THEMES: Record<ThemeId, Theme> = {
  * the order the editor lists them. PLANNED shows as SEALED, a gate not yet opened. Reading
  * a chapter of a SEALED or STASIS series makes it ACTIVE again (server-side).
  */
+/** The daily quest's objective in the System's words: "Absorb 5 stories", "Absorb 30 chapters". */
+export const dailyObjective = (kind: 'SERIES' | 'CHAPTERS', target: number) =>
+    kind === 'CHAPTERS'
+        ? `Absorb ${target} chapter${target === 1 ? '' : 's'}`
+        : `Absorb ${target} stor${target === 1 ? 'y' : 'ies'}`;
+/** Highest target each quest accepts (the server enforces the same). */
+export const GOAL_MAX = { SERIES: 25, CHAPTERS: 500, WEEKLY: 5000 } as const;
+
 export const STATUS_INFO: { value: string; label: string; plain: string }[] = [
     { value: 'ACTIVE', label: 'ACTIVE', plain: 'Reading' },
     { value: 'PLANNED', label: 'SEALED', plain: 'Plan to read' },

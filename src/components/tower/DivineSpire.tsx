@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Theme, Quest } from '../../core/types';
+import { Theme, Quest, QuestGoals } from '../../core/types';
 import { statusLabel } from '../../core/constants';
 import { elevation } from '../../core/depth';
 import TowerHUD from './TowerHUD';
@@ -19,7 +19,9 @@ interface DivineSpireProps {
     onActivate: (id: string) => void;
     playerRank: { name: string };
     streak: number;
-    dailyAbsorbed: number;
+    /** The daily and weekly quests, shown and adjusted in the HUD; null until loaded. */
+    goals: QuestGoals | null;
+    onSaveGoals: (daily: { kind: 'SERIES' | 'CHAPTERS'; target: number }, weeklyTarget: number) => Promise<string | null>;
     /**
      * Open in the floor view, where the search field lives and takes focus, instead of the
      * tower. Set by the dashboard's "/" shortcut. The Spire is mounted afresh on each open,
@@ -48,7 +50,7 @@ const SPIRE_COMPARE: Record<SpireSort, (a: Quest, b: Quest) => number> = {
     NEW: (a, b) => (b.newChapters ?? 0) - (a.newChapters ?? 0) || recency(b) - recency(a),
 };
 
-const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items, onActivate, playerRank, streak, dailyAbsorbed, startInSearch = false }) => {
+const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items, onActivate, playerRank, streak, goals, onSaveGoals, startInSearch = false }) => {
     // TOWER SYSTEM STATE
     const [viewMode, setViewMode] = useState<'TOWER' | 'FLOOR'>(startInSearch ? 'FLOOR' : 'TOWER');
     // Entered by "/" to search: stepping "back" from that floor view means leaving the Spire,
@@ -208,7 +210,7 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
             {/* TOWER BACKGROUND LAYER (FULLSCREEN) */}
             {viewMode === 'TOWER' && (
                 <div className="absolute inset-0 z-0 animate-in fade-in duration-700">
-                    <TowerHUD items={items} theme={theme} onActivate={onActivate} isFocused={isFocused} selectedFloorIndex={selectedFloorIndex} streak={streak} dailyAbsorbed={dailyAbsorbed} />
+                    <TowerHUD items={items} theme={theme} onActivate={onActivate} isFocused={isFocused} selectedFloorIndex={selectedFloorIndex} streak={streak} goals={goals} onSaveGoals={onSaveGoals} />
                     <TowerStructure theme={theme} onSelectFloor={handleSelectFloor} onFocus={handleFocus} items={items} isPaused={false} />
                 </div>
             )}

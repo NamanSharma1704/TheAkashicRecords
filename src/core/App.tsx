@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useLayoutEffect, useMemo, Suspense, lazy, useRef, useCallback } from 'react';
 import { flushSync } from 'react-dom';
 import { motion, AnimatePresence, Reorder, useDragControls } from 'motion/react';
-import { Quest, Achievement } from './types';
+import { Quest, Achievement, QuestGoals } from './types';
 import SystemFrame from '../components/system/SystemFrame';
 import SystemLogo from '../components/system/SystemLogo';
 import ScrambleText from '../components/system/ScrambleText';
 import { Activity, ExternalLink, Sun, Moon, Plus, Zap, Crown, X, LayoutTemplate, GripVertical, ChevronLeft, ChevronRight, LogOut, RefreshCw, Search } from 'lucide-react';
 import { getPlayerRank, calculateQuestRank, USER_RANKS, expOf } from '../utils/ranks';
-import { THEMES, ThemeId, statusLabel, startingThemeId, hasSavedTheme } from './constants';
+import { THEMES, ThemeId, statusLabel, startingThemeId, hasSavedTheme, dailyObjective } from './constants';
 
 import SystemConsole from '../components/system/SystemConsole';
 import BootScreen from '../components/system/BootScreen';
@@ -436,7 +436,7 @@ const App: React.FC = () => {
      */
     const [libraryLoaded, setLibraryLoaded] = useState(false);
     const [activeId, setActiveId] = useState<string | null>(null);
-    const [userState, setUserState] = useState({ streak: 0, dailyAbsorbed: 0 });
+    const [userState, setUserState] = useState<{ streak: number; goals?: QuestGoals }>({ streak: 0 });
     const [isAuth, setIsAuth] = useState<boolean>(isAuthenticated());
 
     // Cover-extracted accent color — dynamically sampled per active quest
@@ -797,7 +797,10 @@ const App: React.FC = () => {
                 // Batch the updates
                 setLibrary(mappedData);
                 if (newActiveId !== activeId) setActiveId(newActiveId);
-                if (stats) setUserState(stats);
+                if (stats) {
+                    setUserState(stats);
+                    adoptQuestOrder(stats.questOrder, mappedData);
+                }
             }
         } catch (e: any) {
             if (!e.message.includes('401')) {
@@ -876,6 +879,38 @@ const App: React.FC = () => {
         rankBaseline.current = idx;
     }, [libraryLoaded, playerRank, queueReward]);
 
+    // A quest cleared while reading is announced once, like a rank. The first state seen is the
+    // baseline; a new day or week, or a changed target, starts a new baseline, not a clear.
+    const goalBaseline = useRef<{ day: string; week: string; dailyKey: string; weeklyTarget: number; daily: boolean; weekly: boolean } | null>(null);
+    useEffect(() => {
+        const g = userState.goals;
+        if (!g) return;
+        const daily = g.daily.progress >= g.daily.target;
+        const weekly = g.weekly.progress >= g.weekly.target;
+        const dailyKey = `${g.daily.kind}:${g.daily.target}`;
+        const b = goalBaseline.current;
+        if (b && b.day === g.today && b.dailyKey === dailyKey && !b.daily && daily) {
+            queueReward({ tone: 'REWARD', message: 'Daily mandate cleared', detail: `${dailyObjective(g.daily.kind, g.daily.target)} · done for today.`, duration: 7000 });
+        }
+        if (b && b.week === g.weekly.startsOn && b.weeklyTarget === g.weekly.target && !b.weekly && weekly) {
+            queueReward({ tone: 'REWARD', message: 'Weekly decree cleared', detail: `${g.weekly.target.toLocaleString()} chapters absorbed this week.`, duration: 7000 });
+        }
+        goalBaseline.current = { day: g.today, week: g.weekly.startsOn, dailyKey, weeklyTarget: g.weekly.target, daily, weekly };
+    }, [userState.goals, queueReward]);
+
+    /** Set the quests. Resolves to an error message, or null once saved. */
+    const saveGoals = useCallback(async (daily: { kind: 'SERIES' | 'CHAPTERS'; target: number }, weeklyTarget: number): Promise<string | null> => {
+        try {
+            const res = await systemFetch('/api/user/goals', { method: 'PUT', body: JSON.stringify({ daily, weekly: { target: weeklyTarget } }) });
+            const body = await res.json().catch(() => null);
+            if (!res.ok) return body?.message || 'The quests were not saved.';
+            setUserState(prev => ({ ...prev, goals: body }));
+            return null;
+        } catch {
+            return 'The quests were not saved. Check your connection and try again.';
+        }
+    }, []);
+
     // TITLES. The server weighs the archive against its catalogue and grants what is newly
     // earned (POST /api/achievements/sync). That runs once the library has loaded, then a few
     // seconds after the library last changed (a settled chapter save, an appraisal, a
@@ -946,6 +981,48 @@ const App: React.FC = () => {
         return library.filter(item => item.status === 'ACTIVE');
     }, [library]);
 
+    // The ACTIVE QUESTS order lives on the server, so a phone and a desktop show the same list;
+    // it used to be this browser's alone. localStorage keeps a copy, so the list is in order
+    // before the first load lands. A drag fires onReorder on every swap, so the save waits a
+    // second for it to settle, and a pending one is sent as the page goes away.
+    const orderSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const pendingOrder = useRef<string[] | null>(null);
+    const flushQuestOrder = useCallback((keepalive = false) => {
+        if (orderSaveTimer.current) { clearTimeout(orderSaveTimer.current); orderSaveTimer.current = null; }
+        const order = pendingOrder.current;
+        if (!order) return;
+        pendingOrder.current = null;
+        systemFetch('/api/user/quest-order', { method: 'PUT', body: JSON.stringify({ order }), keepalive })
+            .catch(() => { /* the local copy stands; the next drag saves again */ });
+    }, []);
+    const saveQuestOrder = useCallback((order: string[]) => {
+        pendingOrder.current = order;
+        if (orderSaveTimer.current) clearTimeout(orderSaveTimer.current);
+        orderSaveTimer.current = setTimeout(() => flushQuestOrder(), 1000);
+    }, [flushQuestOrder]);
+    useEffect(() => {
+        const onHide = () => flushQuestOrder(true);
+        window.addEventListener('pagehide', onHide);
+        return () => window.removeEventListener('pagehide', onHide);
+    }, [flushQuestOrder]);
+    /** On load the server's order wins. A browser holding an order the server lacks (from
+     *  before the order was synced) hands it up, keeping only records in this library. */
+    const adoptQuestOrder = useCallback((serverOrder: unknown, quests: Quest[]) => {
+        if (Array.isArray(serverOrder) && serverOrder.length > 0) {
+            setCustomSortOrder(serverOrder as string[]);
+            try { localStorage.setItem('activeQuestOrder', JSON.stringify(serverOrder)); } catch { /* a cache only */ }
+            return;
+        }
+        let local: unknown = [];
+        try { local = JSON.parse(localStorage.getItem('activeQuestOrder') || '[]'); } catch { /* none kept */ }
+        const ids = new Set(quests.map(q => q.id));
+        const mine = Array.isArray(local) ? local.filter((id): id is string => typeof id === 'string' && ids.has(id)) : [];
+        if (mine.length > 0) {
+            pendingOrder.current = mine;
+            flushQuestOrder();
+        }
+    }, [flushQuestOrder]);
+
     useEffect(() => {
         const sorted = [...activeQuests].sort((a, b) => {
             const indexA = customSortOrder.indexOf(a.id);
@@ -965,8 +1042,9 @@ const App: React.FC = () => {
         setOrderedActiveQuests(newOrder); // Optimistic UI update
         const newIds = newOrder.map(q => q.id);
         setCustomSortOrder(newIds);
-        localStorage.setItem('activeQuestOrder', JSON.stringify(newIds));
-    }, []);
+        try { localStorage.setItem('activeQuestOrder', JSON.stringify(newIds)); } catch { /* a cache only */ }
+        saveQuestOrder(newIds);
+    }, [saveQuestOrder]);
     const spireItems = useMemo(() => {
         return [...library].sort((a, b) => {
             const idA = a.id || '';
@@ -1417,6 +1495,7 @@ const App: React.FC = () => {
         if (isAuth) return;
         setLibraryLoaded(false); // the next session's first load starts over
         achievementsSession.current++;
+        goalBaseline.current = null;
         setAchievements(null);
         setEquippedTitle(null);
         setRewardQueue([]);
@@ -2585,7 +2664,8 @@ const App: React.FC = () => {
                             onActivate={handleActivate}
                             playerRank={playerRank}
                             streak={userState.streak}
-                            dailyAbsorbed={userState.dailyAbsorbed}
+                            goals={userState.goals ?? null}
+                            onSaveGoals={saveGoals}
                         />
                     </div>
                 )}

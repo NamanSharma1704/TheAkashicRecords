@@ -5,10 +5,12 @@ import SystemLogo from '../system/SystemLogo';
 import SystemFrame from '../system/SystemFrame';
 import EntityAvatar from '../system/EntityAvatar';
 import StatBox from '../system/StatBox';
-import { X, Database, Layers, Target, Download, Upload, RefreshCw, LogOut, Terminal, Edit2, KeyRound, User2, AlertCircle, CheckCircle2, Trash2, Activity, Gauge, ImagePlus } from 'lucide-react';
+import { X, Database, Layers, Target, Download, Upload, RefreshCw, LogOut, Terminal, Edit2, KeyRound, User2, AlertCircle, CheckCircle2, Trash2, Activity, Gauge, ImagePlus, Share2 } from 'lucide-react';
 import TrashPanel from './TrashPanel';
 import ReadingActivity from './ReadingActivity';
 import HunterTitles from './HunterTitles';
+import HunterCardDialog from './HunterCardDialog';
+import { HunterCardData } from './hunterCard';
 import CoverArt from '../quest/CoverArt';
 import { USER_RANKS } from '../../utils/ranks';
 import { getProxiedImageUrl } from '../../utils/api';
@@ -216,6 +218,7 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
     // --- ACCOUNT MODAL STATE ---
     const [storedUser, setStoredUser] = useState(() => getStoredUser());
     const [showAccountModal, setShowAccountModal] = useState(false);
+    const [showCard, setShowCard] = useState(false);
     const [accountForm, setAccountForm] = useState({ newUsername: '', currentPassword: '', newPassword: '', confirmPassword: '' });
     const [accountStatus, setAccountStatus] = useState<{ type: 'error' | 'success'; msg: string } | null>(null);
     const [accountLoading, setAccountLoading] = useState(false);
@@ -765,6 +768,15 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                                     <Edit2 size={9} />
                                     <span className="text-[8px] font-mono font-bold uppercase tracking-widest">Edit Profile</span>
                                 </button>
+                                {/* The profile as one shareable image. */}
+                                <button
+                                    type="button"
+                                    onClick={() => setShowCard(true)}
+                                    className="flex items-center gap-1 px-3 py-1 border border-accent-line text-accent-plate hover:border-accent-line-strong hover:text-white transition-colors cursor-pointer"
+                                >
+                                    <Share2 size={9} aria-hidden="true" />
+                                    <span className="text-[8px] font-mono font-bold uppercase tracking-widest">Hunter Card</span>
+                                </button>
                             </div>
 
                             {/* RIGHT COLUMN: text + timeline | donut */}
@@ -1223,6 +1235,30 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                 onRestore={onRestoreQuest}
                 confirm={(message) => showNotification(message, 'WARNING', true)}
             />
+
+            {/* HUNTER CARD: built from this moment's profile, each time it opens */}
+            <AnimatePresence>
+                {showCard && (
+                    <HunterCardDialog
+                        theme={theme}
+                        onClose={() => setShowCard(false)}
+                        data={{
+                            username: storedUser?.username || 'SOVEREIGN',
+                            rank: playerRank.name,
+                            title: equippedName,
+                            exp: playerRank.exp ?? 0,
+                            next: playerRank.next ?? null,
+                            progress: playerRank.progress ?? 0,
+                            series: totalManhwa,
+                            conquered,
+                            chapters: totalChapters,
+                            titlesEarned: achievements?.filter(a => a.unlockedAt).length ?? 0,
+                            titlesTotal: achievements?.length ?? 0,
+                            top: topSeries.slice(0, 3).map(s => ({ title: s.title, chapters: s.currentChapter || 0, coverUrl: s.coverUrl })),
+                        } satisfies HunterCardData}
+                    />
+                )}
+            </AnimatePresence>
 
             {/* ACCOUNT SETTINGS MODAL */}
             <AnimatePresence>

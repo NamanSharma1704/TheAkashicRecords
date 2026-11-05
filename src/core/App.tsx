@@ -15,6 +15,7 @@ import BackgroundController from '../components/fx/BackgroundController';
 import EntityAvatar from '../components/system/EntityAvatar';
 import SystemNotification from '../components/system/SystemNotification';
 import SystemToast, { ToastSpec } from '../components/system/SystemToast';
+import SystemTour from '../components/system/SystemTour';
 import ErrorBoundary from '../components/system/ErrorBoundary';
 import SystemCompass from '../components/system/SystemCompass';
 import ChapterField from '../components/quest/ChapterField';
@@ -636,6 +637,10 @@ const App: React.FC = () => {
         setToast(prev => (prev && prev.id === id ? null : prev));
     }, []);
 
+    // The SYSTEM TUTORIAL (SystemTour). Opens by itself once per guest sandbox; anyone can
+    // replay it from the console bar.
+    const [tourOpen, setTourOpen] = useState(false);
+
     const handleLoginSuccess = (auth: AuthResponse) => {
         // The session cookie is already set by the server; this only records display state.
         saveAuthData(auth);
@@ -856,10 +861,10 @@ const App: React.FC = () => {
     const [rewardQueue, setRewardQueue] = useState<Omit<ToastSpec, 'id'>[]>([]);
     const queueReward = useCallback((spec: Omit<ToastSpec, 'id'>) => setRewardQueue(q => [...q, spec]), []);
     useEffect(() => {
-        if (!rewardQueue.length || toast) return;
+        if (!rewardQueue.length || toast || tourOpen) return;
         showToast(rewardQueue[0]);
         setRewardQueue(q => q.slice(1));
-    }, [rewardQueue, toast, showToast]);
+    }, [rewardQueue, toast, tourOpen, showToast]);
 
     // A rank earned while reading is announced once: the payoff of EXP. Not on load (the first
     // rank seen is the baseline, and each session takes its own), not when a correction drops
@@ -1499,6 +1504,7 @@ const App: React.FC = () => {
         setAchievements(null);
         setEquippedTitle(null);
         setRewardQueue([]);
+        setTourOpen(false);
         bursts.current.forEach(b => { if (b.timer) clearTimeout(b.timer); });
         bursts.current.clear();
     }, [isAuth]);
@@ -1628,7 +1634,23 @@ const App: React.FC = () => {
     const toastRef = useRef(toast);
     toastRef.current = toast;
     const showShortcuts = useCallback(() => { void showSystemNotification(SHORTCUT_HELP, 'INFO'); }, [showSystemNotification]);
-    const shortcutsBlocked = !isAuth || booting || isSpireOpen || isModalOpen || isProfileOpen || isDetailOpen || sysNote.isOpen;
+    const shortcutsBlocked = !isAuth || booting || isSpireOpen || isModalOpen || isProfileOpen || isDetailOpen || sysNote.isOpen || tourOpen;
+
+    // A guest arrives from the portfolio into a dense HUD: the tutorial opens once the
+    // dashboard has settled, on the dashboard only, and once per sandbox (keyed by its id).
+    const tourSeenKey = () => `akashic_tour_seen_${getStoredUser()?.id ?? ''}`;
+    const dashboardIdle = isAuth && !booting && libraryLoaded && !isSpireOpen && !isModalOpen && !isProfileOpen && !isDetailOpen && !sysNote.isOpen;
+    useEffect(() => {
+        if (!dashboardIdle || tourOpen || getStoredUser()?.role !== 'GUEST') return;
+        try { if (localStorage.getItem(tourSeenKey())) return; } catch { return; }
+        const t = setTimeout(() => setTourOpen(true), 900);
+        return () => clearTimeout(t);
+    }, [dashboardIdle, tourOpen]);
+    const closeTour = useCallback(() => {
+        setTourOpen(false);
+        try { localStorage.setItem(tourSeenKey(), '1'); } catch { /* it may show once more */ }
+    }, []);
+    const openTour = useCallback(() => setTourOpen(true), []);
     useEffect(() => {
         const isTextEntry = (el: Element | null) =>
             !!el && el.matches('input, textarea, select, [contenteditable=""], [contenteditable="true"]');
@@ -2306,7 +2328,7 @@ const App: React.FC = () => {
                                     </motion.button>
                                 </div>
                             ) : (
-                            <div className="flex gap-2 w-full justify-center mt-2">
+                            <div data-tour="read" className="flex gap-2 w-full justify-center mt-2">
                                 {/* Press and hold to repeat, accelerating; one save on release.
                                     A keyboard click (detail 0) never reaches the pointer handlers,
                                     so it steps here and merges with its neighbours like a tap. */}
@@ -2394,7 +2416,7 @@ const App: React.FC = () => {
                     {/* FULL PANEL — always shown below lg, where the sidebar stacks. */}
                     <div className={`contents ${sidebarCollapsed ? 'lg:hidden' : ''}`}>
                     {/* PLAYER CARD */}
-                    <div className="w-full h-auto">
+                    <div data-tour="rank" className="w-full h-auto">
                         <SystemFrame variant="brackets" theme={theme}>
                             <div className="px-3 py-2 flex flex-col gap-2">
                                 <div className="flex flex-row items-center gap-4">
@@ -2410,6 +2432,7 @@ const App: React.FC = () => {
                                             {/* accent-on, not fixed black: black on light's violet
                                                 measured 3.69:1 at 7px; white on it is 5.7:1. */}
                                             <button
+                                                data-tour="profile"
                                                 type="button"
                                                 onClick={() => setIsProfileOpen(true)}
                                                 className="absolute -bottom-1 -right-2 px-1 py-0.5 bg-accent text-accent-on text-[8px] font-black font-mono tracking-tighter uppercase cursor-pointer hover:scale-110 active:scale-95 transition-transform duration-200 shadow-lg z-20"
@@ -2486,7 +2509,7 @@ const App: React.FC = () => {
                     </div>
 
                     {/* ACTIVE QUESTS LIST - only scrollable region allowed */}
-                    <div className="flex-1 flex flex-col min-h-0 gap-1 mt-2 overflow-hidden max-h-[380px] lg:max-h-none">
+                    <div data-tour="quests" className="flex-1 flex flex-col min-h-0 gap-1 mt-2 overflow-hidden max-h-[380px] lg:max-h-none">
                         <div className={`flex items-center justify-between gap-2 border-b ${theme.borderSubtle} pb-1 mb-1 shrink-0`}>
                             <span className={`text-[10px] font-mono uppercase tracking-widest transition-colors duration-700 ${theme.isDark ? theme.headingText : `text-transparent bg-clip-text bg-gradient-to-r ${theme.labelGradient}`}`}>ACTIVE QUESTS</span>
                             {/* Search used to be the "/" key alone, so a phone had no way in.
@@ -2527,7 +2550,7 @@ const App: React.FC = () => {
 
                     {/* DIVINE SPIRE BUTTON. Light: an opaque pale-sky plate. The 10% sky wash it had
                         composited darker over the bottom of the page gradient and left the ink at 4.37:1. */}
-                    <button aria-label="Open Divine Spire" onClick={() => { setIsSpireOpen(true); }} className={`mt-auto hidden lg:flex w-full h-12 ${theme.isDark ? 'bg-white/5' : 'bg-[#ece4f7]/90'} border ${theme.borderSubtle} ${theme.highlightText} ${theme.isDark ? 'hover:bg-[#f59e0b] hover:text-black' : 'hover:bg-[#5b21b6] hover:text-[#fcfaff]'} font-mono font-bold tracking-widest uppercase transition-all items-center justify-center gap-2 text-[12px] shrink-0 shadow-sm cursor-pointer duration-700`}><LayoutTemplate size={16} /> DIVINE SPIRE</button>
+                    <button data-tour="spire" aria-label="Open Divine Spire" onClick={() => { setIsSpireOpen(true); }} className={`mt-auto hidden lg:flex w-full h-12 ${theme.isDark ? 'bg-white/5' : 'bg-[#ece4f7]/90'} border ${theme.borderSubtle} ${theme.highlightText} ${theme.isDark ? 'hover:bg-[#f59e0b] hover:text-black' : 'hover:bg-[#5b21b6] hover:text-[#fcfaff]'} font-mono font-bold tracking-widest uppercase transition-all items-center justify-center gap-2 text-[12px] shrink-0 shadow-sm cursor-pointer duration-700`}><LayoutTemplate size={16} /> DIVINE SPIRE</button>
                     </div>{/* end full panel */}
                 </div>
             </div>
@@ -2590,7 +2613,7 @@ const App: React.FC = () => {
                 !isModalOpen &&
                 !isProfileOpen &&
                 !isDetailOpen && (
-                    <SystemConsole theme={theme} onShowShortcuts={showShortcuts} />
+                    <SystemConsole theme={theme} onShowShortcuts={showShortcuts} onShowTour={openTour} />
                 )}
 
             {/* Each overlay has its own boundary, outside its Suspense so a chunk that fails
@@ -2735,6 +2758,7 @@ const App: React.FC = () => {
                                         {/* ── DIVINE SPIRE ── */}
                                         <motion.button
                                             type="button"
+                                            data-tour="spire"
                                             aria-label="Open Divine Spire"
                                             onClick={() => { setIsSpireOpen(true); setIsMobileHudExpanded(false); }}
                                             whileTap={{ scale: 0.96 }}
@@ -2836,6 +2860,7 @@ const App: React.FC = () => {
             />
 
             <SystemToast toast={toast} onDismiss={dismissToast} theme={theme} />
+            {tourOpen && <SystemTour theme={theme} guest={getStoredUser()?.role === 'GUEST'} onClose={closeTour} />}
 
             <GlitchOverlay isActive={glitchActive} onComplete={endGlitch} />
         </div>

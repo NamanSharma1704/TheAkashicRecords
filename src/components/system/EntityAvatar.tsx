@@ -164,8 +164,9 @@ const EntityAvatar: React.FC<EntityAvatarProps> = ({ theme, size = 64, className
                 </g>
             </svg>
 
-            {/* 3. PERIPHERAL TECH DECAL (DEFINED METADATA) */}
-            <div className="absolute top-2 left-2 flex flex-col items-start pointer-events-none group-hover:translate-x-1 transition-transform">
+            {/* 3. PERIPHERAL TECH DECAL (DEFINED METADATA). Texture, not text (4-5px), so
+                hidden from screen readers, which read it out as "LVL_99 Root.Apostle". */}
+            <div aria-hidden="true" className="absolute top-2 left-2 flex flex-col items-start pointer-events-none group-hover:translate-x-1 transition-transform">
                 <div className="flex items-center gap-1">
                     <div className="w-1 h-3 bg-current" style={{ color: mainColor }} />
                     <span className="text-[5px] font-mono font-black tracking-tight" style={{ color: theme.accentInk }}>LVL_99</span>
@@ -173,8 +174,8 @@ const EntityAvatar: React.FC<EntityAvatarProps> = ({ theme, size = 64, className
                 <span className="text-[4px] font-mono opacity-60 uppercase tracking-widest mt-0.5" style={{ color: theme.accentInk }}>Root.Apostle</span>
             </div>
 
-            {/* Bottom Status Ticker (Physical Integration) */}
-            <div className="absolute bottom-1 right-2 flex items-center gap-1 opacity-20 group-hover:opacity-100 transition-opacity">
+            {/* Bottom Status Ticker (Physical Integration): texture too, hidden likewise. */}
+            <div aria-hidden="true" className="absolute bottom-1 right-2 flex items-center gap-1 opacity-20 group-hover:opacity-100 transition-opacity">
                 <div className="w-[2px] h-[2px] rounded-full bg-white animate-ping" />
                 {/* The card is #0a0a0a on dark but #f2eef8 on light, where white-on-white
                     erased this decal entirely. It is 4px texture rather than text, so it

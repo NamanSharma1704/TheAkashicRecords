@@ -78,7 +78,7 @@ const TowerHUD: React.FC<TowerHUDProps> = ({ items, theme, onActivate, isFocused
                         transparent background via className, but that lands on the outer wrapper
                         and the solid inner surface still painted — frosted is the switch for it. */}
                     <SystemFrame variant="brackets" theme={theme} frosted={false} className="shadow-none w-full">
-                        <div className="p-1 md:p-3 lg:p-4 space-y-3 lg:space-y-4">
+                        <div data-tour="tower-metrics" className="p-1 md:p-3 lg:p-4 space-y-3 lg:space-y-4">
                             <div className="flex flex-col border-b border-gray-500/20 pb-2 gap-1 lg:gap-2 w-full">
                                 <div className="flex items-center gap-2">
                                     <Activity size={14} className={`${theme.highlightText} motion-safe:animate-spin`} />
@@ -121,7 +121,7 @@ const TowerHUD: React.FC<TowerHUDProps> = ({ items, theme, onActivate, isFocused
                             {/* TITLES DISCOVERED + QUESTS: above the legend, so on a short screen the column
                                 scrolls past the static key, not the day's quests. */}
                             <SystemFrame variant="brackets" theme={theme} frosted={false} className="shadow-none w-full">
-                                <div className="p-3 lg:p-4 space-y-3">
+                                <div data-tour="tower-quests" className="p-3 lg:p-4 space-y-3">
                                     {/* TITLES DISCOVERED */}
                                     <div className="space-y-1.5">
                                         <div className={`flex justify-between text-[clamp(9px,1vw,11px)] font-mono font-bold ${theme.highlightText}`}>
@@ -214,7 +214,7 @@ const TowerHUD: React.FC<TowerHUDProps> = ({ items, theme, onActivate, isFocused
                     </div>
 
                     {/* ACTIVE QUESTS QUICK-NAV */}
-                    <div className="w-full mt-auto">
+                    <div data-tour="tower-recents" className="w-full mt-auto">
                         <div className={`flex items-center gap-2 mb-3 ${theme.highlightText} w-full justify-end`}>
                             <span className={`text-[clamp(10px,1vw,12px)] font-bold tracking-[0.2em] font-orbitron uppercase ${theme.isDark ? '' : `text-transparent bg-clip-text bg-gradient-to-r ${theme.labelGradient}`}`}>RECENT_DATA</span>
                             <Sword size={14} />
@@ -236,7 +236,7 @@ const TowerHUD: React.FC<TowerHUDProps> = ({ items, theme, onActivate, isFocused
                 </aside>
 
                 {/* 3. MOBILE ONLY DOCK (BOTTOM FLOATING BAR) */}
-                <div className="lg:hidden flex absolute bottom-4 inset-x-0 pointer-events-auto justify-center z-50 px-2">
+                <div data-tour="tower-metrics" className="lg:hidden flex absolute bottom-4 inset-x-0 pointer-events-auto justify-center z-50 px-2">
                     {/* The dock asked for bg-black/85 through className, which lands on the
                         frame's outer wrapper behind the solid panel and never paints — so on light
                         it was a white panel carrying cyan-300 values at ~1.4:1. The surface now

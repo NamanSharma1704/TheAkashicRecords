@@ -15,7 +15,7 @@ import BackgroundController from '../components/fx/BackgroundController';
 import EntityAvatar from '../components/system/EntityAvatar';
 import SystemNotification from '../components/system/SystemNotification';
 import SystemToast, { ToastSpec } from '../components/system/SystemToast';
-import SystemTour from '../components/system/SystemTour';
+import { TourContext, TourId } from './tours';
 import ErrorBoundary from '../components/system/ErrorBoundary';
 import SystemCompass from '../components/system/SystemCompass';
 import ChapterField from '../components/quest/ChapterField';
@@ -297,6 +297,8 @@ const ManhwaDetail = lazy(() => import('../components/quest/ManhwaDetail'));
 const HunterProfile = lazy(() => import('../components/profile/HunterProfile'));
 const DivineSpire = lazy(() => import('../components/tower/DivineSpire'));
 const SystemGateModal = lazy(() => import('../components/system/SystemGateModal'));
+// Only guests on a first visit, or anyone pressing "?", ever open a tour.
+const SystemTour = lazy(() => import('../components/system/SystemTour'));
 
 // Loading Fallback Strategy
 const HeavyLoader = ({ theme }: { theme: any }) => (
@@ -637,9 +639,10 @@ const App: React.FC = () => {
         setToast(prev => (prev && prev.id === id ? null : prev));
     }, []);
 
-    // The SYSTEM TUTORIAL (SystemTour). Opens by itself once per guest sandbox; anyone can
-    // replay it from the console bar.
-    const [tourOpen, setTourOpen] = useState(false);
+    // The SYSTEM TUTORIALS (SystemTour, steps in tours.ts): one per page. Each opens by itself
+    // the first time a guest reaches its page; anyone can replay a page's tour from its "?".
+    const [tourId, setTourId] = useState<TourId | null>(null);
+    const tourOpen = tourId !== null;
 
     const handleLoginSuccess = (auth: AuthResponse) => {
         // The session cookie is already set by the server; this only records display state.
@@ -1523,7 +1526,7 @@ const App: React.FC = () => {
         setAchievements(null);
         setEquippedTitle(null);
         setRewardQueue([]);
-        setTourOpen(false);
+        setTourId(null);
         bursts.current.forEach(b => { if (b.timer) clearTimeout(b.timer); });
         bursts.current.clear();
     }, [isAuth]);
@@ -1748,21 +1751,34 @@ const App: React.FC = () => {
     const showShortcuts = useCallback(() => { void showSystemNotification(SHORTCUT_HELP, 'INFO'); }, [showSystemNotification]);
     const shortcutsBlocked = !isAuth || booting || isSpireOpen || isModalOpen || isProfileOpen || isDetailOpen || sysNote.isOpen || tourOpen;
 
-    // A guest arrives from the portfolio into a dense HUD: the tutorial opens once the
-    // dashboard has settled, on the dashboard only, and once per sandbox (keyed by its id).
-    const tourSeenKey = () => `akashic_tour_seen_${getStoredUser()?.id ?? ''}`;
+    // Pages ask for their tour through TourContext (usePageTour). An automatic ask is honoured
+    // only for a guest, only for a page whose tour this sandbox has not seen (kept per page
+    // and per sandbox id), and never over a tour already showing. A "?" ask always opens.
+    const tourSeenKey = (id: TourId) => `akashic_tour_seen_${id}_${getStoredUser()?.id ?? ''}`;
+    const tourIdRef = useRef<TourId | null>(null);
+    tourIdRef.current = tourId;
+    const requestTour = useCallback((id: TourId, auto: boolean) => {
+        if (auto) {
+            if (tourIdRef.current || getStoredUser()?.role !== 'GUEST') return;
+            try { if (localStorage.getItem(tourSeenKey(id))) return; } catch { return; }
+        }
+        setTourId(id);
+    }, []);
+    const closeTour = useCallback(() => {
+        const id = tourIdRef.current;
+        setTourId(null);
+        if (id) {
+            try { localStorage.setItem(tourSeenKey(id), '1'); } catch { /* it may show once more */ }
+        }
+    }, []);
+    // The dashboard's own tour: the dashboard is App itself, so it asks directly.
     const dashboardIdle = isAuth && !booting && libraryLoaded && !isSpireOpen && !isModalOpen && !isProfileOpen && !isDetailOpen && !sysNote.isOpen;
     useEffect(() => {
-        if (!dashboardIdle || tourOpen || getStoredUser()?.role !== 'GUEST') return;
-        try { if (localStorage.getItem(tourSeenKey())) return; } catch { return; }
-        const t = setTimeout(() => setTourOpen(true), 900);
+        if (!dashboardIdle) return;
+        const t = setTimeout(() => requestTour('dashboard', true), 900);
         return () => clearTimeout(t);
-    }, [dashboardIdle, tourOpen]);
-    const closeTour = useCallback(() => {
-        setTourOpen(false);
-        try { localStorage.setItem(tourSeenKey(), '1'); } catch { /* it may show once more */ }
-    }, []);
-    const openTour = useCallback(() => setTourOpen(true), []);
+    }, [dashboardIdle, requestTour]);
+    const openTour = useCallback(() => requestTour('dashboard', false), [requestTour]);
     useEffect(() => {
         const isTextEntry = (el: Element | null) =>
             !!el && el.matches('input, textarea, select, [contenteditable=""], [contenteditable="true"]');
@@ -2686,6 +2702,7 @@ const App: React.FC = () => {
     );
 
     return (
+        <TourContext.Provider value={requestTour}>
         <div 
             id="main-scroll-area" 
             className={`relative h-[100dvh] overflow-hidden ${theme.appBg} ${theme.baseText} font-sans selection:bg-accent-wash transition-colors duration-700 ease-in-out`}
@@ -2974,10 +2991,15 @@ const App: React.FC = () => {
             />
 
             <SystemToast toast={toast} onDismiss={dismissToast} theme={theme} />
-            {tourOpen && <SystemTour theme={theme} guest={getStoredUser()?.role === 'GUEST'} onClose={closeTour} />}
+            {tourId && (
+                <Suspense fallback={null}>
+                    <SystemTour key={tourId} theme={theme} id={tourId} guest={getStoredUser()?.role === 'GUEST'} onClose={closeTour} />
+                </Suspense>
+            )}
 
             <GlitchOverlay isActive={glitchActive} onComplete={endGlitch} />
         </div>
+        </TourContext.Provider>
     );
 };
 

@@ -2,48 +2,8 @@ import React, { useLayoutEffect, useRef, useState } from 'react';
 import { Theme } from '../../core/types';
 import SystemFrame from './SystemFrame';
 import { useDialogFocus } from '../../utils/useDialogFocus';
-
-interface TourStep {
-    /** The `data-tour` key of what this step points at; null for a centred message. */
-    target: string | null;
-    title: string;
-    body: string;
-}
-
-const steps = (guest: boolean): TourStep[] => [
-    {
-        target: null,
-        title: 'Welcome, Hunter',
-        body: guest
-            ? 'The Akashic Records tracks the manhwa you read, run by the System. This archive is a demo: it is yours for the next two hours, and nothing you do here touches the owner\'s library.'
-            : 'The Akashic Records tracks the manhwa you read, run by the System. Here is the HUD in six steps.',
-    },
-    {
-        target: 'read',
-        title: 'Log a chapter',
-        body: 'Press + when you finish a chapter; hold it to count quickly. ENTER PORTAL opens the series on its reading site.',
-    },
-    {
-        target: 'rank',
-        title: 'Earn your rank',
-        body: 'Every chapter read is 1 EXP. EXP raises your rank from Drifter to Monarch, and reading earns Hunter Titles along the way.',
-    },
-    {
-        target: 'quests',
-        title: 'Active quests',
-        body: 'The series you are reading now. Tap one to bring it up, drag its handle to reorder, and use New chapters to check for releases.',
-    },
-    {
-        target: 'spire',
-        title: 'The Divine Spire',
-        body: 'The whole library as a tower: each floor holds the series at one stage of progress. Search, sorting and your daily quests live there.',
-    },
-    {
-        target: 'profile',
-        title: 'Hunter Profile',
-        body: 'Your rank ladder, titles, reading activity, backups and a shareable Hunter Card. Add a series of your own with CREATE_GATE.',
-    },
-];
+import { TourId } from '../../core/tours';
+import { TOUR_NAMES, tourSteps } from './tourSteps';
 
 /** The first element tagged for `key` that is actually laid out (desktop and phone each
  *  render their own copy of some controls, and one of the pair is always hidden). */
@@ -56,20 +16,20 @@ const findTarget = (key: string): HTMLElement | null =>
 const PAD = 6;
 
 /**
- * SYSTEM TUTORIAL: a short guided pass over the HUD. A visitor arriving from the portfolio
- * lands in a dense interface with no word on ranks, floors or the portal; this names each
- * part in turn. It opens by itself once per guest sandbox and can be replayed from the
- * console bar. Each step rings its target where that target is on screen; where it is not
- * (the phone layout folds some of them away), the step still reads on its own.
+ * SYSTEM TUTORIAL: a short guided pass over one page (the steps live in core/tours.ts). A
+ * visitor arriving from the portfolio lands in a dense interface with no word on ranks,
+ * floors or the portal; this names each part in turn. Each step rings its target where that
+ * target is on screen; where it is not (the phone layout folds some away), the step still
+ * reads on its own.
  */
-const SystemTour: React.FC<{ theme: Theme; guest: boolean; onClose: () => void }> = ({ theme, guest, onClose }) => {
+const SystemTour: React.FC<{ theme: Theme; id: TourId; guest: boolean; onClose: () => void }> = ({ theme, id, guest, onClose }) => {
     const ref = useRef<HTMLDivElement>(null);
     const nextRef = useRef<HTMLButtonElement>(null);
     const [index, setIndex] = useState(0);
     const [rect, setRect] = useState<DOMRect | null>(null);
     useDialogFocus(ref, true, onClose, nextRef);
 
-    const all = steps(guest);
+    const all = tourSteps(id, guest);
     const step = all[index];
     const last = index === all.length - 1;
 
@@ -82,9 +42,18 @@ const SystemTour: React.FC<{ theme: Theme; guest: boolean; onClose: () => void }
         measure();
         window.addEventListener('resize', measure);
         window.addEventListener('scroll', measure, true);
+        // A target can change size under the ring (a panel still loading its data grows once
+        // it arrives), which neither event reports.
+        const resized = typeof ResizeObserver === 'function' ? new ResizeObserver(measure) : null;
+        resized?.observe(el);
+        // Nor does a page's own entrance (the editor zooms in, the profile's panels rise): a
+        // transform moves the box without resizing it. Measure again once that has played.
+        const settle = window.setTimeout(measure, 450);
         return () => {
             window.removeEventListener('resize', measure);
             window.removeEventListener('scroll', measure, true);
+            resized?.disconnect();
+            window.clearTimeout(settle);
         };
     }, [step.target]);
 
@@ -137,7 +106,7 @@ const SystemTour: React.FC<{ theme: Theme; guest: boolean; onClose: () => void }
                     <div className="p-5 flex flex-col gap-3">
                         <div aria-live="polite" className="flex flex-col gap-2">
                             <p className="font-mono text-[10px] font-bold tracking-[0.25em] uppercase text-accent-ink">
-                                System // Tutorial · {index + 1} / {all.length}
+                                System // {TOUR_NAMES[id]} · {index + 1} / {all.length}
                             </p>
                             <h2 id="system-tour-title" className={`font-orbitron text-base font-bold tracking-[0.12em] uppercase ${theme.headingText}`}>
                                 {step.title}

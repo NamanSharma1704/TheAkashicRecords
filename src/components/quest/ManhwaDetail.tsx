@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, useReducedMotion } from 'motion/react';
-import { X, Users, Share2, Zap, Edit2, Target, AlignLeft, Check, Activity, ExternalLink, Crown, Gauge, History } from 'lucide-react';
+import { X, Users, Share2, Zap, Edit2, Target, AlignLeft, Check, Activity, ExternalLink, Crown, Gauge, History, HelpCircle } from 'lucide-react';
 import { getProxiedImageUrl, cleanDescription } from '../../utils/api';
 import { systemFetch } from '../../utils/auth';
 import { sanitizeHtml } from '../../utils/sanitize';
 import { useDialogFocus } from '../../utils/useDialogFocus';
+import { usePageTour } from '../../core/tours';
 
 import { Theme, Quest } from '../../core/types';
 import { statusLabel } from '../../core/constants';
@@ -170,6 +171,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
     // restore focus on close. Shared with the other dialogs so that when the gate editor
     // opens on top of this view, Escape closes only the editor.
     useDialogFocus(dialogRef, isOpen, onClose);
+    const startSeriesTour = usePageTour('series', isOpen && !!quest);
 
     const isCustomCover = !!(quest?.coverUrl && quest.coverUrl !== "");
     const finalCover = isCustomCover ? quest.coverUrl : (media?.coverImage?.extraLarge || media?.coverImage?.large || quest?.coverUrl || "");
@@ -434,6 +436,16 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                     <div className={`w-1 h-8 ${theme.id === 'LIGHT' ? 'bg-violet-500' : 'bg-amber-500'} shadow-[0_0_15px_currentColor]`} />
                     <div className={`font-mono text-[10px] tracking-[0.4em] ${inkText} font-bold uppercase`}>SYSTEM.ARCHIVE_INSPECTION</div>
                 </div>
+                <div className="flex items-center gap-2 pointer-events-auto">
+                <button
+                    type="button"
+                    onClick={startSeriesTour}
+                    className={`w-9 h-9 flex items-center justify-center border ${theme.borderSubtle} ${theme.isDark ? `${theme.mutedText} hover:${theme.highlightText}` : 'text-stone-800 hover:text-amber-950'} hover:border-current transition-colors cursor-pointer`}
+                    title="Tour this page"
+                    aria-label="Tour this page"
+                >
+                    <HelpCircle size={16} aria-hidden="true" />
+                </button>
                 <button
                     onClick={onClose}
                     className={`pointer-events-auto w-9 h-9 flex items-center justify-center border ${theme.borderSubtle} ${theme.isDark ? `${theme.mutedText} hover:${theme.highlightText}` : 'text-stone-800 hover:text-amber-950'} hover:border-current transition-colors cursor-pointer`}
@@ -442,6 +454,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                 >
                     <X size={16} />
                 </button>
+                </div>
             </div>
 
             {/* MAIN SCROLLABLE CONTENT (CENTERED COLUMN) */}
@@ -520,7 +533,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                             )}
 
                             {/* PROTOCOL BUTTONS ROW */}
-                            <div className="flex flex-wrap gap-3 w-full justify-center md:justify-start mt-4">
+                            <div data-tour="series-actions" className="flex flex-wrap gap-3 w-full justify-center md:justify-start mt-4">
                                 {quest?.link && (
                                     <a
                                         href={quest.link}
@@ -578,7 +591,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                     </motion.div>
 
                     {/* PROGRESS HUD: THE RUNIC THREAD */}
-                    <motion.div variants={itemVariants} className="w-full relative group mt-4">
+                    <motion.div data-tour="series-progress" variants={itemVariants} className="w-full relative group mt-4">
                         <div className={`relative rounded-xl p-4 md:p-8 backdrop-blur-2xl shadow-2xl overflow-hidden border ${theme.isDark ? 'bg-black/40 border-white/10' : 'bg-white/70 border-white/40'}`}>
                             {/* Ambient internal glow */}
                             <div className={`absolute inset-0 bg-gradient-to-r ${theme.gradient} opacity-5 blur-xl pointer-events-none`} />
@@ -667,7 +680,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                         {/* RIGHT: Appraisal, Chronicle, System Metrics, Genres */}
                         <div className="flex flex-col gap-4">
                             {/* HUNTER_APPRAISAL: your own score, beside the source's RESONANCE below. */}
-                            <div className={`p-6 backdrop-blur-xl rounded-xl flex flex-col gap-4 border ${panelClass}`}>
+                            <div data-tour="series-appraisal" className={`p-6 backdrop-blur-xl rounded-xl flex flex-col gap-4 border ${panelClass}`}>
                                 <div className="flex items-center gap-2">
                                     <Gauge size={16} aria-hidden="true" className={theme.isDark ? 'text-white/60' : 'text-stone-600'} />
                                     <span className={`text-[10px] font-mono tracking-[0.3em] font-bold uppercase ${theme.isDark ? 'text-white/60' : 'text-stone-600'}`}>HUNTER_APPRAISAL</span>
@@ -680,7 +693,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                             </div>
 
                             {/* CHRONICLE: this series' own history, from the reading log. */}
-                            <div className={`p-6 backdrop-blur-xl rounded-xl flex flex-col gap-4 border ${panelClass}`}>
+                            <div data-tour="series-chronicle" className={`p-6 backdrop-blur-xl rounded-xl flex flex-col gap-4 border ${panelClass}`}>
                                 <div className="flex items-center gap-2">
                                     <History size={16} aria-hidden="true" className={theme.isDark ? 'text-white/60' : 'text-stone-600'} />
                                     <span className={`text-[10px] font-mono tracking-[0.3em] font-bold uppercase ${theme.isDark ? 'text-white/60' : 'text-stone-600'}`}>CHRONICLE</span>

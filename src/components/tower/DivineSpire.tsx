@@ -8,8 +8,9 @@ import { FLOOR_DEFS, floorIndexForItem } from './floors';
 import QuestCard from '../quest/QuestCard';
 import SystemLogo from '../system/SystemLogo';
 import { getQuestRankObj } from '../../utils/ranks';
-import { ChevronLeft, ChevronRight, X, Search, AlertCircle, ChevronDown, Filter, ArrowDownUp, Check, CheckSquare, Trash2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X, Search, AlertCircle, ChevronDown, Filter, ArrowDownUp, Check, CheckSquare, Trash2, HelpCircle } from 'lucide-react';
 import { useDialogFocus } from '../../utils/useDialogFocus';
+import { usePageTour } from '../../core/tours';
 
 interface DivineSpireProps {
     isOpen: boolean;
@@ -212,6 +213,10 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
         else stepBack();
     }, startInSearch ? searchInputRef : undefined);
 
+    // Two tours: the tower, and a floor's view (search, filters, select).
+    const startSpireTour = usePageTour('spire', isOpen && viewMode === 'TOWER');
+    const startFloorTour = usePageTour('floor', isOpen && viewMode === 'FLOOR');
+
     // What "Select all" takes: the search results, or the floor in view (after its filters).
     const inView = search ? filteredItems : (floors[selectedFloorIndex]?.items ?? []);
     const selectAllInView = () => setSelected(prev => new Set([...prev, ...inView.map(i => i.id)]));
@@ -294,6 +299,16 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
                             <h2 id="divine-spire-title" className={`font-orbitron text-base tracking-[0.2em] font-bold bg-clip-text text-transparent bg-gradient-to-r ${theme.isDark ? 'from-amber-600 via-yellow-400 to-white' : theme.labelGradient} transition-colors duration-700`}>THE DIVINE SPIRE</h2>
                         </div>
                     </div>
+                    <div className="flex items-center gap-1">
+                    <button
+                        type="button"
+                        onClick={viewMode === 'TOWER' ? startSpireTour : startFloorTour}
+                        aria-label="Tour this page"
+                        title="Tour this page"
+                        className={`p-1.5 md:p-2 ${theme.mutedText} hover:${theme.baseText} transition-colors rounded-md border border-transparent ${theme.isDark ? 'hover:border-white/10 hover:bg-white/5' : 'hover:border-stone-300 hover:bg-black/5'}`}
+                    >
+                        <HelpCircle size={20} aria-hidden="true" />
+                    </button>
                     <button
                         type="button"
                         onClick={stepBack}
@@ -303,6 +318,7 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
                     >
                         <X size={22} aria-hidden="true" className="relative z-10 transition-transform duration-500 group-hover:rotate-90" />
                     </button>
+                    </div>
                 </div>
             </div>
 
@@ -316,7 +332,7 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
                         {/* Search Bar HUD. Top margin: it sat flush against the 64px header, and
                             its glow ran up into the title. */}
                         <div className="relative z-20 shrink-0 w-full max-w-2xl mx-auto px-4 mt-3 md:mt-6 mb-2 md:mb-4 flex items-center gap-2">
-                            <div className="relative group flex-1 min-w-0">
+                            <div data-tour="floor-search" className="relative group flex-1 min-w-0">
                                 <div className={`absolute -inset-1 bg-gradient-to-r ${theme.gradient} opacity-20 blur-md group-focus-within:opacity-40 transition-all duration-500 rounded-full`} />
                                 <div className={`relative ${theme.isDark ? 'bg-black/60' : 'bg-white/80'} backdrop-blur-xl border border-white/10 rounded-full px-3 py-2 md:px-4 md:py-3 flex items-center shadow-2xl transition-all duration-700`}>
                                     <Search size={18} aria-hidden="true" className={`${theme.highlightText} mr-2 md:mr-3 opacity-70 shrink-0`} />
@@ -345,6 +361,7 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
                             </div>
                             {/* Select mode: change or trash many records at once. */}
                             <button
+                                data-tour="floor-select"
                                 type="button"
                                 aria-pressed={selecting}
                                 onClick={() => (selecting ? endSelecting() : setSelecting(true))}
@@ -361,7 +378,7 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
                         {!search && floors.length > 0 && floors[selectedFloorIndex] && (
                             <div className="shrink-0 z-[60] flex flex-col items-center drop-shadow-2xl mb-1 md:mb-2 relative group/carousel">
                                 <div className={`font-mono text-[9px] tracking-[0.4em] ${theme.highlightText} font-bold uppercase mb-1 pointer-events-none`}>SYSTEM.ASCENT_INTERFACE</div>
-                                <div className={`relative flex items-center gap-2 md:gap-4 px-3 py-1 md:px-6 md:py-2 rounded-full border backdrop-blur-md pointer-events-auto ${theme.isDark ? 'border-white/10 bg-black/40' : 'border-violet-200 bg-white/85 elev-1'}`}>
+                                <div data-tour="floor-layer" className={`relative flex items-center gap-2 md:gap-4 px-3 py-1 md:px-6 md:py-2 rounded-full border backdrop-blur-md pointer-events-auto ${theme.isDark ? 'border-white/10 bg-black/40' : 'border-violet-200 bg-white/85 elev-1'}`}>
                                     <button type="button" disabled={selectedFloorIndex <= 0} onClick={() => setSelectedFloorIndex(i => i - 1)} aria-label="Previous layer" title="Previous layer" className={`${theme.mutedText} hover:${theme.highlightText} disabled:opacity-30 transition-colors`}><ChevronLeft size={14} aria-hidden="true" /></button>
                                     <button type="button" onClick={() => setIsFilterOpen(!isFilterOpen)} aria-expanded={isFilterOpen} aria-haspopup="true" aria-controls="spire-filter-menu" className={`font-black text-lg md:text-2xl font-orbitron tracking-widest ${theme.headingText} ${theme.isDark ? 'hover:text-white' : 'hover:text-[#5b21b6]'} transition-colors flex items-center gap-1.5 outline-none`}>
                                         {floors[selectedFloorIndex].label}
@@ -428,7 +445,7 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
                         )}
 
                         {/* Carousel Area — flex-1 so it fills all remaining vertical space naturally */}
-                        <div className="relative flex-1 min-h-0 w-full group/carousel">
+                        <div data-tour="floor-cards" className="relative flex-1 min-h-0 w-full group/carousel">
                             {/* FLOATING NAVIGATION CONTROLS (desktop only) */}
                             {!search && (
                                 <>

@@ -24,15 +24,20 @@ export default defineConfig({
     build: {
         outDir: '../dist',
         emptyOutDir: true,
+        // The one chunk over Vite's 500 kB default is Three.js (~511 kB, ~130 kB gzipped), and
+        // it is never on the first-load path: the dashboard's dais imports it dynamically once
+        // the browser is idle, and the Divine Spire is itself lazy. The limit sits just above
+        // it, so the warning still fires if anything else grows that large.
+        chunkSizeWarningLimit: 540,
         rollupOptions: {
             output: {
-                // Three.js is ~500 kB on its own and is only reached through the
-                // lazy-loaded Divine Spire. Splitting it into its own chunk means the
-                // Spire's application code can change without invalidating the cached
-                // copy of the library, and vice versa.
+                // Libraries in chunks of their own, so a deploy that changes only app code
+                // leaves them cached. Three.js is reached only through lazy code (above).
+                // React is needed at once, but changes far less often than the app does.
                 manualChunks: {
                     three: ['three'],
-                    motion: ['motion/react']
+                    motion: ['motion/react'],
+                    react: ['react', 'react-dom', 'react-dom/client', 'react/jsx-runtime']
                 }
             }
         }

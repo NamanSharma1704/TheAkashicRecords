@@ -5,7 +5,7 @@ import SystemLogo from '../system/SystemLogo';
 import SystemFrame from '../system/SystemFrame';
 import EntityAvatar from '../system/EntityAvatar';
 import StatBox from '../system/StatBox';
-import { X, Database, Layers, Target, Download, Upload, RefreshCw, LogOut, Terminal, Edit2, KeyRound, User2, AlertCircle, CheckCircle2, Trash2, Activity, Gauge, ImagePlus, Share2 } from 'lucide-react';
+import { X, Database, Layers, Target, Download, Upload, RefreshCw, LogOut, Terminal, Edit2, KeyRound, User2, AlertCircle, CheckCircle2, Trash2, Activity, Gauge, ImagePlus, Share2, HelpCircle } from 'lucide-react';
 import TrashPanel from './TrashPanel';
 import ReadingActivity from './ReadingActivity';
 import HunterTitles from './HunterTitles';
@@ -22,6 +22,7 @@ import SanctuaryRing from '../fx/SanctuaryRing';
 import { systemFetch, getStoredUser, saveAuthData } from '../../utils/auth';
 import { accentRGB, elevation, emphasis } from '../../core/depth';
 import { useDialogFocus } from '../../utils/useDialogFocus';
+import { usePageTour } from '../../core/tours';
 
 type CalibrationEntry = { processed: number; total: number; title: string; cls: string; changed: boolean };
 type CalibrationState = {
@@ -574,6 +575,8 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
         if (calibration?.phase !== 'running') setCalibration(null);
     });
 
+    const startProfileTour = usePageTour('profile', isOpen);
+
     if (!isOpen) return null;
 
     const containerVariants = {
@@ -635,7 +638,7 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                         <h2 id="hunter-profile-title" className={`font-orbitron text-base tracking-[0.2em] font-bold bg-clip-text text-transparent bg-gradient-to-r ${theme.isDark ? 'from-amber-600 via-yellow-400 to-white' : theme.labelGradient} transition-colors duration-700`}>HUNTER PROFILE</h2>
                     </div>
                 </div>
-                <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+                <div data-tour="profile-tools" className="flex items-center gap-1.5 sm:gap-3 shrink-0">
                     {/* Compact Sys Admin Tools */}
                     {/* Export: the full backup or the spreadsheet. A menu rather than another
                         button, because a phone's toolbar has no room left. */}
@@ -750,7 +753,7 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
             <motion.div variants={containerVariants} initial="hidden" animate="visible" className="relative z-10 flex-1 px-4 lg:px-8 py-3 lg:py-6 overflow-y-auto hide-scrollbar max-w-[1600px] mx-auto w-full flex flex-col gap-3 lg:gap-6 pb-12">
 
                 {/* UNIFIED HERO HEADER: IDENTITY + RANK HISTORY */}
-                <motion.div variants={itemVariants} className={`flex w-full border ${theme.isDark ? 'border-white/10 bg-[#0a0a0a]' : 'border-violet-200 bg-[#0a0a0a]'} backdrop-blur-md relative overflow-hidden shrink-0 shadow-sm mb-2 rounded-[2px] p-4 lg:p-5 pb-2 lg:pb-3`}>
+                <motion.div data-tour="profile-banner" variants={itemVariants} className={`flex w-full border ${theme.isDark ? 'border-white/10 bg-[#0a0a0a]' : 'border-violet-200 bg-[#0a0a0a]'} backdrop-blur-md relative overflow-hidden shrink-0 shadow-sm mb-2 rounded-[2px] p-4 lg:p-5 pb-2 lg:pb-3`}>
                           {/* Full-width sweeping glow at the bottom of the card */}
                     <div className="absolute bottom-0 left-0 right-0 h-[55%] pointer-events-none"
                         style={{
@@ -813,6 +816,16 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                                 >
                                     <Share2 size={9} aria-hidden="true" />
                                     <span className="text-[8px] font-mono font-bold uppercase tracking-widest">Hunter Card</span>
+                                </button>
+                                {/* This page's tour. Here rather than in the toolbar, which has no
+                                    room left on a phone. */}
+                                <button
+                                    type="button"
+                                    onClick={startProfileTour}
+                                    className="flex items-center gap-1 px-3 py-1 border border-accent-line text-accent-plate hover:border-accent-line-strong hover:text-white transition-colors cursor-pointer"
+                                >
+                                    <HelpCircle size={9} aria-hidden="true" />
+                                    <span className="text-[8px] font-mono font-bold uppercase tracking-widest">Tour</span>
                                 </button>
                             </div>
 
@@ -961,12 +974,12 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                 </motion.div>
 
                 {/* HUNTER TITLES — what the System has granted, and what is next */}
-                <motion.div variants={itemVariants} className="w-full">
+                <motion.div data-tour="profile-titles" variants={itemVariants} className="w-full">
                     <HunterTitles theme={theme} achievements={achievements} equipped={equippedTitle} onEquip={onEquipTitle} />
                 </motion.div>
 
                 {/* READING ACTIVITY — the reading log, a year of days */}
-                <motion.div variants={itemVariants} className="w-full">
+                <motion.div data-tour="profile-activity" variants={itemVariants} className="w-full">
                     <div className={`flex items-center gap-2 mb-2 ${theme.highlightText}`}>
                         <Activity size={13} />
                         <span className={`text-[10px] font-mono font-bold tracking-[0.3em] uppercase ${theme.isDark ? '' : `text-transparent bg-clip-text bg-gradient-to-r ${theme.labelGradient}`}`}>Reading Activity</span>

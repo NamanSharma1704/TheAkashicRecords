@@ -4,9 +4,10 @@ import { Theme, Quest } from '../../core/types';
 import SystemFrame from './SystemFrame';
 import AppraisalPips from '../quest/AppraisalPips';
 import { STATUS_INFO } from '../../core/constants';
-import { X, RefreshCw, AlertCircle, CheckCircle, Database, Search, Activity, Trash2 } from 'lucide-react';
+import { X, RefreshCw, AlertCircle, CheckCircle, Database, Search, Activity, Trash2, HelpCircle } from 'lucide-react';
 import { fetchMangadex, fetchAuto, fetchAnilistCover, fetchJikanCover, getProxiedImageUrl, cleanDescription } from '../../utils/api';
 import { useDialogFocus } from '../../utils/useDialogFocus';
+import { usePageTour } from '../../core/tours';
 import { systemFetch } from '../../utils/auth';
 
 interface SystemGateModalProps {
@@ -73,6 +74,7 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
     const dialogRef = useRef<HTMLDivElement>(null);
     const firstFieldRef = useRef<HTMLInputElement>(null);
     useDialogFocus(dialogRef, true, onClose, firstFieldRef);
+    const startGateTour = usePageTour('gate', true);
 
     // Red for errors and the required-field flag, per theme: red-500 is 3.8:1 on the
     // white panel, below AA for this 8-10px type; red-700 there is 6.5:1.
@@ -322,6 +324,16 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
                             <RefreshCw size={12} aria-hidden="true" className={isScanning ? 'animate-spin' : ''} />
                             {isScanning ? 'ANALYZING_COORDINATES...' : (initialData ? 'SYSTEM_OVERWRITE' : 'CREATE_GATE')}
                         </span>
+                        <div className="flex items-center gap-1.5">
+                        <button
+                            type="button"
+                            onClick={startGateTour}
+                            aria-label="Tour this page"
+                            title="Tour this page"
+                            className={`w-7 h-7 flex items-center justify-center border ${theme.borderSubtle} ${theme.mutedText} hover:${theme.headingText} ${theme.isDark ? 'hover:border-white/30' : 'hover:border-stone-500'} transition-all duration-300 rounded-sm active:scale-90`}
+                        >
+                            <HelpCircle size={14} aria-hidden="true" />
+                        </button>
                         <button
                             type="button"
                             onClick={onClose}
@@ -331,6 +343,7 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
                         >
                             <X size={14} aria-hidden="true" />
                         </button>
+                        </div>
                     </div>
 
                     {/* ── SCROLLABLE BODY ── */}
@@ -349,7 +362,7 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
                         )}
 
                         {/* ── LINK COORDINATES ── */}
-                        <div className="space-y-2">
+                        <div data-tour="gate-link" className="space-y-2">
                             {/* Wraps: on a phone the label and the four sources need ~330px of a
                                 ~310px row, which pushed MANGADEX out and scrolled the form sideways. */}
                             <div className={`flex flex-wrap justify-between items-center gap-x-3 gap-y-1.5 pb-1.5 border-b ${theme.borderSubtle}`}>
@@ -416,7 +429,7 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
                         </div>
 
                         {/* ── ARTIFACT NOMENCLATURE ── */}
-                        <div className="space-y-2">
+                        <div data-tour="gate-title" className="space-y-2">
                             <FieldLabel theme={theme} htmlFor="quest-title" system="Artifact_Nomenclature" plain="Series title" />
                             <div className="relative group">
                                 <input
@@ -444,7 +457,7 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
                         </div>
 
                         {/* ── CHAPTER METRICS ── */}
-                        <div className={`grid grid-cols-2 gap-3 p-3 border ${theme.borderSubtle} ${theme.isDark ? 'bg-white/[0.03]' : 'bg-black/[0.03]'} rounded-sm relative`}>
+                        <div data-tour="gate-chapters" className={`grid grid-cols-2 gap-3 p-3 border ${theme.borderSubtle} ${theme.isDark ? 'bg-white/[0.03]' : 'bg-black/[0.03]'} rounded-sm relative`}>
                             <div className={`absolute top-0 left-0 w-3 h-3 border-t border-l ${theme.border} opacity-50`} />
                             <div className={`absolute bottom-0 right-0 w-3 h-3 border-b border-r ${theme.border} opacity-50`} />
 
@@ -537,7 +550,7 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
                         </div>
 
                         {/* ── CLASSIFICATION GRID ── */}
-                        <div className="grid grid-cols-2 gap-3">
+                        <div data-tour="gate-status" className="grid grid-cols-2 gap-3">
                             <div className="space-y-1.5">
                                 <FieldLabel theme={theme} htmlFor="quest-status" system="Protocol_Status" plain="Status" />
                                 <div className="relative">

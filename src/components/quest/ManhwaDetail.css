@@ -87,3 +87,13 @@
     --scrollbar-thumb: #f59e0b;
     --scrollbar-thumb-hover: #d97706;
 }
+
+/* The floating SYSTEM.ARCHIVE_INSPECTION bar has no background, so section titles scrolled up
+   ran straight under its label and buttons. The scroll column now fades out beneath it:
+   transparent level with the bar's controls (they end ~64px down, or 40px under a notch's
+   safe area), fully visible again where the column's own top padding ends (88px, or 72px
+   under the notch). So nothing is faded at rest; only what has scrolled up under the bar. */
+.manhwa-detail-scroll-container {
+    -webkit-mask-image: linear-gradient(to bottom, transparent max(64px, calc(env(safe-area-inset-top, 0px) + 40px)), #000 max(88px, calc(env(safe-area-inset-top, 0px) + 72px)));
+    mask-image: linear-gradient(to bottom, transparent max(64px, calc(env(safe-area-inset-top, 0px) + 40px)), #000 max(88px, calc(env(safe-area-inset-top, 0px) + 72px)));
+}

@@ -25,8 +25,8 @@ const BackgroundController: React.FC<BackgroundControllerProps> = ({ theme, isPa
             <GalaxyNebula theme={theme} />
             {/* Two different atmospheres, not one recoloured. The Void keeps its emissive
                 starfield/ripples; the light theme gets its own "light and ink on vellum" set. The
-                concentric ring system is no longer here — it is the card-centred ArcaneSigil in the
-                hero now (both themes), so it stays aligned to the card instead of the viewport. */}
+                concentric ring system is no longer here — it is HeroRings (both themes), which
+                centres it on the hero column rather than the viewport. */}
             {isDivineMode ? (
                 <IlluminatedCodex isPaused={isPaused || lowPower} />
             ) : (

@@ -7,10 +7,10 @@ import { Theme } from '../../core/types';
  * rings, a ruled astrolabe tick-band, a hexagram and a ring of orbiting runes.
  *
  * Unlike the flowing aurora ({@link IlluminatedCodex}), which is a full-page field, this is
- * centred on the HERO — the card and the holographic platform it stands on — so the platform
- * reads as sitting at the exact centre of the circle. It is therefore rendered by the hero and
- * positioned by its parent (via `className`), not pinned to the viewport. Line-art only and very
- * faint, so it adds motion and identity without clouding the content that sits inside it.
+ * centred on the HERO. It is positioned by its parent (via `className`): on the dashboard that
+ * is HeroRings, which sizes it to the screen's height; the boot and login screens place their
+ * own. Line-art only and very faint, so it adds motion and identity without clouding the
+ * content that sits inside it.
  *
  * Light only. Motion is pure transform and holds a still frame under reduced-motion / pause.
  */

@@ -4,9 +4,9 @@ import { Theme } from '../../core/types';
 /**
  * The concentric background rings of the Void — simple dashed circles that turn slowly.
  *
- * Positioned by the parent via `className` (absolute) rather than pinned to the viewport, so on
- * the dashboard it can sit centred on the hero card instead of the screen centre. The light theme
- * uses its own summoning-sigil (ArcaneSigil) instead; this is the dark theme's ring system.
+ * Positioned by the parent via `className` (absolute) rather than pinned to the viewport; on
+ * the dashboard that is HeroRings, which centres it on the hero card. The light theme uses its
+ * own summoning-sigil (ArcaneSigil) instead; this is the dark theme's ring system.
  */
 const SanctuaryRing: React.FC<{ theme: Theme; isPaused?: boolean; className?: string }> = ({ theme, isPaused = false, className = '' }) => {
     const color = theme.isDark ? '#ffffff' : `rgb(${theme.starColor})`;

@@ -27,8 +27,7 @@ import { normalizeTitle } from '../utils/normalizeTitle';
 import HoloDais from '../components/dais/HoloDais';
 import Card3D from '../components/quest/Card3D';
 import CoverArt from '../components/quest/CoverArt';
-import ArcaneSigil from '../components/fx/ArcaneSigil';
-import SanctuaryRing from '../components/fx/SanctuaryRing';
+import HeroRings from '../components/fx/HeroRings';
 import { accentRGB, elevation, emphasis } from './depth';
 import { accentVars } from './tokens';
 import { InfinitePortalIcon, CalibratedPlusIcon, CalibratedMinusIcon } from '../components/system/CustomIcons';
@@ -641,6 +640,8 @@ const App: React.FC = () => {
 
     // The SYSTEM TUTORIALS (SystemTour, steps in tours.ts): one per page. Each opens by itself
     // the first time a guest reaches its page; anyone can replay a page's tour from its "?".
+    // The dashboard has no replay button (the owner asked for its console button to go), so its
+    // tour plays once per guest only.
     const [tourId, setTourId] = useState<TourId | null>(null);
     const tourOpen = tourId !== null;
 
@@ -1780,7 +1781,6 @@ const App: React.FC = () => {
         const t = setTimeout(() => requestTour('dashboard', true), 900);
         return () => clearTimeout(t);
     }, [dashboardIdle, requestTour]);
-    const openTour = useCallback(() => requestTour('dashboard', false), [requestTour]);
     useEffect(() => {
         const isTextEntry = (el: Element | null) =>
             !!el && el.matches('input, textarea, select, [contenteditable=""], [contenteditable="true"]');
@@ -1964,6 +1964,9 @@ const App: React.FC = () => {
     const overlayOpen = isModalOpen || isDetailOpen || isProfileOpen || isSpireOpen;
     /** Hold the dashboard's animated layers still: behind an overlay, or in low-power mode. */
     const effectsPaused = overlayOpen || lowPower;
+    /** The hero column, for HeroRings to centre on. State, not a ref, so the rings re-measure
+     *  when the dashboard remounts (it unmounts while the Spire is open). */
+    const [heroColumn, setHeroColumn] = useState<HTMLDivElement | null>(null);
 
     /**
      * The card's chrome is white/grey, not the accent.
@@ -1994,8 +1997,8 @@ const App: React.FC = () => {
         <main id="content-scroll"
             className="relative mt-16 h-[calc(100dvh-104px)] lg:h-[calc(100dvh-100px)] overflow-y-auto lg:overflow-hidden overflow-x-hidden hide-scrollbar px-4 pb-6 lg:pb-2 z-10 flex flex-col">
             <div className={`w-full max-w-[1400px] flex-1 min-h-0 flex flex-col lg:flex-row gap-3 lg:gap-8 pt-2 lg:pt-2 pb-0 ${sidebarCollapsed ? 'lg:mx-auto' : 'lg:ml-auto'}`}>
-                {/* LEFT COLUMN: HERO CANVAS */}
-                <div className="flex-none lg:flex-1 flex flex-col lg:h-full order-1 overflow-visible relative">
+                {/* LEFT COLUMN: HERO CANVAS. HeroRings centres the background circle on it. */}
+                <div ref={setHeroColumn} className="flex-none lg:flex-1 flex flex-col lg:h-full order-1 overflow-visible relative">
                     {/* --hero-w is the phone card width, and it is HEIGHT-driven as well as
                         width-driven. Below md the whole hero stack — card, platform, title,
                         progress, controls — ends 282.6 + 1.583w px down the page (measured),
@@ -2079,24 +2082,8 @@ const App: React.FC = () => {
                                 } as React.CSSProperties}
                             >
 
-                                {/* CARD-CENTRED RINGS — centred on this card and the platform below it
-                                    (composition centre ≈ 54% down this box), not on the viewport, so the
-                                    platform sits at the heart of them. First child, so they paint beneath
-                                    the cone, dais and card. Each theme keeps its own ring language: the
-                                    Void's simple concentric SanctuaryRing, the day theme's summoning sigil. */}
-                                {theme.isDark ? (
-                                    <SanctuaryRing
-                                        theme={theme}
-                                        isPaused={effectsPaused}
-                                        className="left-1/2 top-[54%] w-[380%] aspect-square -translate-x-1/2 -translate-y-1/2 z-0"
-                                    />
-                                ) : (
-                                    <ArcaneSigil
-                                        theme={theme}
-                                        paused={effectsPaused}
-                                        className="left-1/2 top-[54%] w-[400%] aspect-square -translate-x-1/2 -translate-y-1/2 z-0"
-                                    />
-                                )}
+                                {/* The background rings are not drawn here any more: see HeroRings,
+                                    under the whole dashboard, which keeps them a whole circle. */}
 
                                 {/* PROJECTION CONE — the light the dais throws upward.
                                     Rebuilt from stacked radial gradients anchored at the emitter
@@ -2733,6 +2720,10 @@ const App: React.FC = () => {
                     : { background: 'radial-gradient(circle at 50% 40%, rgba(124,58,237,0.07) 0%, transparent 42%), radial-gradient(circle, transparent 48%, rgba(40,26,60,0.16) 100%)' }}
             />
 
+            {/* The ring system: one whole circle, top of the screen to the bottom, centred on
+                the hero. Beneath the dashboard, which paints over it (z-10). */}
+            {!isSpireOpen && <HeroRings theme={theme} paused={effectsPaused} anchor={heroColumn} />}
+
             {/* HEADER */}
             {!isSpireOpen && memoizedHeader}
 
@@ -2744,7 +2735,7 @@ const App: React.FC = () => {
                 !isModalOpen &&
                 !isProfileOpen &&
                 !isDetailOpen && (
-                    <SystemConsole theme={theme} onShowShortcuts={showShortcuts} onShowTour={openTour} />
+                    <SystemConsole theme={theme} onShowShortcuts={showShortcuts} />
                 )}
 
             {/* Each overlay has its own boundary, outside its Suspense so a chunk that fails

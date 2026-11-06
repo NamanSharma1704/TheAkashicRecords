@@ -7,11 +7,9 @@ interface SystemConsoleProps {
     theme: Theme;
     /** Opens the keyboard shortcut list. The button only shows from lg, where keyboards are. */
     onShowShortcuts?: () => void;
-    /** Replays the System tutorial (SystemTour). Shown at every size. */
-    onShowTour?: () => void;
 }
 
-const SystemConsole: React.FC<SystemConsoleProps> = ({ theme, onShowShortcuts, onShowTour }) => {
+const SystemConsole: React.FC<SystemConsoleProps> = ({ theme, onShowShortcuts }) => {
     const [sysLog, setSysLog] = React.useState(SYSTEM_LOGS[0]);
 
     React.useEffect(() => {
@@ -39,16 +37,6 @@ const SystemConsole: React.FC<SystemConsoleProps> = ({ theme, onShowShortcuts, o
                 <span className={`${theme.highlightText} font-bold opacity-100 transition-colors duration-700`}>OMNI_LOG //</span>
                 <span className={`truncate ${theme.headingText} font-bold opacity-100 transition-colors duration-700`}>{sysLog}</span>
                 <div className="ml-auto flex items-center gap-2 shrink-0">
-                    {onShowTour && (
-                        <button
-                            type="button"
-                            onClick={onShowTour}
-                            title="Replay the System tutorial"
-                            className={`inline-flex h-6 items-center gap-1.5 px-2 border ${theme.borderSubtle} ${theme.highlightText} ${theme.isDark ? 'hover:bg-white/5' : 'hover:bg-black/5'} font-bold tracking-widest transition-colors`}
-                        >
-                            <span aria-hidden="true">[i]</span> TOUR
-                        </button>
-                    )}
                     {onShowShortcuts && (
                         <button
                             type="button"

@@ -6,7 +6,8 @@ import { createContext, useCallback, useContext, useEffect } from 'react';
  * page ids, the context and the hook every page uses) ships in the first bundle.
  *
  * A guest gets each page's tour once, the first time the page opens (App remembers it per
- * sandbox); anyone can replay a page's tour from its "?" button.
+ * sandbox); anyone can replay a page's tour from its "?" button. The dashboard has none, so
+ * its tour plays once per guest only.
  */
 export type TourId = 'dashboard' | 'spire' | 'floor' | 'profile' | 'series' | 'gate';
 

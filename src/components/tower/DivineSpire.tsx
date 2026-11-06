@@ -295,11 +295,30 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
                         <div className="flex flex-col leading-none">
                             <span className={`font-mono text-[9px] tracking-[0.2em] ${theme.mutedText} uppercase transition-colors duration-700`}>SYSTEM.ACCESS // {playerRank.name}</span>
                             {/* Same as the profile header: 16px is body-size, so light takes the
-                                label ramp (the ink ramp's #a855f7 middle measured 3.14:1). */}
-                            <h2 id="divine-spire-title" className={`font-orbitron text-base tracking-[0.2em] font-bold bg-clip-text text-transparent bg-gradient-to-r ${theme.isDark ? 'from-amber-600 via-yellow-400 to-white' : theme.labelGradient} transition-colors duration-700`}>THE DIVINE SPIRE</h2>
+                                label ramp (the ink ramp's #a855f7 middle measured 3.14:1). A touch
+                                smaller on a phone, where the floor view's Select shares the row
+                                and the title otherwise broke onto two lines. */}
+                            <h2 id="divine-spire-title" className={`font-orbitron text-sm sm:text-base tracking-[0.15em] sm:tracking-[0.2em] font-bold bg-clip-text text-transparent bg-gradient-to-r ${theme.isDark ? 'from-amber-600 via-yellow-400 to-white' : theme.labelGradient} transition-colors duration-700`}>THE DIVINE SPIRE</h2>
                         </div>
                     </div>
                     <div className="flex items-center gap-1">
+                    {/* Select mode: change or trash many records at once. Up here with the page's
+                        other tools rather than beside the search, which stays alone and centred
+                        as the floor view's focus. */}
+                    {viewMode === 'FLOOR' && (
+                        <button
+                            data-tour="floor-select"
+                            type="button"
+                            aria-pressed={selecting}
+                            onClick={() => (selecting ? endSelecting() : setSelecting(true))}
+                            title={selecting ? 'Leave select mode' : 'Select records to change several at once'}
+                            className={`mr-0.5 sm:mr-1 shrink-0 h-8 w-8 sm:w-auto md:h-9 px-0 sm:px-2.5 md:px-3.5 flex items-center justify-center gap-2 rounded-full border backdrop-blur-xl font-mono text-[10px] font-bold tracking-widest uppercase transition-colors ${selecting ? `${theme.border} bg-accent-soft-strong text-accent-ink` : `${theme.isDark ? 'border-white/10 bg-black/60 hover:border-white/25' : 'border-violet-200 bg-white/80 hover:border-violet-300'} ${theme.highlightText}`}`}
+                        >
+                            <CheckSquare size={15} aria-hidden="true" />
+                            <span className="hidden sm:inline">{selecting ? 'Done' : 'Select'}</span>
+                            <span className="sm:hidden sr-only">{selecting ? 'Done' : 'Select'}</span>
+                        </button>
+                    )}
                     <button
                         type="button"
                         onClick={viewMode === 'TOWER' ? startSpireTour : startFloorTour}
@@ -331,8 +350,8 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
 
                         {/* Search Bar HUD. Top margin: it sat flush against the 64px header, and
                             its glow ran up into the title. */}
-                        <div className="relative z-20 shrink-0 w-full max-w-2xl mx-auto px-4 mt-3 md:mt-6 mb-2 md:mb-4 flex items-center gap-2">
-                            <div data-tour="floor-search" className="relative group flex-1 min-w-0">
+                        <div className="relative z-20 shrink-0 w-full max-w-2xl mx-auto px-4 mt-3 md:mt-6 mb-2 md:mb-4">
+                            <div data-tour="floor-search" className="relative group w-full">
                                 <div className={`absolute -inset-1 bg-gradient-to-r ${theme.gradient} opacity-20 blur-md group-focus-within:opacity-40 transition-all duration-500 rounded-full`} />
                                 <div className={`relative ${theme.isDark ? 'bg-black/60' : 'bg-white/80'} backdrop-blur-xl border border-white/10 rounded-full px-3 py-2 md:px-4 md:py-3 flex items-center shadow-2xl transition-all duration-700`}>
                                     <Search size={18} aria-hidden="true" className={`${theme.highlightText} mr-2 md:mr-3 opacity-70 shrink-0`} />
@@ -359,19 +378,6 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
                                     )}
                                 </div>
                             </div>
-                            {/* Select mode: change or trash many records at once. */}
-                            <button
-                                data-tour="floor-select"
-                                type="button"
-                                aria-pressed={selecting}
-                                onClick={() => (selecting ? endSelecting() : setSelecting(true))}
-                                title={selecting ? 'Leave select mode' : 'Select records to change several at once'}
-                                className={`shrink-0 h-10 md:h-12 px-3 md:px-4 flex items-center gap-2 rounded-full border backdrop-blur-xl font-mono text-[10px] font-bold tracking-widest uppercase transition-colors ${selecting ? `${theme.border} bg-accent-soft-strong text-accent-ink` : `border-white/10 ${theme.isDark ? 'bg-black/60' : 'bg-white/80'} ${theme.highlightText}`}`}
-                            >
-                                <CheckSquare size={16} aria-hidden="true" />
-                                <span className="hidden sm:inline">{selecting ? 'Done' : 'Select'}</span>
-                                <span className="sm:hidden sr-only">{selecting ? 'Done' : 'Select'}</span>
-                            </button>
                         </div>
 
                         {/* HUD HEADER: Floor / Sector info (Hidden when searching) */}

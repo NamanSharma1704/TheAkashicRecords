@@ -1042,9 +1042,11 @@ const validateQuest = (raw, existing = null) => {
         }
     }
 
-    // The Hunter's Appraisal: a whole 1-10, or null (or "") to clear it.
+    // The Hunter's Appraisal: a whole 1-10, or null (or "") to clear it. 0 clears it too: the
+    // February build's old 0-10 rating stored 0 for "unrated", records saved then still carry
+    // it, and an app that sends it back with an edit must not have the whole save refused.
     if (v.rating !== undefined) {
-        if (v.rating === null || v.rating === '') v.rating = null;
+        if (v.rating === null || v.rating === '' || v.rating === 0 || v.rating === '0') v.rating = null;
         else {
             const n = typeof v.rating === 'string' ? Number(v.rating) : v.rating;
             if (typeof n !== 'number' || !Number.isInteger(n) || n < 1 || n > 10) {

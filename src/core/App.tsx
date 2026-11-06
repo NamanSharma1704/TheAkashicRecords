@@ -117,6 +117,20 @@ const SHORTCUT_HELP = [
 /** A burst that moves at least this many chapters gets an Undo toast. */
 const UNDO_THRESHOLD = 5;
 
+/**
+ * The Hunter's Appraisal as the app holds it: a whole 1-10, or null for unrated.
+ *
+ * Records saved by the February build carry its old 0-10 rating, which stored 0 for "unrated"
+ * and allowed tenths. Kept as they were, a 0 went back to the server with any save from the
+ * editor and the whole save was refused ("The appraisal must be a whole number from 1 to 10").
+ * So 0 reads as unrated and tenths round to the nearest whole; the next save writes it clean.
+ */
+const appraisalOf = (r: unknown): number | null => {
+    const n = typeof r === 'number' ? r : typeof r === 'string' && r.trim() ? Number(r) : NaN;
+    if (!Number.isFinite(n) || n < 0.5) return null;
+    return Math.min(10, Math.round(n));
+};
+
 // Helper to normalize quest data from both MongoDB and local BASE_QUESTS
 const mapQuest = (q: any): Quest => ({
     id: String(q._id || q.id || ""),
@@ -137,7 +151,7 @@ const mapQuest = (q: any): Quest => ({
     classType: q.classType || "PLAYER",
     lastUpdated: q.lastRead || q.lastUpdated || Date.now(),
     newChapters: Number(q.newChapters) || 0,
-    rating: Number.isInteger(q.rating) ? q.rating : null,
+    rating: appraisalOf(q.rating),
 });
 
 /** One full record, synopsis included; the library list leaves synopses out. Null on failure. */

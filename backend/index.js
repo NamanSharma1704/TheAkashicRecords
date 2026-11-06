@@ -1119,21 +1119,15 @@ app.post('/api/quests', authenticate, writeLimiter, async (req, res) => {
         // 1. DUPLICATE CHECK (ignores punctuation, apostrophes and casing)
         const normalizedTitle = normalizeTitle(safeBody.title);
 
-        // Fast path: a single indexed lookup. This replaced a Quest.find({}) that pulled
-        // every document — synopses included — into Node on each create, once per row
-        // during a CSV import.
-        let collision = await Quest.findOne({ normalizedTitle, ...LIVE }).select('title');
-
-        // Slow path, for documents written before normalizedTitle existed. It is scoped to
-        // just those documents and projects only the title, and disappears entirely once
-        // backend/scripts/backfill_normalized_titles.js has run.
-        if (!collision) {
-            const legacy = await Quest
-                .find({ $or: [{ normalizedTitle: { $exists: false } }, { normalizedTitle: '' }], ...LIVE })
-                .select('title')
-                .lean();
-            collision = legacy.find(q => normalizeTitle(q.title) === normalizedTitle) || null;
-        }
+        // A single indexed lookup. This replaced a Quest.find({}) that pulled every document,
+        // synopses included, into Node on each create, once per row during a CSV import.
+        //
+        // It relies on every record carrying normalizedTitle. Every write path sets it (create,
+        // rename, restore, the guest-sandbox copy in config/init.js), and the owner's archive
+        // was backfilled on 2026-11-06 (backend/scripts/backfill_normalized_titles.js), so the
+        // old second pass over records without the field is gone. A database written before
+        // the field existed needs that script run once.
+        const collision = await Quest.findOne({ normalizedTitle, ...LIVE }).select('title');
 
         if (collision) {
             return res.status(409).json({

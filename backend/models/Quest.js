@@ -5,10 +5,10 @@ const QuestSchema = new mongoose.Schema({
     // Punctuation- and case-insensitive form of `title`, indexed so duplicate detection
     // is a single indexed lookup instead of loading the whole collection into Node.
     //
-    // Indexed but NOT unique: this collection predates the field, and building a unique
-    // index over documents that already contain near-duplicates would fail. Uniqueness is
-    // still enforced by the create handler, and the index can be tightened to unique once
-    // backfill_normalized_titles.js has run and purge-duplicates reports nothing.
+    // Indexed but NOT unique. Uniqueness among LIVE records is enforced by the create and
+    // rename handlers; a unique index would also count the Trash, where a deleted copy may
+    // share the key with a live one until it is purged. Every write path sets this field,
+    // and the owner's archive was backfilled on 2026-11-06 (backfill_normalized_titles.js).
     normalizedTitle: { type: String, index: true, default: '' },
     cover: { type: String, default: "" },
     synopsis: { type: String, default: "" },

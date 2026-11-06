@@ -1,4 +1,5 @@
 const { getModel } = require('../models/modelFactory');
+const { normalizeTitle } = require('../utils/normalizeTitle');
 
 /**
  * Clones all manhwas from a template database to a target database connection.
@@ -16,13 +17,17 @@ const cloneFromTemplate = async (targetConn, templateConn) => {
         if (templateQuests.length > 0) {
             console.log(`[INIT] Cloning ${templateQuests.length} quests from [${templateConn.name}] to [${targetConn.name}]...`);
             
-            // Prepare documents for insertion: Remove IDs to avoid collisions in the new DB
+            // Prepare documents for insertion: Remove IDs to avoid collisions in the new DB.
+            // The duplicate-detection key is computed here rather than copied: the create
+            // handler finds duplicates by normalizedTitle alone, so a template record without
+            // it (written before the field existed) would let a guest add that title twice.
             const cleanedQuests = templateQuests.map(q => {
                 const obj = q.toObject();
                 delete obj._id;
                 delete obj.__v;
                 delete obj.createdAt;
                 delete obj.updatedAt;
+                obj.normalizedTitle = normalizeTitle(obj.title);
                 return obj;
             });
 

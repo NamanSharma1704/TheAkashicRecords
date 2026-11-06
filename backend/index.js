@@ -4,6 +4,7 @@ const cors = require('cors');
 const rateLimit = require('express-rate-limit');
 const { connectDB, getTenantDb } = require('./config/db');
 const { initDatabase } = require('./config/init');
+const { seedGuestHistory } = require('./utils/guestHistory');
 const { getModel } = require('./models/modelFactory');
 const { normalizeTitle } = require('./utils/normalizeTitle');
 const { ACHIEVEMENTS, ACHIEVEMENT_KEYS, measureArchive } = require('./utils/achievements');
@@ -574,6 +575,18 @@ app.post('/api/auth/guest', async (req, res) => {
 
         // Populate the sandbox immediately
         await initDatabase(() => sandboxConn, templateConn);
+
+        // Then make it look lived in: recent dates and eight weeks of reading, in the guest's
+        // own days (utils/guestHistory.js). A demo without it is still a working demo, so a
+        // failure here is logged, never a refused sign-in. `X-Sample-History: off` asks for a
+        // bare sandbox (the API suite's guests, whose checks count from nothing).
+        if (String(req.headers['x-sample-history'] || '').toLowerCase() !== 'off') {
+            try {
+                await seedGuestHistory(sandboxConn, { tz: tzOf(req), userId: guestId });
+            } catch (historyErr) {
+                console.warn('[GUEST_INIT] Sample history skipped:', historyErr.message);
+            }
+        }
 
         const token = generateToken(guestUser);
         setAuthCookie(res, token, guestUser.role);

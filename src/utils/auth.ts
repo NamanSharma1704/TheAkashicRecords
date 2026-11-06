@@ -92,7 +92,7 @@ export const isAuthenticated = (): boolean => {
  * The reader's IANA timezone. The server counts streaks and daily reading in YOUR calendar
  * day; without this it falls back to UTC, where the day rolls over at the wrong hour.
  */
-const timeZone = (() => {
+export const readerTimeZone = (() => {
     try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch { return ''; }
 })();
 
@@ -100,7 +100,7 @@ export const systemFetch = async (url: string, options: RequestInit = {}) => {
     const headers = {
         ...options.headers,
         'Content-Type': 'application/json',
-        ...(timeZone ? { 'X-Timezone': timeZone } : {})
+        ...(readerTimeZone ? { 'X-Timezone': readerTimeZone } : {})
     };
 
     const response = await fetch(url, {

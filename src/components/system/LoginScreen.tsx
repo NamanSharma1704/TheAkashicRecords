@@ -6,6 +6,7 @@ import SystemFrame from './SystemFrame';
 import EntityAvatar from './EntityAvatar';
 import BackgroundController from '../fx/BackgroundController';
 import ArcaneSigil from '../fx/ArcaneSigil';
+import { readerTimeZone } from '../../utils/auth';
 import { Shield, Terminal, Key, Cpu, Zap, Sun, Moon } from 'lucide-react';
 
 interface LoginScreenProps {
@@ -84,9 +85,12 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, theme, onTogg
         setError(null);
 
         try {
+            // The timezone, so the sandbox's sample reading history lands on the guest's own
+            // calendar days and evenings (the server builds it here, at sign-in).
             const res = await fetch('/api/auth/guest', {
                 method: 'POST',
-                credentials: 'same-origin'
+                credentials: 'same-origin',
+                headers: readerTimeZone ? { 'X-Timezone': readerTimeZone } : undefined,
             });
             const data = await res.json();
 

@@ -94,6 +94,23 @@ export interface Quest {
     rating?: number | null;
 }
 
+/**
+ * A row for the import pipeline: a CSV line, or a series from an AniList or MyAnimeList list.
+ * `aliases` are other names the series goes by, so a library that calls it something else
+ * (AniList's "Omniscient Reader's Viewpoint" for your "Omniscient Reader") still matches.
+ */
+export interface ImportRow {
+    title: string;
+    aliases?: string[];
+    currentChapter: number;
+    totalChapters: number;
+    status?: string;
+    classType?: string;
+    link?: string;
+    coverUrl?: string;
+    rating?: number | null;
+}
+
 /** The daily and weekly quests with today's progress (GET /api/user/state, PUT /api/user/goals). */
 export interface QuestGoals {
     /** The reader's own day, 'YYYY-MM-DD'. */

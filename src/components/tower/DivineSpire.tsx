@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Theme, Quest, QuestGoals } from '../../core/types';
-import { statusLabel } from '../../core/constants';
+import { statusLabel, STATUS_INFO } from '../../core/constants';
 import { elevation } from '../../core/depth';
 import TowerHUD from './TowerHUD';
 import TowerStructure from './TowerStructure';
@@ -8,7 +8,7 @@ import { FLOOR_DEFS, floorIndexForItem } from './floors';
 import QuestCard from '../quest/QuestCard';
 import SystemLogo from '../system/SystemLogo';
 import { getQuestRankObj } from '../../utils/ranks';
-import { ChevronLeft, ChevronRight, X, Search, AlertCircle, ChevronDown, Filter, ArrowDownUp } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X, Search, AlertCircle, ChevronDown, Filter, ArrowDownUp, Check, CheckSquare, Trash2 } from 'lucide-react';
 import { useDialogFocus } from '../../utils/useDialogFocus';
 
 interface DivineSpireProps {
@@ -21,6 +21,10 @@ interface DivineSpireProps {
     streak: number;
     /** The daily and weekly quests, shown and adjusted in the HUD; null until loaded. */
     goals: QuestGoals | null;
+    /** Bulk actions from select mode: one status on many records, or many to the Trash. App
+     *  applies them (optimistically, with Undo) and reports back. */
+    onBulkStatus: (ids: string[], status: string) => void;
+    onBulkTrash: (ids: string[]) => void;
     onSaveGoals: (daily: { kind: 'SERIES' | 'CHAPTERS'; target: number }, weeklyTarget: number) => Promise<string | null>;
     /**
      * Open in the floor view, where the search field lives and takes focus, instead of the
@@ -29,6 +33,14 @@ interface DivineSpireProps {
      */
     startInSearch?: boolean;
 }
+
+/** Select mode's mark on a card: an empty box, or a filled one when selected. Decorative;
+ *  the card itself carries aria-pressed. */
+const SelectMark: React.FC<{ on: boolean }> = ({ on }) => (
+    <div aria-hidden="true" className={`pointer-events-none absolute top-3 left-3 z-20 w-7 h-7 flex items-center justify-center border-2 border-accent-solid shadow-lg ${on ? 'bg-accent-solid text-accent-on' : 'bg-black/50'}`}>
+        {on && <Check size={16} strokeWidth={3} />}
+    </div>
+);
 
 /** How a floor (and the search results) is ordered. Remembered per browser. */
 type SpireSort = 'RECENT' | 'TITLE' | 'PROGRESS' | 'APPRAISAL' | 'NEW';
@@ -50,7 +62,7 @@ const SPIRE_COMPARE: Record<SpireSort, (a: Quest, b: Quest) => number> = {
     NEW: (a, b) => (b.newChapters ?? 0) - (a.newChapters ?? 0) || recency(b) - recency(a),
 };
 
-const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items, onActivate, playerRank, streak, goals, onSaveGoals, startInSearch = false }) => {
+const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items, onActivate, playerRank, streak, goals, onSaveGoals, onBulkStatus, onBulkTrash, startInSearch = false }) => {
     // TOWER SYSTEM STATE
     const [viewMode, setViewMode] = useState<'TOWER' | 'FLOOR'>(startInSearch ? 'FLOOR' : 'TOWER');
     // Entered by "/" to search: stepping "back" from that floor view means leaving the Spire,
@@ -59,6 +71,18 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
     const [selectedFloorIndex, setSelectedFloorIndex] = useState(0);
     const [isFocused, setIsFocused] = useState(false); // New state for camera focus
     const [search, setSearch] = useState('');
+    // SELECT MODE: cards toggle instead of opening, and a toolbar acts on the selection. The
+    // selection can span floors and searches; "Select all" adds whatever is in view.
+    const [selecting, setSelecting] = useState(false);
+    const [selected, setSelected] = useState<Set<string>>(() => new Set());
+    const toggleSelected = React.useCallback((id: string) => {
+        setSelected(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id); else next.add(id);
+            return next;
+        });
+    }, []);
+    const endSelecting = () => { setSelecting(false); setSelected(new Set()); };
     const [isFilterOpen, setIsFilterOpen] = useState(false);
     const [filterClass, setFilterClass] = useState<string>('ALL');
     const [filterStatus, setFilterStatus] = useState<string>('ALL');
@@ -184,8 +208,23 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
     const searchInputRef = useRef<HTMLInputElement>(null);
     useDialogFocus(spireRef, isOpen, () => {
         if (isFilterOpen) setIsFilterOpen(false);
+        else if (selecting) endSelecting();
         else stepBack();
     }, startInSearch ? searchInputRef : undefined);
+
+    // What "Select all" takes: the search results, or the floor in view (after its filters).
+    const inView = search ? filteredItems : (floors[selectedFloorIndex]?.items ?? []);
+    const selectAllInView = () => setSelected(prev => new Set([...prev, ...inView.map(i => i.id)]));
+    const applyStatus = (status: string) => {
+        if (!status || selected.size === 0) return;
+        onBulkStatus([...selected], status);
+        setSelected(new Set());
+    };
+    const trashSelected = () => {
+        if (selected.size === 0) return;
+        onBulkTrash([...selected]);
+        setSelected(new Set());
+    };
 
     if (!isOpen) return null;
 
@@ -276,8 +315,8 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
 
                         {/* Search Bar HUD. Top margin: it sat flush against the 64px header, and
                             its glow ran up into the title. */}
-                        <div className="relative z-20 shrink-0 w-full max-w-xl mx-auto px-4 mt-3 md:mt-6 mb-2 md:mb-4">
-                            <div className="relative group">
+                        <div className="relative z-20 shrink-0 w-full max-w-2xl mx-auto px-4 mt-3 md:mt-6 mb-2 md:mb-4 flex items-center gap-2">
+                            <div className="relative group flex-1 min-w-0">
                                 <div className={`absolute -inset-1 bg-gradient-to-r ${theme.gradient} opacity-20 blur-md group-focus-within:opacity-40 transition-all duration-500 rounded-full`} />
                                 <div className={`relative ${theme.isDark ? 'bg-black/60' : 'bg-white/80'} backdrop-blur-xl border border-white/10 rounded-full px-3 py-2 md:px-4 md:py-3 flex items-center shadow-2xl transition-all duration-700`}>
                                     <Search size={18} aria-hidden="true" className={`${theme.highlightText} mr-2 md:mr-3 opacity-70 shrink-0`} />
@@ -304,6 +343,18 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
                                     )}
                                 </div>
                             </div>
+                            {/* Select mode: change or trash many records at once. */}
+                            <button
+                                type="button"
+                                aria-pressed={selecting}
+                                onClick={() => (selecting ? endSelecting() : setSelecting(true))}
+                                title={selecting ? 'Leave select mode' : 'Select records to change several at once'}
+                                className={`shrink-0 h-10 md:h-12 px-3 md:px-4 flex items-center gap-2 rounded-full border backdrop-blur-xl font-mono text-[10px] font-bold tracking-widest uppercase transition-colors ${selecting ? `${theme.border} bg-accent-soft-strong text-accent-ink` : `border-white/10 ${theme.isDark ? 'bg-black/60' : 'bg-white/80'} ${theme.highlightText}`}`}
+                            >
+                                <CheckSquare size={16} aria-hidden="true" />
+                                <span className="hidden sm:inline">{selecting ? 'Done' : 'Select'}</span>
+                                <span className="sm:hidden sr-only">{selecting ? 'Done' : 'Select'}</span>
+                            </button>
                         </div>
 
                         {/* HUD HEADER: Floor / Sector info (Hidden when searching) */}
@@ -418,8 +469,9 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
                                                     {/* Reflection Glow */}
                                                     <div className={`absolute -bottom-6 left-1/2 -translate-x-1/2 w-3/4 h-6 bg-gradient-to-t from-accent-line to-transparent blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-700`} />
                                                     <div className={`absolute -inset-6 bg-accent-soft blur-[40px] rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none`} />
-                                                    <div className="relative z-10 w-full h-full">
-                                                        <QuestCard id={`item-${item.id}`} item={item} onClick={onActivate} index={index} theme={theme} rankStyle={rawRank} />
+                                                    <div className={`relative z-10 w-full h-full ${selecting && selected.has(item.id) ? 'ring-2 ring-accent-solid ring-offset-4 ring-offset-transparent' : ''}`}>
+                                                        <QuestCard id={`item-${item.id}`} item={item} onClick={selecting ? toggleSelected : onActivate} index={index} theme={theme} rankStyle={rawRank} selected={selecting ? selected.has(item.id) : undefined} />
+                                                        {selecting && <SelectMark on={selected.has(item.id)} />}
                                                     </div>
                                                 </div>
                                             );
@@ -437,8 +489,9 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
                                                     <div className={`absolute -bottom-6 left-1/2 -translate-x-1/2 w-3/4 h-6 bg-gradient-to-t ${theme.id === 'LIGHT' ? 'from-violet-500/40' : 'from-amber-500/40'} to-transparent blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-all duration-700`} />
                                                     {/* Backdrop Ambient Lighting */}
                                                     <div className={`absolute -inset-6 ${theme.id === 'LIGHT' ? 'bg-violet-500/10' : 'bg-amber-500/10'} blur-[40px] rounded-full opacity-0 group-hover:opacity-100 transition-all duration-700 pointer-events-none`} />
-                                                    <div className="relative z-10 w-full h-full">
-                                                        <QuestCard id={`item-${item.id}`} item={item} onClick={onActivate} index={index} theme={theme} rankStyle={rawRank} />
+                                                    <div className={`relative z-10 w-full h-full ${selecting && selected.has(item.id) ? 'ring-2 ring-accent-solid ring-offset-4 ring-offset-transparent' : ''}`}>
+                                                        <QuestCard id={`item-${item.id}`} item={item} onClick={selecting ? toggleSelected : onActivate} index={index} theme={theme} rankStyle={rawRank} selected={selecting ? selected.has(item.id) : undefined} />
+                                                        {selecting && <SelectMark on={selected.has(item.id)} />}
                                                     </div>
                                                 </div>
                                             );
@@ -453,6 +506,41 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
                                 )
                             )}
                         </div>
+
+                        {/* BULK TOOLBAR: acts on everything selected, across floors and searches. */}
+                        {selecting && (
+                            <div role="toolbar" aria-label="Selected records" className="shrink-0 w-full max-w-3xl mx-auto px-3 pb-4 pt-1">
+                                <div
+                                    className={`flex flex-wrap items-center gap-2 px-3 py-2 border ${theme.border} ${theme.isDark ? 'bg-black/85' : 'bg-white/95'} backdrop-blur-xl shadow-2xl`}
+                                    style={{ colorScheme: theme.isDark ? 'dark' : 'light' }}
+                                >
+                                    <span role="status" className={`font-mono text-[11px] font-bold tracking-widest uppercase tabular-nums ${theme.headingText} mr-1`}>
+                                        {selected.size} selected
+                                    </span>
+                                    <button type="button" onClick={selectAllInView} disabled={inView.length === 0} className={`h-8 px-2 font-mono text-[10px] font-bold tracking-widest uppercase ${theme.highlightText} ${theme.isDark ? 'hover:bg-white/5' : 'hover:bg-black/5'} disabled:opacity-40 transition-colors`}>
+                                        Select all {inView.length}
+                                    </button>
+                                    <button type="button" onClick={() => setSelected(new Set())} disabled={selected.size === 0} className={`h-8 px-2 font-mono text-[10px] font-bold tracking-widest uppercase ${theme.mutedText} ${theme.isDark ? 'hover:bg-white/5' : 'hover:bg-black/5'} disabled:opacity-40 transition-colors`}>
+                                        Clear
+                                    </button>
+                                    <span className="flex-1" />
+                                    <label className="sr-only" htmlFor="spire-bulk-status">Set the status of the selected records</label>
+                                    <select
+                                        id="spire-bulk-status"
+                                        value=""
+                                        disabled={selected.size === 0}
+                                        onChange={(e) => applyStatus(e.target.value)}
+                                        className={`h-8 px-2 bg-transparent border ${theme.borderSubtle} font-mono text-[10px] font-bold tracking-widest uppercase ${theme.headingText} disabled:opacity-40`}
+                                    >
+                                        <option value="" disabled>Set status…</option>
+                                        {STATUS_INFO.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+                                    </select>
+                                    <button type="button" onClick={trashSelected} disabled={selected.size === 0} className={`h-8 px-2 flex items-center gap-1.5 border font-mono text-[10px] font-bold tracking-widest uppercase transition-colors disabled:opacity-40 ${theme.isDark ? 'border-red-500/50 text-red-400 hover:bg-red-500/10' : 'border-red-700/40 text-red-700 hover:bg-red-500/10'}`}>
+                                        <Trash2 size={12} aria-hidden="true" /> Trash
+                                    </button>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 )}
             </div>

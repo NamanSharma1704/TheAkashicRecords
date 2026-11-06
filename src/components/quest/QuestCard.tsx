@@ -14,12 +14,16 @@ interface DivineMonolithProps {
     id: string;
     theme: Theme;
     rankStyle: Rank;
+    /** In the Spire's select mode, whether this card is selected: the card then toggles
+     *  (aria-pressed) instead of opening. Undefined outside select mode. */
+    selected?: boolean;
 }
 
-const QuestCard = React.memo<DivineMonolithProps>(({ item, onClick, index, id, theme, rankStyle }) => {
+const QuestCard = React.memo<DivineMonolithProps>(({ item, onClick, index, id, theme, rankStyle, selected }) => {
+    const selecting = selected !== undefined;
     return (
-        <motion.div 
-            id={id} 
+        <motion.div
+            id={id}
             // A card is a control: focusable, named, opened with Enter or Space. What the
             // hover reveals (cover, title, status, sigil) keyboard focus reveals too, via a
             // group-focus-visible beside each group-hover. A touch screen has no hover, so
@@ -27,7 +31,8 @@ const QuestCard = React.memo<DivineMonolithProps>(({ item, onClick, index, id, t
             // before the tap that opens it, instead of every card reading "Stasis Locked".
             role="button"
             tabIndex={0}
-            aria-label={`Open ${item.title}`}
+            aria-label={selecting ? `Select ${item.title}` : `Open ${item.title}`}
+            aria-pressed={selecting ? selected : undefined}
             onClick={() => onClick(item.id)}
             onKeyDown={(e) => {
                 if (e.key !== 'Enter' && e.key !== ' ') return;

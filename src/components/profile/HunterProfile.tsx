@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Theme, Quest, Achievement } from '../../core/types';
+import { Theme, Quest, Achievement, ImportRow } from '../../core/types';
 import SystemLogo from '../system/SystemLogo';
 import SystemFrame from '../system/SystemFrame';
 import EntityAvatar from '../system/EntityAvatar';
@@ -11,6 +11,7 @@ import ReadingActivity from './ReadingActivity';
 import HunterTitles from './HunterTitles';
 import HunterCardDialog from './HunterCardDialog';
 import { HunterCardData } from './hunterCard';
+import ListImportDialog from './ListImportDialog';
 import CoverArt from '../quest/CoverArt';
 import { USER_RANKS } from '../../utils/ranks';
 import { getProxiedImageUrl } from '../../utils/api';
@@ -159,7 +160,7 @@ interface HunterProfileProps {
     equippedTitle: string | null;
     /** Equip a title (null for none). Resolves false when the save failed. */
     onEquipTitle: (key: string | null) => Promise<boolean>;
-    onImport: (newItems: Quest[]) => void;
+    onImport: (rows: ImportRow[]) => void;
     onRefresh: () => Promise<void>;
     onLogout: () => void;
     showNotification: (message: string, type?: 'INFO' | 'SUCCESS' | 'WARNING' | 'ERROR', confirm?: boolean) => Promise<boolean>;
@@ -170,6 +171,32 @@ interface HunterProfileProps {
     lowPower: boolean;
     onToggleLowPower: () => void;
 }
+
+/**
+ * A toolbar dropdown's dismissal. While it is open, a press outside it closes it, and Escape
+ * closes the menu alone, handing focus back to its button: Escape is caught on window in the
+ * capture phase, ahead of the profile's own document listener, wherever focus happens to be.
+ */
+const useMenuDismiss = (open: boolean, setOpen: (open: boolean) => void, ref: React.RefObject<HTMLDivElement>) => {
+    useEffect(() => {
+        if (!open) return;
+        const close = (e: PointerEvent) => {
+            if (!ref.current?.contains(e.target as Node)) setOpen(false);
+        };
+        const onKey = (e: KeyboardEvent) => {
+            if (e.key !== 'Escape') return;
+            e.stopPropagation();
+            setOpen(false);
+            ref.current?.querySelector<HTMLButtonElement>('button')?.focus();
+        };
+        document.addEventListener('pointerdown', close);
+        window.addEventListener('keydown', onKey, true);
+        return () => {
+            document.removeEventListener('pointerdown', close);
+            window.removeEventListener('keydown', onKey, true);
+        };
+    }, [open, setOpen, ref]);
+};
 
 const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, items, playerRank, achievements, equippedTitle, onEquipTitle, onImport, onRefresh, onLogout, showNotification, onSelectManhwa, onRestoreQuest, lowPower, onToggleLowPower }) => {
     const [showTrash, setShowTrash] = useState(false);
@@ -376,27 +403,13 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
 
     const [exportMenuOpen, setExportMenuOpen] = useState(false);
     const exportMenuRef = useRef<HTMLDivElement>(null);
-    // While the export menu is open, a press outside it closes it, and Escape closes the menu
-    // alone. Escape is caught on window in the capture phase, ahead of the profile's own
-    // document listener, wherever focus happens to be.
-    useEffect(() => {
-        if (!exportMenuOpen) return;
-        const close = (e: PointerEvent) => {
-            if (!exportMenuRef.current?.contains(e.target as Node)) setExportMenuOpen(false);
-        };
-        const onKey = (e: KeyboardEvent) => {
-            if (e.key !== 'Escape') return;
-            e.stopPropagation();
-            setExportMenuOpen(false);
-            exportMenuRef.current?.querySelector<HTMLButtonElement>('button')?.focus();
-        };
-        document.addEventListener('pointerdown', close);
-        window.addEventListener('keydown', onKey, true);
-        return () => {
-            document.removeEventListener('pointerdown', close);
-            window.removeEventListener('keydown', onKey, true);
-        };
-    }, [exportMenuOpen]);
+    useMenuDismiss(exportMenuOpen, setExportMenuOpen, exportMenuRef);
+    const [importMenuOpen, setImportMenuOpen] = useState(false);
+    const importMenuRef = useRef<HTMLDivElement>(null);
+    const importFileRef = useRef<HTMLInputElement>(null);
+    useMenuDismiss(importMenuOpen, setImportMenuOpen, importMenuRef);
+    /** Which reading-list import is open, if any. */
+    const [listImport, setListImport] = useState<'anilist' | 'mal' | null>(null);
 
     /** Hand `content` to the browser as a download. */
     const downloadFile = (content: string, type: string, name: string) => {
@@ -651,13 +664,38 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                             </div>
                         )}
                     </div>
-                    {/* The file input was `hidden` (display:none), which takes it out of the tab
-                        order — import was mouse-only. Visually hidden instead, so it still takes
-                        focus, and the label draws the ring for it. Takes a CSV or a backup. */}
-                    <label title="Import archive (CSV or backup)" className={`w-9 h-9 flex items-center justify-center border ${theme.borderSubtle} ${theme.mutedText} hover:${theme.headingText} ${theme.isDark ? 'hover:bg-white/5' : 'hover:bg-black/5'} transition-colors cursor-pointer has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-[color:var(--focus-ring)]`}>
-                        <input type="file" accept=".csv,.json,application/json" aria-label="Import archive (CSV or backup)" onChange={async (e) => {
+                    {/* Import: a file exported from here, or a reading list from AniList or
+                        MyAnimeList. A menu, like Export, for the same lack of toolbar room. */}
+                    <div ref={importMenuRef} className="relative">
+                        <button type="button" onClick={() => setImportMenuOpen(o => !o)} aria-haspopup="menu" aria-expanded={importMenuOpen} title="Import into the archive" aria-label="Import into the archive" className={`w-9 h-9 flex items-center justify-center border ${theme.borderSubtle} ${theme.mutedText} hover:${theme.headingText} ${theme.isDark ? 'hover:bg-white/5' : 'hover:bg-black/5'} transition-colors cursor-pointer`}>
+                            <Upload size={14} aria-hidden="true" />
+                        </button>
+                        {importMenuOpen && (
+                            <div role="menu" aria-label="Import into the archive" className={`absolute left-0 top-full mt-1.5 z-50 w-64 p-1 border ${theme.borderSubtle} ${theme.panelBg} shadow-xl`}>
+                                {[
+                                    { label: 'Archive file (.csv or .json)', hint: 'A spreadsheet or full backup exported from here.', run: () => importFileRef.current?.click() },
+                                    { label: 'AniList list', hint: 'A public AniList manga list, by username.', run: () => setListImport('anilist') },
+                                    { label: 'MyAnimeList export', hint: 'The manga list file MyAnimeList lets you download.', run: () => setListImport('mal') },
+                                ].map((item, i) => (
+                                    <button
+                                        key={item.label}
+                                        type="button"
+                                        role="menuitem"
+                                        autoFocus={i === 0}
+                                        onClick={() => { setImportMenuOpen(false); item.run(); }}
+                                        className={`w-full text-left px-3 py-2.5 flex flex-col gap-0.5 ${theme.isDark ? 'hover:bg-white/5 focus-visible:bg-white/5' : 'hover:bg-black/5 focus-visible:bg-black/5'} transition-colors cursor-pointer`}
+                                    >
+                                        <span className={`font-mono text-[11px] font-bold ${theme.headingText}`}>{item.label}</span>
+                                        <span className={`font-mono text-[10px] leading-snug ${theme.mutedText}`}>{item.hint}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                        {/* The file picker the first menu item opens; the menu item is the control. */}
+                        <input ref={importFileRef} type="file" accept=".csv,.json,application/json" tabIndex={-1} aria-hidden="true" className="hidden" onChange={async (e) => {
                             const file = e.target.files?.[0];
-                            if (file && /\.json$/i.test(file.name)) {
+                            if (!file) return;
+                            if (/\.json$/i.test(file.name)) {
                                 const text = await file.text();
                                 e.target.value = "";
                                 restoreBackup(text);
@@ -666,9 +704,8 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                             const confirmed = await showNotification("RE-SYNCHRONIZE DATABASE?\nImports this CSV: new titles are added, and titles the file has further along are updated. Nothing in your library is moved backwards.", "WARNING", true);
                             if (confirmed) handleImport(e);
                             else e.target.value = "";
-                        }} className="sr-only" />
-                        <Upload size={14} aria-hidden="true" />
-                    </label>
+                        }} />
+                    </div>
                     <button type="button" onClick={() => setShowTrash(true)} title="Trash (deleted records)" aria-label="Open the Trash" className={`w-9 h-9 flex items-center justify-center border ${theme.borderSubtle} ${theme.mutedText} hover:${theme.headingText} ${theme.isDark ? 'hover:bg-white/5' : 'hover:bg-black/5'} transition-colors cursor-pointer`}>
                         <Trash2 size={14} aria-hidden="true" />
                     </button>
@@ -1235,6 +1272,20 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                 onRestore={onRestoreQuest}
                 confirm={(message) => showNotification(message, 'WARNING', true)}
             />
+
+            {/* READING-LIST IMPORT: AniList or MyAnimeList, into the CSV pipeline */}
+            <AnimatePresence>
+                {listImport && (
+                    <ListImportDialog
+                        theme={theme}
+                        initialSource={listImport}
+                        items={items}
+                        isGuest={storedUser?.role === 'GUEST'}
+                        onImport={onImport}
+                        onClose={() => setListImport(null)}
+                    />
+                )}
+            </AnimatePresence>
 
             {/* HUNTER CARD: built from this moment's profile, each time it opens */}
             <AnimatePresence>

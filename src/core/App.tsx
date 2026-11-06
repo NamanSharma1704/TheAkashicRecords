@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useLayoutEffect, useMemo, Suspense, lazy, useRef, useCallback } from 'react';
 import { flushSync } from 'react-dom';
 import { motion, AnimatePresence, Reorder, useDragControls } from 'motion/react';
-import { Quest, Achievement, QuestGoals } from './types';
+import { Quest, Achievement, QuestGoals, ImportRow } from './types';
 import SystemFrame from '../components/system/SystemFrame';
 import SystemLogo from '../components/system/SystemLogo';
 import ScrambleText from '../components/system/ScrambleText';
@@ -1206,22 +1206,40 @@ const App: React.FC = () => {
      *    failure and hid the app behind the boot screen. Progress is now a toast; failures are
      *    collected into one report.
      */
-    const handleImportQuests = async (rows: Quest[]) => {
+    const handleImportQuests = async (rows: ImportRow[]) => {
         // One row per title. When a file lists a title twice, the row further along wins.
-        const byKey = new Map<string, Quest>();
+        const byKey = new Map<string, ImportRow>();
         for (const row of rows) {
             const key = normalizeTitle(row.title);
             if (!key) continue;
             const seen = byKey.get(key);
             if (!seen || row.currentChapter > seen.currentChapter) byKey.set(key, row);
         }
+        // A row matches a record by its title or by any alias (AniList and MyAnimeList rows
+        // carry the other names a series goes by). Two rows can land on one record that way;
+        // the one further along is kept, so they never race each other's PUTs.
         const existingByKey = new Map(library.map(q => [normalizeTitle(q.title), q] as const));
+        const matchOf = (row: ImportRow) => {
+            for (const name of [row.title, ...(row.aliases ?? [])]) {
+                const hit = existingByKey.get(normalizeTitle(name));
+                if (hit) return hit;
+            }
+            return undefined;
+        };
+        const fresh: ImportRow[] = [];
+        const bestFor = new Map<string, { existing: Quest; row: ImportRow }>();
+        for (const row of byKey.values()) {
+            const existing = matchOf(row);
+            if (!existing) { fresh.push(row); continue; }
+            const held = bestFor.get(existing.id);
+            if (!held || row.currentChapter > held.row.currentChapter) bestFor.set(existing.id, { existing, row });
+        }
 
         type Op = { kind: 'create' | 'update'; title: string; url: string; method: 'POST' | 'PUT'; body: Record<string, unknown> };
         const ops: Op[] = [];
-        let unchanged = 0;
-        for (const [key, row] of byKey) {
-            const existing = existingByKey.get(key);
+        let unchanged = byKey.size - fresh.length - bestFor.size;
+        const plan = [...fresh.map(row => ({ row, existing: undefined as Quest | undefined })), ...[...bestFor.values()]];
+        for (const { row, existing } of plan) {
             if (!existing) {
                 ops.push({
                     kind: 'create', title: row.title, url: API_URL, method: 'POST',
@@ -1248,10 +1266,11 @@ const App: React.FC = () => {
                     currentChapter: row.currentChapter,
                     totalChapters: Math.max(row.totalChapters, existing.totalChapters, row.currentChapter),
                     ...(row.status ? { status: row.status } : {}),
-                    ...(row.classType ? { classType: row.classType } : {}),
-                    ...(row.link ? { readLink: row.link } : {}),
-                    ...(row.coverUrl ? { cover: row.coverUrl } : {}),
-                    // An appraisal fills an unrated record; it never overwrites one you gave.
+                    // A cover, link, class or appraisal only fills what the record lacks: an
+                    // import never replaces the cover you picked or the class you set.
+                    ...(row.classType && (!existing.classType || existing.classType === 'UNKNOWN') ? { classType: row.classType } : {}),
+                    ...(row.link && !existing.link ? { readLink: row.link } : {}),
+                    ...(row.coverUrl && !existing.coverUrl ? { cover: row.coverUrl } : {}),
                     ...(row.rating && !existing.rating ? { rating: row.rating } : {}),
                 },
             });
@@ -1545,6 +1564,99 @@ const App: React.FC = () => {
             return false;
         }
     }, [showToast]);
+
+    // ─── BULK ACTIONS (the Spire's select mode) ────────────────────────────────
+    // One request for the lot (POST /api/quests/bulk), applied here first and put back if it
+    // fails; each carries an Undo, as a single delete does, rather than a confirmation.
+    const bulkRequest = useCallback(async (body: Record<string, unknown>) => {
+        const res = await systemFetch(`${API_URL}/bulk`, { method: 'POST', body: JSON.stringify(body) });
+        if (res.status === 401) return null; // the session handler takes over
+        const data = await res.json().catch(() => null);
+        if (!res.ok) throw new Error(data?.message || `HTTP ${res.status}`);
+        return data;
+    }, []);
+    const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
+
+    /** Put records back to the statuses they had: one request per earlier status. */
+    const restoreStatuses = useCallback(async (previous: Map<string, string>) => {
+        setLibrary(prev => prev.map(q => (previous.has(q.id) ? { ...q, status: previous.get(q.id)! } : q)));
+        const groups = new Map<string, string[]>();
+        previous.forEach((st, id) => groups.set(st, [...(groups.get(st) ?? []), id]));
+        try {
+            for (const [st, ids] of groups) await bulkRequest({ ids, action: 'status', status: st });
+            showToast({ tone: 'INFO', message: 'Statuses restored', detail: plural(previous.size, 'record'), duration: 4000 });
+        } catch (e: any) {
+            showToast({ tone: 'ERROR', message: 'Undo failed', detail: e?.message || 'Check your connection; the Spire shows each record as it is saved.', duration: 8000 });
+            void fetchInitialDataRef.current();
+        }
+    }, [bulkRequest, showToast]);
+
+    const bulkSetStatus = useCallback(async (ids: string[], status: string) => {
+        const previous = new Map(libraryRef.current.filter(q => ids.includes(q.id) && q.status !== status).map(q => [q.id, q.status] as const));
+        if (previous.size === 0) {
+            showToast({ tone: 'INFO', message: 'Nothing to change', detail: `${plural(ids.length, 'record')} already ${statusLabel(status)}.`, duration: 4000 });
+            return;
+        }
+        setLibrary(prev => prev.map(q => (previous.has(q.id) ? { ...q, status } : q)));
+        try {
+            await bulkRequest({ ids: [...previous.keys()], action: 'status', status });
+        } catch (e: any) {
+            setLibrary(prev => prev.map(q => (previous.has(q.id) ? { ...q, status: previous.get(q.id)! } : q)));
+            showToast({ tone: 'ERROR', message: 'Status not changed', detail: e?.message || 'Check your connection and try again.', duration: 8000 });
+            return;
+        }
+        showToast({
+            tone: 'SUCCESS',
+            message: `${plural(previous.size, 'record')} → ${statusLabel(status)}`,
+            detail: ids.length > previous.size ? `${ids.length - previous.size} already were.` : 'Set from the Spire.',
+            action: { label: 'Undo', onAction: () => { void restoreStatuses(previous); } },
+            duration: 10000,
+        });
+    }, [bulkRequest, restoreStatuses, showToast]);
+
+    /** Bring records back out of the Trash (bulk Undo). Any whose title is live again stays. */
+    const bulkRestore = useCallback(async (ids: string[]) => {
+        try {
+            const data = await bulkRequest({ ids, action: 'restore' });
+            if (!data) return;
+            const restored: Quest[] = data.restored.map(mapQuest);
+            setLibrary(prev => [...restored.filter(r => !prev.some(q => q.id === r.id)), ...prev]);
+            showToast({
+                tone: data.clashed.length ? 'WARNING' : 'SUCCESS',
+                message: `${plural(restored.length, 'record')} restored`,
+                detail: data.clashed.length ? `Left in the Trash, already in the archive again: ${data.clashed.slice(0, 3).join(', ')}${data.clashed.length > 3 ? '…' : ''}` : 'Back out of the Trash.',
+                duration: 6000,
+            });
+        } catch (e: any) {
+            showToast({ tone: 'ERROR', message: 'Restore failed', detail: e?.message || 'Check your connection; the Trash in your profile still holds them.', duration: 8000 });
+        }
+    }, [bulkRequest, showToast]);
+
+    const bulkTrash = useCallback(async (ids: string[]) => {
+        const removed = libraryRef.current.filter(q => ids.includes(q.id));
+        if (removed.length === 0) return;
+        // Anything still pending for these records is moot now.
+        for (const q of removed) {
+            const pending = bursts.current.get(q.id);
+            if (pending?.timer) clearTimeout(pending.timer);
+            bursts.current.delete(q.id);
+        }
+        setLibrary(prev => prev.filter(q => !ids.includes(q.id)));
+        try {
+            await bulkRequest({ ids: removed.map(q => q.id), action: 'trash' });
+        } catch (e: any) {
+            setLibrary(prev => [...removed.filter(r => !prev.some(q => q.id === r.id)), ...prev]);
+            showToast({ tone: 'ERROR', message: 'PURGE_PROTOCOL_FAILED', detail: e?.message || 'Nothing was deleted. Check your connection and try again.', duration: 8000 });
+            return;
+        }
+        showToast({
+            tone: 'WARNING',
+            message: `${plural(removed.length, 'record')} purged`,
+            detail: 'Moved to the Trash, where they stay for 30 days.',
+            action: { label: 'Undo', onAction: () => { void bulkRestore(removed.map(q => q.id)); } },
+            duration: 10000,
+        });
+    }, [bulkRequest, bulkRestore, showToast]);
 
     /**
      * Delete, with Undo in place of a confirmation dialog.
@@ -2689,6 +2801,8 @@ const App: React.FC = () => {
                             streak={userState.streak}
                             goals={userState.goals ?? null}
                             onSaveGoals={saveGoals}
+                            onBulkStatus={bulkSetStatus}
+                            onBulkTrash={bulkTrash}
                         />
                     </div>
                 )}

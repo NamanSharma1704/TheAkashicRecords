@@ -7,6 +7,7 @@ const { initDatabase } = require('./config/init');
 const { getModel } = require('./models/modelFactory');
 const { normalizeTitle } = require('./utils/normalizeTitle');
 const { ACHIEVEMENTS, ACHIEVEMENT_KEYS, measureArchive } = require('./utils/achievements');
+const { fetchAniListList, lookupMalIds, ImportError } = require('./utils/listImport');
 const { fetchAniList, fetchMangaDex, fetchJikan, fetchBest, fetchGenresOnly, fetchLatestChapter } = require('./utils/metadataProxy');
 const crypto = require('crypto');
 const User = require('./models/User');
@@ -1344,6 +1345,121 @@ app.post('/api/quests/:id/restore', authenticate, writeLimiter, async (req, res)
         res.json(restored);
     } catch (err) {
         return sendError(res, 500, 'Failed to restore quest record.', err);
+    }
+});
+
+// POST /api/quests/bulk - One change to many records: { ids, action, status? }.
+//   action 'status'  : set `status` on every live record listed (conqueredAt follows, as in PUT)
+//   action 'trash'   : move every live record listed to the Trash
+//   action 'restore' : bring trashed records back, except any whose title is live again
+// Ids that match nothing (already gone, already in that state) are simply not counted. The
+// records' lastRead is left alone: a bulk re-file is not reading, and stamping fifty records
+// at once would flood "Recent".
+const BULK_ID_RE = /^[a-f0-9]{24}$/i;
+app.post('/api/quests/bulk', authenticate, writeLimiter, async (req, res) => {
+    try {
+        const { ids, action, status } = req.body || {};
+        if (!Array.isArray(ids) || ids.length === 0 || ids.length > 1000 || !ids.every((id) => typeof id === 'string' && BULK_ID_RE.test(id))) {
+            return res.status(400).json({ message: 'Choose between 1 and 1000 records.' });
+        }
+        const Quest = getModel(req.dbConn, 'Quest');
+        const list = [...new Set(ids)];
+
+        if (action === 'status') {
+            if (!QUEST_STATUSES.includes(status)) return res.status(400).json({ message: 'That is not a status.' });
+            const live = { _id: { $in: list }, ...LIVE };
+            let modified = 0;
+            if (status === 'CONQUERED') {
+                const r = await Quest.updateMany({ ...live, status: { $ne: 'CONQUERED' } }, { $set: { status, conqueredAt: new Date() } });
+                modified = r.modifiedCount;
+            } else {
+                const [reopened, moved] = await Promise.all([
+                    Quest.updateMany({ ...live, status: 'CONQUERED' }, { $set: { status, conqueredAt: null } }),
+                    Quest.updateMany({ ...live, status: { $nin: ['CONQUERED', status] } }, { $set: { status } }),
+                ]);
+                modified = reopened.modifiedCount + moved.modifiedCount;
+            }
+            return res.json({ modified });
+        }
+
+        if (action === 'trash') {
+            const deletedAt = new Date();
+            const r = await Quest.updateMany({ _id: { $in: list }, ...LIVE }, { $set: { deletedAt } });
+            return res.json({ modified: r.modifiedCount, deletedAt });
+        }
+
+        if (action === 'restore') {
+            const trashed = await Quest.find({ _id: { $in: list }, deletedAt: { $ne: null } }).select('title normalizedTitle').lean();
+            const keyOf = (q) => q.normalizedTitle || normalizeTitle(q.title);
+            const liveClashes = await Quest.find({ normalizedTitle: { $in: trashed.map(keyOf) }, ...LIVE }).select('normalizedTitle').lean();
+            const taken = new Set(liveClashes.map((q) => q.normalizedTitle));
+            const clear = trashed.filter((q) => !taken.has(keyOf(q)));
+            if (clear.length) await Quest.updateMany({ _id: { $in: clear.map((q) => q._id) } }, { $set: { deletedAt: null } });
+            const restored = clear.length ? await Quest.find({ _id: { $in: clear.map((q) => q._id) } }).select('-synopsis') : [];
+            return res.json({ restored, clashed: trashed.filter((q) => taken.has(keyOf(q))).map((q) => q.title) });
+        }
+
+        return res.status(400).json({ message: 'Unknown bulk action.' });
+    } catch (err) {
+        return sendError(res, 500, 'Failed to apply the change to those records.', err);
+    }
+});
+
+// ─── LIST IMPORT (AniList, MyAnimeList) ───────────────────────────────────────
+// Read-only lookups: they answer with rows shaped for the client's import pipeline, which
+// merges them by title (and alias) like a CSV, so nothing is written here.
+const importLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 20,
+    standardHeaders: true,
+    legacyHeaders: false,
+    keyGenerator: (req) => `user:${req.user._id}`,
+    message: { message: 'Too many list imports in a short time. Try again in a few minutes.' }
+});
+
+/** A row for the import pipeline from AniList's view of a series. */
+const importRow = (m, extra = {}) => ({
+    title: m.title,
+    aliases: m.aliases,
+    totalChapters: Math.max(m.chapters || 0, extra.currentChapter || 0),
+    coverUrl: m.cover || '',
+    classType: classifyBest(m.title, m.genres, null),
+    ...extra,
+});
+
+// GET /api/import/anilist?user=NAME - a public AniList manga list.
+app.get('/api/import/anilist', authenticate, importLimiter, async (req, res) => {
+    const user = String(req.query.user || '').trim();
+    if (!/^[A-Za-z0-9_-]{2,20}$/.test(user)) {
+        return res.status(400).json({ message: 'An AniList username is 2 to 20 letters, digits, dashes or underscores.' });
+    }
+    try {
+        const entries = await fetchAniListList(user);
+        const rows = entries
+            .filter((e) => e.title)
+            .map((e) => importRow(e, { currentChapter: e.progress, status: e.status, rating: e.rating }));
+        res.json({ user, rows });
+    } catch (err) {
+        if (err instanceof ImportError) return res.status(err.status).json({ message: err.message });
+        return sendError(res, 502, 'Could not read that AniList list.', err);
+    }
+});
+
+// POST /api/import/mal-lookup - { ids: [malId, ...] } (at most 500): AniList's record for each
+// MyAnimeList id it knows, so a MAL export gains English titles, covers and classes.
+app.post('/api/import/mal-lookup', authenticate, importLimiter, async (req, res) => {
+    const ids = req.body?.ids;
+    if (!Array.isArray(ids) || ids.length === 0 || ids.length > 500 || !ids.every((n) => Number.isInteger(n) && n > 0)) {
+        return res.status(400).json({ message: 'Send between 1 and 500 MyAnimeList ids.' });
+    }
+    try {
+        const found = await lookupMalIds([...new Set(ids)]);
+        const rows = {};
+        for (const [malId, m] of Object.entries(found)) rows[malId] = importRow(m);
+        res.json({ found: rows });
+    } catch (err) {
+        if (err instanceof ImportError) return res.status(err.status).json({ message: err.message });
+        return sendError(res, 502, 'Could not look those series up.', err);
     }
 });
 

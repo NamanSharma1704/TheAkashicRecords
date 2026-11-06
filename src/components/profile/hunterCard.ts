@@ -37,7 +37,9 @@ const PLATE = '#07060a';
 const MONO = 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace';
 const SANS = 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
 
-const loadImage = (src: string, timeoutMs = 4000) => new Promise<HTMLImageElement | null>((resolve) => {
+/** An image, or null if it fails or takes longer than `timeoutMs`. Covers the profile has
+ *  already shown come from the browser cache at once; a cold relay can take a few seconds. */
+const loadImage = (src: string, timeoutMs = 8000) => new Promise<HTMLImageElement | null>((resolve) => {
     const img = new Image();
     const timer = setTimeout(() => resolve(null), timeoutMs);
     img.onload = () => { clearTimeout(timer); resolve(img); };
@@ -202,7 +204,7 @@ export const renderHunterCard = async (data: HunterCardData, inks: HunterCardInk
     ctx.textAlign = 'left';
 
     // Identity: designation, rank, name and title.
-    const left = 60, leftW = 640;
+    const left = 60, leftW = 620;
     ctx.fillStyle = inks.plateInk;
     ctx.font = `700 15px ${MONO}`;
     track(ctx, 5);
@@ -268,8 +270,8 @@ export const renderHunterCard = async (data: HunterCardData, inks: HunterCardInk
         ctx.fillText(label, x + 14, y + 78);
     });
 
-    // Top series.
-    const right = 760, rightW = CARD_W - 60 - right;
+    // Top series: a strip of three portrait covers, ranked, with title and chapter under each.
+    const right = 720, rightW = CARD_W - 60 - right;
     ctx.fillStyle = inks.plateInk;
     ctx.font = `700 15px ${MONO}`;
     track(ctx, 5);
@@ -284,23 +286,34 @@ export const renderHunterCard = async (data: HunterCardData, inks: HunterCardInk
         track(ctx, 0);
         ctx.fillText('No series yet.', right, 232);
     }
+    const gap = 16;
+    const coverW = Math.floor((rightW - gap * 2) / 3);
+    const coverH = Math.round(coverW * 1.42); // manhwa covers run about 1:1.42
+    const coverY = 212;
     rows.forEach((s, i) => {
-        const y = 212 + i * 116;
-        drawCover(ctx, covers[i] ?? null, s.title, right, y, 68, 96, inks);
+        const x = right + i * (coverW + gap);
+        drawCover(ctx, covers[i] ?? null, s.title, x, coverY, coverW, coverH, inks);
+        // Rank badge, top-left on the cover.
         ctx.textAlign = 'left';
         ctx.textBaseline = 'alphabetic';
-        ctx.fillStyle = inks.plateInk;
         ctx.font = `700 13px ${MONO}`;
-        track(ctx, 2);
-        ctx.fillText(`#${i + 1}`, right + 86, y + 20);
+        track(ctx, 1);
+        const badge = `#${i + 1}`;
+        const bw = ctx.measureText(badge).width + 14;
+        ctx.fillStyle = 'rgba(7,6,10,0.82)';
+        ctx.fillRect(x, coverY, bw, 22);
+        ctx.fillStyle = inks.plateInk;
+        ctx.fillText(badge, x + 7, coverY + 16);
+        // Title (two lines at most) and chapter.
         ctx.fillStyle = INK;
-        ctx.font = `700 21px ${SANS}`;
+        ctx.font = `700 15px ${SANS}`;
         track(ctx, 0);
-        twoLines(ctx, s.title, rightW - 86).forEach((line, j) => ctx.fillText(line, right + 86, y + 46 + j * 25));
+        const lines = twoLines(ctx, s.title, coverW);
+        lines.forEach((line, j) => ctx.fillText(line, x, coverY + coverH + 22 + j * 18));
         ctx.fillStyle = MUTED;
-        ctx.font = `700 14px ${MONO}`;
+        ctx.font = `700 12px ${MONO}`;
         track(ctx, 2);
-        ctx.fillText(`CH ${s.chapters.toLocaleString()}`, right + 86, y + 94);
+        ctx.fillText(`CH ${s.chapters.toLocaleString()}`, x, coverY + coverH + 22 + lines.length * 18 + 4);
     });
 
     // Footer: where it came from.

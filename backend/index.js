@@ -1611,21 +1611,32 @@ app.get('/api/proxy/image', async (req, res) => {
         return new URL(targetUrl).origin + '/';
     };
 
+    // MangaDex answers 403 to a request dressed as a browser: its API rules ask clients to
+    // identify themselves and not spoof one. Its covers (uploads.mangadex.org, and the
+    // mangadex.network nodes it can redirect to) are fetched as what this is, a server, with
+    // no Referer. Every other host keeps the browser-like request some of them insist on.
+    const isMangaDex = (targetUrl) => /(^|\.)mangadex\.(org|network)$/i.test(new URL(targetUrl).hostname);
+
     const fetchOnce = async (targetUrl, timeoutMs, customReferer) => {
         const controller = new AbortController();
         const timer = setTimeout(() => controller.abort(), timeoutMs);
         try {
             return await fetch(targetUrl, {
                 signal: controller.signal,
-                headers: {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36',
-                    'Accept': 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
-                    'Accept-Language': 'en-US,en;q=0.9',
-                    'Sec-Fetch-Dest': 'image',
-                    'Sec-Fetch-Mode': 'no-cors',
-                    'Sec-Fetch-Site': 'cross-site',
-                    'Referer': buildReferer(targetUrl, customReferer)
-                },
+                headers: isMangaDex(targetUrl)
+                    ? {
+                        'User-Agent': 'AkashicRecords/1.0 (+https://the-akashic-records.vercel.app)',
+                        'Accept': 'image/avif,image/webp,image/*,*/*;q=0.8'
+                    }
+                    : {
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36',
+                        'Accept': 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
+                        'Accept-Language': 'en-US,en;q=0.9',
+                        'Sec-Fetch-Dest': 'image',
+                        'Sec-Fetch-Mode': 'no-cors',
+                        'Sec-Fetch-Site': 'cross-site',
+                        'Referer': buildReferer(targetUrl, customReferer)
+                    },
                 // Manual, so each hop can be re-validated against the SSRF guard.
                 redirect: 'manual'
             });

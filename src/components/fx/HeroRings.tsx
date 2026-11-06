@@ -9,8 +9,9 @@ import ArcaneSigil from './ArcaneSigil';
  * The rings used to live inside the hero card and were sized from its width (3.8-4x), so on a
  * desktop they ran past the top and bottom of the screen and the dashboard's scroll area
  * clipped them. They live here now, under the whole dashboard, and the circle is sized to the
- * screen: its outermost ring runs from the top edge to the bottom edge. Where the screen is
- * too narrow for that (a phone held upright), it shrinks so that it stays a whole circle.
+ * screen: its outermost ring runs from the top edge to the bottom edge on every screen. Where
+ * the screen is narrower than it is tall (a phone held upright), the sides run off instead:
+ * the owner chose top-to-bottom over a smaller whole circle hidden behind the card.
  *
  * Horizontally it follows the hero column, whose centre is the card's centre (the rank and
  * sequence columns either side are equal), so it tracks the card as the sidebar opens and
@@ -35,9 +36,8 @@ const HeroRings: React.FC<{
             const a = anchor.getBoundingClientRect();
             const l = layer.getBoundingClientRect();
             const cx = a.left + a.width / 2 - l.left;
-            // The ring's diameter: the screen's height, unless the circle would then run off a
-            // side. 4px keeps the outermost stroke on screen.
-            const d = Math.max(0, Math.min(l.height, 2 * cx, 2 * (l.width - cx)) - 4);
+            // The ring's diameter: the screen's height. 4px keeps the outermost stroke on screen.
+            const d = Math.max(0, l.height - 4);
             layer.style.setProperty('--ring-cx', `${cx}px`);
             layer.style.setProperty('--ring-d', `${d}px`);
         };

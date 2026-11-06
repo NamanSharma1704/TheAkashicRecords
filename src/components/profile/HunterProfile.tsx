@@ -797,36 +797,6 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                                         <span className="sr-only">Title: </span>{equippedName}
                                     </p>
                                 )}
-                                {/* Edit Profile button */}
-                                {/* The banner is a near-black plate in both themes, so everything on it
-                                    takes plate inks: light's page inks measured 1.2-2.8:1 here. */}
-                                <button
-                                    type="button"
-                                    onClick={() => { setAccountStatus(null); setShowAccountModal(true); }}
-                                    className="flex items-center gap-1 px-3 py-1 border border-accent-line text-accent-plate hover:border-accent-line-strong hover:text-white transition-colors cursor-pointer"
-                                >
-                                    <Edit2 size={9} />
-                                    <span className="text-[8px] font-mono font-bold uppercase tracking-widest">Edit Profile</span>
-                                </button>
-                                {/* The profile as one shareable image. */}
-                                <button
-                                    type="button"
-                                    onClick={() => setShowCard(true)}
-                                    className="flex items-center gap-1 px-3 py-1 border border-accent-line text-accent-plate hover:border-accent-line-strong hover:text-white transition-colors cursor-pointer"
-                                >
-                                    <Share2 size={9} aria-hidden="true" />
-                                    <span className="text-[8px] font-mono font-bold uppercase tracking-widest">Hunter Card</span>
-                                </button>
-                                {/* This page's tour. Here rather than in the toolbar, which has no
-                                    room left on a phone. */}
-                                <button
-                                    type="button"
-                                    onClick={startProfileTour}
-                                    className="flex items-center gap-1 px-3 py-1 border border-accent-line text-accent-plate hover:border-accent-line-strong hover:text-white transition-colors cursor-pointer"
-                                >
-                                    <HelpCircle size={9} aria-hidden="true" />
-                                    <span className="text-[8px] font-mono font-bold uppercase tracking-widest">Tour</span>
-                                </button>
                             </div>
 
                             {/* RIGHT COLUMN: text + timeline | donut */}
@@ -836,7 +806,34 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                                 {/* basis-full, not just w-full: flex-1's 0% basis is what line
                                     breaking reads, so without it this never wrapped. */}
                                 <div className="order-last basis-full sm:order-none sm:basis-0 flex flex-col justify-start flex-1 min-w-0">
-                                    <div className="text-[9px] lg:text-[10px] font-mono tracking-[0.2em] font-bold uppercase mb-0.5 text-accent-plate">HUNTER DESIGNATION</div>
+                                    {/* HEADER LINE: the label, and from lg the identity actions at the
+                                        far end, their right edge on the ladder's. Below lg the rank
+                                        name needs the width, so the line dissolves (`contents`) and
+                                        the actions drop below the ladder (order-last). Stacked under
+                                        the avatar they made that column the tallest thing here. */}
+                                    <div className="contents lg:flex lg:items-center lg:justify-between lg:gap-6 lg:mb-0.5">
+                                        <div className="text-[9px] lg:text-[10px] font-mono tracking-[0.2em] font-bold uppercase mb-0.5 lg:mb-0 text-accent-plate">HUNTER DESIGNATION</div>
+                                        {/* The banner is a near-black plate in both themes, so these take
+                                            plate inks: light's page inks measured 1.2-2.8:1 here. The tour
+                                            lives here, not in the toolbar, which has no room on a phone. */}
+                                        <div className="order-last mt-5 lg:order-none lg:mt-0 flex flex-wrap items-center gap-2">
+                                            {[
+                                                { label: 'Edit Profile', icon: Edit2, onClick: () => { setAccountStatus(null); setShowAccountModal(true); } },
+                                                { label: 'Hunter Card', icon: Share2, onClick: () => setShowCard(true) },
+                                                { label: 'Tour', icon: HelpCircle, onClick: startProfileTour },
+                                            ].map(({ label, icon: Icon, onClick }) => (
+                                                <button
+                                                    key={label}
+                                                    type="button"
+                                                    onClick={onClick}
+                                                    className="h-7 flex items-center gap-1.5 px-3 border border-accent-line text-accent-plate hover:border-accent-line-strong hover:text-white transition-colors cursor-pointer"
+                                                >
+                                                    <Icon size={10} aria-hidden="true" />
+                                                    <span className="text-[8px] font-mono font-bold uppercase tracking-widest">{label}</span>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
                                     <div className="drop-shadow-sm leading-normal overflow-hidden">
                                         <span className={`inline-block pr-[6px] text-4xl sm:text-5xl lg:text-[56px] font-black font-orbitron tracking-tight text-transparent bg-clip-text bg-gradient-to-r ${theme.isDark ? theme.inkGradient : 'from-[#c4b5fd] via-[#ddd6fe] to-white'} mb-4`}>
                                             {playerRank.name}
@@ -889,8 +886,10 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                                                             )}
                                                             {/* Below sm nine nowrap labels cannot share the
                                                                 width without overprinting, so only the current
-                                                                rank is named there; the nodes still show the rest. */}
-                                                            <div className={`absolute top-[20px] lg:top-[24px] whitespace-nowrap text-[7px] lg:text-[8px] font-mono tracking-[0.12em] font-bold uppercase transition-all
+                                                                rank is named there; the nodes still show the rest.
+                                                                Hung from the node's centre, not its top: the three
+                                                                node sizes put labels at three heights. */}
+                                                            <div className={`absolute top-[calc(50%_+_13px)] lg:top-[calc(50%_+_16px)] whitespace-nowrap text-[7px] lg:text-[8px] font-mono tracking-[0.12em] font-bold uppercase transition-all
                                                                 ${isCurrent ? 'text-accent-plate' : `hidden sm:block ${isReached ? 'text-white' : 'text-gray-400'}`}`}>
                                                                 {rank.label}
                                                             </div>

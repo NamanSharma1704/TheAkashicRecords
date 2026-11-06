@@ -9,8 +9,9 @@ import { Quest } from '../../core/types';
  * draws the tower (the 3D isles, the HUD, the floor carousel) reads these same definitions, so
  * the label on an isle and the records inside it can never disagree.
  *
- * Index 0 is the base isle, the last index the summit. `label` is the short all-caps tag the 3D
- * sprite can carry without overflowing; `name` and `meaning` are the fuller forms the HUD shows.
+ * Index 0 is the base isle, the last index the summit. The two lowest hold the gates that are
+ * off the climb: dropped, then paused. `label` is the short all-caps tag the 3D sprite can
+ * carry without overflowing; `name` and `meaning` are the fuller forms the HUD shows.
  */
 interface FloorDef {
     label: string;
@@ -22,6 +23,7 @@ interface FloorDef {
 
 export const FLOOR_DEFS: FloorDef[] = [
     { label: 'SEVERED', name: 'The Severed', meaning: 'Abandoned gates — the climb forsaken', rule: 'Dropped' },
+    { label: 'STASIS', name: 'The Stasis', meaning: 'Held in stasis — the climb paused', rule: 'On hold' },
     { label: 'SEALED', name: 'Sealed Gates', meaning: 'Untouched — the first read still awaits', rule: 'Untouched · 0%' },
     { label: 'THRESHOLD', name: 'The Threshold', meaning: 'Just breached · under 25%', rule: 'Under 25%' },
     { label: 'TRIALS', name: 'The Trials', meaning: 'Into the climb · 25–49%', rule: '25–49%' },
@@ -33,23 +35,25 @@ export const FLOOR_DEFS: FloorDef[] = [
 
 /**
  * The floor a title belongs on, by progress. Exactly one floor per title; precedence runs
- * status first (a severed or conquered gate is off the progress ladder), then completion.
+ * status first (a severed, paused or conquered gate is off the progress ladder), then
+ * completion. Reading on in a paused series reopens it, so it climbs back onto the ladder.
  */
 export function floorIndexForItem(item: Quest): number {
     const status = (item.status || '').toUpperCase();
     if (status === 'SEVERED') return 0;      // The Severed
-    if (status === 'CONQUERED') return 7;    // The Throne
+    if (status === 'STASIS') return 1;       // The Stasis
+    if (status === 'CONQUERED') return 8;    // The Throne
 
     const total = item.totalChapters || 0;
     const current = item.currentChapter || 0;
 
     // Caught up to everything released but not marked conquered — an ongoing vigil.
-    if (total > 0 && current >= total) return 6; // The Vigil
+    if (total > 0 && current >= total) return 7; // The Vigil
 
     const pct = total > 0 ? current / total : 0;
-    if (pct <= 0) return 1;      // Sealed Gates
-    if (pct < 0.25) return 2;    // The Threshold
-    if (pct < 0.5) return 3;     // The Trials
-    if (pct < 0.75) return 4;    // The Ascent
-    return 5;                    // The Crest (0.75–0.99)
+    if (pct <= 0) return 2;      // Sealed Gates
+    if (pct < 0.25) return 3;    // The Threshold
+    if (pct < 0.5) return 4;     // The Trials
+    if (pct < 0.75) return 5;    // The Ascent
+    return 6;                    // The Crest (0.75–0.99)
 }

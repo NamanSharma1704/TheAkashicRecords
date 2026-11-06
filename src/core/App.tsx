@@ -1364,8 +1364,10 @@ const App: React.FC = () => {
             return;
         }
         const from = b.start;
+        // The landing floor reads the saved status: a paused series that reopens leaves the
+        // Stasis floor for the one its progress has earned.
         const fromFloor = floorIndexForItem({ ...quest, currentChapter: from.current, totalChapters: from.total });
-        const toFloor = floorIndexForItem({ ...quest, currentChapter: final.current, totalChapters: final.total });
+        const toFloor = floorIndexForItem({ ...quest, status: savedStatus, currentChapter: final.current, totalChapters: final.total });
         const ascended = toFloor > fromFloor;
         const raised = final.total !== from.total;
         const undoable = b.typed || raised || Math.abs(final.current - from.current) >= UNDO_THRESHOLD;

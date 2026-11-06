@@ -306,7 +306,7 @@ const TowerStructure: React.FC<TowerStructureProps> = ({ onSelectFloor, theme, o
         const moteGeo = new THREE.BufferGeometry();
         const motePos = new Float32Array(MOTE_COUNT * 3);
         const moteSpeeds: number[] = [];
-        const moteTopY = (7 * FLOOR_SPACING) - TOWER_OFFSET + 10;
+        const moteTopY = ((TOWER_FLOORS - 1) * FLOOR_SPACING) - TOWER_OFFSET + 10;
         const moteBotY = -TOWER_OFFSET - 6;
         for (let k = 0; k < MOTE_COUNT; k++) {
             motePos[k * 3] = (Math.random() - 0.5) * 60;
@@ -350,10 +350,10 @@ const TowerStructure: React.FC<TowerStructureProps> = ({ onSelectFloor, theme, o
         };
 
         // Camera pans between the base grid and the apex core; starts centred on the isles.
-        const centerY = (7 * FLOOR_SPACING - 2 * TOWER_OFFSET) / 2;
+        const centerY = ((TOWER_FLOORS - 1) * FLOOR_SPACING - 2 * TOWER_OFFSET) / 2;
         let scrollY = centerY;
         const minScroll = -TOWER_OFFSET - 10;
-        const maxScroll = (7 * FLOOR_SPACING) - TOWER_OFFSET + 12;
+        const maxScroll = ((TOWER_FLOORS - 1) * FLOOR_SPACING) - TOWER_OFFSET + 12;
         let targetScrollY = centerY;
 
         const initialZoom = getZoomLevels();

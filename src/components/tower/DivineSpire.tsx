@@ -132,8 +132,8 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
     }, [items, filterClass, filterStatus]);
 
     // The floors are the progress stages (see floors.ts), not pages of the library. Every title
-    // in the filtered library is dropped onto the floor its progress has earned, so all eight
-    // floors always exist — some may simply be empty (sealed) until a title reaches that stage.
+    // in the filtered library is dropped onto the floor its progress has earned, so every
+    // floor always exists — some may simply be empty (sealed) until a title reaches that stage.
     const floors = useMemo(() => {
         const buckets: Quest[][] = FLOOR_DEFS.map(() => []);
         activeLibrary.forEach(item => { buckets[floorIndexForItem(item)].push(item); });

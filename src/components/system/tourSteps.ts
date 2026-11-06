@@ -38,7 +38,7 @@ export const tourSteps = (id: TourId, guest: boolean): TourStep[] => {
             { target: 'profile', title: 'Hunter Profile', body: 'Your rank ladder, titles, reading activity, backups and a shareable Hunter Card. Add a series of your own with CREATE_GATE.' },
         ];
         case 'spire': return [
-            { target: null, title: 'The Divine Spire', body: 'Your library as a tower. Each floor holds the series at one stage of progress, from the Sealed Gates you have not started up to the Throne of conquered ones.' },
+            { target: null, title: 'The Divine Spire', body: 'Your library as a tower. Each floor holds the series at one stage of progress, from the Sealed Gates you have not started up to the Throne of conquered ones. Dropped and paused series rest at the base.' },
             { target: 'tower-metrics', title: 'Player metrics', body: 'Series read, chapters, conquests and your reading streak, across the whole library.' },
             { target: 'tower-quests', title: 'Daily and weekly quests', body: 'Today\'s mandate and this week\'s decree. Adjust quests to choose what counts and how much.' },
             { target: 'tower-recents', title: 'Recent data', body: 'The series you touched last. Tap one to open its page.' },

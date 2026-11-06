@@ -1056,8 +1056,9 @@ const validateQuest = (raw, existing = null) => {
         }
     }
 
+    // Epoch milliseconds, as stored; a date string (how a backup writes it) is read as a date.
     if (v.lastRead !== undefined) {
-        const n = Number(v.lastRead);
+        const n = typeof v.lastRead === 'string' && !/^\d+$/.test(v.lastRead.trim()) ? Date.parse(v.lastRead) : Number(v.lastRead);
         if (Number.isFinite(n) && n > 0) v.lastRead = n;
         else delete v.lastRead;
     }
@@ -2136,30 +2137,89 @@ const MAX_BACKUP_QUESTS = 5000;
 const MAX_BACKUP_LOG = 100000;
 const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
 
-// GET /api/backup - Everything a library holds, as one JSON document: every record with its
-// synopsis (Trash included), the reading log behind the stats, and the streak. The CSV
-// export stays the spreadsheet view; this is the one that restores completely.
+/**
+ * One record as the backup writes it: the fields a reader knows, in one fixed order, then any
+ * other field the record carries (fields from older builds included), so nothing is dropped.
+ * Only the server's own lookup bookkeeping is left out (normalizedTitle, chaptersCheckedAt,
+ * coverCheckedAt, __v): it is rebuilt by itself. lastRead is stored as epoch milliseconds and
+ * written as a date anyone can read; a restore takes either form.
+ */
+const BACKUP_QUEST_FIELDS = ['_id', 'title', 'status', 'classType', 'currentChapter', 'totalChapters', 'rating',
+    'readLink', 'cover', 'synopsis', 'lastRead', 'newChapters', 'chaptersUpdatedAt', 'conqueredAt', 'deletedAt',
+    'createdAt', 'updatedAt'];
+const backupQuest = (q) => {
+    const out = {};
+    for (const k of BACKUP_QUEST_FIELDS) if (k in q) out[k] = q[k];
+    for (const [k, val] of Object.entries(q)) if (!(k in out)) out[k] = val;
+    if (typeof out.lastRead === 'number' && Number.isFinite(out.lastRead) && out.lastRead > 0) {
+        out.lastRead = new Date(out.lastRead).toISOString();
+    }
+    return out;
+};
+/**
+ * A record from a backup file, made ready for validateQuest. A null field counts as absent:
+ * older exports wrote nulls (a missing cover, say) that the write rules refuse as "not text",
+ * and the whole record was skipped for it. A rating from the February build's 0-10 scale is
+ * rounded to the whole number the appraisal takes (below a half, it was unrated).
+ */
+const backupRecordIn = (raw) => {
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {};
+    const r = Object.fromEntries(Object.entries(raw).filter(([, val]) => val !== null));
+    if (typeof r.rating === 'number' && !Number.isInteger(r.rating)) {
+        if (r.rating >= 0.5) r.rating = Math.min(10, Math.round(r.rating));
+        else delete r.rating;
+    }
+    return r;
+};
+const upperOf = (s) => (typeof s === 'string' ? s.trim().toUpperCase() : undefined);
+const BACKUP_SETTINGS_FIELDS = ['streak', 'lastReadDate', 'dailyGoalKind', 'dailyGoalTarget', 'weeklyGoalTarget',
+    'equippedTitle', 'questOrder'];
+
+// GET /api/backup - Everything a library holds, as one JSON document:
+//   - every record with its synopsis, the Trash included, A-Z by title;
+//   - the reading log behind the stats and the Chronicle;
+//   - the settings: streak, the daily and weekly quests, the equipped title and the ACTIVE
+//     QUESTS order;
+//   - the titles earned, and the past week's daily-quest progress (the rest expires anyway).
+// It opens with a summary of what it holds. The CSV export stays the spreadsheet view; this is
+// the one that restores completely. No password or session ever goes into it.
 app.get(BACKUP_PATH, authenticate, async (req, res) => {
     try {
-        const [quests, readingLog, settings, achievements] = await Promise.all([
+        const [quests, readingLog, settings, achievements, dailyQuests] = await Promise.all([
             getModel(req.dbConn, 'Quest').find({})
                 .select('-__v -normalizedTitle -chaptersCheckedAt -coverCheckedAt')
+                .collation({ locale: 'en', strength: 2 })
+                .sort({ title: 1 })
                 .lean(),
             getModel(req.dbConn, 'ReadingLog').find({}).select('-__v -_id').sort({ at: 1 }).lean(),
             getModel(req.dbConn, 'UserSettings').findOne({ userId: req.user._id })
-                .select('-_id streak lastReadDate activeQuestId equippedTitle')
+                .select(`-_id ${BACKUP_SETTINGS_FIELDS.join(' ')}`)
                 .lean(),
-            getModel(req.dbConn, 'Achievement').find({}).select('-_id key unlockedAt recognised').lean(),
+            getModel(req.dbConn, 'Achievement').find({}).select('-_id key unlockedAt recognised').sort({ unlockedAt: 1 }).lean(),
+            getModel(req.dbConn, 'DailyQuest').find({}).select('-_id date absorbedIds').sort({ date: 1 }).lean(),
         ]);
+        const trashed = quests.filter((q) => q.deletedAt).length;
         res.json({
             format: BACKUP_FORMAT,
             version: BACKUP_VERSION,
             exportedAt: new Date().toISOString(),
-            quests,
+            hunter: req.user.username || null,
+            // What the file holds, so it can be checked at a glance.
+            summary: {
+                records: quests.length - trashed,
+                recordsInTrash: trashed,
+                readingLogEntries: readingLog.length,
+                titles: achievements.length,
+                dailyQuestDays: dailyQuests.length,
+            },
+            settings: settings
+                ? Object.fromEntries(BACKUP_SETTINGS_FIELDS.filter((k) => k in settings).map((k) => [k, settings[k]]))
+                : null,
+            quests: quests.map(backupQuest),
             readingLog,
-            settings: settings || null,
             // Optional in version 1: older files have none, and a restore treats that as none.
             achievements,
+            dailyQuests,
         });
     } catch (err) {
         return sendError(res, 500, 'Backup failed.', err);
@@ -2173,8 +2233,12 @@ app.get(BACKUP_PATH, authenticate, async (req, res) => {
  *   - a title it has moves forward only (chapter, total) and gains a cover, synopsis or
  *     link only where its own is empty; a trashed copy the backup has live comes back out;
  *   - reading-log entries are added unless the same move is already recorded;
- *   - the streak is taken only when the backup's last reading day is the later one.
- * Every record goes through validateQuest, as any write does.
+ *   - the streak is taken only when the backup's last reading day is the later one;
+ *   - titles are granted (keeping the earlier date); the equipped title, the quests' targets
+ *     and the ACTIVE QUESTS order only where none is set here;
+ *   - the past week's daily-quest progress is merged in.
+ * Every record goes through validateQuest, as any write does; a new one keeps the date it was
+ * first added.
  */
 app.post(BACKUP_PATH, authenticate, writeLimiter, express.json({ limit: '4mb' }), async (req, res) => {
     const b = req.body || {};
@@ -2201,8 +2265,13 @@ app.post(BACKUP_PATH, authenticate, writeLimiter, express.json({ limit: '4mb' })
         const inserts = [];
         const updates = [];
         let skipped = 0;
-        for (const raw of b.quests) {
-            const { value: v, error } = validateQuest(raw, null);
+        for (const fromFile of b.quests) {
+            const raw = backupRecordIn(fromFile);
+            // The record's own status and class stand in for "what it already was": a value
+            // an older build wrote is this archive's own data, so it restores as it is, the
+            // same allowance an untouched re-save gets.
+            const own = { status: upperOf(raw.status), classType: upperOf(raw.classType) };
+            const { value: v, error } = validateQuest(raw, own);
             if (error) { skipped++; continue; }
             const norm = normalizeTitle(v.title);
             const trashedInBackup = !!raw.deletedAt && !Number.isNaN(Date.parse(raw.deletedAt));
@@ -2224,7 +2293,9 @@ app.post(BACKUP_PATH, authenticate, writeLimiter, express.json({ limit: '4mb' })
             const _id = new mongoose.Types.ObjectId();
             // The conquest date is server-owned, so validateQuest drops it; a restore carries it.
             const conqueredAt = v.status === 'CONQUERED' && raw.conqueredAt && !Number.isNaN(Date.parse(raw.conqueredAt)) ? new Date(raw.conqueredAt) : null;
-            const doc = { _id, ...v, normalizedTitle: norm, conqueredAt, deletedAt: trashedInBackup ? new Date(raw.deletedAt) : null };
+            // When it was first added, which the Chronicle shows; a new record otherwise.
+            const createdAt = raw.createdAt && !Number.isNaN(Date.parse(raw.createdAt)) ? new Date(raw.createdAt) : null;
+            const doc = { _id, ...v, normalizedTitle: norm, conqueredAt, deletedAt: trashedInBackup ? new Date(raw.deletedAt) : null, ...(createdAt ? { createdAt } : {}) };
             inserts.push(doc);
             byNorm.set(norm, doc);
             if (raw._id) idMap.set(String(raw._id), _id);
@@ -2305,7 +2376,57 @@ app.post(BACKUP_PATH, authenticate, writeLimiter, express.json({ limit: '4mb' })
             );
         }
 
-        res.json({ added, updated: updates.length, skipped, logEntries: fresh.length, streakRestored, titlesRestored });
+        // The rest of the settings, each only where this archive has not set its own, so a
+        // restore never overrides a choice made here: the daily and weekly quests while they
+        // are still the defaults, the ACTIVE QUESTS order while there is none. Record ids go
+        // through idMap, as the reading log does.
+        const settingsRestored = [];
+        if (s && typeof s === 'object') {
+            await ensureUserSettings(UserSettings, req.user._id);
+            const cur = await UserSettings.findOne({ userId: req.user._id })
+                .select('questOrder dailyGoalKind dailyGoalTarget weeklyGoalTarget').lean();
+            const set = {};
+            const goalsUntouched = (cur?.dailyGoalKind ?? 'SERIES') === 'SERIES'
+                && (cur?.dailyGoalTarget ?? 5) === 5 && (cur?.weeklyGoalTarget ?? 50) === 50;
+            const kind = s.dailyGoalKind === 'CHAPTERS' || s.dailyGoalKind === 'SERIES' ? s.dailyGoalKind : null;
+            const inRange = (n, max) => Number.isInteger(n) && n >= 1 && n <= max;
+            if (goalsUntouched && kind && inRange(s.dailyGoalTarget, GOAL_MAX[kind]) && inRange(s.weeklyGoalTarget, GOAL_MAX.WEEKLY)
+                && !(kind === 'SERIES' && s.dailyGoalTarget === 5 && s.weeklyGoalTarget === 50)) {
+                Object.assign(set, { dailyGoalKind: kind, dailyGoalTarget: s.dailyGoalTarget, weeklyGoalTarget: s.weeklyGoalTarget });
+                settingsRestored.push('quests');
+            }
+            if (!cur?.questOrder?.length && Array.isArray(s.questOrder)) {
+                const order = [...new Set(s.questOrder.map((id) => idMap.get(String(id))).filter(Boolean).map(String))].slice(0, 2000);
+                if (order.length) { set.questOrder = order; settingsRestored.push('quest order'); }
+            }
+            if (Object.keys(set).length) await UserSettings.updateOne({ userId: req.user._id }, { $set: set });
+        }
+
+        // The daily quest's progress for the days the archive still keeps (the past week):
+        // the series read forward each day, merged into what this archive already counts.
+        let questDaysRestored = 0;
+        const today = todayFor(req);
+        const keepFrom = shiftDay(today, -7);
+        const dayOps = [];
+        for (const d of Array.isArray(b.dailyQuests) ? b.dailyQuests : []) {
+            const date = String(d?.date);
+            if (!DAY_RE.test(date) || date < keepFrom || date > today) continue;
+            const ids = [...new Set((Array.isArray(d.absorbedIds) ? d.absorbedIds : [])
+                .map((id) => idMap.get(String(id))).filter(Boolean).map(String))];
+            if (!ids.length) continue;
+            dayOps.push({ updateOne: {
+                filter: { date },
+                // Dated to its own day, so it expires with the week as the live ones do.
+                update: { $setOnInsert: { date, createdAt: new Date(`${date}T12:00:00Z`) }, $addToSet: { absorbedIds: { $each: ids } } },
+                upsert: true,
+            } });
+        }
+        if (dayOps.length) {
+            const r = await getModel(req.dbConn, 'DailyQuest').bulkWrite(dayOps, { ordered: false });
+            questDaysRestored = (r.upsertedCount || 0) + (r.modifiedCount || 0);
+        }
+
+        res.json({ added, updated: updates.length, skipped, logEntries: fresh.length, streakRestored, titlesRestored, settingsRestored, questDaysRestored });
     } catch (err) {
         return sendError(res, 500, 'Restore failed.', err);
     }

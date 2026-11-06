@@ -430,14 +430,24 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
 
     // ─── FULL BACKUP ───
     // The CSV carries titles and progress only. The backup is the whole library as the server
-    // holds it: synopses, the Trash, the reading log behind the stats, and the streak.
+    // holds it: every record (synopses, the Trash), the reading log behind the stats and the
+    // Chronicle, the titles, the settings (streak, quests, order) and the week's quest days.
     const exportBackup = async () => {
         try {
             const res = await systemFetch('/api/backup');
             const data = await res.json().catch(() => null);
             if (!res.ok || !data) throw new Error(data?.message || `HTTP ${res.status}`);
-            downloadFile(JSON.stringify(data), 'application/json', `akashic_backup_${today()}.json`);
-            showNotification(`BACKUP SEALED.\nSaved ${data.quests.length} record${data.quests.length === 1 ? '' : 's'} (Trash included) and ${data.readingLog.length} reading-log entr${data.readingLog.length === 1 ? 'y' : 'ies'}. Import the file here to restore it.`, 'SUCCESS');
+            // Indented, so the file reads in any text editor; a restore compacts it again.
+            downloadFile(`${JSON.stringify(data, null, 2)}\n`, 'application/json', `akashic_backup_${today()}.json`);
+            const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+            const s = data.summary ?? {};
+            const records = (s.records ?? data.quests.length) as number;
+            const parts = [
+                plural(records, 'record', 'records') + (s.recordsInTrash ? ` (+${s.recordsInTrash} in the Trash)` : ''),
+                plural(data.readingLog.length, 'reading-log entry', 'reading-log entries'),
+                plural(data.achievements?.length ?? 0, 'title', 'titles'),
+            ];
+            showNotification(`BACKUP SEALED.\nSaved ${parts.join(', ')}, with your streak, quests and settings. Import the file here to restore it.`, 'SUCCESS');
         } catch (e) {
             showNotification(`BACKUP FAILED.\n${e instanceof Error ? e.message : 'Try again in a while.'}`, 'ERROR');
         }
@@ -454,12 +464,15 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
         const confirmed = await showNotification(`RESTORE FROM BACKUP?\n${data.quests?.length ?? 0} records saved ${when}. They are merged in: missing titles are added, and nothing in your library is moved backwards or overwritten.`, 'WARNING', true);
         if (!confirmed) return;
         try {
-            const res = await systemFetch('/api/backup', { method: 'POST', body: text });
+            // Sent compact: the file is indented for reading, and the server caps a restore's
+            // size, so the indentation must not count against it.
+            const res = await systemFetch('/api/backup', { method: 'POST', body: JSON.stringify(data) });
             const r = await res.json().catch(() => ({}));
             if (!res.ok) throw new Error(r.message || `HTTP ${res.status}`);
             await onRefresh();
             const parts = [`${r.added} added`, `${r.updated} updated`, `${r.logEntries} reading-log entr${r.logEntries === 1 ? 'y' : 'ies'}`];
-            showNotification(`ARCHIVE RESTORED.\n${parts.join(', ')}${r.skipped ? `; ${r.skipped} skipped` : ''}${r.streakRestored ? '; streak restored' : ''}${r.titlesRestored ? `; ${r.titlesRestored} title${r.titlesRestored === 1 ? '' : 's'} restored` : ''}.`, 'SUCCESS');
+            const restored: string[] = Array.isArray(r.settingsRestored) ? r.settingsRestored : [];
+            showNotification(`ARCHIVE RESTORED.\n${parts.join(', ')}${r.skipped ? `; ${r.skipped} skipped` : ''}${r.streakRestored ? '; streak restored' : ''}${r.titlesRestored ? `; ${r.titlesRestored} title${r.titlesRestored === 1 ? '' : 's'} restored` : ''}${restored.length ? `; ${restored.join(', ')} restored` : ''}.`, 'SUCCESS');
         } catch (e) {
             showNotification(`RESTORE FAILED.\n${e instanceof Error ? e.message : 'Try again in a while.'}`, 'ERROR');
         }
@@ -649,7 +662,7 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                         {exportMenuOpen && (
                             <div role="menu" aria-label="Export archive" className={`absolute left-0 top-full mt-1.5 z-50 w-64 p-1 border ${theme.borderSubtle} ${theme.panelBg} shadow-xl`}>
                                 {[
-                                    { label: 'Full backup (.json)', hint: 'Everything: synopses, reading history, Trash. Restores completely.', run: exportBackup },
+                                    { label: 'Full backup (.json)', hint: 'Everything: synopses, reading history, titles, quests and settings, Trash. Restores completely.', run: exportBackup },
                                     { label: 'Spreadsheet (.csv)', hint: 'Titles and progress, for Excel or Sheets.', run: exportToCSV },
                                 ].map((item, i) => (
                                     <button

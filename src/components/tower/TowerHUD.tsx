@@ -236,7 +236,7 @@ const TowerHUD: React.FC<TowerHUDProps> = ({ items, theme, onActivate, isFocused
                 </aside>
 
                 {/* 3. MOBILE ONLY DOCK (BOTTOM FLOATING BAR) */}
-                <div data-tour="tower-metrics" className="lg:hidden flex absolute bottom-4 inset-x-0 pointer-events-auto justify-center z-50 px-2">
+                <div data-tour="tower-metrics" className="lg:hidden flex absolute bottom-[calc(1rem+var(--tabbar-h))] inset-x-0 pointer-events-auto justify-center z-50 px-2">
                     {/* The dock asked for bg-black/85 through className, which lands on the
                         frame's outer wrapper behind the solid panel and never paints — so on light
                         it was a white panel carrying cyan-300 values at ~1.4:1. The surface now

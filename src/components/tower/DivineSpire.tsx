@@ -240,7 +240,7 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
             aria-modal="true"
             aria-labelledby="divine-spire-title"
             tabIndex={-1}
-            className={`fixed inset-0 z-[60] bg-transparent animate-in fade-in zoom-in-95 duration-500 flex flex-col transition-colors duration-700 outline-none`}
+            className={`fixed inset-0 z-[60] bg-transparent animate-in fade-in zoom-in-95 duration-500 flex flex-col pb-[var(--tabbar-h)] transition-colors duration-700 outline-none`}
             style={{ '--elev-1': elevation(theme, 1) } as React.CSSProperties}
         >
             {/* AMBIENT BACKGROUND GLOW (Root-level to cover header) */}
@@ -266,7 +266,7 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
             {viewMode === 'TOWER' && (
                 <nav
                     aria-label="Spire layers"
-                    className={`sr-only focus-within:not-sr-only focus-within:fixed focus-within:bottom-6 focus-within:left-1/2 focus-within:-translate-x-1/2 focus-within:z-[70] focus-within:flex focus-within:flex-wrap focus-within:justify-center focus-within:gap-1.5 focus-within:p-2 focus-within:rounded-md focus-within:border focus-within:backdrop-blur-md ${theme.isDark ? 'focus-within:bg-black/85 focus-within:border-white/10' : 'focus-within:bg-white/90 focus-within:border-violet-200'}`}
+                    className={`sr-only focus-within:not-sr-only focus-within:fixed focus-within:bottom-[calc(1.5rem+var(--tabbar-h))] focus-within:left-1/2 focus-within:-translate-x-1/2 focus-within:z-[70] focus-within:flex focus-within:flex-wrap focus-within:justify-center focus-within:gap-1.5 focus-within:p-2 focus-within:rounded-md focus-within:border focus-within:backdrop-blur-md ${theme.isDark ? 'focus-within:bg-black/85 focus-within:border-white/10' : 'focus-within:bg-white/90 focus-within:border-violet-200'}`}
                 >
                     {floors.map((floor, i) => {
                         const count = floor.items.length;

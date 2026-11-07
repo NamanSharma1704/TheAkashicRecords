@@ -434,6 +434,83 @@ const fetchGenresOnly = async (title) => {
 /** Same rule as normalizeTitle: lowercase letters and digits only. */
 const titleKey = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
 
+/** An honest name for the release APIs (MangaDex, for one, refuses a disguised browser). */
+const SOURCE_UA = 'AkashicRecords/1.0 (+https://the-akashic-records.vercel.app)';
+
+/** MangaDex: the highest English chapter it hosts, from an exact title or alt-title match. */
+const latestFromMangaDex = async (title, key) => {
+    const search = await fetchWithTimeout(
+        `https://api.mangadex.org/manga?title=${encodeURIComponent(title)}&limit=10&order[relevance]=desc&contentRating[]=safe&contentRating[]=suggestive&contentRating[]=erotica`,
+        {}, 8000
+    );
+    const data = await search.json();
+    const match = (data.data || []).find((m) => {
+        const a = m.attributes || {};
+        const titles = [...Object.values(a.title || {}), ...(a.altTitles || []).flatMap((t) => Object.values(t))];
+        return titles.some((t) => titleKey(t) === key);
+    });
+    if (!match) return [];
+    const counts = [];
+    const last = parseFloat(match.attributes.lastChapter);
+    if (Number.isFinite(last) && last > 0) counts.push(Math.floor(last));
+    const agg = await fetchWithTimeout(`https://api.mangadex.org/manga/${match.id}/aggregate?translatedLanguage[]=en`, {}, 8000);
+    const aggregate = await agg.json();
+    let highest = 0;
+    for (const volume of Object.values(aggregate.volumes || {})) {
+        for (const chapter of Object.values(volume.chapters || {})) {
+            const n = parseFloat(chapter.chapter);
+            if (Number.isFinite(n) && n > highest) highest = n;
+        }
+    }
+    if (highest > 0) counts.push(Math.floor(highest));
+    return counts;
+};
+
+/** AniList: a chapter count, which it reports only once a series has finished. */
+const latestFromAniList = async (title, key) => {
+    const res = await fetchWithTimeout('https://graphql.anilist.co', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({
+            query: 'query ($s: String) { Media(search: $s, type: MANGA, sort: SEARCH_MATCH) { chapters title { english romaji native } synonyms } }',
+            variables: { s: title }
+        })
+    }, 8000);
+    const media = (await res.json())?.data?.Media;
+    if (!media || !(media.chapters > 0)) return [];
+    const names = [...Object.values(media.title || {}), ...(media.synonyms || [])];
+    return names.some((t) => titleKey(t) === key) ? [media.chapters] : [];
+};
+
+/** MangaUpdates formats that are not the comic itself: a novel, a doujinshi, an artbook. */
+const MU_NOT_THE_COMIC = new Set(['Novel', 'Doujinshi', 'Artbook', 'Drama CD']);
+
+/**
+ * MangaUpdates: the latest chapter its release tracking has recorded. It covers licensed
+ * series MangaDex has dropped and ongoing ones AniList gives no count for. The search names
+ * the title it matched (`hit_title`), so a series filed under its official English name
+ * ("Return of the Blossoming Blade") is still found by the name it is read under ("Return of
+ * the Mount Hua Sect"); the same exact-title rule as the other sources applies to that name
+ * or the series' own title. The count itself needs the series record, a second request.
+ */
+const latestFromMangaUpdates = async (title, key) => {
+    const res = await fetchWithTimeout('https://api.mangaupdates.com/v1/series/search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'User-Agent': SOURCE_UA },
+        body: JSON.stringify({ search: title, perpage: 10 })
+    }, 8000);
+    const hit = ((await res.json())?.results || []).find((r) =>
+        r?.record?.series_id && !MU_NOT_THE_COMIC.has(r.record.type)
+        && [r.hit_title, r.record.title].some((t) => titleKey(t) === key));
+    if (!hit) return [];
+    const series = await fetchWithTimeout(`https://api.mangaupdates.com/v1/series/${hit.record.series_id}`,
+        { headers: { 'Accept': 'application/json', 'User-Agent': SOURCE_UA } }, 8000);
+    const n = Number((await series.json())?.latest_chapter);
+    return Number.isInteger(n) && n > 0 ? [n] : [];
+};
+
+const CHAPTER_SOURCES = [['MangaDex', latestFromMangaDex], ['AniList', latestFromAniList], ['MangaUpdates', latestFromMangaUpdates]];
+
 /**
  * Best-effort count of released chapters, for new-chapter tracking. Returns a whole number,
  * or null when no source knows.
@@ -442,62 +519,22 @@ const titleKey = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
  *  - MangaDex's /aggregate lists every chapter it hosts in English, ongoing series included,
  *    but many licensed manhwa have been removed from MangaDex entirely.
  *  - AniList (`chapters`) only reports a count once a series has FINISHED.
+ *  - MangaUpdates records releases, licensed series included; its figure can lead or trail
+ *    the site you read on by a chapter or two.
  * So a match is accepted ONLY on an exact title (or alt-title) match: a fuzzy hit on the wrong
- * series could invent hundreds of chapters. The highest figure wins, and the caller never
- * lowers a stored total on it (a source is often behind the site you read on).
+ * series could invent hundreds of chapters. The sources are asked at once; the highest figure
+ * wins, and the caller never lowers a stored total on it (a source is often behind the site
+ * you read on). One source failing never costs the others.
  */
 const fetchLatestChapter = async (title) => {
     const key = titleKey(title);
     if (!key) return null;
-    const counts = [];
-
-    try {
-        const search = await fetchWithTimeout(
-            `https://api.mangadex.org/manga?title=${encodeURIComponent(title)}&limit=10&order[relevance]=desc&contentRating[]=safe&contentRating[]=suggestive&contentRating[]=erotica`,
-            {}, 8000
-        );
-        const data = await search.json();
-        const match = (data.data || []).find((m) => {
-            const a = m.attributes || {};
-            const titles = [...Object.values(a.title || {}), ...(a.altTitles || []).flatMap((t) => Object.values(t))];
-            return titles.some((t) => titleKey(t) === key);
-        });
-        if (match) {
-            const last = parseFloat(match.attributes.lastChapter);
-            if (Number.isFinite(last) && last > 0) counts.push(Math.floor(last));
-            const agg = await fetchWithTimeout(`https://api.mangadex.org/manga/${match.id}/aggregate?translatedLanguage[]=en`, {}, 8000);
-            const aggregate = await agg.json();
-            let highest = 0;
-            for (const volume of Object.values(aggregate.volumes || {})) {
-                for (const chapter of Object.values(volume.chapters || {})) {
-                    const n = parseFloat(chapter.chapter);
-                    if (Number.isFinite(n) && n > highest) highest = n;
-                }
-            }
-            if (highest > 0) counts.push(Math.floor(highest));
-        }
-    } catch (e) {
-        console.warn(`[Chapters] MangaDex unavailable for "${title}": ${e.message}`);
-    }
-
-    try {
-        const res = await fetchWithTimeout('https://graphql.anilist.co', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-            body: JSON.stringify({
-                query: 'query ($s: String) { Media(search: $s, type: MANGA, sort: SEARCH_MATCH) { chapters title { english romaji native } synonyms } }',
-                variables: { s: title }
-            })
-        }, 8000);
-        const media = (await res.json())?.data?.Media;
-        if (media && media.chapters > 0) {
-            const names = [...Object.values(media.title || {}), ...(media.synonyms || [])];
-            if (names.some((t) => titleKey(t) === key)) counts.push(media.chapters);
-        }
-    } catch (e) {
-        console.warn(`[Chapters] AniList unavailable for "${title}": ${e.message}`);
-    }
-
+    const results = await Promise.all(CHAPTER_SOURCES.map(([name, ask]) =>
+        ask(title, key).catch((e) => {
+            console.warn(`[Chapters] ${name} unavailable for "${title}": ${e.message}`);
+            return [];
+        })));
+    const counts = results.flat();
     return counts.length ? Math.max(...counts) : null;
 };
 

@@ -35,6 +35,19 @@
         outline: 2px solid var(--focus-ring, #f59e0b);
         outline-offset: 2px;
     }
+
+    /* The phone tab bar's height (components/system/MobileTabBar.tsx), its 56px plus the
+       home-indicator inset. Zero unless the bar is mounted (it sets `data-tabbar` on <html>)
+       and the screen is below lg, where it shows. Everything that must clear the bar reads
+       this: the dashboard's height and card width, the Spire, the profile's scroll end. */
+    :root {
+        --tabbar-h: 0px;
+    }
+    @media (max-width: 1023.98px) {
+        :root[data-tabbar] {
+            --tabbar-h: calc(56px + env(safe-area-inset-bottom, 0px));
+        }
+    }
 }
 
 /* Reduced motion, globally. Most loops here are Tailwind `animate-*` utilities (ping,

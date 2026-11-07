@@ -5,7 +5,7 @@ import { Quest, Achievement, QuestGoals, ImportRow } from './types';
 import SystemFrame from '../components/system/SystemFrame';
 import SystemLogo from '../components/system/SystemLogo';
 import ScrambleText from '../components/system/ScrambleText';
-import { Activity, ExternalLink, Sun, Moon, Plus, Zap, Crown, X, LayoutTemplate, GripVertical, ChevronLeft, ChevronRight, LogOut, RefreshCw, Search } from 'lucide-react';
+import { Activity, Sun, Moon, Plus, Zap, Crown, LayoutTemplate, GripVertical, ChevronLeft, ChevronRight, LogOut, RefreshCw, Search } from 'lucide-react';
 import { getPlayerRank, calculateQuestRank, USER_RANKS, expOf } from '../utils/ranks';
 import { THEMES, ThemeId, statusLabel, startingThemeId, hasSavedTheme, dailyObjective } from './constants';
 
@@ -17,7 +17,7 @@ import SystemNotification from '../components/system/SystemNotification';
 import SystemToast, { ToastSpec } from '../components/system/SystemToast';
 import { TourContext, TourId } from './tours';
 import ErrorBoundary from '../components/system/ErrorBoundary';
-import SystemCompass from '../components/system/SystemCompass';
+import MobileTabBar from '../components/system/MobileTabBar';
 import ChapterField from '../components/quest/ChapterField';
 import { FLOOR_DEFS, floorIndexForItem } from '../components/tower/floors';
 import { useHoldRepeat } from '../utils/useHoldRepeat';
@@ -508,48 +508,9 @@ const App: React.FC = () => {
     const [orderedActiveQuests, setOrderedActiveQuests] = useState<Quest[]>([]);
 
     // --- SCROLL HANDLING STATE ---
-    const [isHUDVisible, setIsHUDVisible] = useState(true);
-    const [isMobileHudExpanded, setIsMobileHudExpanded] = useState(false);
-
-    const isMobileHudExpandedRef = useRef(false);
-    useEffect(() => {
-        isMobileHudExpandedRef.current = isMobileHudExpanded;
-    }, [isMobileHudExpanded]);
-
+    // (Below lg the compass button that auto-hid on scroll is gone; the phone tab bar,
+    // MobileTabBar, stays put.)
     const [isHeaderVisible, setIsHeaderVisible] = useState(true);
-    const hudTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-    const triggerHUD = () => {
-        setIsHUDVisible(true);
-
-        if (hudTimeoutRef.current) {
-            clearTimeout(hudTimeoutRef.current);
-        }
-
-        if (isMobileHudExpandedRef.current) return;
-
-        hudTimeoutRef.current = setTimeout(() => {
-            setIsHUDVisible(false);
-        }, 2000);
-    };
-
-    // Keep the HUD permanently visible while it is expanded;
-    // restart the auto-hide countdown when it collapses.
-    useEffect(() => {
-        if (isMobileHudExpanded) {
-            // Cancel any in-flight hide timer and lock HUD on.
-            if (hudTimeoutRef.current) {
-                clearTimeout(hudTimeoutRef.current);
-                hudTimeoutRef.current = null;
-            }
-            setIsHUDVisible(true);
-        } else {
-            // HUD just collapsed — restart the 2-second countdown.
-            if (hudTimeoutRef.current) clearTimeout(hudTimeoutRef.current);
-            hudTimeoutRef.current = setTimeout(() => {
-                setIsHUDVisible(false);
-            }, 2000);
-        }
-    }, [isMobileHudExpanded]);
 
     useEffect(() => {
         if (booting || !isAuth) return;
@@ -570,27 +531,10 @@ const App: React.FC = () => {
             }
 
             lastScrollY = currentScrollY;
-
-            triggerHUD();
         };
-
-        // Initial auto-hide
-        hudTimeoutRef.current = setTimeout(() => {
-            setIsHUDVisible(false);
-        }, 2000);
 
         scrollContainer.addEventListener('scroll', handleScroll, { passive: true });
-        scrollContainer.addEventListener('touchstart', triggerHUD, { passive: true });
-        scrollContainer.addEventListener('pointerdown', triggerHUD);
-
-        return () => {
-            scrollContainer.removeEventListener('scroll', handleScroll);
-            scrollContainer.removeEventListener('touchstart', triggerHUD);
-            scrollContainer.removeEventListener('pointerdown', triggerHUD);
-            if (hudTimeoutRef.current) {
-                clearTimeout(hudTimeoutRef.current);
-            }
-        };
+        return () => scrollContainer.removeEventListener('scroll', handleScroll);
     }, [booting, isAuth, isSpireOpen]);
 
     // Force scroll reset on responsive mode shift to prevent ghost scroll gaps
@@ -606,12 +550,6 @@ const App: React.FC = () => {
         window.addEventListener('resize', handleResize);
         return () => window.removeEventListener('resize', handleResize);
     }, []);
-
-    useEffect(() => {
-        if (!isSpireOpen && !isDetailOpen && !isModalOpen && !isProfileOpen) {
-            triggerHUD();
-        }
-    }, [isSpireOpen, isDetailOpen, isModalOpen, isProfileOpen]);
 
     // --- SYSTEM NOTIFICATION STATE ---
     const [sysNote, setSysNote] = useState<{
@@ -1952,18 +1890,7 @@ const App: React.FC = () => {
                         >
                             <LogOut size={14} className={`${theme.mutedText} group-hover/logout:text-white transition-colors duration-300`} />
                         </button>
-                        {/* Below lg the labelled button would crowd the header, and it used to
-                            simply disappear — leaving phones and tablets with no way to add a
-                            quest at all. The same action as a compact glyph, beside the toggle. */}
-                        <button
-                            type="button"
-                            onClick={() => { setEditingItem(null); setIsModalOpen(true); }}
-                            aria-label="Create gate"
-                            title="Create gate"
-                            className={`lg:hidden w-8 h-8 flex items-center justify-center border ${theme.borderSubtle} ${theme.highlightText} ${theme.isDark ? 'bg-white/5 hover:bg-white/10' : 'bg-black/5 hover:bg-black/10'} rounded transition-colors duration-700 cursor-pointer`}
-                        >
-                            <Plus size={14} />
-                        </button>
+                        {/* Below lg, creating a gate is the tab bar's New (MobileTabBar). */}
                         <button type="button" onClick={() => { setEditingItem(null); setIsModalOpen(true); }} title="New gate (N)" className={`hidden lg:flex px-4 py-1.5 border ${theme.borderSubtle} ${theme.highlightText} ${theme.isDark ? 'hover:bg-white/5' : 'hover:bg-black/5'} transition-colors duration-700 font-mono text-[10px] tracking-widest items-center gap-2 cursor-pointer`}>
                             <Plus size={12} /> CREATE_GATE
                         </button>
@@ -1992,9 +1919,6 @@ const App: React.FC = () => {
     const holoEdge = theme.isDark ? '#ffffff' : '#5a6673';
     const holoSoft = theme.isDark ? '#d8d8de' : '#8d95a1';
 
-    /** Text ink for the mobile HUD plates, which stay dark in both themes. See the HUD. */
-    const hudInk = 'text-accent-plate';
-
     /**
      * Sidebar collapse. Desktop only — below `lg` the sidebar stacks under the hero
      * rather than sitting beside it, so there is no width to reclaim there and every
@@ -2009,18 +1933,19 @@ const App: React.FC = () => {
 
     const memoizedMain = useMemo(() => (
         <main id="content-scroll"
-            className="relative mt-16 h-[calc(100dvh-104px)] lg:h-[calc(100dvh-100px)] overflow-y-auto lg:overflow-hidden overflow-x-hidden hide-scrollbar px-4 pb-6 lg:pb-2 z-10 flex flex-col">
+            className="relative mt-16 h-[calc(100dvh-64px-var(--tabbar-h))] lg:h-[calc(100dvh-100px)] overflow-y-auto lg:overflow-hidden overflow-x-hidden hide-scrollbar px-4 pb-6 lg:pb-2 z-10 flex flex-col">
             <div className={`w-full max-w-[1400px] flex-1 min-h-0 flex flex-col lg:flex-row gap-3 lg:gap-8 pt-2 lg:pt-2 pb-0 ${sidebarCollapsed ? 'lg:mx-auto' : 'lg:ml-auto'}`}>
                 {/* LEFT COLUMN: HERO CANVAS. HeroRings centres the background circle on it. */}
                 <div ref={setHeroColumn} className="flex-none lg:flex-1 flex flex-col lg:h-full order-1 overflow-visible relative">
                     {/* --hero-w is the phone card width, and it is HEIGHT-driven as well as
                         width-driven. Below md the whole hero stack — card, platform, title,
                         progress, controls — ends 282.6 + 1.583w px down the page (measured),
-                        so for the controls to clear the 28px console bar on the first screen
-                        w can be at most (100dvh - 320px) * 0.632. 240px floors it on short
+                        so for the controls to clear the phone tab bar on the first screen
+                        w can be at most (100dvh - 292px - --tabbar-h) * 0.632 (292 = the stack's
+                        282.6 plus a ~9px gap; it cleared the 28px console as 320). 240px floors it on short
                         phones, where the page scrolls instead. The card and the title margin
                         both read this one value, so the two can never be solved separately. */}
-                    <div className="relative z-10 w-full h-full flex flex-col px-4 md:px-6 lg:px-8 justify-between gap-4 overflow-visible pt-8 lg:pt-16 [--hero-w:clamp(240px,calc((100dvh_-_320px)_*_0.632),min(85vw,320px))]">
+                    <div className="relative z-10 w-full h-full flex flex-col px-4 md:px-6 lg:px-8 justify-between gap-4 overflow-visible pt-8 lg:pt-16 [--hero-w:clamp(240px,calc((100dvh_-_292px_-_var(--tabbar-h))_*_0.632),min(85vw,320px))]">
 
                         {/* CENTER: The 3-Column Display (Enhanced Gaps for Tablets) */}
                         <div className="flex-1 min-h-0 flex justify-center items-center gap-4 md:gap-14 lg:gap-6 xl:gap-12 w-full max-w-[1400px] mx-auto px-4">
@@ -2852,141 +2777,18 @@ const App: React.FC = () => {
             </ErrorBoundary>
 
 
-            {/* HUD / SYSTEM OVERLAYS (HOLOGRAPHIC) */}
-            {!isSpireOpen &&
-                !isModalOpen &&
-                !isProfileOpen &&
-                !isDetailOpen && (
-                    <AnimatePresence>
-                        {isHUDVisible && (
-                            <div className="lg:hidden fixed bottom-6 left-0 w-full px-5 z-[80] pointer-events-none pb-[env(safe-area-inset-bottom)] flex justify-end">
-                                {!isMobileHudExpanded ? (
-                                    <motion.button
-                                        key="fab-button"
-                                        type="button"
-                                        aria-label="Open system menu"
-                                        aria-expanded={false}
-                                        layoutId="mobile-hud-wrapper"
-                                        initial={{ scale: 0, opacity: 0 }}
-                                        animate={{ scale: 1, opacity: 1 }}
-                                        exit={{ scale: 0, opacity: 0 }}
-                                        transition={{ type: 'spring', damping: 22, stiffness: 200 }}
-                                        style={{ originX: 1, originY: 1 }}
-                                        whileTap={{ scale: 0.9 }}
-                                        onClick={() => setIsMobileHudExpanded(true)}
-                                        className="relative pointer-events-auto w-20 h-20 flex items-center justify-center"
-                                    >
-                                        <SystemCompass theme={theme} />
-                                    </motion.button>
-                                ) : (
-                                    <motion.div
-                                        key="hud-grid"
-                                        layoutId="mobile-hud-wrapper"
-                                        initial={{ scale: 0.6, opacity: 0 }}
-                                        animate={{ scale: 1, opacity: 1 }}
-                                        exit={{ scale: 0.6, opacity: 0 }}
-                                        transition={{ type: 'spring', damping: 22, stiffness: 200 }}
-                                        style={{ originX: 1, originY: 1 }}
-                                        className="pointer-events-auto w-full isolate flex items-end gap-2"
-                                    >
-                                        {/* These plates are dark in BOTH themes — a HUD terminal, like
-                                            the compass face — so on light their text cannot take the
-                                            page ink (#155e75 on this near-black teal is ~2:1). Fixed
-                                            pale cyan there instead; dark keeps its amber. */}
-                                        {/* ── DIVINE SPIRE ── */}
-                                        <motion.button
-                                            type="button"
-                                            data-tour="spire"
-                                            aria-label="Open Divine Spire"
-                                            onClick={() => { setIsSpireOpen(true); setIsMobileHudExpanded(false); }}
-                                            whileTap={{ scale: 0.96 }}
-                                            className="relative flex-1 h-16 overflow-hidden backdrop-blur-md"
-                                            style={{
-                                                background: theme.isDark ? 'rgba(10,8,2,0.88)' : 'rgba(16,8,26,0.88)',
-                                                border: `1px solid ${theme.isDark ? 'rgba(245,158,11,0.55)' : 'rgba(168,85,247,0.55)'}`,
-                                                boxShadow: theme.isDark
-                                                    ? '0 0 20px rgba(245,158,11,0.12), inset 0 0 30px rgba(245,158,11,0.04)'
-                                                    : '0 0 20px rgba(168,85,247,0.12), inset 0 0 30px rgba(168,85,247,0.04)',
-                                            }}
-                                        >
-                                            {/* Bracket corners — four tiny fixed SVGs, no calc() needed */}
-                                            <svg className="absolute top-0 left-0 pointer-events-none" width="9" height="9" viewBox="0 0 9 9"><polyline points="0,9 0,0 9,0" fill="none" stroke={theme.isDark ? 'rgba(245,158,11,0.7)' : 'rgba(168,85,247,0.7)'} strokeWidth="1.5" /></svg>
-                                            <svg className="absolute top-0 right-0 pointer-events-none" width="9" height="9" viewBox="0 0 9 9"><polyline points="9,9 9,0 0,0" fill="none" stroke={theme.isDark ? 'rgba(245,158,11,0.7)' : 'rgba(168,85,247,0.7)'} strokeWidth="1.5" /></svg>
-                                            <svg className="absolute bottom-0 left-0 pointer-events-none" width="9" height="9" viewBox="0 0 9 9"><polyline points="0,0 0,9 9,9" fill="none" stroke={theme.isDark ? 'rgba(245,158,11,0.3)' : 'rgba(168,85,247,0.3)'} strokeWidth="1.5" /></svg>
-                                            <svg className="absolute bottom-0 right-0 pointer-events-none" width="9" height="9" viewBox="0 0 9 9"><polyline points="9,0 9,9 0,9" fill="none" stroke={theme.isDark ? 'rgba(245,158,11,0.3)' : 'rgba(168,85,247,0.3)'} strokeWidth="1.5" /></svg>
-                                            {/* Scanline overlay */}
-                                            <div className="absolute inset-0 pointer-events-none opacity-40"
-                                                style={{ backgroundImage: `repeating-linear-gradient(0deg, transparent, transparent 3px, ${theme.isDark ? 'rgba(245,158,11,0.04)' : 'rgba(168,85,247,0.04)'} 3px, ${theme.isDark ? 'rgba(245,158,11,0.04)' : 'rgba(168,85,247,0.04)'} 4px)` }}
-                                            />
-                                            {/* Sweep line animation */}
-                                            <motion.div
-                                                className="absolute left-0 right-0 h-[1px] pointer-events-none bg-[var(--accent-glow)]"
-                                                animate={{ top: ['0%', '100%', '0%'] }}
-                                                transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
-                                            />
-                                            {/* Content */}
-                                            <div className="relative z-10 h-full flex items-center gap-3 px-4">
-                                                <LayoutTemplate size={20} className={`shrink-0 ${hudInk} drop-shadow-[0_0_8px_currentColor]`} />
-                                                <div className="flex flex-col items-start leading-none min-w-0">
-                                                    <span className={`font-mono text-[8px] tracking-[0.25em] uppercase ${hudInk} opacity-80 mb-1`}>TERMINAL.EXECUTE</span>
-                                                    <span className={`font-orbitron font-black text-[11px] tracking-[0.2em] uppercase ${hudInk} drop-shadow-[0_0_6px_currentColor]`}>DIVINE_SPIRE</span>
-                                                </div>
-                                            </div>
-                                        </motion.button>
-
-                                        {/* ── ENTER PORTAL ── */}
-                                        <motion.button
-                                            type="button"
-                                            aria-label="Enter portal"
-                                            disabled={!activeQuest.link || activeQuest.link === '#'}
-                                            onClick={() => { handleEnterPortal(activeQuest.link || '#'); setIsMobileHudExpanded(false); }}
-                                            whileTap={{ scale: 0.94 }}
-                                            className="relative w-16 h-16 overflow-hidden backdrop-blur-md flex flex-col items-center justify-center gap-1 disabled:opacity-40"
-                                            style={{
-                                                background: theme.isDark ? 'rgba(10,8,2,0.88)' : 'rgba(16,8,26,0.88)',
-                                                border: `1px solid ${theme.isDark ? 'rgba(245,158,11,0.55)' : 'rgba(168,85,247,0.55)'}`,
-                                                boxShadow: theme.isDark
-                                                    ? '0 0 16px rgba(245,158,11,0.15)'
-                                                    : '0 0 16px rgba(168,85,247,0.15)',
-                                            }}
-                                        >
-                                            {/* Bracket corners */}
-                                            <svg className="absolute top-0 left-0 pointer-events-none" width="9" height="9" viewBox="0 0 9 9"><polyline points="0,9 0,0 9,0" fill="none" stroke={theme.isDark ? 'rgba(245,158,11,0.7)' : 'rgba(168,85,247,0.7)'} strokeWidth="1.5" /></svg>
-                                            <svg className="absolute top-0 right-0 pointer-events-none" width="9" height="9" viewBox="0 0 9 9"><polyline points="9,9 9,0 0,0" fill="none" stroke={theme.isDark ? 'rgba(245,158,11,0.7)' : 'rgba(168,85,247,0.7)'} strokeWidth="1.5" /></svg>
-                                            <svg className="absolute bottom-0 left-0 pointer-events-none" width="9" height="9" viewBox="0 0 9 9"><polyline points="0,0 0,9 9,9" fill="none" stroke={theme.isDark ? 'rgba(245,158,11,0.3)' : 'rgba(168,85,247,0.3)'} strokeWidth="1.5" /></svg>
-                                            <svg className="absolute bottom-0 right-0 pointer-events-none" width="9" height="9" viewBox="0 0 9 9"><polyline points="9,0 9,9 0,9" fill="none" stroke={theme.isDark ? 'rgba(245,158,11,0.3)' : 'rgba(168,85,247,0.3)'} strokeWidth="1.5" /></svg>
-                                            <ExternalLink size={20} strokeWidth={2} className={`${hudInk} drop-shadow-[0_0_8px_currentColor]`} aria-hidden="true" />
-                                            <span className={`font-mono text-[6px] tracking-[0.15em] ${hudInk} uppercase`} aria-hidden="true">PORTAL</span>
-                                        </motion.button>
-
-                                        {/* ── CLOSE / COLLAPSE ── */}
-                                        <motion.button
-                                            type="button"
-                                            aria-label="Close system menu"
-                                            onClick={() => setIsMobileHudExpanded(false)}
-                                            whileTap={{ scale: 0.94 }}
-                                            className="relative w-16 h-16 overflow-hidden backdrop-blur-md flex flex-col items-center justify-center gap-1"
-                                            style={{
-                                                background: 'rgba(10,2,2,0.88)',
-                                                border: '1px solid rgba(239,68,68,0.45)',
-                                                boxShadow: '0 0 16px rgba(239,68,68,0.12)',
-                                            }}
-                                        >
-                                            {/* Bracket corners — red tint */}
-                                            <svg className="absolute top-0 left-0 pointer-events-none" width="9" height="9" viewBox="0 0 9 9"><polyline points="0,9 0,0 9,0" fill="none" stroke="rgba(239,68,68,0.6)" strokeWidth="1.5" /></svg>
-                                            <svg className="absolute top-0 right-0 pointer-events-none" width="9" height="9" viewBox="0 0 9 9"><polyline points="9,9 9,0 0,0" fill="none" stroke="rgba(239,68,68,0.6)" strokeWidth="1.5" /></svg>
-                                            <svg className="absolute bottom-0 left-0 pointer-events-none" width="9" height="9" viewBox="0 0 9 9"><polyline points="0,0 0,9 9,9" fill="none" stroke="rgba(239,68,68,0.25)" strokeWidth="1.5" /></svg>
-                                            <svg className="absolute bottom-0 right-0 pointer-events-none" width="9" height="9" viewBox="0 0 9 9"><polyline points="9,0 9,9 0,9" fill="none" stroke="rgba(239,68,68,0.25)" strokeWidth="1.5" /></svg>
-                                            <X size={20} strokeWidth={2} className="text-red-500 drop-shadow-[0_0_8px_rgba(239,68,68,0.8)]" aria-hidden="true" />
-                                            {/* red-400 at full strength: red-500 at 70% was 3.0:1 on this plate. */}
-                                            <span className="font-mono text-[6px] tracking-[0.15em] text-red-400 uppercase" aria-hidden="true">CLOSE</span>
-                                        </motion.button>
-                                    </motion.div>
-                                )}
-                            </div>
-                        )}
-                    </AnimatePresence>
-                )}
+            {/* PHONE TAB BAR (below lg): Home, Spire, Profile, New. It replaced the compass
+                button that hid on scroll and opened a menu. Mounted for the whole session (so
+                --tabbar-h stays put); it slides away while a series page or the editor is open. */}
+            <MobileTabBar
+                theme={theme}
+                active={isSpireOpen ? 'SPIRE' : isProfileOpen ? 'PROFILE' : 'HOME'}
+                hidden={isModalOpen || isDetailOpen}
+                onHome={() => { setIsSpireOpen(false); setSpireStartInSearch(false); setIsProfileOpen(false); }}
+                onSpire={() => { setIsProfileOpen(false); setIsSpireOpen(true); }}
+                onProfile={() => { setIsSpireOpen(false); setSpireStartInSearch(false); setIsProfileOpen(true); }}
+                onNew={() => { setEditingItem(null); setIsModalOpen(true); }}
+            />
 
             <SystemNotification
                 isOpen={sysNote.isOpen}

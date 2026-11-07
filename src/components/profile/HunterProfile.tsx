@@ -763,7 +763,7 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
             </div>
 
             {/* CONTENT - NON SCROLLABLE STRICT LAYOUT */}
-            <motion.div variants={containerVariants} initial="hidden" animate="visible" className="relative z-10 flex-1 px-4 lg:px-8 py-3 lg:py-6 overflow-y-auto hide-scrollbar max-w-[1600px] mx-auto w-full flex flex-col gap-3 lg:gap-6 pb-12">
+            <motion.div variants={containerVariants} initial="hidden" animate="visible" className="relative z-10 flex-1 px-4 lg:px-8 py-3 lg:py-6 overflow-y-auto hide-scrollbar max-w-[1600px] mx-auto w-full flex flex-col gap-3 lg:gap-6 pb-[calc(3rem+var(--tabbar-h))]">
 
                 {/* UNIFIED HERO HEADER: IDENTITY + RANK HISTORY */}
                 <motion.div data-tour="profile-banner" variants={itemVariants} className={`flex w-full border ${theme.isDark ? 'border-white/10 bg-[#0a0a0a]' : 'border-violet-200 bg-[#0a0a0a]'} backdrop-blur-md relative overflow-hidden shrink-0 shadow-sm mb-2 rounded-[2px] p-4 lg:p-5 pb-2 lg:pb-3`}>

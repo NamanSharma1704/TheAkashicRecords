@@ -5,13 +5,22 @@ import { useDialogFocus } from '../../utils/useDialogFocus';
 import { TourId } from '../../core/tours';
 import { TOUR_NAMES, tourSteps } from './tourSteps';
 
-/** The first element tagged for `key` that is actually laid out (desktop and phone each
- *  render their own copy of some controls, and one of the pair is always hidden). */
-const findTarget = (key: string): HTMLElement | null =>
-    [...document.querySelectorAll<HTMLElement>(`[data-tour="${key}"]`)].find((el) => {
+/** The element tagged for `key` that is laid out, preferring one on screen, and among those
+ *  one marked `data-tour-prefer`. Desktop and phone render their own copy of some controls;
+ *  usually one of the pair is hidden, but on a phone the sidebar's Spire and Profile buttons
+ *  are laid out too (and can be scrolled into view by an earlier step), while the tab bar's,
+ *  marked preferred, are the ones to point at. */
+const findTarget = (key: string): HTMLElement | null => {
+    const laidOut = [...document.querySelectorAll<HTMLElement>(`[data-tour="${key}"]`)].filter((el) => {
         const r = el.getBoundingClientRect();
         return r.width > 0 && r.height > 0 && getComputedStyle(el).visibility !== 'hidden';
-    }) ?? null;
+    });
+    const onScreen = laidOut.filter((el) => {
+        const r = el.getBoundingClientRect();
+        return r.bottom > 0 && r.top < window.innerHeight;
+    });
+    return onScreen.find((el) => el.hasAttribute('data-tour-prefer')) ?? onScreen[0] ?? laidOut[0] ?? null;
+};
 
 const PAD = 6;
 

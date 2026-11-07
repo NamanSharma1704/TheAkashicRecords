@@ -792,7 +792,7 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                             <div className="shrink-0 flex flex-col items-center gap-1.5">
                                 <div className="flex flex-col">
                                     {/* EntityAvatar renders its own border (theme.border) — no extra wrapper needed */}
-                                    <EntityAvatar theme={theme} size={110} className="drop-shadow-md" />
+                                    <EntityAvatar theme={theme} size={110} className="drop-shadow-md" rank={playerRank.name} />
                                     {/* Username bar — l/r/b borders continue the EntityAvatar frame seamlessly */}
                                     <div
                                         className={`w-[110px] flex items-center justify-center px-2 py-1.5 ${theme.isDark ? 'bg-black border-l border-r border-b border-[#f59e0b]' : 'bg-white/90 border-l border-r border-b border-[#7c3aed]'}`}

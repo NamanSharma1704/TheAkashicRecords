@@ -1,13 +1,20 @@
-import React from 'react';
+import React, { useId } from 'react';
 import { Theme } from '../../core/types';
+import { avatarStageOf } from '../../utils/ranks';
+import { StageFrame, StageHalo } from './AvatarStage';
 
 interface EntityAvatarProps {
-    theme: Pick<Theme, 'id' | 'accentInk' | 'accentFillRGB' | 'border' | 'isDark'>;
+    theme: Pick<Theme, 'id' | 'accentInk' | 'accentColor' | 'accentFillRGB' | 'border' | 'isDark'>;
     size?: number;
     className?: string;
+    /** The player's rank: the frame evolves with it (AvatarStage.tsx). None, as on the sign-in
+     *  screen, is the plain DORMANT Apostle. */
+    rank?: string;
 }
 
-const EntityAvatar: React.FC<EntityAvatarProps> = ({ theme, size = 64, className = "" }) => {
+const EntityAvatar: React.FC<EntityAvatarProps> = ({ theme, size = 64, className = "", rank }) => {
+    const stage = avatarStageOf(rank);
+    const uid = `av${useId().replace(/:/g, '')}`;
     const goldColor = '#f59e0b';
     const mainColor = theme.id === 'LIGHT' ? '#7c3aed' : goldColor;
     const secondaryColor = theme.id === 'LIGHT' ? '#a78bfa' : '#fbbf24';
@@ -21,7 +28,7 @@ const EntityAvatar: React.FC<EntityAvatarProps> = ({ theme, size = 64, className
 
     return (
         <div
-            className={`relative group flex items-center justify-center overflow-hidden border ${theme.border} ${theme.isDark ? 'bg-[#0a0a0a]' : 'bg-[#eae1f5]'} ${className} transition-all duration-700 hover:shadow-[0_0_30px_rgba(var(--primary-rgb),0.5)]`}
+            className={`relative isolate group flex items-center justify-center overflow-hidden border ${theme.border} ${theme.isDark ? 'bg-[#0a0a0a]' : 'bg-[#eae1f5]'} ${className} transition-all duration-700 hover:shadow-[0_0_30px_rgba(var(--primary-rgb),0.5)]`}
             style={{
                 width: size,
                 height: size,
@@ -48,6 +55,9 @@ const EntityAvatar: React.FC<EntityAvatarProps> = ({ theme, size = 64, className
                     <circle cx="50" cy="50" r="42" fill="none" stroke={mainColor} strokeWidth="0.25" strokeDasharray="1 10" className="motion-safe:animate-[spin_40s_linear_infinite]" />
                 </g>
             </svg>
+
+            {/* 1b. THE RANK HALO, behind the figure (from ARGENT). */}
+            <StageHalo stage={stage} accent={theme.accentColor} uid={uid} />
 
             {/* 2. HIGH-DEFINITION SYNTHETIC APOSTLE (SOLID VOLUMETRIC) */}
             <svg
@@ -183,9 +193,18 @@ const EntityAvatar: React.FC<EntityAvatarProps> = ({ theme, size = 64, className
                 <span className={`text-[4px] font-mono ${theme.isDark ? 'text-white/50' : 'text-[#2c2718]/50'} lowercase tracking-widest`}>Defined_State://True</span>
             </div>
 
-            {/* Corner Decorative Brackets (Theme Integrated) */}
-            <div className={`absolute top-0 left-0 w-3 h-3 border-t-2 border-l-2 ${theme.border} opacity-40`} />
-            <div className={`absolute bottom-0 right-0 w-3 h-3 border-b-2 border-r-2 ${theme.border} opacity-40`} />
+            {/* THE RANK FRAME, over the figure. At DORMANT it is these two faint brackets; from
+                FORGED the stage's own frame takes their place, and from PRISMATIC a band of
+                light crosses it now and then. */}
+            {stage === 0 ? (
+                <>
+                    <div className={`absolute top-0 left-0 w-3 h-3 border-t-2 border-l-2 ${theme.border} opacity-40`} />
+                    <div className={`absolute bottom-0 right-0 w-3 h-3 border-b-2 border-r-2 ${theme.border} opacity-40`} />
+                </>
+            ) : (
+                <StageFrame stage={stage} accent={theme.accentColor} uid={uid} />
+            )}
+            {stage >= 3 && <div aria-hidden="true" className="absolute inset-0 z-20 pointer-events-none rank-sheen" />}
         </div>
     );
 };

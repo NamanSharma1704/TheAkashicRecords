@@ -12,6 +12,7 @@ import { statusLabel } from '../../core/constants';
 import ScrambleText from '../system/ScrambleText';
 import RankSigil from './RankSigil';
 import CoverArt from './CoverArt';
+import StatusFrame from './StatusFrame';
 import AppraisalPips from './AppraisalPips';
 import { getQuestRankObj } from '../../utils/ranks';
 import './ManhwaDetail.css';
@@ -501,6 +502,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                     {/* Scanline sweep */}
                                     <div className={`absolute left-0 right-0 h-[2px] ${accentBg} opacity-70 pointer-events-none manhwa-detail-cover-scan`} />
                                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
+                                    <StatusFrame status={quest.status} size="large" className="z-10" />
                                 </div>
                             </div>
                         </div>

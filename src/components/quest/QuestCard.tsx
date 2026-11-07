@@ -6,6 +6,7 @@ import { Fingerprint, BookOpen } from 'lucide-react';
 import { getProxiedImageUrl } from '../../utils/api';
 import RankSigil from './RankSigil';
 import CoverArt from './CoverArt';
+import StatusFrame from './StatusFrame';
 
 interface DivineMonolithProps {
     item: Quest;
@@ -18,6 +19,14 @@ interface DivineMonolithProps {
      *  (aria-pressed) instead of opening. Undefined outside select mode. */
     selected?: boolean;
 }
+
+/** The status chip in the colours of its frame (StatusFrame); ACTIVE keeps the plain chip. */
+const STATUS_CHIP: Record<string, string> = {
+    CONQUERED: 'relic-chip',
+    PLANNED: 'status-chip-sealed',
+    STASIS: 'status-chip-stasis',
+    SEVERED: 'status-chip-severed',
+};
 
 const QuestCard = React.memo<DivineMonolithProps>(({ item, onClick, index, id, theme, rankStyle, selected }) => {
     const selecting = selected !== undefined;
@@ -79,6 +88,11 @@ const QuestCard = React.memo<DivineMonolithProps>(({ item, onClick, index, id, t
                     )}
                     <div className={`absolute inset-0 bg-gradient-to-t ${theme.isDark ? 'from-black via-black/20' : 'from-black via-black/20'} to-transparent transition-colors duration-700`} />
                 </div>
+                {/* The status, worn on the card (StatusFrame): the gold relic, the seal, the frost,
+                    the break. The frame shows at rest too, over the locked overlay (z-20) and under
+                    the text (z-30); what it does to the art sits on the art (z-15), under that
+                    overlay, so the light theme's pale overlay is never tinted. */}
+                <StatusFrame status={item.status} size="card" className="z-[25]" artClassName="z-[15]" />
                 <div className={`absolute inset-0 border-2 ${rankStyle.border} opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity duration-500 shadow-[inset_0_0_30px_currentColor]`} />
 
                 {/* --- UNIQUE PER-RANK SIGIL --- */}
@@ -104,7 +118,7 @@ const QuestCard = React.memo<DivineMonolithProps>(({ item, onClick, index, id, t
                                 {/* The Hunter's Appraisal, when given. Dark-plate ink: this row is on the scrim. */}
                                 {item.rating ? <span className="text-accent-plate font-bold">· {item.rating}/10</span> : null}
                             </span>
-                            <span className={`px-2 md:px-3 py-1 border ${item.status === 'SEVERED' ? 'bg-accent-soft text-accent-plate border-accent-line' : 'border-white/10 bg-white/5'} uppercase tracking-widest`}>{statusLabel(item.status)}</span>
+                            <span className={`px-2 md:px-3 py-1 border ${STATUS_CHIP[item.status] ?? 'border-white/10 bg-white/5'} uppercase tracking-widest`}>{statusLabel(item.status)}</span>
                         </div>
                     </div>
                 </div>

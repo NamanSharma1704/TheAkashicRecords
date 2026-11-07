@@ -25,6 +25,18 @@ export const getPlayerRank = (exp: number) => {
     return [...USER_RANKS].reverse().find(r => exp >= r.minExp) || USER_RANKS[0];
 };
 
+/**
+ * The avatar's frame evolves with rank: five stages over the nine ranks, two ranks a stage and
+ * the last one MONARCH's alone. Drawn by EntityAvatar (see AvatarStage.tsx).
+ */
+export const AVATAR_STAGES = ['DORMANT', 'FORGED', 'ARGENT', 'PRISMATIC', 'SINGULARITY'] as const;
+const STAGE_OF_RANK = [0, 0, 1, 1, 2, 2, 3, 3, 4];   // by USER_RANKS index
+/** The frame stage (0-4) a rank wears; 0 for no rank or one older builds wrote. */
+export const avatarStageOf = (rankLabel?: string) => {
+    const i = USER_RANKS.findIndex(r => r.label === rankLabel);
+    return i < 0 ? 0 : STAGE_OF_RANK[i];
+};
+
 export const calculateQuestRank = (quest: Quest) => {
     const chapters = quest.totalChapters || 0;
     if (chapters > 500) return 'S';

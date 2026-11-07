@@ -6,7 +6,7 @@ import SystemFrame from '../components/system/SystemFrame';
 import SystemLogo from '../components/system/SystemLogo';
 import ScrambleText from '../components/system/ScrambleText';
 import { Activity, Sun, Moon, Plus, Zap, Crown, LayoutTemplate, GripVertical, ChevronLeft, ChevronRight, LogOut, RefreshCw, Search } from 'lucide-react';
-import { getPlayerRank, calculateQuestRank, USER_RANKS, expOf } from '../utils/ranks';
+import { getPlayerRank, calculateQuestRank, USER_RANKS, expOf, AVATAR_STAGES, avatarStageOf } from '../utils/ranks';
 import { THEMES, ThemeId, statusLabel, startingThemeId, hasSavedTheme, dailyObjective } from './constants';
 
 import SystemConsole from '../components/system/SystemConsole';
@@ -28,6 +28,8 @@ import HoloDais from '../components/dais/HoloDais';
 import Card3D from '../components/quest/Card3D';
 import CoverArt from '../components/quest/CoverArt';
 import HeroRings from '../components/fx/HeroRings';
+import StatusFrame from '../components/quest/StatusFrame';
+import AscensionRite, { RiteSubject } from '../components/system/AscensionRite';
 import { accentRGB, elevation, emphasis } from './depth';
 import { accentVars } from './tokens';
 import { InfinitePortalIcon, CalibratedPlusIcon, CalibratedMinusIcon } from '../components/system/CustomIcons';
@@ -596,6 +598,9 @@ const App: React.FC = () => {
     // tour plays once per guest only.
     const [tourId, setTourId] = useState<TourId | null>(null);
     const tourOpen = tourId !== null;
+    // THE ASCENSION RITE (AscensionRite): plays once when ONE series is conquered by hand.
+    const [rite, setRite] = useState<RiteSubject | null>(null);
+    const closeRite = useCallback(() => setRite(null), []);
 
     const handleLoginSuccess = (auth: AuthResponse) => {
         // The session cookie is already set by the server; this only records display state.
@@ -817,10 +822,10 @@ const App: React.FC = () => {
     const [rewardQueue, setRewardQueue] = useState<Omit<ToastSpec, 'id'>[]>([]);
     const queueReward = useCallback((spec: Omit<ToastSpec, 'id'>) => setRewardQueue(q => [...q, spec]), []);
     useEffect(() => {
-        if (!rewardQueue.length || toast || tourOpen) return;
+        if (!rewardQueue.length || toast || tourOpen || rite) return;
         showToast(rewardQueue[0]);
         setRewardQueue(q => q.slice(1));
-    }, [rewardQueue, toast, tourOpen, showToast]);
+    }, [rewardQueue, toast, tourOpen, rite, showToast]);
 
     // A rank earned while reading is announced once: the payoff of EXP. Not on load (the first
     // rank seen is the baseline, and each session takes its own), not when a correction drops
@@ -830,10 +835,13 @@ const App: React.FC = () => {
         if (!libraryLoaded) { rankBaseline.current = null; return; }
         const idx = USER_RANKS.findIndex(r => r.label === playerRank.name);
         if (rankBaseline.current !== null && idx > rankBaseline.current) {
+            // A rank that opens a new avatar stage says so: the frame is the visible half of it.
+            const stage = avatarStageOf(playerRank.name);
+            const evolved = stage > avatarStageOf(USER_RANKS[rankBaseline.current]?.label) ? ` Your frame evolves: ${AVATAR_STAGES[stage]}.` : '';
             queueReward({
                 tone: 'REWARD',
                 message: `Rank up · ${playerRank.name}`,
-                detail: `${playerRank.exp.toLocaleString()} EXP reached. ${playerRank.next ? `Next: ${playerRank.next.label} at ${playerRank.next.minExp.toLocaleString()} EXP.` : 'There is no rank above this one.'}`,
+                detail: `${playerRank.exp.toLocaleString()} EXP reached.${evolved} ${playerRank.next ? `Next: ${playerRank.next.label} at ${playerRank.next.minExp.toLocaleString()} EXP.` : 'There is no rank above this one.'}`,
                 duration: 8000,
             });
         }
@@ -1121,6 +1129,13 @@ const App: React.FC = () => {
             }
             const saved = await res.json();
             const mappedSaved = mapQuest(saved);
+
+            // Conquered by hand, through the editor or the series page: the rite. Only once the
+            // save has landed, and only an edit (a new record entered as conquered is history
+            // being filed, not a conquest). Bulk changes, imports and restores never come here.
+            if (isEditing && previous && previous.status !== 'CONQUERED' && mappedSaved.status === 'CONQUERED') {
+                setRite({ id: mappedSaved.id, title: mappedSaved.title, coverUrl: mappedSaved.coverUrl });
+            }
 
             // Replace optimistic item with real server data
             if (isEditing) {
@@ -2200,6 +2215,8 @@ const App: React.FC = () => {
                                             glyph={activeQuest.id === DEFAULT_QUEST.id ? (libraryLoaded ? '+' : '◈') : undefined}
                                         />
 
+                                        <StatusFrame status={activeQuest.status} size="hero" className="z-10" />
+
                                         {/* THEME-ADAPTIVE TINT OVERLAY (Color Unity) */}
                                         <div
                                             className="absolute inset-0 pointer-events-none transition-colors duration-700"
@@ -2484,7 +2501,7 @@ const App: React.FC = () => {
                                         </div>
 
                                         <div className="relative p-0.5">
-                                            <EntityAvatar theme={theme} size={84} />
+                                            <EntityAvatar theme={theme} size={84} rank={playerRank.name} />
                                             {/* accent-on, not fixed black: black on light's violet
                                                 measured 3.69:1 at 7px; white on it is 5.7:1. */}
                                             <button
@@ -2798,6 +2815,8 @@ const App: React.FC = () => {
                 onClose={handleSysNoteClose}
                 theme={theme}
             />
+
+            {rite && <AscensionRite subject={rite} onClose={closeRite} />}
 
             <SystemToast toast={toast} onDismiss={dismissToast} theme={theme} />
             {tourId && (

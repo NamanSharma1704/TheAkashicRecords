@@ -36,6 +36,9 @@ interface ScrambleTextProps {
     glyphClassName?: string;
     animatedGradient?: boolean;
     gradientColors?: string;
+    /** The longest a decode may take, in ms (default 900). The Ascension Rite's relic name uses
+     *  600: the rite closes at 3.6 s, and the name should be readable for most of what is left. */
+    maxMs?: number;
 }
 
 const ScrambleText: React.FC<ScrambleTextProps> = ({
@@ -45,6 +48,7 @@ const ScrambleText: React.FC<ScrambleTextProps> = ({
     glyphClassName = '',
     animatedGradient = false,
     gradientColors,
+    maxMs = 900,
 }) => {
     // Characters resolved so far; null at rest (the plain text). Starting at 0 when decoding on
     // mount, so the first paint is already glyphs rather than a flash of the words.
@@ -61,7 +65,7 @@ const ScrambleText: React.FC<ScrambleTextProps> = ({
         if (prefersReducedMotion()) { setRevealed(null); return; }
 
         const total = Array.from(text).length;
-        const duration = Math.min(900, 300 + total * 30);
+        const duration = Math.min(maxMs, 300 + total * 30);
         const start = performance.now();
         let last = 0;
         let raf = 0;

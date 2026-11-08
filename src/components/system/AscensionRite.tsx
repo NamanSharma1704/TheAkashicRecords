@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useReducedMotion } from 'motion/react';
 import CoverArt from '../quest/CoverArt';
 import RelicFrame from '../quest/RelicFrame';
+import ScrambleText from './ScrambleText';
 import { useDialogFocus } from '../../utils/useDialogFocus';
 
 export interface RiteSubject {
@@ -17,11 +18,14 @@ export interface RiteSubject {
  * MARK_CONQUERED (App starts it after the save lands). Never for a bulk change, an import or
  * a restore: ten conquests at once would be ten interruptions.
  *
- *   0 ms     the screen dims to a spotlight; the card rises into it; the decree appears
+ *   0 ms     the screen dims to a spotlight; the card rises into it; the decree appears,
+ *            its headline decoding from glyphs (ScrambleText)
  *   200 ms   runes trace the card's contour
  *   1150 ms  the card flashes and breaks into shards of light
- *   1550 ms  it re-forms as an Ascended Relic (RelicFrame), named, with Continue
- *   ~5 s     it closes by itself
+ *   1550 ms  it re-forms as an Ascended Relic (RelicFrame), its name decoding in gold, with
+ *            Continue
+ *   3.6 s    it closes by itself: about two seconds on the finished relic (it was 5.2 s; the
+ *            owner chose 3.6 over 2.8, which left one)
  *
  * Skippable at any point (a tap anywhere, Escape, Continue). Under reduced motion it opens on
  * the finished relic. The stage is dark in both themes, like a theatre, so its inks are fixed.
@@ -33,7 +37,7 @@ const RUNE_SPOTS: [number, number][] = [[-7, 8], [-7, 50], [-7, 92], [107, 8], [
 const SHARDS = 30;
 const PHASE_SHATTER = 1150;
 const PHASE_RELIC = 1550;
-const AUTO_CLOSE = 5200;
+const AUTO_CLOSE = 3600;
 
 const GOLD = '#e2b552';     // theme-color-ok: relic gold, artwork
 const VIOLET = '#a78bfa';   // theme-color-ok: rite violet, artwork on a stage dark in both themes
@@ -104,7 +108,7 @@ const AscensionRite: React.FC<{ subject: RiteSubject; onClose: () => void }> = (
                 {/* The decree. */}
                 <div id="rite-decree" className="flex flex-col items-center gap-1.5 rite-fade" style={{ '--d': '150ms' } as React.CSSProperties}>
                     <span className="font-mono text-[10px] font-bold tracking-[0.35em]" style={{ color: GOLD }}>[ SYSTEM MANDATE ]</span>
-                    <span className="font-orbitron font-black text-lg sm:text-xl tracking-[0.12em] text-white">THE GATE HAS COLLAPSED.</span>
+                    <ScrambleText text="THE GATE HAS COLLAPSED." decodeOnMount className="font-orbitron font-black text-lg sm:text-xl tracking-[0.12em] text-white" />
                     <span className="font-mono text-[10px] sm:text-[11px] tracking-[0.2em] text-white/75">RECORDING ESSENCE INTO THE AKASHIC CODEX.</span>
                 </div>
 
@@ -156,7 +160,12 @@ const AscensionRite: React.FC<{ subject: RiteSubject; onClose: () => void }> = (
                 {/* The relic, named. */}
                 <div className={`flex flex-col items-center gap-3 ${phase === 'relic' ? 'rite-fade' : 'invisible'}`} style={{ '--d': reduce ? '0ms' : '250ms' } as React.CSSProperties}>
                     <h2 id="rite-title" className="font-orbitron font-black text-base sm:text-lg tracking-[0.08em] uppercase leading-tight text-transparent bg-clip-text" style={{ backgroundImage: `linear-gradient(180deg, #fff6dc, ${GOLD})` }}>
-                        {subject.title}
+                        {/* Decodes as the relic forms: mounted with the relic phase, not before, or
+                            it would finish while still hidden. The glyphs take the relic gold (the
+                            letters are transparent, painted by the gradient). */}
+                        {phase === 'relic'
+                            ? <ScrambleText key="relic-title" text={subject.title} decodeOnMount maxMs={600} glyphClassName="text-[#e2b552]" />
+                            : subject.title}
                     </h2>
                     <span className="font-mono text-[10px] font-bold tracking-[0.35em]" style={{ color: GOLD }}>ASCENDED RELIC</span>
                     <button

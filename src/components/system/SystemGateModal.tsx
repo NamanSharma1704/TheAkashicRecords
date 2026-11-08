@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { motion } from 'motion/react';
+import { motion, useReducedMotion } from 'motion/react';
 import { Theme, Quest } from '../../core/types';
 import SystemFrame from './SystemFrame';
+import RiftOpening from '../fx/RiftOpening';
 import AppraisalPips from '../quest/AppraisalPips';
 import { STATUS_INFO } from '../../core/constants';
 import { X, RefreshCw, AlertCircle, CheckCircle, Database, Search, Activity, Trash2, HelpCircle } from 'lucide-react';
@@ -74,6 +75,7 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
     const dialogRef = useRef<HTMLDivElement>(null);
     const firstFieldRef = useRef<HTMLInputElement>(null);
     useDialogFocus(dialogRef, true, onClose, firstFieldRef);
+    const reduceMotion = useReducedMotion();
     const startGateTour = usePageTour('gate', true);
 
     // Red for errors and the required-field flag, per theme: red-500 is 3.8:1 on the
@@ -286,22 +288,28 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
     };
 
     return (
+        <>
+        {/* The editor opens through the rift, like the series page: every way in (Create Gate,
+            the cover on the home page, Edit Artifact, N). It renders one layer above the editor,
+            which opens between the rift's edges (.rift-reveal) instead of fading and
+            unfolding on its own clock. Reduced motion keeps the old entrance. */}
+        <RiftOpening accent={theme.accentColor} className="z-[501]" revealRef={dialogRef} />
         <motion.div
             ref={dialogRef}
             role="dialog"
             aria-modal="true"
             aria-labelledby="gate-modal-title"
             tabIndex={-1}
-            initial={{ opacity: 0 }}
+            initial={{ opacity: reduceMotion ? 0 : 1 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[500] flex items-center justify-center bg-black/60 backdrop-blur-sm p-3 sm:p-4 outline-none"
+            className={`fixed inset-0 z-[500] flex items-center justify-center bg-black/60 backdrop-blur-sm p-3 sm:p-4 outline-none ${reduceMotion ? '' : 'rift-reveal'}`}
         >
             <SystemFrame 
                 variant="full" 
                 theme={theme} 
                 className="w-full max-w-lg max-h-[92dvh] relative"
-                initial={{ scaleX: 0, opacity: 0, filter: 'brightness(2) blur(10px)' }}
+                initial={reduceMotion ? { scaleX: 0, opacity: 0, filter: 'brightness(2) blur(10px)' } : false}
                 animate={{ scaleX: 1, opacity: 1, filter: 'brightness(1) blur(0px)' }}
                 exit={{ scaleX: 0, opacity: 0, filter: 'brightness(2) blur(10px)' }}
                 transition={{ type: 'spring', damping: 20, stiffness: 120 }}
@@ -670,6 +678,7 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
                 </div>
             </SystemFrame>
         </motion.div>
+        </>
     );
 };
 

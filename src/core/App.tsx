@@ -487,6 +487,16 @@ const App: React.FC = () => {
     }, [theme.accentColor, theme.isDark]);
 
     const [isModalOpen, setIsModalOpen] = useState(false);
+    // Each opening of the editor gets its own key. Its close takes about a second, and without
+    // this, reopening inside that second revived the closing editor instead of mounting a new
+    // one, so the rift it opens through did not play. (Adjusted during render, React's pattern
+    // for state that follows another state, so the new key is in place before the commit.)
+    const [editorKey, setEditorKey] = useState(0);
+    const [editorWasOpen, setEditorWasOpen] = useState(false);
+    if (isModalOpen !== editorWasOpen) {
+        setEditorWasOpen(isModalOpen);
+        if (isModalOpen) setEditorKey((k) => k + 1);
+    }
     const [isSpireOpen, setIsSpireOpen] = useState(false);
     /** The "/" shortcut opens the Spire straight into its search; reset on close. */
     const [spireStartInSearch, setSpireStartInSearch] = useState(false);
@@ -1312,6 +1322,8 @@ const App: React.FC = () => {
     const activeQuestRef = useRef(activeQuest);
     activeQuestRef.current = activeQuest;
     const bursts = useRef(new Map<string, ChapterBurst>());
+    // The hero dais's chapter pulse (HoloDais fills it while it is animating).
+    const daisPulse = useRef<(() => void) | null>(null);
     // announceBurst offers Undo, which is a requestChapter call; the ref breaks the cycle.
     const requestChapterRef = useRef<(questId: string, wanted: number, opts: ChapterRequestOpts) => boolean>(() => false);
 
@@ -1444,6 +1456,10 @@ const App: React.FC = () => {
             const now: ChapterPair = { current: quest.currentChapter, total: quest.totalChapters };
             b = { questId, confirmed: now, start: { ...now }, target: { ...now }, typed: false, undo: false, timer: null, inFlight: false, dirty: false };
             bursts.current.set(questId, b);
+            // The dais answers a chapter read, once per burst: a run of taps or a held stepper
+            // is one burst, so it flares at the first step, not at every chapter. Only reading
+            // ON, never a correction back or an Undo. (No-op unless the dais is animating.)
+            if (current > now.current && !opts.undo) daisPulse.current?.();
         }
         b.target = { current, total };
         if (opts.typed) b.typed = true;
@@ -1861,7 +1877,9 @@ const App: React.FC = () => {
                             </div>
                             <ScrambleText
                                 text="AKASHIC"
-                                className="font-orbitron text-base sm:text-lg tracking-[0.3em] font-bold drop-shadow-sm transition-colors duration-700"
+                                className="font-orbitron font-mono text-base sm:text-lg tracking-[0.3em] font-bold drop-shadow-sm transition-colors duration-700"
+                                decodeOnMount
+                                glyphClassName="text-accent-ink"
                                 animatedGradient={true}
                                 /* Light used sky-500 -> cyan-500, which measured 2.08:1 on the
                                    page for 18px text. The wordmark is read, so it takes the ink
@@ -2125,6 +2143,7 @@ const App: React.FC = () => {
                                 <HoloDais
                                     theme={theme}
                                     paused={effectsPaused}
+                                    pulseRef={daisPulse}
                                     /* Narrower on a phone: the card is nearly the whole
                                        screen there, so 190% of it overflowed the viewport.
 
@@ -2337,7 +2356,8 @@ const App: React.FC = () => {
                                         paddingBottom: '0.1em', // prevents descender clipping
                                     }}
                                 >
-                                    {activeQuest.title}
+                                    {/* Decodes when the hero changes series (and on arrival). */}
+                                    <ScrambleText text={activeQuest.title} glyphClassName="text-accent-ink" />
                                 </h1>
                             </div>
 
@@ -2521,7 +2541,7 @@ const App: React.FC = () => {
                                     <div className="flex flex-col items-start text-left flex-1 min-w-0 sm:-mt-6">
                                         <div className={`text-[10px] font-black font-mono uppercase tracking-[0.2em] mb-1 mt-0.5 opacity-90 transition-colors duration-700 whitespace-nowrap ${theme.isDark ? theme.highlightText : `text-transparent bg-clip-text bg-gradient-to-r ${theme.labelGradient}`}`}>ENTITY CLASSIFICATION</div>
                                         <div className="text-3xl sm:text-4xl lg:text-2xl xl:text-4xl font-black font-orbitron tracking-tight drop-shadow-sm flex items-baseline leading-normal overflow-hidden h-[1.5em] sm:h-[1.5em] lg:h-[1.8em] xl:h-[1.5em]">
-                                            <span className={`inline-block pr-[6px] text-transparent bg-clip-text bg-gradient-to-r ${theme.inkGradient} transition-colors duration-700 truncate`} style={{ lineHeight: '1.2' }}>{playerRank.name}</span>
+                                            <span className={`inline-block pr-[6px] text-transparent bg-clip-text bg-gradient-to-r ${theme.inkGradient} transition-colors duration-700 truncate`} style={{ lineHeight: '1.2' }}><ScrambleText text={playerRank.name} glyphClassName="text-accent-ink" /></span>
                                         </div>
                                     </div>
                                 </div>
@@ -2781,6 +2801,7 @@ const App: React.FC = () => {
                 <AnimatePresence>
                     {isModalOpen && (
                         <SystemGateModal
+                            key={editorKey}
                             onClose={() => setIsModalOpen(false)}
                             onSave={handleSave}
                             onDelete={deleteQuest}

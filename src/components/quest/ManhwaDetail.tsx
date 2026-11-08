@@ -13,6 +13,7 @@ import ScrambleText from '../system/ScrambleText';
 import RankSigil from './RankSigil';
 import CoverArt from './CoverArt';
 import StatusFrame from './StatusFrame';
+import RiftOpening from '../fx/RiftOpening';
 import AppraisalPips from './AppraisalPips';
 import { getQuestRankObj } from '../../utils/ranks';
 import './ManhwaDetail.css';
@@ -332,7 +333,8 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
 
     const containerVariants = {
         hidden: { opacity: prefersReduced ? 1 : 0 },
-        visible: { opacity: 1, transition: { staggerChildren: prefersReduced ? 0 : 0.1 } }
+        // The content starts rising as the rift opens (RiftOpening: 240 ms), not under it.
+        visible: { opacity: 1, transition: { staggerChildren: prefersReduced ? 0 : 0.1, delayChildren: prefersReduced ? 0 : 0.24 } }
     };
 
     const itemVariants = {
@@ -386,8 +388,12 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
     const canConquer = !!onUpdate && sourceFinished && quest.status !== 'CONQUERED' && totalCh > 0 && quest.currentChapter >= totalCh;
 
     return (
-
-        <div className={`fixed inset-0 z-[400] flex animate-in fade-in duration-500 manhwa-detail-backdrop`}
+        <>
+        {/* The rift it opens through (440 ms, once per opening): beside the dialog, which opens
+            between the rift's two edges (.rift-reveal) instead of fading in. Reduced motion
+            keeps the plain fade. */}
+        <RiftOpening accent={theme.accentColor} className="z-[401]" revealRef={dialogRef} />
+        <div className={`fixed inset-0 z-[400] flex ${prefersReduced ? 'animate-in fade-in duration-500' : 'rift-reveal'} manhwa-detail-backdrop`}
             data-theme={theme.isDark ? 'dark' : 'light'}
             ref={dialogRef}
             role="dialog"
@@ -546,7 +552,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                         aria-label="Enter Portal"
                                     >
                                         <Zap size={16} aria-hidden="true" className={`${theme.isDark ? inkText : 'text-white'} group-hover/dive:animate-pulse`} />
-                                        <ScrambleText text="ENTER_PORTAL" className="text-[10px] tracking-[0.2em] font-orbitron" />
+                                        <ScrambleText text="ENTER_PORTAL" className="text-[10px] tracking-[0.2em] font-orbitron font-mono" />
                                     </a>
                                 )}
                                 <button
@@ -949,6 +955,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
             {/* READER OVERLAY */}
 
         </div>
+        </>
     );
 };
 

@@ -7,6 +7,7 @@ import TowerStructure from './TowerStructure';
 import { FLOOR_DEFS, floorIndexForItem } from './floors';
 import QuestCard from '../quest/QuestCard';
 import SystemLogo from '../system/SystemLogo';
+import ScrambleText from '../system/ScrambleText';
 import { getQuestRankObj } from '../../utils/ranks';
 import { ChevronLeft, ChevronRight, X, Search, AlertCircle, ChevronDown, Filter, ArrowDownUp, Check, CheckSquare, Trash2, HelpCircle } from 'lucide-react';
 import { useDialogFocus } from '../../utils/useDialogFocus';
@@ -387,7 +388,8 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
                                 <div data-tour="floor-layer" className={`relative flex items-center gap-2 md:gap-4 px-3 py-1 md:px-6 md:py-2 rounded-full border backdrop-blur-md pointer-events-auto ${theme.isDark ? 'border-white/10 bg-black/40' : 'border-violet-200 bg-white/85 elev-1'}`}>
                                     <button type="button" disabled={selectedFloorIndex <= 0} onClick={() => setSelectedFloorIndex(i => i - 1)} aria-label="Previous layer" title="Previous layer" className={`${theme.mutedText} hover:${theme.highlightText} disabled:opacity-30 transition-colors`}><ChevronLeft size={14} aria-hidden="true" /></button>
                                     <button type="button" onClick={() => setIsFilterOpen(!isFilterOpen)} aria-expanded={isFilterOpen} aria-haspopup="true" aria-controls="spire-filter-menu" className={`font-black text-lg md:text-2xl font-orbitron tracking-widest ${theme.headingText} ${theme.isDark ? 'hover:text-white' : 'hover:text-[#5b21b6]'} transition-colors flex items-center gap-1.5 outline-none`}>
-                                        {floors[selectedFloorIndex].label}
+                                        {/* The layer's name decodes as the Spire opens and on each move. */}
+                                        <ScrambleText text={floors[selectedFloorIndex].label} decodeOnMount />
                                         <ChevronDown size={16} className={`transition-transform duration-300 ${isFilterOpen ? `rotate-180 ${theme.isDark ? 'text-white' : 'text-[#5b21b6]'}` : ''}`} />
                                     </button>
                                     <div className={`w-1 h-1 rounded-full ${theme.isDark ? 'bg-white/30' : 'bg-stone-400'}`} />

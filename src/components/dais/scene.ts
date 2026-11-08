@@ -17,6 +17,10 @@ export interface DaisHandle {
     resize: (w: number, h: number) => void;
     frame: (dtSeconds: number) => void;
     dispose: () => void;
+    /** The dais answers a chapter read: the body flares, a wave of light runs out across the
+     *  floor rings and motes lift off it. Plays over the next ~1.5 s of frames; a no-op under
+     *  reduced motion (there are no frames to play it on). */
+    pulse: () => void;
 }
 
 interface DaisOptions {
@@ -58,6 +62,7 @@ const GLOW_FRAG = /* glsl */ `
     uniform float uTime;
     uniform float uSweep;
     uniform float uFloor;
+    uniform float uFlare;
     varying float vT;
     varying vec3 vLocal;
     void main() {
@@ -72,7 +77,31 @@ const GLOW_FRAG = /* glsl */ `
         float ang = atan(vLocal.z, vLocal.x);
         float s = 0.5 + 0.5 * cos(ang - uTime * 0.55);
         a *= 0.84 + 0.4 * pow(s, 6.0) * uSweep;
+        // A chapter read flares the whole body for a moment (see pulse()).
+        a *= 1.0 + uFlare;
         gl_FragColor = vec4(c * a, a);
+    }
+`;
+
+/** Motes: soft round points, each with its own alpha (written per frame). */
+const MOTE_VERT = /* glsl */ `
+    attribute float aAlpha;
+    uniform float uSize;
+    varying float vAlpha;
+    void main() {
+        vAlpha = aAlpha;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        gl_PointSize = uSize;
+    }
+`;
+
+const MOTE_FRAG = /* glsl */ `
+    uniform vec3 uColor;
+    varying float vAlpha;
+    void main() {
+        float a = smoothstep(0.5, 0.0, length(gl_PointCoord - 0.5)) * vAlpha;
+        if (a < 0.003) discard;
+        gl_FragColor = vec4(uColor, a);
     }
 `;
 
@@ -175,6 +204,7 @@ export const createDais = ({ host, isDark, reducedMotion }: DaisOptions): DaisHa
                 uTime: { value: 0 },
                 uSweep: { value: reducedMotion ? 0 : sweep },
                 uFloor: { value: isDark ? 0.62 : 0.34 },
+                uFlare: { value: 0 },
             },
             transparent: true,
             blending: BLEND,
@@ -335,16 +365,146 @@ export const createDais = ({ host, isDark, reducedMotion }: DaisOptions): DaisHa
         dais.add(tabs);
     }
 
+    // ---- the chapter pulse ---------------------------------------------------
+    // Built once and hidden; pulse() replays it. Everything sits in the scene rather than the
+    // turning dais, so the wave and the motes do not wheel round with it.
+    //
+    // The wave starts at the body's rim, not the core: a ring at floor level inside the rim
+    // would run UNDER the stepped body, and on dark (additive, no depth) show through it. The
+    // body flares in place instead (uFlare), and the wave runs out across the floor rings.
+    const WAVE_FROM = TIERS[0].rOuter;
+    // Past the outer floor ring (1.0) but short of the frame's edge (FRAME_RADIUS 1.24): at
+    // 1.16 its last, faint arc ran into the canvas's sides and was cut off straight.
+    const WAVE_TO = 1.08;
+    const makeWave = (width: number) => {
+        const geo = track(new THREE.RingGeometry(1 - width / 2, 1 + width / 2, RING_SEGMENTS, 1));
+        geo.rotateX(-Math.PI / 2);
+        const mesh = new THREE.Mesh(geo, track(new THREE.MeshBasicMaterial({
+            color: LINE.clone(),
+            transparent: true,
+            opacity: 0,
+            blending: BLEND,
+            depthWrite: false,
+            side: THREE.DoubleSide,
+        })));
+        mesh.position.y = FLOOR_RING_Y + 0.002;
+        mesh.renderOrder = 11;
+        mesh.visible = false;
+        scene.add(mesh);
+        return mesh;
+    };
+    // A bright wave and a fainter one just behind it.
+    // The leading wave is a little wider than the floor rings, so it reads as a wave passing
+    // over them rather than a third ring.
+    const waves = [
+        { mesh: makeWave(0.018), delay: 0, peak: isDark ? 0.95 : 0.85 },
+        { mesh: makeWave(0.01), delay: 0.14, peak: isDark ? 0.5 : 0.45 },
+    ];
+
+    // Motes lift off the floor between the body and the rings, on the front arc and the sides
+    // only: the back of the floor projects close to the canvas's top edge, so a mote rising
+    // there would be cut off flat (and it is behind the card anyway). They stay low and fade
+    // out on the way up.
+    const MOTES = 32;
+    const motePos = new Float32Array(MOTES * 3);
+    const moteAlpha = new Float32Array(MOTES);
+    const moteGeo = track(new THREE.BufferGeometry());
+    moteGeo.setAttribute('position', new THREE.BufferAttribute(motePos, 3));
+    moteGeo.setAttribute('aAlpha', new THREE.BufferAttribute(moteAlpha, 1));
+    const moteMat = track(new THREE.ShaderMaterial({
+        vertexShader: MOTE_VERT,
+        fragmentShader: MOTE_FRAG,
+        uniforms: {
+            uColor: { value: LINE.clone() },
+            uSize: { value: 3.6 * renderer.getPixelRatio() },
+        },
+        transparent: true,
+        blending: BLEND,
+        depthWrite: false,
+    }));
+    const motes = new THREE.Points(moteGeo, moteMat);
+    motes.renderOrder = 12;
+    motes.visible = false;
+    motes.frustumCulled = false;
+    scene.add(motes);
+    // Per mote: angle, start radius, rise, life (s), delay (s).
+    const moteSeed = new Float32Array(MOTES * 5);
+
+    const PULSE_LEN = 1.5;
+    const FLARE_PEAK = isDark ? 0.6 : 0.35;
+    /** Seconds since the last pulse began; negative while none is playing. */
+    let pulseAge = -1;
+
+    const easeOut = (x: number) => 1 - Math.pow(1 - x, 3);
+    const stepPulse = () => {
+        const t = pulseAge;
+        // The body: a quick rise, then a slower fall.
+        const flare = t < 0.08 ? (t / 0.08) * FLARE_PEAK : FLARE_PEAK * Math.exp(-(t - 0.08) * 3.2);
+        for (const m of glowMaterials) m.uniforms.uFlare.value = flare;
+
+        for (const w of waves) {
+            const p = Math.min(Math.max((t - w.delay) / 0.95, 0), 1);
+            const r = WAVE_FROM + (WAVE_TO - WAVE_FROM) * easeOut(p);
+            w.mesh.scale.set(r, 1, r);
+            const fadeIn = Math.min(Math.max((t - w.delay) / 0.05, 0), 1);
+            (w.mesh.material as THREE.MeshBasicMaterial).opacity = w.peak * fadeIn * Math.pow(1 - p, 1.4);
+        }
+
+        for (let i = 0; i < MOTES; i++) {
+            const o = i * 5;
+            const u = (t - moteSeed[o + 4]) / moteSeed[o + 3];
+            if (u <= 0 || u >= 1) { moteAlpha[i] = 0; continue; }
+            const a = moteSeed[o];
+            const r = moteSeed[o + 1] + 0.06 * u;
+            motePos[i * 3] = Math.cos(a) * r;
+            motePos[i * 3 + 1] = FLOOR_RING_Y + moteSeed[o + 2] * easeOut(u);
+            motePos[i * 3 + 2] = Math.sin(a) * r;
+            moteAlpha[i] = Math.sin(Math.PI * u) * (isDark ? 0.9 : 0.8);
+        }
+        moteGeo.attributes.position.needsUpdate = true;
+        moteGeo.attributes.aAlpha.needsUpdate = true;
+    };
+
+    const endPulse = () => {
+        pulseAge = -1;
+        for (const m of glowMaterials) m.uniforms.uFlare.value = 0;
+        for (const w of waves) w.mesh.visible = false;
+        motes.visible = false;
+    };
+
     // ---- loop ----------------------------------------------------------------
     let time = 0;
     /** Latched by dispose: a late resize or frame must never draw through a released context. */
     let disposed = false;
+
+    const pulse = () => {
+        if (disposed || reducedMotion) return;
+        pulseAge = 0;
+        for (let i = 0; i < MOTES; i++) {
+            const o = i * 5;
+            // Front arc and sides: +z faces the camera, so angles from just below 0 to just past pi.
+            moteSeed[o] = (-0.12 + Math.random() * 1.24) * Math.PI;
+            moteSeed[o + 1] = WAVE_FROM + 0.03 + Math.random() * 0.28;
+            moteSeed[o + 2] = 0.03 + Math.random() * 0.05;
+            moteSeed[o + 3] = 0.7 + Math.random() * 0.6;
+            moteSeed[o + 4] = Math.random() * 0.25;
+        }
+        for (const w of waves) w.mesh.visible = true;
+        motes.visible = true;
+        stepPulse();
+    };
+
     const frame = (dt: number) => {
         if (disposed) return;
         if (!reducedMotion) {
             time += dt;
             for (const m of glowMaterials) m.uniforms.uTime.value = time;
             dais.rotation.y = time * 0.045;
+        }
+        if (pulseAge >= 0) {
+            pulseAge += dt;
+            if (pulseAge >= PULSE_LEN) endPulse();
+            else stepPulse();
         }
         renderer.render(scene, camera);
     };
@@ -374,5 +534,5 @@ export const createDais = ({ host, isDark, reducedMotion }: DaisOptions): DaisHa
     };
 
     resize(host.clientWidth || 1, host.clientHeight || 1);
-    return { resize, frame, dispose };
+    return { resize, frame, dispose, pulse };
 };

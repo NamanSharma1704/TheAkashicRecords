@@ -7,6 +7,11 @@ interface HoloDaisProps {
     /** Set while a modal owns the screen, so the loop stops instead of burning frames. */
     paused?: boolean;
     className?: string;
+    /** Filled with a function that plays the chapter pulse (DaisHandle.pulse) while the dais
+     *  is animating, and emptied when it is not: paused, off screen, hidden tab, reduced
+     *  motion or not built yet. A pulse then is simply not played, rather than saved up to
+     *  go off later. A ref, so firing it never re-renders anything. */
+    pulseRef?: React.MutableRefObject<(() => void) | null>;
 }
 
 /**
@@ -20,7 +25,7 @@ interface HoloDaisProps {
  * The loop is stopped whenever the dais cannot be seen: tab hidden, scrolled out of
  * view, or a modal open.
  */
-const HoloDais: React.FC<HoloDaisProps> = ({ theme, paused = false, className = '' }) => {
+const HoloDais: React.FC<HoloDaisProps> = ({ theme, paused = false, className = '', pulseRef }) => {
     const hostRef = useRef<HTMLDivElement | null>(null);
     const handleRef = useRef<DaisHandle | null>(null);
     const [live, setLive] = useState(false);
@@ -147,9 +152,11 @@ const HoloDais: React.FC<HoloDaisProps> = ({ theme, paused = false, className = 
                 running = true;
                 last = performance.now();
                 frameId = requestAnimationFrame(loop);
+                if (pulseRef) pulseRef.current = () => handle.pulse();
             } else if (!shouldRun() && running) {
                 running = false;
                 cancelAnimationFrame(frameId);
+                if (pulseRef) pulseRef.current = null;
             }
         };
 
@@ -158,8 +165,9 @@ const HoloDais: React.FC<HoloDaisProps> = ({ theme, paused = false, className = 
         return () => {
             document.removeEventListener('visibilitychange', sync);
             if (running) cancelAnimationFrame(frameId);
+            if (pulseRef) pulseRef.current = null;
         };
-    }, [live, paused, onScreen]);
+    }, [live, paused, onScreen, pulseRef]);
 
     // The stand-in borrows the PLATFORM's light, not the theme accent: the real dais is
     // white on the void and the same neutral slate as the card chrome on the page, so an

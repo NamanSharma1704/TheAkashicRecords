@@ -419,3 +419,52 @@ html.theme-switching *::after {
 @media (prefers-reduced-motion: reduce) {
     .rank-sheen { animation: none; background: none; }
 }
+
+/* THE RIFT (RiftOpening): how the series page and the editor open, 440 ms in all.
+   0-55% (0-240 ms): the seal forms; from 42% a slash of light runs across the middle.
+   55-100% (240-440 ms): the slash splits into two edges that run to the top and bottom, and the
+   page opens between them (.rift-reveal). The edges and the reveal share their stops (55%,
+   100%) and their curve, which is what keeps the page's edge on the light's edge: change one,
+   change both. RIFT_MS in RiftOpening.tsx is the same 440. */
+@keyframes rift-seal {
+    0% { opacity: 0; transform: scale(0.35); }
+    55% { opacity: 1; transform: scale(1.04); }
+    100% { opacity: 0; transform: scale(1.32); }
+}
+@keyframes rift-turn { to { transform: rotate(110deg); } }
+@keyframes rift-turn-back { to { transform: rotate(-160deg); } }
+@keyframes rift-edge-up {
+    0%, 42% { top: 50%; transform: scaleX(0); }
+    55% { top: 50%; transform: scaleX(1); }
+    100% { top: 0%; transform: scaleX(1); }
+}
+@keyframes rift-edge-down {
+    0%, 42% { top: 50%; transform: scaleX(0); }
+    55% { top: 50%; transform: scaleX(1); }
+    100% { top: 100%; transform: scaleX(1); }
+}
+@keyframes rift-edge-fade {
+    0%, 42% { opacity: 0; }
+    50%, 86% { opacity: 1; }
+    100% { opacity: 0; }
+}
+@keyframes rift-reveal {
+    0%, 55% { clip-path: inset(50% 0 50% 0); }
+    100% { clip-path: inset(0 0 0 0); }
+}
+@keyframes rift-veil {
+    0% { opacity: 0; }
+    45% { opacity: 1; }
+    100% { opacity: 0; }
+}
+.rift-seal { animation: rift-seal 440ms cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
+.rift-turn, .rift-turn-back { transform-box: fill-box; transform-origin: center; }
+.rift-turn { animation: rift-turn 440ms cubic-bezier(0.3, 0.7, 0.2, 1) forwards; }
+.rift-turn-back { animation: rift-turn-back 440ms cubic-bezier(0.3, 0.7, 0.2, 1) forwards; }
+.rift-edge-up { animation: rift-edge-up 440ms cubic-bezier(0.55, 0, 0.25, 1) forwards, rift-edge-fade 440ms linear forwards; }
+.rift-edge-down { animation: rift-edge-down 440ms cubic-bezier(0.55, 0, 0.25, 1) forwards, rift-edge-fade 440ms linear forwards; }
+.rift-reveal { animation: rift-reveal 440ms cubic-bezier(0.55, 0, 0.25, 1) both; }
+.rift-veil { animation: rift-veil 440ms ease-out forwards; }
+@media (prefers-reduced-motion: reduce) {
+    .rift-reveal { animation: none; }
+}

@@ -184,7 +184,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, theme, onTogg
                                 </div>
 
                                 <h1 className={`font-orbitron text-2xl md:text-3xl font-black tracking-[0.2em] md:tracking-[0.3em] uppercase ${theme.headingText}`}>
-                                    <ScrambleText text="AKASHIC.SYS" speed={60} revealSpeed={0.5} />
+                                    <ScrambleText text="AKASHIC.SYS" className="font-mono" decodeOnMount />
                                 </h1>
 
                                 <div className={`flex items-center justify-center gap-2 text-[9px] tracking-[0.3em] uppercase ${theme.mutedText}`}>

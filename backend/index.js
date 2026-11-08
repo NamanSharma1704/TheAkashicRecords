@@ -1288,11 +1288,20 @@ app.get('/api/quests/:id', authenticate, async (req, res) => {
 // GET /api/quests/:id/history - One series' Chronicle, from the reading log: when it was
 // added, first and last read, conquered; the days it was read; the last 30 days; and the
 // most recent moves. Days are the reader's own (X-Timezone), as the stats use.
+/** The star-path's milestone chapters: the first chapter, a quarter, half, three quarters and
+ *  the latest; duplicates dropped, so a short series has fewer. src/utils/starMarks.ts mirrors
+ *  this, so the page can draw the stars before the history lands. */
+const starMarks = (total) => {
+    if (!(total > 0)) return [];
+    if (total < 4) return [...new Set([1, total])];
+    return [...new Set([1, Math.ceil(total * 0.25), Math.ceil(total * 0.5), Math.ceil(total * 0.75), total])];
+};
+
 app.get('/api/quests/:id/history', authenticate, async (req, res) => {
     try {
         if (!isQuestId(req.params.id)) return res.status(404).json({ message: 'Quest record not found.' });
         const quest = await getModel(req.dbConn, 'Quest').findOne({ _id: req.params.id, ...LIVE })
-            .select('createdAt conqueredAt')
+            .select('createdAt conqueredAt totalChapters')
             .lean();
         if (!quest) return res.status(404).json({ message: 'Quest record not found.' });
 
@@ -1316,6 +1325,13 @@ app.get('/api/quests/:id/history', authenticate, async (req, res) => {
             daysRead: [...byDay.values()].filter((n) => n > 0).length,
             chapters30: [...byDay].filter(([day]) => day >= since).reduce((sum, [, n]) => sum + n, 0),
             recent: log.slice(-6).reverse(),
+            // The star-path on the series page: for each milestone chapter (starMarks), the
+            // day the log first crossed it reading forward. Null when no move in the log
+            // crosses it: reached before the record began, or not reached yet.
+            milestones: starMarks(quest.totalChapters || 0).map((chapter) => {
+                const crossing = forward.find((e) => e.from < chapter && e.to >= chapter);
+                return { chapter, day: crossing ? crossing.day : null };
+            }),
         });
     } catch (err) {
         return sendError(res, 500, 'Failed to read the series history.', err);

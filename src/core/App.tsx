@@ -767,7 +767,7 @@ const App: React.FC = () => {
                     const topActive = mappedData
                         .filter(i => i.status === 'ACTIVE')
                         .sort((a, b) => new Date(b.lastUpdated || 0).getTime() - new Date(a.lastUpdated || 0).getTime())[0];
-                    newActiveId = topActive ? topActive.id : mappedData[0].id;
+                    newActiveId = topActive ? topActive.id : (mappedData.find(i => i.status !== 'CONQUERED') || mappedData[0]).id;
                 }
 
                 // Batch the updates
@@ -808,9 +808,25 @@ const App: React.FC = () => {
 
     // Migration / Integrity Check removed since we use MongoDB now
 
+    // The hero is never a conquered series: a conquest takes it off the home page (it lives
+    // on the Spire's Throne from then on). It is the chosen series while that still holds,
+    // else the most recently read ACTIVE one, else any other unconquered one, else the
+    // placeholder ("All gates conquered" when the library is not empty).
     const activeQuest = useMemo(() => {
-        return library.find(q => q.id === activeId) || library[0] || DEFAULT_QUEST;
+        const chosen = library.find(q => q.id === activeId);
+        if (chosen && chosen.status !== 'CONQUERED') return chosen;
+        const recent = (a: Quest, b: Quest) => new Date(b.lastUpdated || 0).getTime() - new Date(a.lastUpdated || 0).getTime();
+        return library.filter(q => q.status === 'ACTIVE').sort(recent)[0]
+            || library.find(q => q.status !== 'CONQUERED')
+            || DEFAULT_QUEST;
     }, [library, activeId]);
+    // When the chosen series is conquered, the choice moves with the hero, so the ACTIVE
+    // QUESTS list highlights the series now shown. Only then: a chosen id not in the library
+    // yet is left alone.
+    useEffect(() => {
+        const chosen = library.find(q => q.id === activeId);
+        if (chosen && chosen.status === 'CONQUERED' && activeQuest.id !== DEFAULT_QUEST.id) setActiveId(activeQuest.id);
+    }, [library, activeId, activeQuest.id]);
 
     const progressPercent = useMemo(() => Math.min(100, Math.round((activeQuest.currentChapter / (activeQuest.totalChapters || 1)) * 100)), [activeQuest]);
     // EXP: chapters read across the library. It earns the player rank.
@@ -2229,7 +2245,7 @@ const App: React.FC = () => {
                                             size="hero"
                                             className="w-full h-full"
                                             imgClassName="transition-transform duration-[10s] group-hover:scale-110"
-                                            label={activeQuest.id === DEFAULT_QUEST.id ? (libraryLoaded ? 'Archive empty' : 'Syncing archive') : undefined}
+                                            label={activeQuest.id === DEFAULT_QUEST.id ? (!libraryLoaded ? 'Syncing archive' : library.length > 0 ? 'All gates conquered' : 'Archive empty') : undefined}
                                             hint={activeQuest.id === DEFAULT_QUEST.id && libraryLoaded ? 'Tap to open a gate' : undefined}
                                             glyph={activeQuest.id === DEFAULT_QUEST.id ? (libraryLoaded ? '+' : '◈') : undefined}
                                         />
@@ -2417,7 +2433,7 @@ const App: React.FC = () => {
                                         className="h-12 flex-1 max-w-[400px] flex items-center justify-center gap-2 font-mono font-bold tracking-widest text-[12px] rounded-sm bg-accent text-accent-on cursor-pointer"
                                         style={{ boxShadow: emphasis(theme, accentRGB(theme)) }}
                                     >
-                                        <Plus size={16} aria-hidden="true" /> OPEN YOUR FIRST GATE
+                                        <Plus size={16} aria-hidden="true" /> {library.length > 0 ? 'OPEN A NEW GATE' : 'OPEN YOUR FIRST GATE'}
                                     </motion.button>
                                 </div>
                             ) : (

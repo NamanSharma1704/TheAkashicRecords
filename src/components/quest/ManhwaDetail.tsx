@@ -14,6 +14,7 @@ import RankSigil from './RankSigil';
 import CoverArt from './CoverArt';
 import StatusFrame from './StatusFrame';
 import RiftOpening from '../fx/RiftOpening';
+import StarPath from './StarPath';
 import AppraisalPips from './AppraisalPips';
 import { getQuestRankObj } from '../../utils/ranks';
 import './ManhwaDetail.css';
@@ -38,6 +39,8 @@ interface Chronicle {
     daysRead: number;
     chapters30: number;
     recent: { from: number; to: number; delta: number; day: string }[];
+    /** The star-path's milestones and the day the log first crossed each (null: no crossing). */
+    milestones?: { chapter: number; day: string | null }[];
 }
 
 /** A 'YYYY-MM-DD' day or a timestamp, as "12 Mar 2026" in the reader's locale. */
@@ -151,9 +154,11 @@ const SectionHeader: React.FC<{ index: string; icon: React.ReactNode; label: str
     const rule = theme.id === 'LIGHT' ? 'from-violet-400/40' : 'from-amber-400/40';
     return (
         <div className="flex items-center gap-3 mb-6 px-1">
-            <span className={`text-[11px] font-black font-mono ${accent}`}>{index}</span>
-            <span className="opacity-60 flex items-center" aria-hidden="true">{icon}</span>
-            <h2 className={`text-[10px] font-mono tracking-[0.3em] font-bold uppercase ${theme.isDark ? 'text-white/80' : 'text-stone-800'}`}>{label}</h2>
+            <span className={`shrink-0 text-[11px] font-black font-mono ${accent}`}>{index}</span>
+            <span className="shrink-0 opacity-60 flex items-center" aria-hidden="true">{icon}</span>
+            {/* May shrink and truncate, with tighter tracking on phones: at 320px it pushed the
+                header's button (MODIFY) past the edge and the page scrolled sideways. */}
+            <h2 className={`min-w-0 truncate text-[10px] font-mono tracking-[0.2em] sm:tracking-[0.3em] font-bold uppercase ${theme.isDark ? 'text-white/80' : 'text-stone-800'}`}>{label}</h2>
             <span className={`flex-1 h-px bg-gradient-to-r ${rule} to-transparent`} />
             {children}
         </div>
@@ -182,7 +187,10 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
     const [failedCover, setFailedCover] = useState<string | null>(null);
     const [conquering, setConquering] = useState(false);
     // The series' Chronicle (GET /api/quests/:id/history). Refetched when the record or its
-    // chapter changes, so a status or chapter saved from here shows up.
+    // chapter changes, so a status or chapter saved from here shows up, and again when the
+    // server's copy lands (`lastUpdated` is the server's lastRead stamp): a save updates the
+    // record optimistically first, and the fetch that fires then can beat the server's write
+    // of the reading log, which left the Chronicle and the star-path a save behind.
     const [chronicle, setChronicle] = useState<Chronicle | null>(null);
     useEffect(() => {
         if (!isOpen || !quest?.id) return;
@@ -192,7 +200,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
             .then(data => { if (alive) setChronicle(data); })
             .catch(() => { if (alive) setChronicle(null); });
         return () => { alive = false; };
-    }, [isOpen, quest?.id, quest?.currentChapter, quest?.status]);
+    }, [isOpen, quest?.id, quest?.currentChapter, quest?.totalChapters, quest?.status, quest?.lastUpdated]);
 
     // Same-class entries from the library, used by the SIMILAR_RECORDS row far below.
     //
@@ -439,11 +447,14 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
 
             {/* TOP NAVIGATION BAR */}
             <div className="absolute top-0 left-0 w-full h-20 flex justify-between items-center px-4 sm:px-8 z-50 pointer-events-none" style={{ paddingTop: 'max(16px, env(safe-area-inset-top))' }}>
-                <div className="flex items-center gap-3">
-                    <div className={`w-1 h-8 ${theme.id === 'LIGHT' ? 'bg-violet-500' : 'bg-amber-500'} shadow-[0_0_15px_currentColor]`} />
-                    <div className={`font-mono text-[10px] tracking-[0.4em] ${inkText} font-bold uppercase`}>SYSTEM.ARCHIVE_INSPECTION</div>
+                {/* The label gives way on a narrow phone (tighter tracking, then truncation);
+                    the help and close buttons never do: at 320px the close button sat half off
+                    the screen. */}
+                <div className="flex items-center gap-3 min-w-0">
+                    <div className={`shrink-0 w-1 h-8 ${theme.id === 'LIGHT' ? 'bg-violet-500' : 'bg-amber-500'} shadow-[0_0_15px_currentColor]`} />
+                    <div className={`min-w-0 truncate font-mono text-[10px] tracking-[0.25em] sm:tracking-[0.4em] ${inkText} font-bold uppercase`}>SYSTEM.ARCHIVE_INSPECTION</div>
                 </div>
-                <div className="flex items-center gap-2 pointer-events-auto">
+                <div className="shrink-0 flex items-center gap-2 pointer-events-auto">
                 <button
                     type="button"
                     onClick={startSeriesTour}
@@ -475,7 +486,9 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                     {/* HERO SECTION: COVER + TITLE + STATS */}
                     <motion.div variants={itemVariants} className="flex flex-col md:flex-row gap-8 md:gap-12 items-start md:items-start">
                         {/* COVER ART — SCANNED ARTIFACT */}
-                        <div className="shrink-0 w-[180px] md:w-[240px] lg:w-[280px] relative group mx-auto md:mx-0">
+                        {/* On a phone the cover is the page's centrepiece: about two thirds of the
+                            screen (it was a fixed 180px, under half of it). Beside the title from md. */}
+                        <div className="shrink-0 w-[min(66vw,264px)] md:w-[240px] lg:w-[280px] relative group mx-auto md:mx-0">
                             {/* Data spine */}
                             <div className="hidden md:flex flex-col justify-between items-center absolute top-4 bottom-4 -left-5 z-20">
                                 {[`CH ${quest.currentChapter}`, `${Math.round(progress * 100)}%`, statusLabel(quest.status)].map((s, i) => (
@@ -514,7 +527,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                         </div>
 
                         {/* TITLE & METADATA */}
-                        <div className="flex-1 min-w-0 flex flex-col items-center md:items-start text-center md:text-left">
+                        <div className="flex-1 min-w-0 w-full md:w-auto flex flex-col items-center md:items-start text-center md:text-left">
                             {/* Rank emblem */}
                             <div className="flex items-center gap-3 mb-4">
                                 <RankSigil rank={rank} theme={theme} size={44} />
@@ -540,14 +553,18 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                 </h2>
                             )}
 
-                            {/* PROTOCOL BUTTONS ROW */}
-                            <div data-tour="series-actions" className="flex flex-wrap gap-3 w-full justify-center md:justify-start mt-4">
+                            {/* PROTOCOL BUTTONS: one block on shared edges, the portal full width
+                                and the two secondary actions as equal halves beneath. They were three
+                                widths stacked: in the middle on a phone, and down the left beside the
+                                cover, where the column is too narrow for a row until xl. From xl, the
+                                row. */}
+                            <div data-tour="series-actions" className="grid grid-cols-2 gap-3 w-full max-w-sm mx-auto mt-4 md:mx-0 xl:max-w-none xl:flex xl:flex-wrap xl:justify-start">
                                 {quest?.link && (
                                     <a
                                         href={quest.link}
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        className={`px-8 py-3 rounded-sm border font-bold transition flex items-center gap-3 group/dive hover:scale-105 active:scale-95 cursor-pointer ${theme.isDark ? `bg-amber-500/25 hover:bg-amber-500/40 border-amber-500/60 shadow-[0_0_20px_rgba(245,158,11,0.35)] ${inkText}` : 'bg-[#7c3aed] hover:bg-[#6d28d9] border-[#7c3aed] text-white shadow-[0_6px_20px_rgba(124,58,237,0.45)]'}`}
+                                        className={`col-span-2 justify-center xl:justify-start px-8 py-3 rounded-sm border font-bold transition flex items-center gap-3 group/dive hover:scale-105 active:scale-95 cursor-pointer ${theme.isDark ? `bg-amber-500/25 hover:bg-amber-500/40 border-amber-500/60 shadow-[0_0_20px_rgba(245,158,11,0.35)] ${inkText}` : 'bg-[#7c3aed] hover:bg-[#6d28d9] border-[#7c3aed] text-white shadow-[0_6px_20px_rgba(124,58,237,0.45)]'}`}
                                         title="Enter Portal"
                                         aria-label="Enter Portal"
                                     >
@@ -557,10 +574,10 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                 )}
                                 <button
                                     onClick={() => quest && onEdit && onEdit(quest)}
-                                    className={`px-6 py-3 rounded-sm border ${chipBtn} font-bold transition flex items-center gap-3 group/edit`}
+                                    className={`min-w-0 justify-center px-2 xl:px-6 py-3 rounded-sm border ${chipBtn} font-bold transition flex items-center gap-2 xl:gap-3 group/edit`}
                                 >
-                                    <Edit2 size={16} className="opacity-70 group-hover/edit:opacity-100 transition-opacity" />
-                                    <span className="text-[10px] tracking-[0.2em] font-orbitron">EDIT_ARTIFACT</span>
+                                    <Edit2 size={16} className="shrink-0 opacity-70 group-hover/edit:opacity-100 transition-opacity" />
+                                    <span className="text-[10px] tracking-[0.12em] xl:tracking-[0.2em] font-orbitron whitespace-nowrap">EDIT_ARTIFACT</span>
                                 </button>
                                 <button
                                     onClick={() => {
@@ -569,10 +586,10 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                             onClose();
                                         }
                                     }}
-                                    className={`px-6 py-3 rounded-sm border ${chipBtn} font-bold transition flex items-center gap-3 group/active`}
+                                    className={`min-w-0 justify-center px-2 xl:px-6 py-3 rounded-sm border ${chipBtn} font-bold transition flex items-center gap-2 xl:gap-3 group/active`}
                                 >
-                                    <Target size={16} className="opacity-70 group-hover/active:opacity-100 transition-opacity" />
-                                    <span className="text-[10px] tracking-[0.2em] font-orbitron">MARK_TARGET</span>
+                                    <Target size={16} className="shrink-0 opacity-70 group-hover/active:opacity-100 transition-opacity" />
+                                    <span className="text-[10px] tracking-[0.12em] xl:tracking-[0.2em] font-orbitron whitespace-nowrap">MARK_TARGET</span>
                                 </button>
                             </div>
 
@@ -628,7 +645,9 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                     </span>
                                 </div>
 
-                                {/* The Thread — segmented EXP/sync readout */}
+                                {/* The Thread — segmented EXP/sync readout, with the star-path's
+                                    milestone stars laid on it (StarPath). */}
+                                <div className="relative">
                                 <div className="flex gap-[2px] h-2 items-stretch">
                                     {Array.from({ length: TICKS }).map((_, i) => (
                                         <motion.div
@@ -639,6 +658,14 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                             transition={{ duration: prefersReduced ? 0 : 0.4, delay: prefersReduced ? 0 : (i < filledTicks ? i * 0.015 : 0) }}
                                         />
                                     ))}
+                                </div>
+                                <StarPath
+                                    current={quest.currentChapter}
+                                    total={totalCh}
+                                    days={chronicle?.milestones ? Object.fromEntries(chronicle.milestones.map((m) => [m.chapter, m.day])) : undefined}
+                                    isDark={theme.isDark}
+                                    formatDay={formatDay}
+                                />
                                 </div>
                             </div>
                         </div>

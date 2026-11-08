@@ -7,6 +7,7 @@ import SystemLogo from '../components/system/SystemLogo';
 import ScrambleText from '../components/system/ScrambleText';
 import { Activity, Sun, Moon, Plus, Zap, Crown, LayoutTemplate, GripVertical, ChevronLeft, ChevronRight, LogOut, RefreshCw, Search } from 'lucide-react';
 import { getPlayerRank, calculateQuestRank, USER_RANKS, expOf, AVATAR_STAGES, avatarStageOf } from '../utils/ranks';
+import { soundsEnabled, setSoundsEnabled, playResonance, previewResonance } from '../utils/resonance';
 import { THEMES, ThemeId, statusLabel, startingThemeId, hasSavedTheme, dailyObjective } from './constants';
 
 import SystemConsole from '../components/system/SystemConsole';
@@ -426,6 +427,22 @@ const App: React.FC = () => {
             try { localStorage.setItem('akashic_effects', next ? 'low' : 'full'); } catch { /* private mode */ }
             return next;
         });
+    }, []);
+
+    // Chapter sounds (utils/resonance): off unless turned on, saved per device. Read through a
+    // ref where a chapter is requested, so that callback never changes with it.
+    const [chapterSounds, setChapterSounds] = useState<boolean>(soundsEnabled);
+    const chapterSoundsRef = useRef(chapterSounds);
+    chapterSoundsRef.current = chapterSounds;
+    const toggleChapterSounds = useCallback(() => {
+        setChapterSounds(prev => {
+            const next = !prev;
+            setSoundsEnabled(next);
+            return next;
+        });
+        // Turning it on plays the first note, inside this tap: the reader hears what it is,
+        // and the browser lets the page sound from here on.
+        if (!chapterSoundsRef.current) previewResonance();
     }, []);
 
     // The keyboard focus ring (styles/index.css, :focus-visible) draws in the theme's INK.
@@ -885,13 +902,21 @@ const App: React.FC = () => {
         const dailyKey = `${g.daily.kind}:${g.daily.target}`;
         const b = goalBaseline.current;
         if (b && b.day === g.today && b.dailyKey === dailyKey && !b.daily && daily) {
-            queueReward({ tone: 'REWARD', message: 'Daily mandate cleared', detail: `${dailyObjective(g.daily.kind, g.daily.target)} · done for today.`, duration: 7000 });
+            // The supernova: the streak, today included, flares in on the toast (StreakNova).
+            const days = Math.max(1, userState.streak);
+            queueReward({
+                tone: 'REWARD',
+                message: 'Daily mandate cleared',
+                detail: `${dailyObjective(g.daily.kind, g.daily.target)} · done for today.`,
+                nova: { days, readout: `>> Mandate consumed // streak calibrated: day ${days}` },
+                duration: 7000,
+            });
         }
         if (b && b.week === g.weekly.startsOn && b.weeklyTarget === g.weekly.target && !b.weekly && weekly) {
             queueReward({ tone: 'REWARD', message: 'Weekly decree cleared', detail: `${g.weekly.target.toLocaleString()} chapters absorbed this week.`, duration: 7000 });
         }
         goalBaseline.current = { day: g.today, week: g.weekly.startsOn, dailyKey, weeklyTarget: g.weekly.target, daily, weekly };
-    }, [userState.goals, queueReward]);
+    }, [userState.goals, userState.streak, queueReward]);
 
     /** Set the quests. Resolves to an error message, or null once saved. */
     const saveGoals = useCallback(async (daily: { kind: 'SERIES' | 'CHAPTERS'; target: number }, weeklyTarget: number): Promise<string | null> => {
@@ -942,7 +967,14 @@ const App: React.FC = () => {
             if (fresh.length > 2) {
                 queueReward({ tone: 'REWARD', message: `Titles acquired · ${fresh.length}`, detail: fresh.map(a => a.name).join(' · '), duration: 9000 });
             } else {
-                fresh.forEach(a => queueReward({ tone: 'REWARD', message: `Title acquired · ${a.name}`, detail: a.description, duration: 8000 }));
+                // A streak title (7, 30, 100 days) is the streak's milestone: it wears the supernova.
+                fresh.forEach(a => queueReward({
+                    tone: 'REWARD',
+                    message: `Title acquired · ${a.name}`,
+                    detail: a.description,
+                    nova: a.kind === 'STREAK' ? { days: a.target, readout: `>> Streak calibrated: day ${a.target}` } : undefined,
+                    duration: 8000,
+                }));
             }
         } catch {
             // Titles are weighed again on the next change; nothing is lost by a missed sync.
@@ -971,6 +1003,30 @@ const App: React.FC = () => {
         }, achievementsChecked.current ? 4000 : 1500);
         return () => clearTimeout(t);
     }, [library, libraryLoaded, syncAchievements]);
+
+    // A streak passing 7, 30 or 100 days flares like its title. The first time, the title toast
+    // carries it (syncAchievements); a streak REBUILT past a milestone whose title is already
+    // held got nothing, so it gets this. The first streak seen is the baseline, as with ranks.
+    const streakBaseline = useRef<number | null>(null);
+    useEffect(() => {
+        if (!libraryLoaded) { streakBaseline.current = null; return; }
+        const now = userState.streak;
+        const before = streakBaseline.current;
+        streakBaseline.current = now;
+        if (before === null || now <= before || !achievements) return;
+        for (const days of [7, 30, 100]) {
+            if (before >= days || now < days) continue;
+            const title = achievements.find(a => a.kind === 'STREAK' && a.target === days);
+            if (!title?.unlockedAt) continue; // not held yet: its title toast will carry the flare
+            queueReward({
+                tone: 'REWARD',
+                message: `Streak · ${days} days`,
+                detail: `Read on ${days} days in a row, again.`,
+                nova: { days, readout: `>> Streak calibrated: day ${days}` },
+                duration: 7000,
+            });
+        }
+    }, [libraryLoaded, userState.streak, achievements, queueReward]);
 
     const activeQuests = useMemo(() => {
         return library.filter(item => item.status === 'ACTIVE');
@@ -1475,7 +1531,11 @@ const App: React.FC = () => {
             // The dais answers a chapter read, once per burst: a run of taps or a held stepper
             // is one burst, so it flares at the first step, not at every chapter. Only reading
             // ON, never a correction back or an Undo. (No-op unless the dais is animating.)
-            if (current > now.current && !opts.undo) daisPulse.current?.();
+            if (current > now.current && !opts.undo) {
+                daisPulse.current?.();
+                // And, if the reader turned them on, the next note of the Resonance Scale.
+                if (chapterSoundsRef.current) playResonance();
+            }
         }
         b.target = { current, total };
         if (opts.typed) b.typed = true;
@@ -2751,6 +2811,8 @@ const App: React.FC = () => {
                         onRestoreQuest={restoreQuest}
                         lowPower={lowPower}
                         onToggleLowPower={toggleLowPower}
+                        chapterSounds={chapterSounds}
+                        onToggleChapterSounds={toggleChapterSounds}
                         onSelectManhwa={(id) => {
                             detailOpenedFromProfile.current = true;
                             setIsProfileOpen(false);

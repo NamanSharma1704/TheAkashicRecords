@@ -5,7 +5,7 @@ import SystemLogo from '../system/SystemLogo';
 import SystemFrame from '../system/SystemFrame';
 import EntityAvatar from '../system/EntityAvatar';
 import StatBox from '../system/StatBox';
-import { X, Database, Layers, Target, Download, Upload, RefreshCw, LogOut, Terminal, Edit2, KeyRound, User2, AlertCircle, CheckCircle2, Trash2, Activity, Gauge, ImagePlus, Share2, HelpCircle } from 'lucide-react';
+import { X, Database, Layers, Target, Download, Upload, RefreshCw, LogOut, Terminal, Edit2, KeyRound, User2, AlertCircle, CheckCircle2, Trash2, Activity, Gauge, ImagePlus, Share2, HelpCircle, Volume2, VolumeX, SlidersHorizontal } from 'lucide-react';
 import TrashPanel from './TrashPanel';
 import ReadingActivity from './ReadingActivity';
 import HunterTitles from './HunterTitles';
@@ -171,6 +171,9 @@ interface HunterProfileProps {
     /** Low-power effects: animated background and hero held still. */
     lowPower: boolean;
     onToggleLowPower: () => void;
+    /** Chapter sounds (the Resonance Scale), off by default; a per-device toggle. */
+    chapterSounds: boolean;
+    onToggleChapterSounds: () => void;
 }
 
 /**
@@ -199,7 +202,7 @@ const useMenuDismiss = (open: boolean, setOpen: (open: boolean) => void, ref: Re
     }, [open, setOpen, ref]);
 };
 
-const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, items, playerRank, achievements, equippedTitle, onEquipTitle, onImport, onRefresh, onLogout, showNotification, onSelectManhwa, onRestoreQuest, lowPower, onToggleLowPower }) => {
+const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, items, playerRank, achievements, equippedTitle, onEquipTitle, onImport, onRefresh, onLogout, showNotification, onSelectManhwa, onRestoreQuest, lowPower, onToggleLowPower, chapterSounds, onToggleChapterSounds }) => {
     const [showTrash, setShowTrash] = useState(false);
     const totalChapters = useMemo(() => items.reduce((acc, i) => acc + (i.currentChapter || 0), 0), [items]);
     const totalManhwa = items.length;
@@ -409,6 +412,10 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
     const importMenuRef = useRef<HTMLDivElement>(null);
     const importFileRef = useRef<HTMLInputElement>(null);
     useMenuDismiss(importMenuOpen, setImportMenuOpen, importMenuRef);
+    // System settings: the per-device switches (low-power effects, chapter sounds).
+    const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
+    const settingsMenuRef = useRef<HTMLDivElement>(null);
+    useMenuDismiss(settingsMenuOpen, setSettingsMenuOpen, settingsMenuRef);
     /** Which reading-list import is open, if any. */
     const [listImport, setListImport] = useState<'anilist' | 'mal' | null>(null);
 
@@ -651,7 +658,10 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                         <h2 id="hunter-profile-title" className={`font-orbitron text-base tracking-[0.2em] font-bold bg-clip-text text-transparent bg-gradient-to-r ${theme.isDark ? 'from-amber-600 via-yellow-400 to-white' : theme.labelGradient} transition-colors duration-700`}>HUNTER PROFILE</h2>
                     </div>
                 </div>
-                <div data-tour="profile-tools" className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+                {/* Below 360px the eight tools ran 37px past a 320px screen (close off it), so
+                    there they shrink to 32px with tighter gaps: 284px in all. Only the toolbar's
+                    own buttons (direct, or a menu's trigger), never the items inside a menu. */}
+                <div data-tour="profile-tools" className="flex items-center gap-1.5 sm:gap-3 shrink-0 max-[359px]:gap-1 max-[359px]:[&>button]:w-8 max-[359px]:[&>button]:h-8 max-[359px]:[&>button]:px-0 max-[359px]:[&>div>button]:w-8 max-[359px]:[&>div>button]:h-8">
                     {/* Compact Sys Admin Tools */}
                     {/* Export: the full backup or the spreadsheet. A menu rather than another
                         button, because a phone's toolbar has no room left. */}
@@ -728,18 +738,44 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                     <button type="button" onClick={findMissingCovers} disabled={coverBusy} aria-busy={coverBusy} title="Find missing covers" aria-label="Find missing covers" className={`w-9 h-9 flex items-center justify-center border ${theme.borderSubtle} ${theme.mutedText} hover:${theme.headingText} ${theme.isDark ? 'hover:bg-white/5' : 'hover:bg-black/5'} transition-colors cursor-pointer disabled:cursor-wait`}>
                         <ImagePlus size={14} aria-hidden="true" className={coverBusy ? 'animate-pulse' : ''} />
                     </button>
-                    {/* Low-power effects: holds the animated background, rings and dais still.
-                        A toggle, so it announces its state (aria-pressed) and shows it (fill). */}
-                    <button
-                        type="button"
-                        onClick={onToggleLowPower}
-                        aria-pressed={lowPower}
-                        aria-label="Low-power effects"
-                        title={lowPower ? 'Low-power effects: ON (animations held still)' : 'Low-power effects: OFF'}
-                        className={`w-9 h-9 flex items-center justify-center border transition-colors cursor-pointer ${lowPower ? 'border-accent-line-strong bg-accent-soft-strong text-accent-ink' : `${theme.borderSubtle} ${theme.mutedText} hover:${theme.headingText} ${theme.isDark ? 'hover:bg-white/5' : 'hover:bg-black/5'}`}`}
-                    >
-                        <Gauge size={14} aria-hidden="true" />
-                    </button>
+                    {/* System settings: the per-device switches, low-power effects and chapter
+                        sounds. One menu rather than a button each, like Export and Import: with
+                        both as buttons the toolbar ran 24px past a 375px phone and pushed the
+                        close button off. Centred under its button, so it stays on a phone's
+                        screen from the middle of the toolbar. Each item is a checkbox (it says
+                        ON or OFF), and the menu stays open to show the change. */}
+                    <div ref={settingsMenuRef} className="relative">
+                        <button type="button" onClick={() => setSettingsMenuOpen(o => !o)} aria-haspopup="menu" aria-expanded={settingsMenuOpen} title="System settings" aria-label="System settings" className={`w-9 h-9 flex items-center justify-center border transition-colors cursor-pointer ${lowPower || chapterSounds ? 'border-accent-line text-accent-ink' : `${theme.borderSubtle} ${theme.mutedText}`} hover:${theme.headingText} ${theme.isDark ? 'hover:bg-white/5' : 'hover:bg-black/5'}`}>
+                            <SlidersHorizontal size={14} aria-hidden="true" />
+                        </button>
+                        {settingsMenuOpen && (
+                            <div role="menu" aria-label="System settings" className={`absolute left-1/2 -translate-x-1/2 top-full mt-1.5 z-50 w-56 p-1 border ${theme.borderSubtle} ${theme.panelBg} shadow-xl`}>
+                                {[
+                                    { label: 'Low-power effects', hint: 'Holds the animated background, rings and dais still.', on: lowPower, toggle: onToggleLowPower, icon: <Gauge size={14} aria-hidden="true" /> },
+                                    { label: 'Chapter sounds', hint: 'A rising note for each chapter read. Plays one when turned on.', on: chapterSounds, toggle: onToggleChapterSounds, icon: chapterSounds ? <Volume2 size={14} aria-hidden="true" /> : <VolumeX size={14} aria-hidden="true" /> },
+                                ].map((item, i) => (
+                                    <button
+                                        key={item.label}
+                                        type="button"
+                                        role="menuitemcheckbox"
+                                        aria-checked={item.on}
+                                        autoFocus={i === 0}
+                                        onClick={item.toggle}
+                                        className={`w-full text-left px-3 py-2.5 flex items-start gap-3 ${theme.isDark ? 'hover:bg-white/5 focus-visible:bg-white/5' : 'hover:bg-black/5 focus-visible:bg-black/5'} transition-colors cursor-pointer`}
+                                    >
+                                        <span className={`mt-0.5 shrink-0 ${item.on ? 'text-accent-ink' : theme.mutedText}`}>{item.icon}</span>
+                                        <span className="flex-1 min-w-0 flex flex-col gap-0.5">
+                                            <span className={`font-mono text-[11px] font-bold ${theme.headingText}`}>{item.label}</span>
+                                            <span className={`font-mono text-[10px] leading-snug ${theme.mutedText}`}>{item.hint}</span>
+                                        </span>
+                                        <span aria-hidden="true" className={`shrink-0 mt-0.5 px-1.5 py-0.5 border font-mono text-[9px] font-bold tracking-widest ${item.on ? 'border-accent-line-strong bg-accent-soft-strong text-accent-ink' : `${theme.borderSubtle} ${theme.mutedText}`}`}>
+                                            {item.on ? 'ON' : 'OFF'}
+                                        </span>
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                    </div>
                     <button type="button" onClick={handleRecalibrate} title="System recalibration" className={`h-9 px-3 hidden sm:flex items-center justify-center gap-2 border ${theme.borderSubtle} ${theme.highlightText} hover:bg-accent-soft transition-colors cursor-pointer relative overflow-hidden group`}>
                         <div className="absolute inset-0 bg-white/5 group-hover:bg-transparent transition-all" />
                         <RefreshCw size={14} className="relative z-10" aria-hidden="true" />

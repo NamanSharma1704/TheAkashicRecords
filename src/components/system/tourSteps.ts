@@ -54,7 +54,7 @@ export const tourSteps = (id: TourId, guest: boolean): TourStep[] => {
             { target: 'profile-banner', title: 'Your designation', body: 'Your rank, the EXP to the next one and the whole ladder. Edit Profile changes your name; Hunter Card makes an image of all this to share.' },
             { target: 'profile-titles', title: 'Hunter Titles', body: 'Titles the System grants for reading: streaks, big days, conquests. Equip one to wear it under your name.' },
             { target: 'profile-activity', title: 'Reading activity', body: 'A year of reading from your log, day by day, with your streaks.' },
-            { target: 'profile-tools', title: 'Archive tools', body: 'Export a backup, import a file or an AniList or MyAnimeList list, open the Trash, find missing covers, and calm the effects.' },
+            { target: 'profile-tools', title: 'Archive tools', body: 'Export a backup, import a file or an AniList or MyAnimeList list, open the Trash, find missing covers, and open the system settings: calmer effects, and chapter sounds.' },
         ];
         case 'series': return [
             { target: null, title: 'A series page', body: 'Everything about one series: where you are in it, your score for it, its history, and series like it.' },

@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import { AlertTriangle, Award, CheckCircle, Info, XCircle, X } from 'lucide-react';
 import { Theme } from '../../core/types';
 import SystemFrame from './SystemFrame';
+import StreakNova from './StreakNova';
 
 /** REWARD is the System granting something: a rank, a title. */
 type ToastTone = 'INFO' | 'SUCCESS' | 'WARNING' | 'ERROR' | 'REWARD';
@@ -21,6 +22,9 @@ export interface ToastSpec {
     duration?: number;
     /** 0..1 for a determinate task (CSV import). Replaces the countdown bar. */
     progress?: number;
+    /** A streak reward: the supernova emblem (StreakNova, the day count flaring in) takes the
+     *  icon's place, and `readout` runs under the detail as a System line. */
+    nova?: { days: number; readout: string };
 }
 
 interface SystemToastProps {
@@ -107,7 +111,9 @@ const SystemToast: React.FC<SystemToastProps> = ({ toast, onDismiss, theme }) =>
                     >
                         <SystemFrame theme={theme} level={3}>
                             <div className="flex items-center gap-3 pl-3.5 pr-2 py-3">
-                                <span aria-hidden="true" className="shrink-0">{icon}</span>
+                                {toast.nova
+                                    ? <StreakNova key={toast.id} days={toast.nova.days} isDark={theme.isDark} />
+                                    : <span aria-hidden="true" className="shrink-0">{icon}</span>}
                                 <div className="flex-1 min-w-0">
                                     <p className={`font-orbitron font-bold text-[11px] tracking-[0.14em] uppercase leading-snug ${theme.headingText}`}>
                                         {toast.message}
@@ -117,6 +123,11 @@ const SystemToast: React.FC<SystemToastProps> = ({ toast, onDismiss, theme }) =>
                                         // that matters ("total raised to 182 (was 175)").
                                         <p className={`font-mono text-[11px] leading-snug mt-0.5 ${theme.mutedText} line-clamp-2`} title={toast.detail}>
                                             {toast.detail}
+                                        </p>
+                                    )}
+                                    {toast.nova && (
+                                        <p className="font-mono text-[10px] font-bold tracking-[0.12em] uppercase leading-snug mt-1 text-accent-ink break-words">
+                                            {toast.nova.readout}
                                         </p>
                                     )}
                                 </div>

@@ -520,3 +520,26 @@ html.theme-switching *::after {
 @media (prefers-reduced-motion: reduce) {
     .star-ignite { animation: none; }
 }
+
+/* THE STREAK SUPERNOVA (StreakNova): 600 ms, once, as the toast arrives. Two shockwaves bloom out
+   of the core, the core flashes; the reticle turns slowly after. */
+@keyframes nova-wave {
+    0% { opacity: 0.95; transform: scale(0.5); }
+    50% { opacity: 0.7; }
+    100% { opacity: 0; transform: scale(2.1); }
+}
+@keyframes nova-core {
+    0% { transform: scale(0.6); }
+    45% { transform: scale(1.22); filter: drop-shadow(0 0 10px var(--accent-color)); }
+    100% { transform: scale(1); }
+}
+@keyframes nova-spin { to { transform: rotate(360deg); } }
+.streak-nova .nova-wave, .streak-nova .nova-core, .streak-nova .nova-spin { transform-box: fill-box; transform-origin: center; }
+.streak-nova .nova-wave { opacity: 0; animation: nova-wave 600ms cubic-bezier(0.2, 0.7, 0.3, 1) forwards; }
+.streak-nova .nova-wave-late { animation-delay: 140ms; }
+.streak-nova .nova-core { animation: nova-core 600ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.streak-nova .nova-spin { animation: nova-spin 18s linear infinite; }
+@media (prefers-reduced-motion: reduce) {
+    .streak-nova .nova-wave { display: none; }
+    .streak-nova .nova-core, .streak-nova .nova-spin { animation: none; }
+}

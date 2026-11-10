@@ -109,7 +109,10 @@ const TowerStructure: React.FC<TowerStructureProps> = ({ onSelectFloor, theme, o
         //   SEALED     untouched: locked. Dimmed, the emblem still, no bob.
         //   THRESHOLD..CREST  the climb: today's look, a touch brighter with each floor.
         //   VIGIL      caught up: on watch. The emblem turns 1.3x and the pad breathes.
-        //   THRONE     conquered: relic gold, at full brightness, with gold motes rising.
+        //   THRONE     conquered: the summit, at full brightness, with motes rising. On the Void
+        //              it is the relic gold; on Arcanum the owner chose (2026-11-10) the
+        //              theme's own violet, deepest and brightest of the floors, with silver
+        //              motes, since gold among the violet isles read as a foreign colour.
         // Hover and focus keep the shared hover materials on every floor: the selection reads
         // the same wherever it lands. ---
         interface Mood {
@@ -125,10 +128,19 @@ const TowerStructure: React.FC<TowerStructureProps> = ({ onSelectFloor, theme, o
         // theme-color-ok: WebGL colours, which cannot read CSS variables
         const NEUTRAL = isDark ? 0x8a8478 : 0x8e86a3;
         const toward = (hex: number, k: number) => new THREE.Color(hex).lerp(new THREE.Color(NEUTRAL), k).getHex();
-        // The relic gold (RelicFrame's GOLD_DEEP / GOLD / GOLD_LIGHT), artwork in both themes.
+        // The relic gold (RelicFrame's GOLD_DEEP / GOLD / GOLD_LIGHT): the Throne on the Void.
         const RELIC_BODY = 0xb8892f;
         const RELIC = 0xe2b552;
         const RELIC_LIGHT = 0xfbe9b0;
+        // The Throne on Arcanum: violet-600 body (more saturated than the climb's violet-500),
+        // violet-700 pad, edges and core near white, so it is the brightest isle, not a gold one.
+        // Its motes are silver, a cool steel: plain silver vanished into the pale lavender page.
+        // theme-color-ok: WebGL colours, which cannot read CSS variables
+        const SUMMIT_BODY = 0x7c3aed;
+        const SUMMIT_PAD = 0x6d28d9;
+        const SUMMIT_EDGE = 0xf5f3ff;
+        const SUMMIT_RIM = 0xddd6fe;
+        const SILVER_MOTE = 0x8e98ad;
         const base: Mood = {
             body: BODY_COLOR, bodyOpacity: 1, edge: EDGE_COLOR, edgeOpacity: 0.7,
             pad: PRIMARY_COLOR, padOpacity: 0.9, rim: RIM_COLOR, rimOpacity: 1, hot: HOT_COLOR, hotOpacity: 1,
@@ -152,11 +164,17 @@ const TowerStructure: React.FC<TowerStructureProps> = ({ onSelectFloor, theme, o
             ASCENT: climb(2 / 3),
             CREST: climb(1),
             VIGIL: { ...climb(1), spin: 1.3, pulse: true },
-            THRONE: {
-                body: RELIC_BODY, bodyOpacity: 1, edge: RELIC_LIGHT, edgeOpacity: 0.95,
-                pad: RELIC, padOpacity: 1, rim: RELIC, rimOpacity: 1, hot: RELIC_LIGHT, hotOpacity: 1,
-                bob: 1, spin: 1, relicMotes: true,
-            },
+            THRONE: isDark
+                ? {
+                    body: RELIC_BODY, bodyOpacity: 1, edge: RELIC_LIGHT, edgeOpacity: 0.95,
+                    pad: RELIC, padOpacity: 1, rim: RELIC, rimOpacity: 1, hot: RELIC_LIGHT, hotOpacity: 1,
+                    bob: 1, spin: 1, relicMotes: true,
+                }
+                : {
+                    body: SUMMIT_BODY, bodyOpacity: 1, edge: SUMMIT_EDGE, edgeOpacity: 1,
+                    pad: SUMMIT_PAD, padOpacity: 1, rim: SUMMIT_RIM, rimOpacity: 1, hot: 0xffffff, hotOpacity: 1,
+                    bob: 1, spin: 1, relicMotes: true,
+                },
         };
         /** One floor's materials, from its mood. Faint parts are transparent and skip the depth
          *  write, so a ghostly isle does not cut holes in what is behind it. */
@@ -431,12 +449,12 @@ const TowerStructure: React.FC<TowerStructureProps> = ({ onSelectFloor, theme, o
             }
             g.setAttribute('position', new THREE.BufferAttribute(p, 3));
             g.userData = { floorY: s * 0.6, speeds };
-            // On the light page additive gold would vanish into the pale ground; it draws
-            // normally there, a shade deeper, so it still reads as gold.
+            // Gold and additive on the Void. On the light page additive light would vanish into
+            // the pale ground, so the silver motes draw normally there.
             const m = new THREE.PointsMaterial({
                 size: 1.25, map: moteTex, transparent: true, depthWrite: false,
                 blending: isDark ? THREE.AdditiveBlending : THREE.NormalBlending,
-                color: isDark ? RELIC : RELIC_BODY, opacity: isDark ? 0.95 : 0.85,
+                color: isDark ? RELIC : SILVER_MOTE, opacity: isDark ? 0.95 : 0.9,
             });
             const pts = new THREE.Points(g, m);
             obj.isle.add(pts);

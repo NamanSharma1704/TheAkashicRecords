@@ -95,6 +95,8 @@ interface ChapterRequestOpts {
 }
 /** Taps closer together than this merge into one save. */
 const CHAPTER_MERGE_MS = 600;
+/** The guest sandbox's countdown turns to the warning ink for its last 10 minutes. */
+const LINK_LOW_MS = 10 * 60 * 1000;
 /**
  * A chapter save that fails for want of a connection is held and retried rather than undone:
  * the number stays where the reader put it. These are the waits between tries (the last one
@@ -2066,15 +2068,17 @@ const App: React.FC = () => {
                     <div className="flex items-center gap-2 sm:gap-3 shrink-0">
                         {guestTimeLeft !== null && (
                             <div className="flex flex-col items-end leading-none sm:mr-2">
-                                {/* A countdown is a warning, so it stays amber even when the theme is
-                                    cyan — but amber-500 belongs to the dark theme and measures 1.84:1
-                                    on the page. `warningInk` keeps the meaning and drops four steps on
-                                    light. The glow goes with it: there is nothing on a pale page for an
-                                    8px amber spill to brighten. */}
-                                <span className="text-[7px] font-mono tracking-[0.2em] font-black uppercase" style={{ color: theme.warningInk }}>LINK_STABILITY</span>
+                                {/* The sandbox's time left, in the theme's ink while there is plenty
+                                    of it, and in the warning ink for the last 10 minutes, when it is a
+                                    warning. It was always the warning ink, from the cyan era, when a
+                                    countdown was to stay amber whatever the theme; on the violet light
+                                    theme that read as a stray gold (owner, 2026-11-10). On dark the two
+                                    inks are the same amber, so dark is unchanged. The glow is dark's
+                                    only: there is nothing on a pale page for an amber spill to brighten. */}
+                                <span className="text-[7px] font-mono tracking-[0.2em] font-black uppercase" style={{ color: guestTimeLeft <= LINK_LOW_MS ? theme.warningInk : theme.accentInk }}>LINK_STABILITY</span>
                                 <span
                                     className="text-[14px] font-mono font-black"
-                                    style={{ color: theme.warningInk, filter: theme.isDark ? 'drop-shadow(0 0 8px rgba(245,158,11,0.5))' : undefined }}
+                                    style={{ color: guestTimeLeft <= LINK_LOW_MS ? theme.warningInk : theme.accentInk, filter: theme.isDark ? 'drop-shadow(0 0 8px rgba(245,158,11,0.5))' : undefined }}
                                 >
                                     {formatTime(guestTimeLeft)}
                                 </span>

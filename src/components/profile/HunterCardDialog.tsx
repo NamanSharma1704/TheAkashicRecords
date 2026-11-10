@@ -66,7 +66,7 @@ const HunterCardDialog: React.FC<HunterCardDialogProps> = ({ theme, data, onClos
         }
     };
 
-    const actionClass = `h-9 px-3 flex items-center gap-2 border font-mono text-[10px] font-bold tracking-widest uppercase transition-colors disabled:opacity-50 disabled:cursor-wait ${theme.border} text-accent-ink ${theme.isDark ? 'hover:bg-white/5' : 'hover:bg-black/5'}`;
+    const actionClass = 'hud hud-btn hud-accent h-9 px-3 flex items-center gap-2 font-mono text-[10px] font-bold tracking-widest uppercase disabled:opacity-50 disabled:cursor-wait text-accent-ink';
 
     return (
         <motion.div
@@ -85,11 +85,11 @@ const HunterCardDialog: React.FC<HunterCardDialogProps> = ({ theme, data, onClos
                 initial={{ scale: 0.96, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 transition={{ type: 'spring', damping: 25, stiffness: 220 }}
-                className={`w-full max-w-3xl border ${theme.isDark ? 'border-white/10 bg-[#0a0a0a]' : 'border-violet-200 bg-white'} shadow-2xl rounded-sm overflow-hidden`}
+                className={`hud hud-shell w-full max-w-3xl ${theme.isDark ? 'bg-[#0a0a0a]' : 'bg-white'} overflow-hidden`}
             >
                 <div className={`flex items-center justify-between gap-3 px-4 py-3 border-b ${theme.borderSubtle}`}>
                     <h3 id="hunter-card-title" className={`font-orbitron text-sm font-bold tracking-[0.2em] uppercase ${theme.headingText}`}>Hunter Card</h3>
-                    <button type="button" onClick={onClose} aria-label="Close" title="Close" className={`w-8 h-8 flex items-center justify-center ${theme.mutedText} ${theme.isDark ? 'hover:bg-white/10' : 'hover:bg-black/5'} transition-colors`}>
+                    <button type="button" onClick={onClose} aria-label="Close" title="Close" className={`hud hud-tool hud-ghost w-8 h-8 flex items-center justify-center ${theme.mutedText}`}>
                         <X size={16} aria-hidden="true" />
                     </button>
                 </div>

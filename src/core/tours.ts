@@ -9,7 +9,7 @@ import { createContext, useCallback, useContext, useEffect } from 'react';
  * sandbox); anyone can replay a page's tour from its "?" button. The dashboard has none, so
  * its tour plays once per guest only.
  */
-export type TourId = 'dashboard' | 'spire' | 'floor' | 'profile' | 'series' | 'gate';
+export type TourId = 'dashboard' | 'spire' | 'floor' | 'matrix' | 'profile' | 'series' | 'gate';
 
 /** App's tour opener: `auto` opens only a tour this guest has not seen; otherwise it opens now. */
 export const TourContext = createContext<((id: TourId, auto: boolean) => void) | null>(null);

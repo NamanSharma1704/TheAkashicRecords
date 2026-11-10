@@ -6,10 +6,12 @@ import TowerHUD from './TowerHUD';
 import TowerStructure from './TowerStructure';
 import { FLOOR_DEFS, floorIndexForItem } from './floors';
 import QuestCard from '../quest/QuestCard';
+import CommandMatrix from './CommandMatrix';
+import { SPIRE_COMPARE, SPIRE_SORTS, SpireSort } from './spireSort';
 import SystemLogo from '../system/SystemLogo';
 import ScrambleText from '../system/ScrambleText';
 import { getQuestRankObj } from '../../utils/ranks';
-import { ChevronLeft, ChevronRight, X, Search, AlertCircle, ChevronDown, Filter, ArrowDownUp, Check, CheckSquare, Trash2, HelpCircle } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X, Search, AlertCircle, ChevronDown, Filter, ArrowDownUp, Check, CheckSquare, Trash2, HelpCircle, Layers, List } from 'lucide-react';
 import { useDialogFocus } from '../../utils/useDialogFocus';
 import { usePageTour } from '../../core/tours';
 
@@ -19,6 +21,11 @@ interface DivineSpireProps {
     theme: Theme;
     items: Quest[];
     onActivate: (id: string) => void;
+    /** The Command Matrix's +1 (or -1, its "-" key): a chapter on that record, through App's
+     *  chapter path, merged with the taps around it. */
+    onStepChapter: (id: string, delta?: number) => void;
+    /** Opens a record's reading link (the Matrix's portal button and Enter). */
+    onEnterPortal: (link: string) => void;
     playerRank: { name: string };
     streak: number;
     /** The daily and weekly quests, shown and adjusted in the HUD; null until loaded. */
@@ -44,29 +51,23 @@ const SelectMark: React.FC<{ on: boolean }> = ({ on }) => (
     </div>
 );
 
-/** How a floor (and the search results) is ordered. Remembered per browser. */
-type SpireSort = 'RECENT' | 'TITLE' | 'PROGRESS' | 'APPRAISAL' | 'NEW';
-const SPIRE_SORTS: { value: SpireSort; label: string }[] = [
-    { value: 'RECENT', label: 'Recent' },
-    { value: 'TITLE', label: 'Title' },
-    { value: 'PROGRESS', label: 'Progress' },
-    { value: 'APPRAISAL', label: 'Appraisal' },
-    { value: 'NEW', label: 'New chapters' },
-];
-const recency = (q: Quest) => new Date(q.lastUpdated || 0).getTime();
-const progressOf = (q: Quest) => (q.totalChapters > 0 ? q.currentChapter / q.totalChapters : 0);
-const SPIRE_COMPARE: Record<SpireSort, (a: Quest, b: Quest) => number> = {
-    RECENT: (a, b) => recency(b) - recency(a),
-    TITLE: (a, b) => a.title.localeCompare(b.title),
-    PROGRESS: (a, b) => progressOf(b) - progressOf(a) || recency(b) - recency(a),
-    // Unrated records go last, then by title.
-    APPRAISAL: (a, b) => (b.rating ?? 0) - (a.rating ?? 0) || a.title.localeCompare(b.title),
-    NEW: (a, b) => (b.newChapters ?? 0) - (a.newChapters ?? 0) || recency(b) - recency(a),
+type SpireView = 'TOWER' | 'FLOOR' | 'MATRIX';
+
+/** The view the Spire opens in: the tower, or the Command Matrix if that was the last one
+ *  chosen with the header switch (remembered per browser). */
+const savedView = (): SpireView => {
+    try { return localStorage.getItem('akashic_spire_view') === 'MATRIX' ? 'MATRIX' : 'TOWER'; } catch { return 'TOWER'; }
 };
 
-const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items, onActivate, playerRank, streak, goals, onSaveGoals, onBulkStatus, onBulkTrash, startInSearch = false }) => {
+const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items, onActivate, onStepChapter, onEnterPortal, playerRank, streak, goals, onSaveGoals, onBulkStatus, onBulkTrash, startInSearch = false }) => {
     // TOWER SYSTEM STATE
-    const [viewMode, setViewMode] = useState<'TOWER' | 'FLOOR'>(startInSearch ? 'FLOOR' : 'TOWER');
+    const [viewMode, setViewMode] = useState<SpireView>(() => (startInSearch ? 'FLOOR' : savedView()));
+    /** The header switch: the tower or the Matrix, remembered for the next opening. */
+    const chooseView = (next: 'TOWER' | 'MATRIX') => {
+        if (next === 'TOWER') handleBackToTower();
+        else { setViewMode('MATRIX'); setSearch(''); setSearchEntry(false); setSelecting(false); setSelected(new Set()); setIsFilterOpen(false); }
+        try { localStorage.setItem('akashic_spire_view', next); } catch { /* a preference only */ }
+    };
     // Entered by "/" to search: stepping "back" from that floor view means leaving the Spire,
     // not walking into a tower you never opened. Cleared once you navigate the tower yourself.
     const [searchEntry, setSearchEntry] = useState(startInSearch);
@@ -214,9 +215,10 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
         else stepBack();
     }, startInSearch ? searchInputRef : undefined);
 
-    // Two tours: the tower, and a floor's view (search, filters, select).
+    // Three tours: the tower, a floor's view (search, filters, select), and the Matrix.
     const startSpireTour = usePageTour('spire', isOpen && viewMode === 'TOWER');
     const startFloorTour = usePageTour('floor', isOpen && viewMode === 'FLOOR');
+    const startMatrixTour = usePageTour('matrix', isOpen && viewMode === 'MATRIX');
 
     // What "Select all" takes: the search results, or the floor in view (after its filters).
     const inView = search ? filteredItems : (floors[selectedFloorIndex]?.items ?? []);
@@ -245,7 +247,7 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
             style={{ '--elev-1': elevation(theme, 1) } as React.CSSProperties}
         >
             {/* AMBIENT BACKGROUND GLOW (Root-level to cover header) */}
-            {viewMode === 'FLOOR' && (
+            {viewMode !== 'TOWER' && (
                 <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
                     <div className={`absolute -top-[20%] -right-[20%] w-[60%] h-[60%] bg-accent-soft ${theme.isDark ? 'mix-blend-screen' : 'mix-blend-multiply'} rounded-full blur-[150px] z-10 transition-colors duration-700`} />
                     <div className={`absolute -bottom-[20%] -left-[20%] w-[60%] h-[60%] bg-accent-soft ${theme.isDark ? 'mix-blend-screen' : 'mix-blend-multiply'} rounded-full blur-[150px] z-10 transition-colors duration-700`} />
@@ -277,7 +279,7 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
                                 type="button"
                                 onClick={() => handleSelectFloor(i)}
                                 aria-label={count > 0 ? `Enter ${floor.name}, ${count} record${count === 1 ? '' : 's'}` : `Enter ${floor.name}, sealed`}
-                                className={`px-3 py-1.5 font-mono text-[10px] tracking-widest uppercase border ${theme.borderSubtle} ${theme.highlightText} ${theme.isDark ? 'hover:bg-white/10' : 'hover:bg-black/5'}`}
+                                className={`hud hud-chip px-3 py-1.5 font-mono text-[10px] tracking-widest uppercase ${theme.highlightText}`}
                             >
                                 {floor.label}
                             </button>
@@ -290,7 +292,9 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
             <div className="relative z-50 w-full h-16 flex items-center shrink-0">
                 <div className="w-full px-4 md:px-6 flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                        <div className="relative w-10 h-10 flex items-center justify-center shrink-0">
+                        {/* Not on a phone: the view switch took the room it stood in, and the title
+                            beside it broke onto two lines. */}
+                        <div className="relative w-10 h-10 hidden sm:flex items-center justify-center shrink-0">
                             <SystemLogo theme={theme} className="w-full h-full drop-shadow-[0_0_8px_rgba(251,191,36,0.2)]" />
                         </div>
                         <div className="flex flex-col leading-none">
@@ -303,6 +307,32 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
                         </div>
                     </div>
                     <div className="flex items-center gap-1">
+                    {/* The two ways to see the library: the tower, or the Command Matrix (a
+                        dense list for keeping it moving). A floor counts as the tower. On a
+                        phone a floor's header has no room for it beside Select; its close
+                        button leads back to the tower, where the switch is. */}
+                    <div data-tour="spire-views" role="group" aria-label="Spire view" className={`hud hud-well hud-cut-all [--hud-c:6px] mr-0.5 sm:mr-1 shrink-0 ${viewMode === 'FLOOR' ? 'hidden sm:flex' : 'flex'} items-center gap-0.5 p-[3px]`}>
+                        {([
+                            { v: 'TOWER' as const, label: 'Tower', Icon: Layers },
+                            { v: 'MATRIX' as const, label: 'Matrix', Icon: List },
+                        ]).map(({ v, label, Icon }) => {
+                            const on = v === 'MATRIX' ? viewMode === 'MATRIX' : viewMode !== 'MATRIX';
+                            return (
+                                <button
+                                    key={v}
+                                    type="button"
+                                    aria-pressed={on}
+                                    onClick={() => { if (!on || viewMode === 'FLOOR') chooseView(v); }}
+                                    title={v === 'TOWER' ? 'The tower' : 'The Command Matrix: every record in one list'}
+                                    className={`hud hud-chip hud-seg hud-cut-all [--hud-c:4px] h-7 md:h-8 w-8 sm:w-auto px-0 sm:px-2.5 flex items-center justify-center gap-1.5 font-mono text-[10px] font-bold tracking-widest uppercase ${on ? 'text-accent-ink' : `${theme.mutedText} ${theme.isDark ? 'hover:text-white' : 'hover:text-[#241a33]'}`}`}
+                                >
+                                    <Icon size={14} aria-hidden="true" />
+                                    <span className="hidden sm:inline">{label}</span>
+                                    <span className="sm:hidden sr-only">{label}</span>
+                                </button>
+                            );
+                        })}
+                    </div>
                     {/* Select mode: change or trash many records at once. Up here with the page's
                         other tools rather than beside the search, which stays alone and centred
                         as the floor view's focus. */}
@@ -313,7 +343,7 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
                             aria-pressed={selecting}
                             onClick={() => (selecting ? endSelecting() : setSelecting(true))}
                             title={selecting ? 'Leave select mode' : 'Select records to change several at once'}
-                            className={`mr-0.5 sm:mr-1 shrink-0 h-8 w-8 sm:w-auto md:h-9 px-0 sm:px-2.5 md:px-3.5 flex items-center justify-center gap-2 rounded-full border backdrop-blur-xl font-mono text-[10px] font-bold tracking-widest uppercase transition-colors ${selecting ? `${theme.border} bg-accent-soft-strong text-accent-ink` : `${theme.isDark ? 'border-white/10 bg-black/60 hover:border-white/25' : 'border-violet-200 bg-white/80 hover:border-violet-300'} ${theme.highlightText}`}`}
+                            className={`hud hud-chip hud-well mr-0.5 sm:mr-1 shrink-0 h-8 w-8 sm:w-auto md:h-9 px-0 sm:px-2.5 md:px-3.5 flex items-center justify-center gap-2 font-mono text-[10px] font-bold tracking-widest uppercase ${selecting ? 'text-accent-ink' : theme.highlightText}`}
                         >
                             <CheckSquare size={15} aria-hidden="true" />
                             <span className="hidden sm:inline">{selecting ? 'Done' : 'Select'}</span>
@@ -322,10 +352,10 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
                     )}
                     <button
                         type="button"
-                        onClick={viewMode === 'TOWER' ? startSpireTour : startFloorTour}
+                        onClick={viewMode === 'TOWER' ? startSpireTour : viewMode === 'MATRIX' ? startMatrixTour : startFloorTour}
                         aria-label="Tour this page"
                         title="Tour this page"
-                        className={`p-1.5 md:p-2 ${theme.mutedText} hover:${theme.baseText} transition-colors rounded-md border border-transparent ${theme.isDark ? 'hover:border-white/10 hover:bg-white/5' : 'hover:border-stone-300 hover:bg-black/5'}`}
+                        className={`hud hud-tool hud-ghost p-1.5 md:p-2 ${theme.mutedText} hover:${theme.baseText}`}
                     >
                         <HelpCircle size={20} aria-hidden="true" />
                     </button>
@@ -334,7 +364,7 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
                         onClick={stepBack}
                         aria-label={viewMode === 'FLOOR' && !searchEntry ? 'Back to the tower' : 'Close Divine Spire'}
                         title={viewMode === 'FLOOR' && !searchEntry ? 'Back to the tower' : 'Close Divine Spire'}
-                        className={`group relative p-1.5 md:p-2 ${theme.mutedText} hover:${theme.baseText} transition-all duration-300 rounded-md border border-transparent ${theme.isDark ? 'hover:border-white/10 hover:bg-white/5' : 'hover:border-stone-300 hover:bg-black/5'}`}
+                        className={`hud hud-tool hud-ghost group p-1.5 md:p-2 ${theme.mutedText} hover:${theme.baseText}`}
                     >
                         <X size={22} aria-hidden="true" className="relative z-10 transition-transform duration-500 group-hover:rotate-90" />
                     </button>
@@ -353,8 +383,8 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
                             its glow ran up into the title. */}
                         <div className="relative z-20 shrink-0 w-full max-w-2xl mx-auto px-4 mt-3 md:mt-6 mb-2 md:mb-4">
                             <div data-tour="floor-search" className="relative group w-full">
-                                <div className={`absolute -inset-1 bg-gradient-to-r ${theme.gradient} opacity-20 blur-md group-focus-within:opacity-40 transition-all duration-500 rounded-full`} />
-                                <div className={`relative ${theme.isDark ? 'bg-black/60' : 'bg-white/80'} backdrop-blur-xl border border-white/10 rounded-full px-3 py-2 md:px-4 md:py-3 flex items-center shadow-2xl transition-all duration-700`}>
+                                <div className={`absolute -inset-1 bg-gradient-to-r ${theme.gradient} opacity-20 blur-md group-focus-within:opacity-40 transition-all duration-500`} />
+                                <div className="hud hud-field hud-well hud-accent [--hud-c:12px] px-3 py-2 md:px-4 md:py-3 flex items-center">
                                     <Search size={18} aria-hidden="true" className={`${theme.highlightText} mr-2 md:mr-3 opacity-70 shrink-0`} />
                                     {/* The placeholder is this field's only visible label, so it keeps
                                         full muted strength (it was muted at 50%, ~2.3:1), and the
@@ -385,7 +415,7 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
                         {!search && floors.length > 0 && floors[selectedFloorIndex] && (
                             <div className="shrink-0 z-[60] flex flex-col items-center drop-shadow-2xl mb-1 md:mb-2 relative group/carousel">
                                 <div className={`font-mono text-[9px] tracking-[0.4em] ${theme.highlightText} font-bold uppercase mb-1 pointer-events-none`}>SYSTEM.ASCENT_INTERFACE</div>
-                                <div data-tour="floor-layer" className={`relative flex items-center gap-2 md:gap-4 px-3 py-1 md:px-6 md:py-2 rounded-full border backdrop-blur-md pointer-events-auto ${theme.isDark ? 'border-white/10 bg-black/40' : 'border-violet-200 bg-white/85 elev-1'}`}>
+                                <div data-tour="floor-layer" className="hud hud-well hud-cut-all [--hud-c:9px] flex items-center gap-2 md:gap-4 px-3 py-1 md:px-6 md:py-2 pointer-events-auto">
                                     <button type="button" disabled={selectedFloorIndex <= 0} onClick={() => setSelectedFloorIndex(i => i - 1)} aria-label="Previous layer" title="Previous layer" className={`${theme.mutedText} hover:${theme.highlightText} disabled:opacity-30 transition-colors`}><ChevronLeft size={14} aria-hidden="true" /></button>
                                     <button type="button" onClick={() => setIsFilterOpen(!isFilterOpen)} aria-expanded={isFilterOpen} aria-haspopup="true" aria-controls="spire-filter-menu" className={`font-black text-lg md:text-2xl font-orbitron tracking-widest ${theme.headingText} ${theme.isDark ? 'hover:text-white' : 'hover:text-[#5b21b6]'} transition-colors flex items-center gap-1.5 outline-none`}>
                                         {/* The layer's name decodes as the Spire opens and on each move. */}
@@ -398,14 +428,14 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
 
                                     {/* Dropdown Filter Menu */}
                                     {isFilterOpen && (
-                                        <div id="spire-filter-menu" className={`absolute top-full left-1/2 -translate-x-1/2 mt-3 p-4 rounded-xl border border-white/10 ${theme.isDark ? 'bg-black/95' : 'bg-black/90'} backdrop-blur-3xl min-w-[280px] md:min-w-[320px] shadow-2xl flex flex-col gap-4 animate-in fade-in zoom-in-95 duration-200 z-[70]`}>
+                                        <div id="spire-filter-menu" className="hud hud-on-plate [--hud-c:12px] [--hud-plate:rgba(0,0,0,0.94)] [--hud-blur:blur(24px)] absolute top-full left-1/2 -translate-x-1/2 mt-3 p-4 min-w-[280px] md:min-w-[320px] flex flex-col gap-4 animate-in fade-in zoom-in-95 duration-200 z-[70]">
                                             {/* Class Filter */}
                                             <div>
                                                 <div className={`text-[10px] font-mono text-white/60 tracking-widest mb-2 uppercase flex items-center gap-1.5`}><Filter size={10} /> Classification Protocol</div>
                                                 <div className="flex flex-wrap gap-2">
-                                                    <button onClick={() => setFilterClass('ALL')} className={`px-3 py-1 text-xs font-mono rounded border ${filterClass === 'ALL' ? `border-accent-solid bg-accent-soft-strong text-white` : `border-white/10 text-white/50 hover:border-white/30 hover:text-white/80`} transition-all`}>ALL</button>
+                                                    <button onClick={() => setFilterClass('ALL')} className={`hud hud-chip hud-on-plate px-3 py-1 text-xs font-mono ${filterClass === 'ALL' ? 'hud-on text-white' : 'text-white/50 hover:text-white/80'}`}>ALL</button>
                                                     {availableClasses.map(c => (
-                                                        <button key={c} onClick={() => setFilterClass(c)} className={`px-3 py-1 text-xs font-mono rounded border ${filterClass === c ? `border-accent-solid bg-accent-soft-strong text-white` : `border-white/10 text-white/50 hover:border-white/30 hover:text-white/80`} transition-all uppercase`}>{c}</button>
+                                                        <button key={c} onClick={() => setFilterClass(c)} className={`hud hud-chip hud-on-plate px-3 py-1 text-xs font-mono ${filterClass === c ? 'hud-on text-white' : 'text-white/50 hover:text-white/80'} uppercase`}>{c}</button>
                                                     ))}
                                                 </div>
                                             </div>
@@ -413,9 +443,9 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
                                             <div>
                                                 <div className={`text-[10px] font-mono text-white/60 tracking-widest mb-2 uppercase flex items-center gap-1.5`}><Filter size={10} /> Operational Status</div>
                                                 <div className="flex flex-wrap gap-2">
-                                                    <button onClick={() => setFilterStatus('ALL')} className={`px-3 py-1 text-xs font-mono rounded border ${filterStatus === 'ALL' ? `border-accent-solid bg-accent-soft-strong text-white` : `border-white/10 text-white/50 hover:border-white/30 hover:text-white/80`} transition-all`}>ALL</button>
+                                                    <button onClick={() => setFilterStatus('ALL')} className={`hud hud-chip hud-on-plate px-3 py-1 text-xs font-mono ${filterStatus === 'ALL' ? 'hud-on text-white' : 'text-white/50 hover:text-white/80'}`}>ALL</button>
                                                     {availableStatuses.map(s => (
-                                                        <button key={s} onClick={() => setFilterStatus(s)} className={`px-3 py-1 text-xs font-mono rounded border ${filterStatus === s ? `border-accent-solid bg-accent-soft-strong text-white` : `border-white/10 text-white/50 hover:border-white/30 hover:text-white/80`} transition-all uppercase`}>{statusLabel(s)}</button>
+                                                        <button key={s} onClick={() => setFilterStatus(s)} className={`hud hud-chip hud-on-plate px-3 py-1 text-xs font-mono ${filterStatus === s ? 'hud-on text-white' : 'text-white/50 hover:text-white/80'} uppercase`}>{statusLabel(s)}</button>
                                                     ))}
                                                 </div>
                                             </div>
@@ -424,7 +454,7 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
                                                 <div className={`text-[10px] font-mono text-white/60 tracking-widest mb-2 uppercase flex items-center gap-1.5`}><ArrowDownUp size={10} /> Sort Order</div>
                                                 <div className="flex flex-wrap gap-2">
                                                     {SPIRE_SORTS.map(o => (
-                                                        <button key={o.value} type="button" aria-pressed={sortBy === o.value} onClick={() => chooseSort(o.value)} className={`px-3 py-1 text-xs font-mono rounded border ${sortBy === o.value ? `border-accent-solid bg-accent-soft-strong text-white` : `border-white/10 text-white/50 hover:border-white/30 hover:text-white/80`} transition-all uppercase`}>{o.label}</button>
+                                                        <button key={o.value} type="button" aria-pressed={sortBy === o.value} onClick={() => chooseSort(o.value)} className={`hud hud-chip hud-on-plate px-3 py-1 text-xs font-mono ${sortBy === o.value ? 'hud-on text-white' : 'text-white/50 hover:text-white/80'} uppercase`}>{o.label}</button>
                                                     ))}
                                                 </div>
                                             </div>
@@ -436,7 +466,7 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
                                                         measured 3.8:1 (dark) and 3.69:1 (light) on this plate, under
                                                         the 4.5:1 12px text needs; white/60 clears it in both. */}
                                                     {floors.map((f, i) => (
-                                                        <button key={f.index} type="button" aria-label={`Go to layer ${i + 1}, ${f.name}`} onClick={() => { setSelectedFloorIndex(i); setIsFilterOpen(false); }} className={`p-2 text-xs font-black font-orbitron rounded border ${selectedFloorIndex === i ? `border-white text-white bg-white/10` : `border-white/5 text-white/60 hover:border-white/30 hover:text-white/90 bg-white/5`} transition-all flex items-center justify-center`}>
+                                                        <button key={f.index} type="button" aria-label={`Go to layer ${i + 1}, ${f.name}`} onClick={() => { setSelectedFloorIndex(i); setIsFilterOpen(false); }} className={`hud hud-chip hud-on-plate hud-cut-all [--hud-c:5px] p-2 text-xs font-black font-orbitron ${selectedFloorIndex === i ? 'hud-on text-white' : 'text-white/60 hover:text-white/90'} flex items-center justify-center`}>
                                                             {i + 1}
                                                         </button>
                                                     ))}
@@ -463,7 +493,7 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
                                         type="button"
                                         onClick={() => scrollCarousel('left')}
                                         aria-label="Scroll left"
-                                        className={`absolute left-2 md:left-12 top-1/2 -translate-y-1/2 z-30 p-2 md:p-4 rounded-full border border-white/10 ${theme.isDark ? 'bg-black/50 hover:bg-white/10' : 'bg-white/70 hover:bg-black/10'} backdrop-blur-md opacity-0 md:group-hover/carousel:opacity-100 focus-visible:opacity-100 transition-all duration-500 transform hover:scale-110 shadow-[0_0_30px_rgba(0,0,0,0.5)] hidden md:flex`}
+                                        className={`hud hud-tool hud-deep [--hud-c:11px] absolute left-2 md:left-12 top-1/2 -translate-y-1/2 z-30 p-2 md:p-4 opacity-0 md:group-hover/carousel:opacity-100 focus-visible:opacity-100 hidden md:flex`}
                                     >
                                         <ChevronLeft size={32} aria-hidden="true" className={theme.highlightText} />
                                     </button>
@@ -471,7 +501,7 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
                                         type="button"
                                         onClick={() => scrollCarousel('right')}
                                         aria-label="Scroll right"
-                                        className={`absolute right-2 md:right-12 top-1/2 -translate-y-1/2 z-30 p-2 md:p-4 rounded-full border border-white/10 ${theme.isDark ? 'bg-black/50 hover:bg-white/10' : 'bg-white/70 hover:bg-black/10'} backdrop-blur-md opacity-0 md:group-hover/carousel:opacity-100 focus-visible:opacity-100 transition-all duration-500 transform hover:scale-110 shadow-[0_0_30px_rgba(0,0,0,0.5)] hidden md:flex`}
+                                        className={`hud hud-tool hud-deep [--hud-c:11px] absolute right-2 md:right-12 top-1/2 -translate-y-1/2 z-30 p-2 md:p-4 opacity-0 md:group-hover/carousel:opacity-100 focus-visible:opacity-100 hidden md:flex`}
                                     >
                                         <ChevronRight size={32} aria-hidden="true" className={theme.highlightText} />
                                     </button>
@@ -536,16 +566,16 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
                         {selecting && (
                             <div role="toolbar" aria-label="Selected records" className="shrink-0 w-full max-w-3xl mx-auto px-3 pb-4 pt-1">
                                 <div
-                                    className={`flex flex-wrap items-center gap-2 px-3 py-2 border ${theme.border} ${theme.isDark ? 'bg-black/85' : 'bg-white/95'} backdrop-blur-xl shadow-2xl`}
+                                    className="hud hud-well hud-accent hud-ticks [--hud-c:10px] flex flex-wrap items-center gap-2 px-3 py-2"
                                     style={{ colorScheme: theme.isDark ? 'dark' : 'light' }}
                                 >
                                     <span role="status" className={`font-mono text-[11px] font-bold tracking-widest uppercase tabular-nums ${theme.headingText} mr-1`}>
                                         {selected.size} selected
                                     </span>
-                                    <button type="button" onClick={selectAllInView} disabled={inView.length === 0} className={`h-8 px-2 font-mono text-[10px] font-bold tracking-widest uppercase ${theme.highlightText} ${theme.isDark ? 'hover:bg-white/5' : 'hover:bg-black/5'} disabled:opacity-40 transition-colors`}>
+                                    <button type="button" onClick={selectAllInView} disabled={inView.length === 0} className={`hud hud-ghost h-8 px-2 font-mono text-[10px] font-bold tracking-widest uppercase ${theme.highlightText} disabled:opacity-40`}>
                                         Select all {inView.length}
                                     </button>
-                                    <button type="button" onClick={() => setSelected(new Set())} disabled={selected.size === 0} className={`h-8 px-2 font-mono text-[10px] font-bold tracking-widest uppercase ${theme.mutedText} ${theme.isDark ? 'hover:bg-white/5' : 'hover:bg-black/5'} disabled:opacity-40 transition-colors`}>
+                                    <button type="button" onClick={() => setSelected(new Set())} disabled={selected.size === 0} className={`hud hud-ghost h-8 px-2 font-mono text-[10px] font-bold tracking-widest uppercase ${theme.mutedText} disabled:opacity-40`}>
                                         Clear
                                     </button>
                                     <span className="flex-1" />
@@ -560,13 +590,18 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
                                         <option value="" disabled>Set status…</option>
                                         {STATUS_INFO.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
                                     </select>
-                                    <button type="button" onClick={trashSelected} disabled={selected.size === 0} className={`h-8 px-2 flex items-center gap-1.5 border font-mono text-[10px] font-bold tracking-widest uppercase transition-colors disabled:opacity-40 ${theme.isDark ? 'border-red-500/50 text-red-400 hover:bg-red-500/10' : 'border-red-700/40 text-red-700 hover:bg-red-500/10'}`}>
+                                    <button type="button" onClick={trashSelected} disabled={selected.size === 0} className="hud hud-btn hud-danger [--hud-c:5px] h-8 px-2 flex items-center gap-1.5 font-mono text-[10px] font-bold tracking-widest uppercase disabled:opacity-40">
                                         <Trash2 size={12} aria-hidden="true" /> Trash
                                     </button>
                                 </div>
                             </div>
                         )}
                     </div>
+                )}
+
+                {/* VIEW MODE: MATRIX (every record in one list) */}
+                {viewMode === 'MATRIX' && (
+                    <CommandMatrix items={items} theme={theme} sortBy={sortBy} onSort={chooseSort} onOpen={onActivate} onStep={onStepChapter} onPortal={onEnterPortal} />
                 )}
             </div>
         </div>

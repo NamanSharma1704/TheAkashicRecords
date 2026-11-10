@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from 'motion/react';
 import { Theme } from '../../core/types';
-import { elevation, Level } from '../../core/depth';
+import { elevationParts, Level } from '../../core/depth';
 
 interface SystemFrameProps {
     children: React.ReactNode;
@@ -27,10 +27,20 @@ interface SystemFrameProps {
     level?: Level;
 }
 
-const SystemFrame: React.FC<SystemFrameProps> = ({ 
-    children, 
-    className = "", 
-    variant = "full", 
+/**
+ * The System's panel: a plate cut at its top-left and bottom-right corners (the frame kit's
+ * `.hud-panel`, styles/index.css). The kit draws the frame over the surface: a hairline, a
+ * thick "ear" on each cut, brackets on the two square corners, a tab on the top edge and
+ * ticks on the bottom one. `variant="brackets"` keeps the marks and drops the hairline.
+ *
+ * The surface is a real element inside, cut to the same shape (`.hud-clip`), because it
+ * carries a Tailwind surface class and the backdrop blur. The elevation is split: the cast
+ * part on the uncut wrapper, the rim on the cut surface (see `elevationParts`).
+ */
+const SystemFrame: React.FC<SystemFrameProps> = ({
+    children,
+    className = "",
+    variant = "full",
     theme,
     initial,
     animate,
@@ -40,32 +50,20 @@ const SystemFrame: React.FC<SystemFrameProps> = ({
     surfaceClass,
     level = 1
 }) => {
-    const isLight = theme.id === 'LIGHT';
-    // Brackets are solid amber on the Void; on light they take the amethyst ramp. A corner is an
-    // L of two borders, so a 135° gradient runs bright→deep across each one — and because the
-    // four corners sit at the box's compass points, together they sweep from a bright top-left to
-    // a deep bottom-right. border-image paints the two sides that have width; the class colour
-    // stays as the fallback. `via` keeps the luminous mid from clipping on the 2px stroke.
-    const borderColor = isLight ? 'border-violet-400' : 'border-amber-400';
-    const bracketStyle: React.CSSProperties | undefined = isLight
-        ? { borderImage: 'linear-gradient(135deg, #a855f7, #7c3aed 55%, #5b21b6) 1' }
-        : undefined;
     const surface = surfaceClass ?? theme.panelBg;
+    const { rim, cast } = elevationParts(theme, level);
     return (
-        <motion.div 
+        <motion.div
             initial={initial}
             animate={animate}
             exit={exit}
             transition={transition}
-            className={`relative p-[1px] group ${className} h-full w-full transition-all duration-700 ease-in-out`}
+            className={`hud hud-panel ${variant === 'full' ? '' : 'hud-bare'} group ${className} h-full w-full`}
+            style={frosted ? { boxShadow: cast } : undefined}
         >
-            <div className={`absolute top-0 left-0 w-3 h-3 border-t-2 border-l-2 ${borderColor} z-20 transition-colors duration-300`} style={bracketStyle} />
-            <div className={`absolute top-0 right-0 w-3 h-3 border-t-2 border-r-2 ${borderColor} z-20 transition-colors duration-300`} style={bracketStyle} />
-            <div className={`absolute bottom-0 right-0 w-3 h-3 border-b-2 border-r-2 ${borderColor} z-20 transition-colors duration-300`} style={bracketStyle} />
-            <div className={`absolute bottom-0 left-0 w-3 h-3 border-b-2 border-l-2 ${borderColor} z-20 transition-colors duration-300`} style={bracketStyle} />
             <div
-                className={`relative h-full w-full ${frosted ? `${surface} backdrop-blur-md` : 'bg-transparent'} overflow-hidden ${variant === 'full' ? `border ${theme.borderSubtle}` : ''} transition-[background-color,border-color,box-shadow] duration-700`}
-                style={frosted ? { boxShadow: elevation(theme, level) } : undefined}
+                className={`hud-clip relative h-full w-full ${frosted ? `${surface} backdrop-blur-md` : 'bg-transparent'} overflow-hidden transition-[background-color,box-shadow] duration-700`}
+                style={frosted ? { boxShadow: rim } : undefined}
             >
                 <div className={`absolute inset-0 bg-[url('/noise.svg')] opacity-[0.05] pointer-events-none ${frosted ? 'block' : 'hidden'}`} />
                 <motion.div className="relative z-10 h-full w-full">{children}</motion.div>

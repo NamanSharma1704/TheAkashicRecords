@@ -75,7 +75,7 @@ const SystemTour: React.FC<{ theme: Theme; id: TourId; guest: boolean; onClose: 
     // The card sits in the half of the screen the ring is not in; centred without a ring.
     const ringCentre = rect ? rect.top + rect.height / 2 : 0;
     const placement = !rect ? 'items-center' : ringCentre < window.innerHeight / 2 ? 'items-end' : 'items-start';
-    const buttonBase = 'h-9 px-3 font-mono text-[10px] font-bold tracking-widest uppercase transition-colors';
+    const buttonBase = 'h-9 px-3 font-mono text-[10px] font-bold tracking-widest uppercase';
 
     return (
         <div
@@ -131,12 +131,12 @@ const SystemTour: React.FC<{ theme: Theme; id: TourId; guest: boolean; onClose: 
                         </div>
                         <div className="flex items-center gap-2 pt-1">
                             {!last && (
-                                <button type="button" onClick={onClose} className={`${buttonBase} mr-auto ${theme.mutedText} ${theme.isDark ? 'hover:bg-white/5' : 'hover:bg-black/5'}`}>
+                                <button type="button" onClick={onClose} className={`hud hud-ghost ${buttonBase} mr-auto ${theme.mutedText}`}>
                                     Skip
                                 </button>
                             )}
                             {index > 0 && (
-                                <button type="button" onClick={() => go(index - 1)} className={`${buttonBase} ${last ? 'mr-auto' : ''} ${theme.highlightText} ${theme.isDark ? 'hover:bg-white/5' : 'hover:bg-black/5'}`}>
+                                <button type="button" onClick={() => go(index - 1)} className={`hud hud-ghost ${buttonBase} ${last ? 'mr-auto' : ''} ${theme.highlightText}`}>
                                     Back
                                 </button>
                             )}
@@ -144,7 +144,7 @@ const SystemTour: React.FC<{ theme: Theme; id: TourId; guest: boolean; onClose: 
                                 ref={nextRef}
                                 type="button"
                                 onClick={() => go(index + 1)}
-                                className={`${buttonBase} border ${theme.border} bg-accent-soft hover:bg-accent-soft-strong`}
+                                className={`hud hud-cmd ${buttonBase}`}
                                 style={{ color: theme.accentInk }}
                             >
                                 {last ? 'Begin' : 'Next'}

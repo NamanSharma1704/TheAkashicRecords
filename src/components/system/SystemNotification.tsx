@@ -107,7 +107,7 @@ const SystemNotification: React.FC<SystemNotificationProps> = ({
                                     ref={cancelRef}
                                     type="button"
                                     onClick={() => onClose(false)}
-                                    className={`px-6 py-2 border ${theme.borderSubtle} ${theme.mutedText} hover:${theme.headingText} ${theme.isDark ? 'hover:bg-white/5' : 'hover:bg-black/5'} transition-all font-mono text-[10px] tracking-widest uppercase font-bold`}
+                                    className={`hud hud-btn px-6 py-2 ${theme.mutedText} hover:${theme.headingText} font-mono text-[10px] tracking-widest uppercase font-bold`}
                                 >
                                     Cancel
                                 </button>
@@ -116,7 +116,7 @@ const SystemNotification: React.FC<SystemNotificationProps> = ({
                                 ref={confirmRef}
                                 type="button"
                                 onClick={() => onClose(true)}
-                                className={`px-8 py-2 border ${theme.border} bg-accent-soft ${theme.highlightText} ${theme.isDark ? 'hover:bg-white/5' : 'hover:bg-black/5'} transition-all font-mono text-[10px] tracking-widest uppercase font-bold border-l-4`}
+                                className={`hud hud-cmd px-8 py-2 font-mono text-[10px] tracking-widest uppercase font-bold`}
                             >
                                 {confirm ? 'Execute' : 'Acknowledged'}
                             </button>

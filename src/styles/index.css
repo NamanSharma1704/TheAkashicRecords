@@ -543,3 +543,464 @@ html.theme-switching *::after {
     .streak-nova .nova-wave { display: none; }
     .streak-nova .nova-core, .streak-nova .nova-spin { animation: none; }
 }
+
+/* ════════════════════════════════════════════════════════════════════════════════════════════
+   THE SYSTEM FRAME KIT (.hud): the shape of every button, chip and panel.
+
+   Read from the owner's sheet of HUD frames (2026-11-09), in the app's own line-and-glass
+   language. Three ideas recur on that sheet and make up the whole vocabulary here:
+     1. THE CUT     corners cut at 45 degrees instead of rounded: a projected plate, not a pill.
+     2. THE TAB     a short thick bar seated on an edge: the part of the frame that is "live".
+     3. THE TICKS   a strip of dashes or slashes near a corner: a readout's graduation.
+   And one rule from the app: lines and glass, never solid stickers. Only a COMMAND (the one
+   action a screen is for) is a filled plate.
+
+   How it is drawn. The element itself is left alone (no clip-path), so its focus ring, its
+   layout box and its hit area are what they always were. Two pseudo-elements sit behind its
+   content:
+     ::before  the plate and the hairline. Clipped to the cut shape; the straight edges are a
+               real border (snapped to device pixels, so they stay crisp), the diagonals are
+               gradients in the corner boxes.
+     ::after   the marks (tab, ticks, slashes, brackets), clipped to the same shape.
+   Everything is driven by custom properties, so a variant or a state only names colours:
+     --hud-line   the hairline          --hud-plate  the fill behind the content
+     --hud-mark   the tab / ticks       --hud-c      the size of a cut
+     --hud-tl/tr/br/bl                  which corners are cut (0px or var(--hud-c))
+   The three colours are registered (@property) so they can be transitioned; without that a
+   gradient cannot fade and the diagonals would snap while the edges eased.
+
+   It lives in `@layer components` so that a Tailwind utility at the call site still wins: a
+   caller's `absolute` beats the kit's `position: relative`, `[--hud-c:5px]` resizes a cut.
+   A call site must NOT also carry border-colour, background or rounded utilities: those paint
+   the element's own rectangle, outside the cuts. Neutral values come from core/tokens.ts.
+
+   The meanings (keep them; they are why two buttons look different):
+     .hud-btn     a control. Hairline, glass plate, a small tab that lights and runs on hover.
+     .hud-accent  ...that belongs to the accent (its line is lit at rest).
+     .hud-cmd     a COMMAND. The filled plate. With .hud-hash, slashes at its trailing end.
+     .hud-tool    an icon tool. An octagon: all four corners cut.
+     .hud-chip    a choice among several. One cut; when chosen, a lit bar across its top.
+     .hud-danger  destroys something. Red line and ink. (.hud-warn: only once hovered.)
+     .hud-ghost   a quiet control: no frame until the pointer or focus finds it.
+     .hud-row     a row in a list; chosen, it is lit and carries a bar on its leading edge.
+     .hud-well    the frame that holds a group (a switch, a search field, a toolbar); a chip
+                  seated in one is a .hud-seg.
+     .hud-deep    a control floating over the atmosphere: a deeper, blurred plate.
+     .hud-tag     a small lit label beside a title ("+3 NEW"). Not a control.
+     .hud-panel   a panel (SystemFrame). Cuts top-left and bottom-right with a thick ear on
+                  each, brackets on the square corners, a tab on the top edge, ticks on the
+                  bottom one.
+     .hud-sheet   a quiet panel for reading (the series page): ears, tab and ticks, no brackets.
+     .hud-cell    a small readout inside a sheet.
+     .hud-shell   a hand-rolled dialog or banner: the element itself is cut, panel marks on top.
+     .hud-media   a control filled with art; cut like a shell, its frame doubles as focus ring.
+     .hud-menu    the popover under a toolbar button.
+     .hud-field   the frame around an input.
+   Shape modifiers: .hud-cut-all, .hud-cut-br, .hud-cut-none, .hud-flip (the other diagonal),
+   .hud-cap-l / .hud-cap-r (the ends of a joined row, as the chapter stepper).
+   ════════════════════════════════════════════════════════════════════════════════════════════ */
+@property --hud-line { syntax: '<color>'; inherits: true; initial-value: transparent; }
+@property --hud-plate { syntax: '<color>'; inherits: true; initial-value: transparent; }
+@property --hud-mark { syntax: '<color>'; inherits: true; initial-value: transparent; }
+@property --hud-tab { syntax: '<length>'; inherits: true; initial-value: 10px; }
+
+@layer components {
+    .hud {
+        --hud-c: 7px;
+        --hud-b: 1px;
+        --hud-tl: var(--hud-c);
+        --hud-tr: 0px;
+        --hud-br: var(--hud-c);
+        --hud-bl: 0px;
+        --hud-line: var(--hud-neutral-line);
+        --hud-plate: transparent;
+        --hud-mark: transparent;
+        --hud-tab: 10px;
+        --hud-blur: none;
+        --hud-edge: calc(50% + var(--hud-b));
+        --hud-shape: polygon(var(--hud-tl) 0, calc(100% - var(--hud-tr)) 0, 100% var(--hud-tr), 100% calc(100% - var(--hud-br)), calc(100% - var(--hud-br)) 100%, var(--hud-bl) 100%, 0 calc(100% - var(--hud-bl)), 0 var(--hud-tl));
+        position: relative;
+        isolation: isolate;
+        transition: --hud-line 200ms ease, --hud-plate 200ms ease, --hud-mark 200ms ease, --hud-tab 200ms ease, color 200ms ease, opacity 200ms ease;
+    }
+
+    .hud::before,
+    .hud::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        z-index: -1;
+        pointer-events: none;
+        clip-path: var(--hud-shape);
+    }
+
+    .hud::before {
+        box-sizing: border-box;
+        border: var(--hud-b) solid var(--hud-line);
+        background:
+            linear-gradient(to bottom right, var(--hud-line) var(--hud-edge), transparent calc(var(--hud-edge) + 0.6px)) left top / var(--hud-tl) var(--hud-tl) no-repeat border-box,
+            linear-gradient(to bottom left, var(--hud-line) var(--hud-edge), transparent calc(var(--hud-edge) + 0.6px)) right top / var(--hud-tr) var(--hud-tr) no-repeat border-box,
+            linear-gradient(to top left, var(--hud-line) var(--hud-edge), transparent calc(var(--hud-edge) + 0.6px)) right bottom / var(--hud-br) var(--hud-br) no-repeat border-box,
+            linear-gradient(to top right, var(--hud-line) var(--hud-edge), transparent calc(var(--hud-edge) + 0.6px)) left bottom / var(--hud-bl) var(--hud-bl) no-repeat border-box,
+            var(--hud-plate);
+        -webkit-backdrop-filter: var(--hud-blur);
+        backdrop-filter: var(--hud-blur);
+    }
+
+    /* ── Variants ─────────────────────────────────────────────────────────────────────── */
+
+    /* A control. */
+    .hud-btn {
+        --hud-plate: var(--hud-glass);
+        --hud-mark: var(--accent-line);
+    }
+    .hud-btn::after {
+        background: linear-gradient(var(--hud-mark), var(--hud-mark)) calc(var(--hud-tl) + 3px) 0 / var(--hud-tab) 2px no-repeat;
+    }
+    .hud-btn:hover:not(:disabled),
+    .hud-btn:focus-visible {
+        --hud-line: var(--accent-line-strong);
+        --hud-plate: var(--accent-soft);
+        --hud-mark: var(--accent-solid);
+        --hud-tab: 22px;
+    }
+    .hud-btn:active:not(:disabled) {
+        --hud-plate: var(--accent-soft-strong);
+    }
+
+    /* ...whose line is lit at rest. */
+    .hud-accent {
+        --hud-line: var(--accent-line);
+        --hud-mark: var(--accent-solid);
+    }
+
+    /* A command: the one filled plate. */
+    .hud-cmd {
+        --hud-line: transparent;
+        --hud-plate: var(--accent-color);
+        --hud-mark: color-mix(in srgb, var(--accent-on) 42%, transparent);
+        color: var(--accent-on);
+    }
+    .hud-cmd:hover:not(:disabled),
+    .hud-cmd:focus-visible {
+        --hud-plate: color-mix(in srgb, var(--accent-color) 84%, white);
+    }
+    .hud-cmd:active:not(:disabled) {
+        --hud-plate: color-mix(in srgb, var(--accent-color) 88%, black);
+    }
+    /* The slashes need room beside the label. On a phone a command can be 180px wide with a
+       140px label (ENTER PORTAL measured 183px at 375), where they ran into its last letters,
+       so they are drawn from sm up only. */
+    @media (min-width: 640px) {
+        .hud-hash::after {
+            background: repeating-linear-gradient(-60deg, var(--hud-mark) 0 1.5px, transparent 1.5px 5px) right calc(var(--hud-br) + 7px) center / 21px 9px no-repeat;
+        }
+    }
+
+    /* An icon tool: the octagon. */
+    .hud-tool {
+        --hud-c: 6px;
+        --hud-tr: var(--hud-c);
+        --hud-bl: var(--hud-c);
+        --hud-plate: var(--hud-glass);
+    }
+    .hud-tool:hover:not(:disabled),
+    .hud-tool:focus-visible {
+        --hud-line: var(--accent-line-strong);
+        --hud-plate: var(--accent-soft);
+    }
+    .hud-tool:active:not(:disabled) {
+        --hud-plate: var(--accent-soft-strong);
+    }
+
+    /* A choice among several. Chosen: aria-pressed / aria-selected / aria-current, or .hud-on. */
+    .hud-chip {
+        --hud-c: 6px;
+        --hud-tl: 0px;
+        --hud-mark: transparent;
+    }
+    .hud-chip::after {
+        background: linear-gradient(var(--hud-mark), var(--hud-mark)) 0 0 / 100% 2px no-repeat;
+    }
+    .hud-chip:hover:not(:disabled),
+    .hud-chip:focus-visible {
+        --hud-line: var(--accent-line);
+        --hud-plate: var(--hud-glass-hover);
+    }
+    .hud-chip[aria-pressed='true'],
+    .hud-chip[aria-selected='true'],
+    .hud-chip[aria-current='true'],
+    .hud-chip[aria-checked='true'],
+    .hud-chip.hud-on {
+        --hud-line: var(--accent-line-strong);
+        --hud-plate: var(--accent-soft-strong);
+        --hud-mark: var(--accent-solid);
+    }
+
+    /* Destroys something. */
+    .hud-danger {
+        --hud-line: color-mix(in srgb, var(--hud-danger) 50%, transparent);
+        --hud-mark: var(--hud-danger);
+        color: var(--hud-danger);
+    }
+    .hud-danger:hover:not(:disabled),
+    .hud-danger:focus-visible {
+        --hud-line: var(--hud-danger);
+        --hud-plate: var(--hud-danger-soft);
+        --hud-mark: var(--hud-danger);
+    }
+
+    /* A frame on a plate that is dark in both themes (the floor menu, cover scrims): its
+       hairline and its hover glass are the Void's in either theme. */
+    .hud-on-plate {
+        --hud-line: var(--hud-on-plate-line);
+        --hud-plate: rgba(255, 255, 255, 0.04);
+    }
+    .hud-chip.hud-on-plate:hover:not(:disabled),
+    .hud-btn.hud-on-plate:hover:not(:disabled),
+    .hud-tool.hud-on-plate:hover:not(:disabled) {
+        --hud-plate: rgba(255, 255, 255, 0.09);
+    }
+
+    /* The frame around an input: lit along its foot while the field has focus. */
+    .hud-field {
+        --hud-tl: 0px;
+        --hud-mark: transparent;
+    }
+    .hud-field::after {
+        background: linear-gradient(var(--hud-mark), var(--hud-mark)) 0 100% / calc(100% - var(--hud-br)) 2px no-repeat;
+    }
+    .hud-field:focus-within {
+        --hud-line: var(--accent-line-strong);
+        --hud-mark: var(--accent-solid);
+    }
+
+    /* A panel (SystemFrame). The frame and its marks sit OVER the surface, which is a real
+       element inside (it carries the surface class and the blur, cut with .hud-clip). */
+    .hud-panel {
+        --hud-c: 12px;
+        --hud-mark: var(--accent-color);
+        --hud-ear: calc(50% + 2px);
+    }
+    .hud-panel::before,
+    .hud-panel::after,
+    .hud-shell::before,
+    .hud-shell::after,
+    .hud-media::before {
+        z-index: 20;
+    }
+    .hud-panel::after,
+    .hud-shell::after {
+        background:
+            /* ears: the cuts, drawn thick */
+            linear-gradient(to bottom right, var(--hud-mark) var(--hud-ear), transparent calc(var(--hud-ear) + 0.6px)) left top / var(--hud-tl) var(--hud-tl) no-repeat,
+            linear-gradient(to top left, var(--hud-mark) var(--hud-ear), transparent calc(var(--hud-ear) + 0.6px)) right bottom / var(--hud-br) var(--hud-br) no-repeat,
+            /* brackets: the square corners */
+            linear-gradient(var(--hud-mark), var(--hud-mark)) right top / 12px 2px no-repeat,
+            linear-gradient(var(--hud-mark), var(--hud-mark)) right top / 2px 12px no-repeat,
+            linear-gradient(var(--hud-mark), var(--hud-mark)) left bottom / 12px 2px no-repeat,
+            linear-gradient(var(--hud-mark), var(--hud-mark)) left bottom / 2px 12px no-repeat,
+            /* the tab on the top edge, the ticks on the bottom one */
+            linear-gradient(var(--hud-mark), var(--hud-mark)) calc(var(--hud-tl) + 4px) 0 / 22px 2px no-repeat,
+            repeating-linear-gradient(90deg, var(--hud-mark) 0 3px, transparent 3px 7px) right calc(var(--hud-br) + 5px) bottom 0 / 31px 2px no-repeat;
+    }
+    /* A sheet: a quiet panel for reading (the series page's sections). A hand-rolled surface,
+       not a SystemFrame: the plate is the kit's own, with the ears, the tab and the ticks but
+       no brackets. */
+    .hud-sheet {
+        --hud-c: 14px;
+        --hud-plate: var(--hud-sheet-glass);
+        --hud-blur: blur(24px);
+        --hud-mark: var(--accent-line-strong);
+        --hud-ear: calc(50% + 2px);
+    }
+    .hud-sheet::after {
+        background:
+            linear-gradient(to bottom right, var(--hud-mark) var(--hud-ear), transparent calc(var(--hud-ear) + 0.6px)) left top / var(--hud-tl) var(--hud-tl) no-repeat,
+            linear-gradient(to top left, var(--hud-mark) var(--hud-ear), transparent calc(var(--hud-ear) + 0.6px)) right bottom / var(--hud-br) var(--hud-br) no-repeat,
+            linear-gradient(var(--hud-mark), var(--hud-mark)) calc(var(--hud-tl) + 4px) 0 / 22px 2px no-repeat,
+            repeating-linear-gradient(90deg, var(--hud-mark) 0 3px, transparent 3px 7px) right calc(var(--hud-br) + 5px) bottom 0 / 31px 2px no-repeat;
+    }
+    /* A cell: a small readout inside a sheet (a metric, a character). */
+    .hud-cell {
+        --hud-c: 6px;
+        --hud-tl: 0px;
+        --hud-plate: var(--hud-glass);
+    }
+
+    /* A shell: a hand-rolled dialog or banner that paints its own surface (a Tailwind
+       background, full-bleed header strips, art). Unlike the rest of the kit the ELEMENT is cut,
+       so everything inside follows the shape; the frame and the panel's marks sit over it. Not
+       for a focusable element: a clip-path also cuts the focus ring. */
+    .hud-shell {
+        --hud-c: 14px;
+        --hud-mark: var(--accent-color);
+        --hud-ear: calc(50% + 2px);
+        clip-path: var(--hud-shape);
+    }
+
+    /* A media card: a control filled with art (a cover behind a title). The element is cut,
+       like a shell, and since that cuts the focus ring too, focus is shown by the frame itself:
+       two pixels of the focus ink along the cut shape. */
+    .hud-media {
+        --hud-c: 10px;
+        clip-path: var(--hud-shape);
+    }
+    .hud-media:hover {
+        --hud-line: var(--accent-line-strong);
+    }
+    .hud-media:focus-visible {
+        outline: none;
+        --hud-line: var(--focus-ring, var(--accent-ink));
+        --hud-b: 2px;
+    }
+
+    /* A menu: the popover under a toolbar button. An opaque plate. */
+    .hud-menu {
+        --hud-c: 9px;
+        --hud-plate: var(--hud-panel-solid);
+    }
+
+    /* Marks only, no hairline (the tower's HUD wings, the stat tiles). */
+    .hud-bare {
+        --hud-line: transparent;
+    }
+
+    /* A quiet control: no frame until the pointer or focus finds it (a tool inside a header
+       line, a text action). */
+    .hud-ghost {
+        --hud-c: 5px;
+        --hud-line: transparent;
+        --hud-plate: transparent;
+    }
+    .hud-ghost:hover:not(:disabled),
+    .hud-ghost:focus-visible {
+        --hud-line: var(--accent-line);
+        --hud-plate: var(--hud-glass-hover);
+    }
+
+    /* A row in a list. Chosen (aria-current / .hud-on): lit, with a bar on its leading edge. */
+    .hud-row {
+        --hud-c: 8px;
+        --hud-tl: 0px;
+        --hud-line: transparent;
+    }
+    .hud-row::after {
+        background: linear-gradient(var(--hud-mark), var(--hud-mark)) 0 50% / 2px 56% no-repeat;
+    }
+    .hud-row:hover {
+        --hud-line: var(--hud-neutral-line);
+    }
+    .hud-row[aria-current='true'],
+    .hud-row.hud-on {
+        --hud-line: var(--accent-line);
+        --hud-plate: var(--accent-soft);
+        --hud-mark: var(--accent-solid);
+    }
+
+    /* A control floating over the atmosphere (the chapter steppers on the dais, the Spire
+       button): a deeper, blurred plate, so what is behind it never reaches its glyph. */
+    .hud-deep {
+        --hud-plate: var(--hud-deep-glass);
+        --hud-blur: blur(12px);
+    }
+    .hud-deep:hover:not(:disabled),
+    .hud-deep:focus-visible {
+        --hud-plate: color-mix(in srgb, var(--accent-color) 16%, var(--hud-deep-glass));
+    }
+
+    /* A well: the frame that holds a group (a segmented switch, a search field, a toolbar).
+       The same deep glass, but it is not a control, so it does not answer the pointer. */
+    .hud-well {
+        --hud-plate: var(--hud-deep-glass);
+        --hud-blur: blur(12px);
+    }
+    /* A chip seated in a well: no hairline of its own until it is chosen or hovered. */
+    .hud-seg {
+        --hud-line: transparent;
+    }
+
+    /* A wide control: ticks on its foot as well as the tab on its head. */
+    .hud-btn.hud-ticks::after {
+        background:
+            linear-gradient(var(--hud-mark), var(--hud-mark)) calc(var(--hud-tl) + 3px) 0 / var(--hud-tab) 2px no-repeat,
+            repeating-linear-gradient(90deg, var(--hud-mark) 0 3px, transparent 3px 7px) right calc(var(--hud-br) + 5px) bottom 0 / 31px 2px no-repeat;
+    }
+
+    /* The muted ink, as a kit colour, so a kit state (.hud-warn) can still recolour it: a
+       Tailwind text utility would win over any kit state. */
+    .hud-muted {
+        color: var(--hud-ink-muted);
+    }
+
+    /* A tag: a small lit label riding beside a title ("+3 NEW"). Not a control. */
+    .hud-tag {
+        --hud-c: 4px;
+        --hud-tl: 0px;
+        --hud-line: var(--accent-line);
+        color: var(--accent-ink);
+    }
+
+    /* Neutral until hovered, then a warning (log out). */
+    .hud-warn:hover:not(:disabled),
+    .hud-warn:focus-visible {
+        --hud-line: var(--hud-danger);
+        --hud-plate: var(--hud-danger-soft);
+        color: var(--hud-danger);
+    }
+
+    /* Emitted light around the cut shape (a box-shadow would glow around the uncut rectangle).
+       For the one command a screen is for; a filter is too costly to hang on every control. */
+    .hud-glow {
+        filter: drop-shadow(0 0 9px var(--accent-glow));
+    }
+
+    /* ── Shape modifiers (after the variants, so they win) ─────────────────────────────── */
+    .hud-cut-all {
+        --hud-tl: var(--hud-c);
+        --hud-tr: var(--hud-c);
+        --hud-br: var(--hud-c);
+        --hud-bl: var(--hud-c);
+    }
+    .hud-cut-br {
+        --hud-tl: 0px;
+        --hud-tr: 0px;
+        --hud-br: var(--hud-c);
+        --hud-bl: 0px;
+    }
+    .hud-cut-none {
+        --hud-tl: 0px;
+        --hud-tr: 0px;
+        --hud-br: 0px;
+        --hud-bl: 0px;
+    }
+    .hud-flip {
+        --hud-tl: 0px;
+        --hud-tr: var(--hud-c);
+        --hud-br: 0px;
+        --hud-bl: var(--hud-c);
+    }
+    .hud-cap-l {
+        --hud-tl: var(--hud-c);
+        --hud-tr: 0px;
+        --hud-br: 0px;
+        --hud-bl: var(--hud-c);
+    }
+    .hud-cap-r {
+        --hud-tl: 0px;
+        --hud-tr: var(--hud-c);
+        --hud-br: var(--hud-c);
+        --hud-bl: 0px;
+    }
+
+    /* Content cut to its panel's shape, so a full-bleed child cannot show past a cut. Reads
+       the shape of the nearest .hud ancestor (it must be the same size as that ancestor). */
+    .hud-clip {
+        clip-path: var(--hud-shape);
+    }
+
+    /* A disabled control keeps its frame and loses its tab. */
+    .hud:disabled {
+        --hud-mark: transparent;
+    }
+}

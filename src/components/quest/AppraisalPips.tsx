@@ -100,7 +100,7 @@ const AppraisalPips: React.FC<AppraisalPipsProps> = ({ value, onChange, theme, l
                 <button
                     type="button"
                     onClick={() => pick(null)}
-                    className={`text-[9px] font-mono tracking-widest uppercase px-2 py-1 border ${theme.borderSubtle} ${theme.mutedText} hover:${theme.headingText} transition-colors`}
+                    className={`hud hud-btn [--hud-c:4px] text-[9px] font-mono tracking-widest uppercase px-2 py-1 ${theme.mutedText} hover:${theme.headingText}`}
                 >
                     Clear
                 </button>

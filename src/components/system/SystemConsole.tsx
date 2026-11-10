@@ -43,7 +43,7 @@ const SystemConsole: React.FC<SystemConsoleProps> = ({ theme, onShowShortcuts })
                             type="button"
                             onClick={onShowShortcuts}
                             title="Keyboard shortcuts (?)"
-                            className={`hidden lg:inline-flex h-6 items-center gap-1.5 px-2 border ${theme.borderSubtle} ${theme.highlightText} ${theme.isDark ? 'hover:bg-white/5' : 'hover:bg-black/5'} font-bold tracking-widest transition-colors`}
+                            className={`hud hud-btn [--hud-c:5px] hidden lg:inline-flex h-6 items-center gap-1.5 px-2 ${theme.highlightText} font-bold tracking-widest`}
                         >
                             <span aria-hidden="true">[?]</span> KEYS
                         </button>

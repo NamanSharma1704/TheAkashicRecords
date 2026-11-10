@@ -338,7 +338,7 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
                             onClick={startGateTour}
                             aria-label="Tour this page"
                             title="Tour this page"
-                            className={`w-7 h-7 flex items-center justify-center border ${theme.borderSubtle} ${theme.mutedText} hover:${theme.headingText} ${theme.isDark ? 'hover:border-white/30' : 'hover:border-stone-500'} transition-all duration-300 rounded-sm active:scale-90`}
+                            className={`hud hud-tool [--hud-c:5px] w-7 h-7 flex items-center justify-center ${theme.mutedText} hover:${theme.headingText}`}
                         >
                             <HelpCircle size={14} aria-hidden="true" />
                         </button>
@@ -347,7 +347,7 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
                             onClick={onClose}
                             aria-label="Close"
                             title="Close"
-                            className={`w-7 h-7 flex items-center justify-center border ${theme.borderSubtle} ${theme.mutedText} hover:${theme.headingText} ${theme.isDark ? 'hover:border-white/30' : 'hover:border-stone-500'} transition-all duration-300 rounded-sm active:scale-90`}
+                            className={`hud hud-tool [--hud-c:5px] w-7 h-7 flex items-center justify-center ${theme.mutedText} hover:${theme.headingText}`}
                         >
                             <X size={14} aria-hidden="true" />
                         </button>
@@ -384,7 +384,7 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
                                             aria-pressed={searchSource === src}
                                             /* The hover was `hover:text-white` in both themes, which on
                                                the light panel turned the label white-on-white. */
-                                            className={`text-[7px] font-orbitron font-bold tracking-widest px-2 py-0.5 transition-all duration-300 ${searchSource === src ? `${theme.highlightText} border-b border-accent-solid` : `${theme.mutedText} ${theme.isDark ? 'hover:text-white' : 'hover:text-stone-900'}`}`}
+                                            className={`hud hud-chip hud-seg [--hud-c:4px] text-[7px] font-orbitron font-bold tracking-widest px-2 py-1 ${searchSource === src ? theme.highlightText : `${theme.mutedText} ${theme.isDark ? 'hover:text-white' : 'hover:text-stone-900'}`}`}
                                         >
                                             {src}
                                         </button>
@@ -417,9 +417,8 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
                                     type="button"
                                     onClick={handleScan}
                                     disabled={!formData.link || isScanning}
-                                    className={`absolute right-0 top-0 h-full px-4 font-orbitron text-[10px] font-black tracking-wider border-l ${theme.borderSubtle} text-accent-ink hover:bg-accent-solid ${theme.isDark ? 'hover:text-black' : 'hover:text-stone-900'} disabled:opacity-50 transition-all duration-300 flex items-center gap-1.5 ${theme.isDark ? 'bg-black/50' : 'bg-black/10'} active:scale-95 overflow-hidden group/btn drop-shadow-sm`}
+                                    className="hud hud-btn hud-accent hud-cut-br absolute right-0 top-0 h-full px-4 font-orbitron text-[10px] font-black tracking-wider text-accent-ink disabled:opacity-50 flex items-center gap-1.5 group/btn"
                                 >
-                                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover/btn:translate-x-full transition-transform duration-700" />
                                     {isScanning ? <Activity size={14} className="animate-pulse" /> : <Search size={14} />}
                                     SCAN_CORE
                                 </button>
@@ -455,7 +454,7 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
                                     disabled={!formData.title || isScanning}
                                     /* Icon-only, so the glyph is the label: the ink, not cyan-600,
                                        which sat at 3.4:1 on this plate with no margin. */
-                                    className={`absolute right-0 top-0 h-full px-4 border-l ${theme.borderSubtle} text-accent-ink hover:bg-accent-soft-strong disabled:opacity-50 transition-all duration-300 flex items-center justify-center ${theme.isDark ? 'bg-black/50' : 'bg-black/10'} active:scale-90 group/archive drop-shadow-sm`}
+                                    className="hud hud-btn hud-accent hud-cut-br absolute right-0 top-0 h-full px-4 text-accent-ink disabled:opacity-50 flex items-center justify-center group/archive"
                                     title="Search archives by title"
                                     aria-label="Search archives by title"
                                 >
@@ -646,11 +645,10 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
                                 onClick={onDelete}
                                 /* The glyph is the only label. red-500 at 70% was ~2.6:1 on the
                                    light footer, under 3:1; each theme now gets a full-strength red. */
-                                className={`w-12 h-12 border border-red-900/40 ${theme.isDark ? 'text-red-400' : 'text-red-700'} hover:bg-red-500 hover:text-white hover:border-red-500 transition-all duration-500 flex items-center justify-center shrink-0 group relative overflow-hidden rounded-sm`}
+                                className="hud hud-btn hud-danger w-12 h-12 flex items-center justify-center shrink-0 group"
                                 title="Purge artifact (moves it to the Trash; Undo available)"
                                 aria-label="Purge artifact"
                             >
-                                <div className="absolute inset-0 bg-red-500/5 group-hover:bg-red-500/20 transition-all" />
                                 <Trash2 size={16} aria-hidden="true" className="relative z-10 group-active:scale-75 transition-transform" />
                             </button>
                         )}
@@ -658,9 +656,8 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
                         <button
                             onClick={handleSubmit}
                             disabled={isScanning}
-                            className={`flex-1 relative border ${theme.border} ${theme.highlightText} hover:bg-accent-solid ${theme.isDark ? 'hover:text-black' : 'hover:text-stone-900'} font-orbitron font-black uppercase tracking-[0.25em] text-[11px] sm:text-sm transition-all duration-500 disabled:opacity-30 flex items-center justify-center gap-2.5 active:scale-[0.98] overflow-hidden group/confirm py-3.5 rounded-sm`}
+                            className="hud hud-cmd hud-hash flex-1 font-orbitron font-black uppercase tracking-[0.25em] text-[11px] sm:text-sm disabled:opacity-30 flex items-center justify-center gap-2.5 group/confirm py-3.5"
                         >
-                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover/confirm:translate-x-full transition-transform duration-700" />
                             {isScanning ? (
                                 <>
                                     <RefreshCw size={16} className="animate-spin" />

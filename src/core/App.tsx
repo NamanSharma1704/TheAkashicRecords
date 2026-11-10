@@ -193,7 +193,7 @@ const QuestListItem = ({ item, theme, activeId, handleLogClick, onDragStateChang
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className={`relative group cursor-pointer border py-1.5 px-3 transition-colors duration-200 ${isHighlighted ? `${theme.border} ${theme.isDark ? 'bg-white/5' : 'bg-violet-500/10'}` : `border-transparent hover:${theme.borderSubtle} bg-transparent`}`}
+            className={`hud hud-row group cursor-pointer border border-transparent py-1.5 px-3 ${isHighlighted ? 'hud-on' : ''}`}
         >
             <div className="flex justify-between items-center h-full">
                 <div className="flex items-center gap-2 max-w-[85%] min-w-0">
@@ -241,8 +241,7 @@ const QuestListItem = ({ item, theme, activeId, handleLogClick, onDragStateChang
                                 forward clears it, server-side. */}
                             {item.newChapters > 0 && (
                                 <span
-                                    className="flex-none px-1 border text-[9px] font-mono font-bold tracking-widest leading-[14px]"
-                                    style={{ color: theme.accentInk, borderColor: `${theme.accentColor}80` }}
+                                    className="hud hud-tag flex-none px-1.5 text-[9px] font-mono font-bold tracking-widest leading-[15px]"
                                 >
                                     +{item.newChapters} NEW
                                 </span>
@@ -1550,6 +1549,16 @@ const App: React.FC = () => {
     }, [applyChapter, sendBurst]);
     requestChapterRef.current = requestChapter;
 
+    /** The Command Matrix's +1 (and its "-" key, the way back from a wrong tap): one chapter on
+     *  any quest, not only the active one, from wherever its chapter currently shows, merged
+     *  with the taps around it like the stepper. */
+    const stepQuestChapter = useCallback((questId: string, delta = 1) => {
+        const q = libraryRef.current.find(x => x.id === questId);
+        if (!q) return;
+        const b = bursts.current.get(questId);
+        requestChapter(questId, (b ? b.target.current : q.currentChapter) + delta, { mode: 'merge' });
+    }, [requestChapter]);
+
     /** One step on the active quest, from wherever its chapter currently shows. */
     const stepChapter = useCallback((delta: number, mode: 'merge' | 'hold'): boolean => {
         const q = activeQuestRef.current;
@@ -1986,7 +1995,7 @@ const App: React.FC = () => {
                             onClick={toggleTheme}
                             aria-label={theme.isDark ? 'Switch to light theme' : 'Switch to dark theme'}
                             title={theme.isDark ? 'Switch to light theme' : 'Switch to dark theme'}
-                            className={`w-8 h-8 flex items-center justify-center border ${theme.borderSubtle} ${theme.isDark ? 'bg-white/5 hover:bg-white/10' : 'bg-black/5 hover:bg-black/10'} rounded transition-colors duration-700`}
+                            className="hud hud-tool w-8 h-8 flex items-center justify-center"
                         >
                             {currentTheme === 'LIGHT' ? <Sun size={14} className="text-[#7c3aed] transition-colors duration-700" /> : <Moon size={14} className="text-amber-400 transition-colors duration-700" />}
                         </button>
@@ -1995,12 +2004,12 @@ const App: React.FC = () => {
                             onClick={handleLogout}
                             aria-label="Log out"
                             title="Log out"
-                            className={`hidden sm:flex w-8 h-8 items-center justify-center border ${theme.borderSubtle} ${theme.isDark ? 'bg-white/5 hover:bg-red-500/80 hover:border-red-500' : 'bg-black/5 hover:bg-red-500 hover:border-red-500'} rounded transition-colors duration-300 group/logout`}
+                            className="hud hud-tool hud-warn hud-muted hidden sm:flex w-8 h-8 items-center justify-center"
                         >
-                            <LogOut size={14} className={`${theme.mutedText} group-hover/logout:text-white transition-colors duration-300`} />
+                            <LogOut size={14} />
                         </button>
                         {/* Below lg, creating a gate is the tab bar's New (MobileTabBar). */}
-                        <button type="button" onClick={() => { setEditingItem(null); setIsModalOpen(true); }} title="New gate (N)" className={`hidden lg:flex px-4 py-1.5 border ${theme.borderSubtle} ${theme.highlightText} ${theme.isDark ? 'hover:bg-white/5' : 'hover:bg-black/5'} transition-colors duration-700 font-mono text-[10px] tracking-widest items-center gap-2 cursor-pointer`}>
+                        <button type="button" onClick={() => { setEditingItem(null); setIsModalOpen(true); }} title="New gate (N)" className={`hud hud-btn hud-accent hidden lg:flex px-4 py-1.5 ${theme.highlightText} font-mono text-[10px] tracking-widest items-center gap-2 cursor-pointer`}>
                             <Plus size={12} /> CREATE_GATE
                         </button>
                     </div>
@@ -2490,8 +2499,7 @@ const App: React.FC = () => {
                                         type="button"
                                         onClick={() => { setEditingItem(null); setIsModalOpen(true); }}
                                         title="New gate (N)"
-                                        className="h-12 flex-1 max-w-[400px] flex items-center justify-center gap-2 font-mono font-bold tracking-widest text-[12px] rounded-sm bg-accent text-accent-on cursor-pointer"
-                                        style={{ boxShadow: emphasis(theme, accentRGB(theme)) }}
+                                        className="hud hud-cmd hud-hash hud-glow h-12 flex-1 max-w-[400px] flex items-center justify-center gap-2 font-mono font-bold tracking-widest text-[12px] cursor-pointer"
                                     >
                                         <Plus size={16} aria-hidden="true" /> {library.length > 0 ? 'OPEN A NEW GATE' : 'OPEN YOUR FIRST GATE'}
                                     </motion.button>
@@ -2507,8 +2515,7 @@ const App: React.FC = () => {
                                     type="button"
                                     aria-label="Previous chapter"
                                     title="Previous chapter (←) · hold to repeat"
-                                    className={`w-14 h-12 flex-none border ${theme.isDark ? 'bg-black/80 backdrop-blur-md' : 'bg-white/80 backdrop-blur-md'} flex items-center justify-center transition-colors cursor-pointer rounded-sm touch-manipulation select-none [-webkit-touch-callout:none]`}
-                                    style={{ borderColor: `${theme.accentColor}33` }}
+                                    className="hud hud-btn hud-accent hud-deep hud-cap-l w-14 h-12 flex-none flex items-center justify-center cursor-pointer touch-manipulation select-none [-webkit-touch-callout:none]"
                                 >
                                     <CalibratedMinusIcon size={20} color={theme.accentInk} />
                                 </motion.button>
@@ -2524,8 +2531,7 @@ const App: React.FC = () => {
                                        a fixed near-black (#241a06), right for the old amber and cyan but
                                        3.01:1 on the amethyst light accent, under AA for 12px text. The
                                        icon follows, as it draws in currentColor. */
-                                    className={`h-12 flex-1 max-w-[400px] backdrop-blur-md flex items-center justify-center gap-2 transition-all font-mono font-bold tracking-widest text-[12px] group cursor-pointer rounded-sm text-accent-on disabled:opacity-40 disabled:cursor-not-allowed`}
-                                    style={{ backgroundColor: theme.accentColor, borderColor: theme.accentColor, boxShadow: emphasis(theme, accentRGB(theme)) }}
+                                    className="hud hud-cmd hud-hash hud-glow h-12 flex-1 max-w-[400px] flex items-center justify-center gap-2 font-mono font-bold tracking-widest text-[12px] group cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                                 >
                                     <InfinitePortalIcon size={18} className="group-hover:rotate-12 transition-transform" /> ENTER PORTAL
                                 </motion.button>
@@ -2535,8 +2541,7 @@ const App: React.FC = () => {
                                     type="button"
                                     aria-label="Next chapter"
                                     title="Next chapter (→) · hold to repeat"
-                                    className={`w-14 h-12 flex-none border ${theme.isDark ? 'bg-black/80 backdrop-blur-md' : 'bg-white/80 backdrop-blur-md'} flex items-center justify-center transition-colors cursor-pointer rounded-sm touch-manipulation select-none [-webkit-touch-callout:none]`}
-                                    style={{ borderColor: `${theme.accentColor}33` }}
+                                    className="hud hud-btn hud-accent hud-deep hud-cap-r w-14 h-12 flex-none flex items-center justify-center cursor-pointer touch-manipulation select-none [-webkit-touch-callout:none]"
                                 >
                                     <CalibratedPlusIcon size={20} color={theme.accentInk} />
                                 </motion.button>
@@ -2604,7 +2609,7 @@ const App: React.FC = () => {
                                                 data-tour="profile"
                                                 type="button"
                                                 onClick={() => setIsProfileOpen(true)}
-                                                className="absolute -bottom-1 -right-2 px-1 py-0.5 bg-accent text-accent-on text-[8px] font-black font-mono tracking-tighter uppercase cursor-pointer hover:scale-110 active:scale-95 transition-transform duration-200 shadow-lg z-20"
+                                                className="hud hud-cmd [--hud-c:4px] absolute -bottom-1 -right-2 px-1.5 py-0.5 text-[8px] font-black font-mono tracking-tighter uppercase cursor-pointer z-20"
                                             >
                                                 ACTIVE_PROFILE
                                             </button>
@@ -2689,7 +2694,7 @@ const App: React.FC = () => {
                                 onClick={() => { setSpireStartInSearch(true); setIsSpireOpen(true); }}
                                 title="Search the library (/)"
                                 aria-label="Search the library"
-                                className={`h-6 w-7 -my-1 flex items-center justify-center ${theme.highlightText} ${theme.isDark ? 'hover:bg-white/5' : 'hover:bg-black/5'} transition-colors`}
+                                className={`hud hud-ghost h-6 w-7 -my-1 flex items-center justify-center ${theme.highlightText}`}
                             >
                                 <Search size={12} aria-hidden="true" />
                             </button>
@@ -2700,7 +2705,7 @@ const App: React.FC = () => {
                                 onClick={checkNewChapters}
                                 disabled={chapterCheckBusy || activeQuest.id === DEFAULT_QUEST.id}
                                 title="Check for new chapters"
-                                className={`h-6 -my-1 px-1.5 flex items-center gap-1.5 font-mono text-[9px] font-bold tracking-widest uppercase ${theme.highlightText} ${theme.isDark ? 'hover:bg-white/5' : 'hover:bg-black/5'} transition-colors disabled:opacity-50 disabled:cursor-wait`}
+                                className={`hud hud-ghost h-6 -my-1 px-1.5 flex items-center gap-1.5 font-mono text-[9px] font-bold tracking-widest uppercase ${theme.highlightText} disabled:opacity-50 disabled:cursor-wait`}
                             >
                                 <RefreshCw size={11} aria-hidden="true" className={chapterCheckBusy ? 'animate-spin' : ''} />
                                 New chapters
@@ -2719,7 +2724,7 @@ const App: React.FC = () => {
 
                     {/* DIVINE SPIRE BUTTON. Light: an opaque pale-sky plate. The 10% sky wash it had
                         composited darker over the bottom of the page gradient and left the ink at 4.37:1. */}
-                    <button data-tour="spire" aria-label="Open Divine Spire" onClick={() => { setIsSpireOpen(true); }} className={`mt-auto hidden lg:flex w-full h-12 ${theme.isDark ? 'bg-white/5' : 'bg-[#ece4f7]/90'} border ${theme.borderSubtle} ${theme.highlightText} ${theme.isDark ? 'hover:bg-[#f59e0b] hover:text-black' : 'hover:bg-[#5b21b6] hover:text-[#fcfaff]'} font-mono font-bold tracking-widest uppercase transition-all items-center justify-center gap-2 text-[12px] shrink-0 shadow-sm cursor-pointer duration-700`}><LayoutTemplate size={16} /> DIVINE SPIRE</button>
+                    <button data-tour="spire" aria-label="Open Divine Spire" onClick={() => { setIsSpireOpen(true); }} className={`hud hud-btn hud-accent hud-deep hud-ticks [--hud-c:10px] mt-auto hidden lg:flex w-full h-12 ${theme.highlightText} font-mono font-bold tracking-widest uppercase items-center justify-center gap-2 text-[12px] shrink-0 cursor-pointer`}><LayoutTemplate size={16} /> DIVINE SPIRE</button>
                     </div>{/* end full panel */}
                 </div>
             </div>
@@ -2861,6 +2866,8 @@ const App: React.FC = () => {
                             theme={theme}
                             items={spireItems}
                             onActivate={handleActivate}
+                            onStepChapter={stepQuestChapter}
+                            onEnterPortal={handleEnterPortal}
                             playerRank={playerRank}
                             streak={userState.streak}
                             goals={userState.goals ?? null}

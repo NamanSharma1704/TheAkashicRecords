@@ -353,11 +353,10 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
     // Shared surface + label styles for the right-hand data column. In LIGHT mode the
     // panels are soft frosted cards (not bright white) so they don't glare — mirroring
     // how dark mode's panels are subtle recesses rather than high-contrast blocks.
-    const panelClass = theme.isDark ? 'bg-black/30 border-white/5' : 'bg-white/70 border-white/40';
     // white/40 measured 3.8:1 on the amber-tinted panels; /60 clears AA and still sits a
     // tier below the values it labels.
     const labelClass = `text-[10px] font-mono tracking-widest uppercase ${theme.isDark ? 'text-white/60' : 'text-stone-600'}`;
-    const metricCellClass = `flex flex-col gap-1 p-3 rounded-lg border ${theme.isDark ? 'bg-white/5 border-white/5' : 'bg-white/70 border-white/40'}`;
+    const metricCellClass = 'hud hud-cell flex flex-col gap-1 p-3';
 
     // Theme accent shorthands + this quest's rank sigil.
     const accentBorder = theme.id === 'LIGHT' ? 'border-violet-400' : 'border-amber-400';
@@ -380,9 +379,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
     const strongText = theme.isDark ? 'text-white' : 'text-stone-900';
     const faintText = theme.isDark ? 'text-white/50' : 'text-stone-600';
     const iconText = theme.isDark ? 'text-white' : 'text-stone-600';
-    const chipBtn = theme.isDark
-        ? 'bg-white/5 hover:bg-white/10 border-white/10 text-white hover:border-white/30'
-        : 'bg-white/70 hover:bg-white border-[#d3cae8] text-stone-800 hover:border-[#8b5cf6] shadow-sm';
+    const chipBtn = `hud hud-btn ${theme.isDark ? 'text-white' : 'text-stone-800'}`;
 
     // EXP-style progress readout.
     const totalCh = quest.totalChapters || 0;
@@ -458,7 +455,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                 <button
                     type="button"
                     onClick={startSeriesTour}
-                    className={`w-9 h-9 flex items-center justify-center border ${theme.borderSubtle} ${theme.isDark ? `${theme.mutedText} hover:${theme.highlightText}` : 'text-stone-800 hover:text-amber-950'} hover:border-current transition-colors cursor-pointer`}
+                    className={`hud hud-tool w-9 h-9 flex items-center justify-center ${theme.isDark ? `${theme.mutedText} hover:${theme.highlightText}` : 'text-stone-800 hover:text-violet-950'} cursor-pointer`}
                     title="Tour this page"
                     aria-label="Tour this page"
                 >
@@ -466,7 +463,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                 </button>
                 <button
                     onClick={onClose}
-                    className={`pointer-events-auto w-9 h-9 flex items-center justify-center border ${theme.borderSubtle} ${theme.isDark ? `${theme.mutedText} hover:${theme.highlightText}` : 'text-stone-800 hover:text-amber-950'} hover:border-current transition-colors cursor-pointer`}
+                    className={`hud hud-tool pointer-events-auto w-9 h-9 flex items-center justify-center ${theme.isDark ? `${theme.mutedText} hover:${theme.highlightText}` : 'text-stone-800 hover:text-violet-950'} cursor-pointer`}
                     title="Close Details"
                     aria-label="Close Details"
                 >
@@ -564,17 +561,17 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                         href={quest.link}
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        className={`col-span-2 justify-center xl:justify-start px-8 py-3 rounded-sm border font-bold transition flex items-center gap-3 group/dive hover:scale-105 active:scale-95 cursor-pointer ${theme.isDark ? `bg-amber-500/25 hover:bg-amber-500/40 border-amber-500/60 shadow-[0_0_20px_rgba(245,158,11,0.35)] ${inkText}` : 'bg-[#7c3aed] hover:bg-[#6d28d9] border-[#7c3aed] text-white shadow-[0_6px_20px_rgba(124,58,237,0.45)]'}`}
+                                        className="hud hud-cmd hud-hash hud-glow col-span-2 justify-center xl:justify-start px-8 xl:pr-14 py-3 font-bold flex items-center gap-3 group/dive cursor-pointer"
                                         title="Enter Portal"
                                         aria-label="Enter Portal"
                                     >
-                                        <Zap size={16} aria-hidden="true" className={`${theme.isDark ? inkText : 'text-white'} group-hover/dive:animate-pulse`} />
+                                        <Zap size={16} aria-hidden="true" className="group-hover/dive:animate-pulse" />
                                         <ScrambleText text="ENTER_PORTAL" className="text-[10px] tracking-[0.2em] font-orbitron font-mono" />
                                     </a>
                                 )}
                                 <button
                                     onClick={() => quest && onEdit && onEdit(quest)}
-                                    className={`min-w-0 justify-center px-2 xl:px-6 py-3 rounded-sm border ${chipBtn} font-bold transition flex items-center gap-2 xl:gap-3 group/edit`}
+                                    className={`${chipBtn} min-w-0 justify-center px-2 xl:px-6 py-3 font-bold flex items-center gap-2 xl:gap-3 group/edit`}
                                 >
                                     <Edit2 size={16} className="shrink-0 opacity-70 group-hover/edit:opacity-100 transition-opacity" />
                                     <span className="text-[10px] tracking-[0.12em] xl:tracking-[0.2em] font-orbitron whitespace-nowrap">EDIT_ARTIFACT</span>
@@ -586,7 +583,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                             onClose();
                                         }
                                     }}
-                                    className={`min-w-0 justify-center px-2 xl:px-6 py-3 rounded-sm border ${chipBtn} font-bold transition flex items-center gap-2 xl:gap-3 group/active`}
+                                    className={`${chipBtn} min-w-0 justify-center px-2 xl:px-6 py-3 font-bold flex items-center gap-2 xl:gap-3 group/active`}
                                 >
                                     <Target size={16} className="shrink-0 opacity-70 group-hover/active:opacity-100 transition-opacity" />
                                     <span className="text-[10px] tracking-[0.12em] xl:tracking-[0.2em] font-orbitron whitespace-nowrap">MARK_TARGET</span>
@@ -594,7 +591,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                             </div>
 
                             {canConquer && (
-                                <div className="mt-4 w-full max-w-md flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 rounded-sm border border-accent-line bg-accent-soft text-left">
+                                <div className="hud hud-accent [--hud-c:10px] [--hud-plate:var(--accent-soft)] mt-4 w-full max-w-md flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 text-left">
                                     <Crown size={16} aria-hidden="true" className="shrink-0 text-accent-icon" />
                                     <span className={`flex-1 min-w-[12rem] text-[11px] font-mono leading-snug ${theme.isDark ? 'text-white/85' : 'text-stone-800'}`}>
                                         This series has finished, and you are on its last chapter.
@@ -606,7 +603,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                             setConquering(true);
                                             try { await onUpdate!(quest.id, { status: 'CONQUERED' }); } finally { setConquering(false); }
                                         }}
-                                        className="px-4 py-2 rounded-sm bg-accent text-accent-on font-orbitron font-bold text-[10px] tracking-[0.2em] hover:brightness-110 disabled:opacity-60 disabled:cursor-wait transition"
+                                        className="hud hud-cmd px-4 py-2 font-orbitron font-bold text-[10px] tracking-[0.2em] disabled:opacity-60 disabled:cursor-wait"
                                     >
                                         MARK_CONQUERED
                                     </button>
@@ -617,7 +614,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
 
                     {/* PROGRESS HUD: THE RUNIC THREAD */}
                     <motion.div data-tour="series-progress" variants={itemVariants} className="w-full relative group mt-4">
-                        <div className={`relative rounded-xl p-4 md:p-8 backdrop-blur-2xl shadow-2xl overflow-hidden border ${theme.isDark ? 'bg-black/40 border-white/10' : 'bg-white/70 border-white/40'}`}>
+                        <div className="hud hud-sheet p-4 md:p-8">
                             {/* Ambient internal glow */}
                             <div className={`absolute inset-0 bg-gradient-to-r ${theme.gradient} opacity-5 blur-xl pointer-events-none`} />
 
@@ -674,7 +671,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                     {/* TWO COLUMN DATA: SYNOPSIS & METADATA */}
                     <motion.div variants={itemVariants} className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-4">
                         {/* LEFT: Synopsis */}
-                        <div className={`lg:col-span-2 relative p-4 md:p-8 backdrop-blur-xl rounded-xl group/synopsis border ${theme.isDark ? 'bg-black/30 border-white/5' : 'bg-white/70 border-white/40'}`}>
+                        <div className="hud hud-sheet lg:col-span-2 p-4 md:p-8 group/synopsis">
                             <SectionHeader index="01" icon={<AlignLeft size={16} className={theme.isDark ? 'text-white' : 'text-stone-600'} />} label="ARCHIVE_SYNOPSIS" theme={theme}>
                                 <button
                                     onClick={() => {
@@ -685,7 +682,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                         }
                                         setIsEditingSynopsis(!isEditingSynopsis);
                                     }}
-                                    className={`shrink-0 min-h-[28px] px-3 py-1.5 rounded border text-[9px] font-mono tracking-widest uppercase transition-colors flex items-center gap-2 ${theme.isDark ? 'border-white/10 hover:border-white/30 text-white/60 hover:text-white' : 'border-stone-400 hover:border-stone-600 text-stone-600 hover:text-stone-900'}`}
+                                    className={`hud hud-btn [--hud-c:5px] shrink-0 min-h-[28px] px-3 py-1.5 text-[9px] font-mono tracking-widest uppercase flex items-center gap-2 ${theme.isDark ? 'text-white/60 hover:text-white' : 'text-stone-600 hover:text-stone-900'}`}
                                 >
                                     {isEditingSynopsis ? <><Check size={12} /> SAVE_OVERRIDE</> : <><Edit2 size={12} /> MODIFY</>}
                                 </button>
@@ -715,7 +712,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                         {/* RIGHT: Appraisal, Chronicle, System Metrics, Genres */}
                         <div className="flex flex-col gap-4">
                             {/* HUNTER_APPRAISAL: your own score, beside the source's RESONANCE below. */}
-                            <div data-tour="series-appraisal" className={`p-6 backdrop-blur-xl rounded-xl flex flex-col gap-4 border ${panelClass}`}>
+                            <div data-tour="series-appraisal" className="hud hud-sheet p-6 flex flex-col gap-4">
                                 <div className="flex items-center gap-2">
                                     <Gauge size={16} aria-hidden="true" className={theme.isDark ? 'text-white/60' : 'text-stone-600'} />
                                     <span className={`text-[10px] font-mono tracking-[0.3em] font-bold uppercase ${theme.isDark ? 'text-white/60' : 'text-stone-600'}`}>HUNTER_APPRAISAL</span>
@@ -728,7 +725,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                             </div>
 
                             {/* CHRONICLE: this series' own history, from the reading log. */}
-                            <div data-tour="series-chronicle" className={`p-6 backdrop-blur-xl rounded-xl flex flex-col gap-4 border ${panelClass}`}>
+                            <div data-tour="series-chronicle" className="hud hud-sheet p-6 flex flex-col gap-4">
                                 <div className="flex items-center gap-2">
                                     <History size={16} aria-hidden="true" className={theme.isDark ? 'text-white/60' : 'text-stone-600'} />
                                     <span className={`text-[10px] font-mono tracking-[0.3em] font-bold uppercase ${theme.isDark ? 'text-white/60' : 'text-stone-600'}`}>CHRONICLE</span>
@@ -788,7 +785,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
 
                             {/* RECORD METRICS (AniList-derived: score, year, chapters, source) */}
                             {(isLoadingMedia || media) && (
-                                <div className={`p-6 backdrop-blur-xl rounded-xl flex flex-col gap-5 border ${panelClass}`}>
+                                <div className="hud hud-sheet p-6 flex flex-col gap-5">
                                     {/* Tiered by colour, not opacity-60: faded, the light label measured 2.7:1. */}
                                     <div className="flex items-center gap-2">
                                         <Activity size={16} aria-hidden="true" className={theme.isDark ? 'text-white/60' : 'text-stone-600'} />
@@ -851,7 +848,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                                     href={media.siteUrl}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
-                                                    className={`flex items-center justify-between px-3 py-2 rounded-lg border transition-colors group/src ${theme.isDark ? 'border-white/10 hover:border-white/30 text-white/60 hover:text-white' : 'border-stone-400 hover:border-stone-600 text-stone-600 hover:text-stone-900'}`}
+                                                    className={`hud hud-btn [--hud-c:6px] flex items-center justify-between px-3 py-2 group/src ${theme.isDark ? 'text-white/60 hover:text-white' : 'text-stone-600 hover:text-stone-900'}`}
                                                     title="Open source record"
                                                 >
                                                     <span className="text-[9px] font-mono tracking-widest uppercase">VIEW_SOURCE</span>
@@ -864,7 +861,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                             )}
 
                             {/* GENRES */}
-                            <div className={`p-6 backdrop-blur-xl rounded-xl flex flex-col gap-4 border ${panelClass}`}>
+                            <div className="hud hud-sheet p-6 flex flex-col gap-4">
                                 <span className={labelClass}>GENRES</span>
                                 <div className="flex flex-wrap gap-2">
                                     {media?.genres?.length ? media.genres.map(genre => (
@@ -915,7 +912,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                         ))
                                     ) : (
                                         media?.characters?.nodes?.map(char => (
-                                            <div key={char.id} className={`w-[100px] shrink-0 snap-start flex flex-col items-center gap-3 group p-4 backdrop-blur-md rounded-lg border ${theme.isDark ? 'bg-black/20 border-white/5' : 'bg-white/70 border-[#d3cae8] shadow-sm'}`}>
+                                            <div key={char.id} className="hud hud-cell [--hud-c:8px] [--hud-plate:var(--hud-sheet-glass)] w-[100px] shrink-0 snap-start flex flex-col items-center gap-3 group p-4">
                                                 <CharacterAvatar char={char} theme={theme} />
                                                 <div className="text-center w-full">
                                                     <div className={`text-[10px] font-bold truncate w-full ${theme.isDark ? 'text-white' : 'text-stone-800'}`} title={char.name.full}>{char.name.full}</div>
@@ -947,7 +944,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                             key={rec.id}
                                             onClick={() => onSetActive && onSetActive(rec.id)}
                                             aria-label={`Open ${rec.title}`}
-                                            className="w-[160px] shrink-0 snap-start group relative aspect-[2/3] rounded-lg overflow-hidden cursor-pointer shadow-lg border border-white/5 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
+                                            className="hud hud-media hud-on-plate w-[160px] shrink-0 snap-start group aspect-[2/3] overflow-hidden cursor-pointer text-left"
                                         >
                                             <CoverArt title={rec.title} size="card" className="absolute inset-0" />
                                             {rec.coverUrl && (

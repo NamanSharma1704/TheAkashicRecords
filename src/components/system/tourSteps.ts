@@ -16,6 +16,7 @@ export const TOUR_NAMES: Record<TourId, string> = {
     dashboard: 'Tutorial',
     spire: 'Spire',
     floor: 'Spire floor',
+    matrix: 'Matrix',
     profile: 'Profile',
     series: 'Series',
     gate: 'Gate editor',
@@ -43,12 +44,19 @@ export const tourSteps = (id: TourId, guest: boolean): TourStep[] => {
             { target: 'tower-quests', title: 'Daily and weekly quests', body: 'Today\'s mandate and this week\'s decree. Adjust quests to choose what counts and how much.' },
             { target: 'tower-recents', title: 'Recent data', body: 'The series you touched last. Tap one to open its page.' },
             { target: null, title: 'Enter a floor', body: 'Tap an isle of the tower to walk into that floor and see its series. Keyboard: Tab reaches a button for each floor.' },
+            { target: 'spire-views', title: 'Tower or Matrix', body: 'Matrix shows every series in one list instead, with a +1 on each row. The Spire opens in whichever you used last.' },
         ];
         case 'floor': return [
             { target: 'floor-search', title: 'Search the archive', body: 'Type any part of a title to find it on every floor at once.' },
             { target: 'floor-layer', title: 'Change floor', body: 'The arrows step between floors. Tap the floor name for filters by class and status, the sort order, and a jump to any floor.' },
             { target: 'floor-cards', title: 'The series here', body: 'Scroll sideways through this floor. Tap a card to open its series page.' },
             { target: 'floor-select', title: 'Change many at once', body: 'Select turns taps into a selection, across floors and searches. Then set one status on all of them, or move them to the Trash; every change offers Undo.' },
+        ];
+        case 'matrix': return [
+            { target: 'spire-views', title: 'The Command Matrix', body: 'The whole library as one list, for logging chapters across many series quickly. Tower takes you back to the floors.' },
+            { target: 'matrix-tools', title: 'Find and order', body: 'Search by title, filter by status (each shows its count), and choose the order. The sort is shared with the floors.' },
+            { target: 'matrix-row', title: 'One row, three actions', body: '+1 logs a chapter; taps in a row save together. The arrow opens the series page, and the bolt opens its reading link. The list keeps its order while you work.' },
+            { target: null, title: 'Keys', body: 'With a keyboard: J and K (or the arrows) move down and up the list, + logs a chapter on the marked row and - takes one back, O opens it, Enter opens its reading link, and / jumps to the search.' },
         ];
         case 'profile': return [
             { target: 'profile-banner', title: 'Your designation', body: 'Your rank, the EXP to the next one and the whole ladder. Edit Profile changes your name; Hunter Card makes an image of all this to share.' },

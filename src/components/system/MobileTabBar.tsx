@@ -80,7 +80,7 @@ const MobileTabBar: React.FC<MobileTabBarProps> = ({ theme, active, hidden, onHo
                 })}
                 <li className="flex flex-1">
                     <button type="button" onClick={onNew} aria-label="Create gate" className={`${item} text-accent-plate`}>
-                        <span aria-hidden="true" className="w-7 h-7 -my-1 flex items-center justify-center border border-accent-line bg-accent-soft">
+                        <span aria-hidden="true" className="hud hud-tool hud-accent [--hud-plate:var(--accent-soft)] w-7 h-7 -my-1 flex items-center justify-center">
                             <Plus size={16} />
                         </span>
                         <span aria-hidden="true" className={label}>New</span>

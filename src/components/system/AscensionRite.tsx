@@ -172,8 +172,8 @@ const AscensionRite: React.FC<{ subject: RiteSubject; onClose: () => void }> = (
                         ref={continueRef}
                         type="button"
                         onClick={(e) => { e.stopPropagation(); onClose(); }}
-                        className="mt-1 px-5 h-9 border font-mono text-[10px] font-bold tracking-[0.25em] uppercase text-white hover:bg-white/10 transition-colors"
-                        style={{ borderColor: `${GOLD}99` }}
+                        className="hud hud-on-plate mt-1 px-5 h-9 font-mono text-[10px] font-bold tracking-[0.25em] uppercase text-white hover:[--hud-plate:rgba(255,255,255,0.1)]"
+                        style={{ '--hud-line': `${GOLD}99` } as React.CSSProperties}
                     >
                         Continue
                     </button>

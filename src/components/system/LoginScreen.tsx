@@ -137,7 +137,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, theme, onTogg
                         onClick={onToggleTheme}
                         aria-label={theme.isDark ? 'Switch to light theme' : 'Switch to dark theme'}
                         title={theme.isDark ? 'Switch to light theme' : 'Switch to dark theme'}
-                        className={`w-8 h-8 flex items-center justify-center border ${theme.borderSubtle} ${theme.isDark ? 'bg-white/5 hover:bg-white/10' : 'bg-violet-50 hover:bg-black/5'} rounded transition-colors duration-700`}
+                        className="hud hud-tool w-8 h-8 flex items-center justify-center"
                     >
                         {/* Light's sun was amber-600, 2.9:1 on the violet-50 plate; it takes the
                             accent icon ink like the in-app toggle. */}
@@ -274,17 +274,10 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, theme, onTogg
                                     <button
                                         type="submit"
                                         disabled={loading}
-                                        className={`w-full py-3.5 border font-black tracking-[0.3em] uppercase text-sm transition-all duration-700 relative group overflow-hidden flex items-center justify-center gap-3 ${loading ? 'opacity-50 cursor-wait' : 'cursor-pointer'}`}
-                                        /* Dark is a ghost button — accent text on a 10% accent wash — so it
-                                           reads fine. Light fills solid with the accent, and white on that
-                                           measured 2.43:1: the same failure ENTER PORTAL had. The fill
-                                           carries the weight a primary action wants, so the label goes
-                                           near-black (7.33:1) rather than the button going ghost too. */
-                                        style={{
-                                            color: theme.accentColor,
-                                            borderColor: theme.accentColor,
-                                            backgroundColor: `${theme.accentColor}1a`
-                                        }}
+                                        /* The screen's command: the frame kit's filled plate, as ENTER
+                                           PORTAL is. Its ink is accent-on (black on amber 9.8:1, white on
+                                           violet 5.7:1). */
+                                        className={`hud hud-cmd hud-hash w-full py-3.5 font-black tracking-[0.3em] uppercase text-sm group flex items-center justify-center gap-3 ${loading ? 'opacity-50 cursor-wait' : 'cursor-pointer'}`}
                                     >
                                         {loading
                                             ? <><Cpu size={16} className="animate-spin" /> Synchronizing...</>
@@ -300,9 +293,9 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, theme, onTogg
                                         type="button"
                                         onClick={handleGuestAccess}
                                         disabled={loading}
-                                        className={`w-full py-3 border ${theme.borderSubtle} ${theme.isDark
-                                            ? 'bg-black/40 hover:bg-white/5 text-gray-300 hover:text-white'
-                                            : 'bg-white/60 hover:bg-black/5 text-stone-600 hover:text-stone-900'} font-bold tracking-[0.2em] uppercase text-[10px] transition-colors duration-700 flex items-center justify-center gap-2 ${loading ? 'opacity-50 cursor-wait' : 'cursor-pointer'}`}
+                                        className={`hud hud-btn w-full py-3 ${theme.isDark
+                                            ? 'text-gray-300 hover:text-white'
+                                            : 'text-stone-600 hover:text-stone-900'} font-bold tracking-[0.2em] uppercase text-[10px] flex items-center justify-center gap-2 ${loading ? 'opacity-50 cursor-wait' : 'cursor-pointer'}`}
                                     >
                                         <Shield size={13} /> Bypass_Authentication (Guest)
                                     </button>

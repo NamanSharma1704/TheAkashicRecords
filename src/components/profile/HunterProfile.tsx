@@ -666,11 +666,11 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                     {/* Export: the full backup or the spreadsheet. A menu rather than another
                         button, because a phone's toolbar has no room left. */}
                     <div ref={exportMenuRef} className="relative">
-                        <button type="button" onClick={() => setExportMenuOpen(o => !o)} aria-haspopup="menu" aria-expanded={exportMenuOpen} title="Export archive" aria-label="Export archive" className={`w-9 h-9 flex items-center justify-center border ${theme.borderSubtle} ${theme.mutedText} hover:${theme.headingText} ${theme.isDark ? 'hover:bg-white/5' : 'hover:bg-black/5'} transition-colors cursor-pointer`}>
+                        <button type="button" onClick={() => setExportMenuOpen(o => !o)} aria-haspopup="menu" aria-expanded={exportMenuOpen} title="Export archive" aria-label="Export archive" className={`hud hud-tool w-9 h-9 flex items-center justify-center ${theme.mutedText} hover:${theme.headingText} cursor-pointer`}>
                             <Download size={14} aria-hidden="true" />
                         </button>
                         {exportMenuOpen && (
-                            <div role="menu" aria-label="Export archive" className={`absolute left-0 top-full mt-1.5 z-50 w-64 p-1 border ${theme.borderSubtle} ${theme.panelBg} shadow-xl`}>
+                            <div role="menu" aria-label="Export archive" className={`absolute left-0 top-full mt-1.5 z-50 w-64 p-1 hud hud-menu shadow-xl`}>
                                 {[
                                     { label: 'Full backup (.json)', hint: 'Everything: synopses, reading history, titles, quests and settings, Trash. Restores completely.', run: exportBackup },
                                     { label: 'Spreadsheet (.csv)', hint: 'Titles and progress, for Excel or Sheets.', run: exportToCSV },
@@ -681,7 +681,7 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                                         role="menuitem"
                                         autoFocus={i === 0}
                                         onClick={() => { setExportMenuOpen(false); item.run(); }}
-                                        className={`w-full text-left px-3 py-2.5 flex flex-col gap-0.5 ${theme.isDark ? 'hover:bg-white/5 focus-visible:bg-white/5' : 'hover:bg-black/5 focus-visible:bg-black/5'} transition-colors cursor-pointer`}
+                                        className="hud hud-ghost [--hud-c:6px] w-full text-left px-3 py-2.5 flex flex-col gap-0.5 cursor-pointer"
                                     >
                                         <span className={`font-mono text-[11px] font-bold ${theme.headingText}`}>{item.label}</span>
                                         <span className={`font-mono text-[10px] leading-snug ${theme.mutedText}`}>{item.hint}</span>
@@ -693,11 +693,11 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                     {/* Import: a file exported from here, or a reading list from AniList or
                         MyAnimeList. A menu, like Export, for the same lack of toolbar room. */}
                     <div ref={importMenuRef} className="relative">
-                        <button type="button" onClick={() => setImportMenuOpen(o => !o)} aria-haspopup="menu" aria-expanded={importMenuOpen} title="Import into the archive" aria-label="Import into the archive" className={`w-9 h-9 flex items-center justify-center border ${theme.borderSubtle} ${theme.mutedText} hover:${theme.headingText} ${theme.isDark ? 'hover:bg-white/5' : 'hover:bg-black/5'} transition-colors cursor-pointer`}>
+                        <button type="button" onClick={() => setImportMenuOpen(o => !o)} aria-haspopup="menu" aria-expanded={importMenuOpen} title="Import into the archive" aria-label="Import into the archive" className={`hud hud-tool w-9 h-9 flex items-center justify-center ${theme.mutedText} hover:${theme.headingText} cursor-pointer`}>
                             <Upload size={14} aria-hidden="true" />
                         </button>
                         {importMenuOpen && (
-                            <div role="menu" aria-label="Import into the archive" className={`absolute left-0 top-full mt-1.5 z-50 w-64 p-1 border ${theme.borderSubtle} ${theme.panelBg} shadow-xl`}>
+                            <div role="menu" aria-label="Import into the archive" className={`absolute left-0 top-full mt-1.5 z-50 w-64 p-1 hud hud-menu shadow-xl`}>
                                 {[
                                     { label: 'Archive file (.csv or .json)', hint: 'A spreadsheet or full backup exported from here.', run: () => importFileRef.current?.click() },
                                     { label: 'AniList list', hint: 'A public AniList manga list, by username.', run: () => setListImport('anilist') },
@@ -709,7 +709,7 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                                         role="menuitem"
                                         autoFocus={i === 0}
                                         onClick={() => { setImportMenuOpen(false); item.run(); }}
-                                        className={`w-full text-left px-3 py-2.5 flex flex-col gap-0.5 ${theme.isDark ? 'hover:bg-white/5 focus-visible:bg-white/5' : 'hover:bg-black/5 focus-visible:bg-black/5'} transition-colors cursor-pointer`}
+                                        className="hud hud-ghost [--hud-c:6px] w-full text-left px-3 py-2.5 flex flex-col gap-0.5 cursor-pointer"
                                     >
                                         <span className={`font-mono text-[11px] font-bold ${theme.headingText}`}>{item.label}</span>
                                         <span className={`font-mono text-[10px] leading-snug ${theme.mutedText}`}>{item.hint}</span>
@@ -732,10 +732,10 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                             else e.target.value = "";
                         }} />
                     </div>
-                    <button type="button" onClick={() => setShowTrash(true)} title="Trash (deleted records)" aria-label="Open the Trash" className={`w-9 h-9 flex items-center justify-center border ${theme.borderSubtle} ${theme.mutedText} hover:${theme.headingText} ${theme.isDark ? 'hover:bg-white/5' : 'hover:bg-black/5'} transition-colors cursor-pointer`}>
+                    <button type="button" onClick={() => setShowTrash(true)} title="Trash (deleted records)" aria-label="Open the Trash" className={`hud hud-tool w-9 h-9 flex items-center justify-center ${theme.mutedText} hover:${theme.headingText} cursor-pointer`}>
                         <Trash2 size={14} aria-hidden="true" />
                     </button>
-                    <button type="button" onClick={findMissingCovers} disabled={coverBusy} aria-busy={coverBusy} title="Find missing covers" aria-label="Find missing covers" className={`w-9 h-9 flex items-center justify-center border ${theme.borderSubtle} ${theme.mutedText} hover:${theme.headingText} ${theme.isDark ? 'hover:bg-white/5' : 'hover:bg-black/5'} transition-colors cursor-pointer disabled:cursor-wait`}>
+                    <button type="button" onClick={findMissingCovers} disabled={coverBusy} aria-busy={coverBusy} title="Find missing covers" aria-label="Find missing covers" className={`hud hud-tool w-9 h-9 flex items-center justify-center ${theme.mutedText} hover:${theme.headingText} cursor-pointer disabled:cursor-wait`}>
                         <ImagePlus size={14} aria-hidden="true" className={coverBusy ? 'animate-pulse' : ''} />
                     </button>
                     {/* System settings: the per-device switches, low-power effects and chapter
@@ -745,11 +745,11 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                         screen from the middle of the toolbar. Each item is a checkbox (it says
                         ON or OFF), and the menu stays open to show the change. */}
                     <div ref={settingsMenuRef} className="relative">
-                        <button type="button" onClick={() => setSettingsMenuOpen(o => !o)} aria-haspopup="menu" aria-expanded={settingsMenuOpen} title="System settings" aria-label="System settings" className={`w-9 h-9 flex items-center justify-center border transition-colors cursor-pointer ${lowPower || chapterSounds ? 'border-accent-line text-accent-ink' : `${theme.borderSubtle} ${theme.mutedText}`} hover:${theme.headingText} ${theme.isDark ? 'hover:bg-white/5' : 'hover:bg-black/5'}`}>
+                        <button type="button" onClick={() => setSettingsMenuOpen(o => !o)} aria-haspopup="menu" aria-expanded={settingsMenuOpen} title="System settings" aria-label="System settings" className={`hud hud-tool w-9 h-9 flex items-center justify-center cursor-pointer ${lowPower || chapterSounds ? 'hud-accent text-accent-ink' : theme.mutedText} hover:${theme.headingText}`}>
                             <SlidersHorizontal size={14} aria-hidden="true" />
                         </button>
                         {settingsMenuOpen && (
-                            <div role="menu" aria-label="System settings" className={`absolute left-1/2 -translate-x-1/2 top-full mt-1.5 z-50 w-56 p-1 border ${theme.borderSubtle} ${theme.panelBg} shadow-xl`}>
+                            <div role="menu" aria-label="System settings" className={`absolute left-1/2 -translate-x-1/2 top-full mt-1.5 z-50 w-56 p-1 hud hud-menu shadow-xl`}>
                                 {[
                                     { label: 'Low-power effects', hint: 'Holds the animated background, rings and dais still.', on: lowPower, toggle: onToggleLowPower, icon: <Gauge size={14} aria-hidden="true" /> },
                                     { label: 'Chapter sounds', hint: 'A rising note for each chapter read. Plays one when turned on.', on: chapterSounds, toggle: onToggleChapterSounds, icon: chapterSounds ? <Volume2 size={14} aria-hidden="true" /> : <VolumeX size={14} aria-hidden="true" /> },
@@ -761,14 +761,14 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                                         aria-checked={item.on}
                                         autoFocus={i === 0}
                                         onClick={item.toggle}
-                                        className={`w-full text-left px-3 py-2.5 flex items-start gap-3 ${theme.isDark ? 'hover:bg-white/5 focus-visible:bg-white/5' : 'hover:bg-black/5 focus-visible:bg-black/5'} transition-colors cursor-pointer`}
+                                        className="hud hud-ghost [--hud-c:6px] w-full text-left px-3 py-2.5 flex items-start gap-3 cursor-pointer"
                                     >
                                         <span className={`mt-0.5 shrink-0 ${item.on ? 'text-accent-ink' : theme.mutedText}`}>{item.icon}</span>
                                         <span className="flex-1 min-w-0 flex flex-col gap-0.5">
                                             <span className={`font-mono text-[11px] font-bold ${theme.headingText}`}>{item.label}</span>
                                             <span className={`font-mono text-[10px] leading-snug ${theme.mutedText}`}>{item.hint}</span>
                                         </span>
-                                        <span aria-hidden="true" className={`shrink-0 mt-0.5 px-1.5 py-0.5 border font-mono text-[9px] font-bold tracking-widest ${item.on ? 'border-accent-line-strong bg-accent-soft-strong text-accent-ink' : `${theme.borderSubtle} ${theme.mutedText}`}`}>
+                                        <span aria-hidden="true" className={`hud hud-cut-br [--hud-c:4px] shrink-0 mt-0.5 px-1.5 py-0.5 font-mono text-[9px] font-bold tracking-widest ${item.on ? '[--hud-line:var(--accent-line-strong)] [--hud-plate:var(--accent-soft-strong)] text-accent-ink' : theme.mutedText}`}>
                                             {item.on ? 'ON' : 'OFF'}
                                         </span>
                                     </button>
@@ -776,23 +776,22 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                             </div>
                         )}
                     </div>
-                    <button type="button" onClick={handleRecalibrate} title="System recalibration" className={`h-9 px-3 hidden sm:flex items-center justify-center gap-2 border ${theme.borderSubtle} ${theme.highlightText} hover:bg-accent-soft transition-colors cursor-pointer relative overflow-hidden group`}>
-                        <div className="absolute inset-0 bg-white/5 group-hover:bg-transparent transition-all" />
+                    <button type="button" onClick={handleRecalibrate} title="System recalibration" className={`hud hud-btn hud-accent h-9 px-3 hidden sm:flex items-center justify-center gap-2 ${theme.highlightText} cursor-pointer group`}>
                         <RefreshCw size={14} className="relative z-10" aria-hidden="true" />
                         <span className="font-mono text-[10px] tracking-widest uppercase relative z-10">Re-Calibrate</span>
                     </button>
-                    <button type="button" onClick={handleRecalibrate} title="System recalibration" aria-label="System recalibration" className={`sm:hidden w-9 h-9 flex items-center justify-center border ${theme.borderSubtle} ${theme.highlightText} ${theme.isDark ? 'hover:bg-white/5' : 'hover:bg-black/5'} transition-colors cursor-pointer`}>
+                    <button type="button" onClick={handleRecalibrate} title="System recalibration" aria-label="System recalibration" className={`hud hud-tool sm:hidden w-9 h-9 flex items-center justify-center ${theme.highlightText} cursor-pointer`}>
                         <RefreshCw size={14} aria-hidden="true" />
                     </button>
 
                     <div className={`w-px h-5 ${theme.isDark ? 'bg-gray-800' : 'bg-gray-300'} mx-1 hidden sm:block`} aria-hidden="true" />
 
-                    <button type="button" onClick={onLogout} title="Log out" aria-label="Log out" className={`h-9 px-3 sm:px-4 flex items-center justify-center gap-2 border ${theme.borderSubtle} ${theme.isDark ? 'text-red-400 hover:text-red-300' : 'text-red-700 hover:text-red-800'} hover:border-red-500 hover:bg-red-500/5 transition-all font-mono text-[10px] tracking-widest uppercase cursor-pointer group`}>
+                    <button type="button" onClick={onLogout} title="Log out" aria-label="Log out" className="hud hud-btn hud-danger h-9 px-3 sm:px-4 flex items-center justify-center gap-2 font-mono text-[10px] tracking-widest uppercase cursor-pointer group">
                         <LogOut size={14} className="group-hover:-translate-x-1 transition-transform hidden sm:block" aria-hidden="true" />
                         <span className="hidden sm:inline">Logout</span>
                         <LogOut size={14} className="sm:hidden" aria-hidden="true" />
                     </button>
-                    <button type="button" onClick={onClose} aria-label="Close profile" title="Close profile" className={`w-9 h-9 flex items-center justify-center border ${theme.borderSubtle} ${theme.mutedText} hover:${theme.highlightText} hover:border-current transition-colors cursor-pointer`}>
+                    <button type="button" onClick={onClose} aria-label="Close profile" title="Close profile" className={`hud hud-tool w-9 h-9 flex items-center justify-center ${theme.mutedText} hover:${theme.highlightText} cursor-pointer`}>
                         <X size={16} aria-hidden="true" />
                     </button>
                 </div>
@@ -802,7 +801,7 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
             <motion.div variants={containerVariants} initial="hidden" animate="visible" className="relative z-10 flex-1 px-4 lg:px-8 py-3 lg:py-6 overflow-y-auto hide-scrollbar max-w-[1600px] mx-auto w-full flex flex-col gap-3 lg:gap-6 pb-[calc(3rem+var(--tabbar-h))]">
 
                 {/* UNIFIED HERO HEADER: IDENTITY + RANK HISTORY */}
-                <motion.div data-tour="profile-banner" variants={itemVariants} className={`flex w-full border ${theme.isDark ? 'border-white/10 bg-[#0a0a0a]' : 'border-violet-200 bg-[#0a0a0a]'} backdrop-blur-md relative overflow-hidden shrink-0 shadow-sm mb-2 rounded-[2px] p-4 lg:p-5 pb-2 lg:pb-3`}>
+                <motion.div data-tour="profile-banner" variants={itemVariants} className="hud hud-shell hud-on-plate flex w-full bg-[#0a0a0a] overflow-hidden shrink-0 mb-2 p-4 lg:p-5 pb-2 lg:pb-3">
                           {/* Full-width sweeping glow at the bottom of the card */}
                     <div className="absolute bottom-0 left-0 right-0 h-[55%] pointer-events-none"
                         style={{
@@ -875,7 +874,7 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                                                     key={label}
                                                     type="button"
                                                     onClick={onClick}
-                                                    className="h-7 flex items-center gap-1.5 px-3 border border-accent-line text-accent-plate hover:border-accent-line-strong hover:text-white transition-colors cursor-pointer"
+                                                    className="hud hud-btn hud-on-plate [--hud-c:5px] [--hud-line:var(--accent-line)] h-7 flex items-center gap-1.5 px-3 text-accent-plate hover:text-white cursor-pointer"
                                                 >
                                                     <Icon size={10} aria-hidden="true" />
                                                     <span className="text-[8px] font-mono font-bold uppercase tracking-widest">{label}</span>
@@ -1044,7 +1043,7 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                             <Database size={13} />
                             <span className={`text-[10px] font-mono font-bold tracking-[0.3em] uppercase ${theme.isDark ? '' : `text-transparent bg-clip-text bg-gradient-to-r ${theme.labelGradient}`}`}>Class Distribution</span>
                         </div>
-                        <div className={`border ${theme.borderSubtle} ${theme.isDark ? 'bg-black/40' : 'bg-white/80'} elev-1 rounded-md backdrop-blur-md px-5 py-5 lg:py-6 flex flex-col flex-1 relative overflow-hidden group hover:-translate-y-0.5 transition-transform duration-300`}>
+                        <div className={`hud hud-sheet [--hud-c:12px] px-5 py-5 lg:py-6 flex flex-col flex-1 relative overflow-hidden group hover:-translate-y-0.5 transition-transform duration-300`}>
                             <div className="absolute -right-12 -bottom-12 opacity-[0.03] pointer-events-none mix-blend-screen scale-150 transition-transform duration-1000 group-hover:rotate-12">
                                 <Database size={240} className={theme.highlightText} />
                             </div>
@@ -1073,13 +1072,13 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                             <Layers size={13} />
                             <span className={`text-[10px] font-mono font-bold tracking-[0.3em] uppercase ${theme.isDark ? '' : `text-transparent bg-clip-text bg-gradient-to-r ${theme.labelGradient}`}`}>Top Series</span>
                         </div>
-                        <div className={`border ${theme.borderSubtle} ${theme.isDark ? 'bg-black/40' : 'bg-white/80'} elev-1 rounded-md backdrop-blur-md p-4 flex flex-col gap-3 flex-1 relative hover:-translate-y-0.5 transition-transform duration-300`}>
+                        <div className={`hud hud-sheet [--hud-c:12px] p-4 flex flex-col gap-3 flex-1 relative hover:-translate-y-0.5 transition-transform duration-300`}>
                             {topSeries.slice(0, 4).map((item, i) => (
                                 <button
                                     type="button"
                                     key={item.id}
                                     onClick={() => onSelectManhwa && onSelectManhwa(item.id)}
-                                    className={`w-full text-left flex items-center gap-4 relative overflow-hidden py-3 px-4 h-14 md:h-[60px] rounded-xl border ${theme.isDark ? 'border-white/5 border-b-black/60 bg-black/40 hover:border-white/20' : 'border-black/5 border-b-white/10 bg-white/70 hover:border-black/20'} cursor-pointer group transition-all duration-300 shadow-sm hover:shadow-lg ${theme.isDark ? 'hover:shadow-black/60' : 'hover:shadow-black/20'} hover:-translate-y-0.5 border-b-[3px]`}
+                                    className={`hud hud-media w-full text-left flex items-center gap-4 py-3 px-4 h-14 md:h-[60px] ${theme.isDark ? 'bg-black/40' : 'bg-white/70'} cursor-pointer group`}
                                 >
                                     {item.coverUrl && (
                                         <div className="absolute inset-0 z-0 overflow-hidden">
@@ -1106,7 +1105,7 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                         <Target size={13} />
                         <span className={`text-[10px] font-mono font-bold tracking-[0.3em] uppercase ${theme.isDark ? '' : `text-transparent bg-clip-text bg-gradient-to-r ${theme.labelGradient}`}`}>Active Progress</span>
                     </div>
-                    <div className={`border ${theme.borderSubtle} ${theme.isDark ? 'bg-black/40' : 'bg-white/80'} elev-1 rounded-md backdrop-blur-md p-4 relative`}>
+                    <div className={`hud hud-sheet [--hud-c:12px] p-4 relative`}>
                         {activeSeries.length === 0 && <div className={`text-xs font-mono ${theme.mutedText}`}>NO ACTIVE SERIES</div>}
                         <div
                             className="flex gap-3 overflow-x-auto hide-scrollbar cursor-grab active:cursor-grabbing select-none"
@@ -1118,7 +1117,7 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                                     type="button"
                                     key={item.id}
                                     onClick={() => onSelectManhwa && onSelectManhwa(item.id)}
-                                    className={`text-left relative overflow-hidden rounded-xl border cursor-pointer group transition-all duration-300 shrink-0 w-44 h-24 ${theme.isDark ? 'border-white/5 hover:border-white/20' : 'border-black/5 hover:border-violet-200'} shadow-sm hover:shadow-lg hover:-translate-y-0.5`}
+                                    className="hud hud-media hud-on-plate text-left cursor-pointer group shrink-0 w-44 h-24"
                                 >
                                     {/* Dark in both themes: the title is fixed white over a scrim. The
                                         monogram plate (top, clear of the title) sits under the cover,
@@ -1199,13 +1198,13 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                                     </span>
                                     {calibration.phase === 'running' ? (
                                         <button onClick={() => abortControllerRef.current?.abort()}
-                                            className={`flex items-center justify-center border ${theme.borderSubtle} ${theme.headingText} opacity-80 hover:opacity-100 ${theme.isDark ? 'hover:bg-white/5' : 'hover:bg-black/5'} transition-all duration-300 rounded-sm active:scale-90 text-[10px] sm:text-xs font-orbitron px-3 py-1.5 font-bold tracking-wider relative overflow-hidden group`}>
+                                            className={`hud hud-btn [--hud-c:5px] flex items-center justify-center ${theme.headingText} text-[10px] sm:text-xs font-orbitron px-3 py-1.5 font-bold tracking-wider group`}>
                                             <div className="absolute inset-0 bg-white/5 group-hover:bg-transparent transition-all" />
                                             <span className="relative z-10">ABORT_PROTOCOL</span>
                                         </button>
                                     ) : (
                                         <button type="button" onClick={() => setCalibration(null)} aria-label="Close" title="Close"
-                                            className={`w-7 h-7 flex items-center justify-center border ${theme.borderSubtle} ${theme.mutedText} hover:${theme.headingText} ${theme.isDark ? 'hover:border-white/30' : 'hover:border-stone-500'} transition-all duration-300 rounded-sm active:scale-90`}>
+                                            className={`hud hud-tool [--hud-c:5px] w-7 h-7 flex items-center justify-center ${theme.mutedText} hover:${theme.headingText}`}>
                                             <X size={14} aria-hidden="true" />
                                         </button>
                                     )}
@@ -1313,9 +1312,8 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                                         <button
                                             type="button"
                                             onClick={() => setCalibration(null)}
-                                            className={`flex-1 relative border ${theme.borderSubtle} ${theme.highlightText} ${theme.isDark ? 'hover:bg-white/10' : 'hover:bg-violet-500/10'} shadow-[0_0_15px_rgba(255,255,255,0.05)] font-orbitron font-black uppercase tracking-[0.25em] text-[11px] sm:text-xs transition-all duration-500 py-3.5 rounded-sm overflow-hidden group/ack active:scale-[0.98]`}
+                                            className={`hud hud-btn hud-accent hud-ticks flex-1 ${theme.highlightText} font-orbitron font-black uppercase tracking-[0.25em] text-[11px] sm:text-xs py-3.5 group/ack`}
                                         >
-                                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover/ack:translate-x-full transition-transform duration-700" />
                                             {calibration.phase === 'done' ? 'ACKNOWLEDGE_UPDATE' : 'DISMISS_CRITICAL_ERROR'}
                                         </button>
                                     </div>
@@ -1392,7 +1390,7 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                             animate={{ scale: 1, opacity: 1 }}
                             exit={{ scale: 0.95, opacity: 0 }}
                             transition={{ type: 'spring', damping: 25, stiffness: 220 }}
-                            className={`w-full max-w-md border ${theme.isDark ? 'border-white/10 bg-[#0a0a0a]' : 'border-violet-200 bg-white'} shadow-2xl rounded-sm overflow-hidden`}
+                            className={`hud hud-shell w-full max-w-md ${theme.isDark ? 'bg-[#0a0a0a]' : 'bg-white'} overflow-hidden`}
                         >
                             {/* Modal Header */}
                             <div className={`flex items-center justify-between px-5 py-3.5 border-b ${theme.borderSubtle} ${theme.isDark ? 'bg-black/40' : 'bg-violet-50/70'}`}>
@@ -1400,7 +1398,7 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                                     <KeyRound size={13} aria-hidden="true" />
                                     HUNTER_CREDENTIALS
                                 </div>
-                                <button type="button" onClick={() => setShowAccountModal(false)} aria-label="Close" title="Close" className={`w-7 h-7 flex items-center justify-center border ${theme.borderSubtle} ${theme.mutedText} hover:${theme.highlightText} transition-colors rounded-sm`}>
+                                <button type="button" onClick={() => setShowAccountModal(false)} aria-label="Close" title="Close" className={`hud hud-tool [--hud-c:5px] w-7 h-7 flex items-center justify-center ${theme.mutedText} hover:${theme.highlightText}`}>
                                     <X size={13} aria-hidden="true" />
                                 </button>
                             </div>
@@ -1491,13 +1489,8 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                                 <button
                                     type="submit"
                                     disabled={accountLoading}
-                                    className={`w-full py-2.5 font-mono font-black text-[11px] uppercase tracking-[0.25em] border transition-all duration-300 rounded-sm relative overflow-hidden group/submit ${
-                                        theme.isDark
-                                            ? 'border-amber-500/40 text-amber-400 hover:bg-amber-500/10 disabled:opacity-40'
-                                            : 'border-violet-400 text-[#5b21b6] hover:bg-violet-50 disabled:opacity-40'
-                                    }`}
+                                    className="hud hud-cmd hud-hash w-full py-2.5 font-mono font-black text-[11px] uppercase tracking-[0.25em] disabled:opacity-40 group/submit"
                                 >
-                                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover/submit:translate-x-full transition-transform duration-700" />
                                     {accountLoading ? 'SYNCHRONIZING...' : 'UPDATE_CREDENTIALS'}
                                 </button>
                             </form>

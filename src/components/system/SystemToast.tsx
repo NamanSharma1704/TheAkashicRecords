@@ -135,7 +135,7 @@ const SystemToast: React.FC<SystemToastProps> = ({ toast, onDismiss, theme }) =>
                                     <button
                                         type="button"
                                         onClick={() => { toast.action!.onAction(); onDismiss(toast.id); }}
-                                        className={`shrink-0 h-8 px-3 border ${theme.border} bg-accent-soft hover:bg-accent-soft-strong font-mono text-[10px] font-bold tracking-[0.2em] uppercase transition-colors`}
+                                        className={`hud hud-btn hud-accent [--hud-c:5px] [--hud-plate:var(--accent-soft)] shrink-0 h-8 px-3 font-mono text-[10px] font-bold tracking-[0.2em] uppercase`}
                                         style={{ color: theme.accentInk }}
                                     >
                                         {toast.action.label}
@@ -146,7 +146,7 @@ const SystemToast: React.FC<SystemToastProps> = ({ toast, onDismiss, theme }) =>
                                     onClick={() => onDismiss(toast.id)}
                                     aria-label="Dismiss notice"
                                     title="Dismiss"
-                                    className={`shrink-0 w-8 h-8 flex items-center justify-center ${theme.mutedText} ${theme.isDark ? 'hover:bg-white/10' : 'hover:bg-black/5'} transition-colors`}
+                                    className={`hud hud-tool hud-ghost shrink-0 w-8 h-8 flex items-center justify-center ${theme.mutedText}`}
                                 >
                                     <X size={14} aria-hidden="true" />
                                 </button>

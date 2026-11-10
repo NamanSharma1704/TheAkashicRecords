@@ -89,7 +89,7 @@ const HunterTitles: React.FC<HunterTitlesProps> = ({ theme, achievements, equipp
                             return (
                                 <li
                                     key={a.key}
-                                    className={`flex items-start gap-3 p-3 border rounded-md elev-1 transition-colors duration-700 ${earned ? `${theme.border} bg-accent-soft` : `${theme.borderSubtle} ${theme.isDark ? 'bg-black/40' : 'bg-white/80'}`}`}
+                                    className={`hud hud-cell [--hud-c:8px] flex items-start gap-3 p-3 ${earned ? '[--hud-line:var(--accent-line-strong)] [--hud-plate:var(--accent-soft)]' : '[--hud-plate:var(--hud-sheet-glass)]'}`}
                                 >
                                     <div
                                         aria-hidden="true"
@@ -134,7 +134,7 @@ const HunterTitles: React.FC<HunterTitlesProps> = ({ theme, achievements, equipp
                                             onClick={() => { void toggleEquip(a.key); }}
                                             disabled={busy}
                                             aria-label={`${worn ? 'Unequip' : 'Equip'} ${a.name}`}
-                                            className={`shrink-0 h-7 px-2 border font-mono text-[9px] font-bold tracking-[0.2em] uppercase transition-colors disabled:opacity-60 disabled:cursor-wait ${theme.border} text-accent-ink ${theme.isDark ? 'hover:bg-white/5' : 'hover:bg-black/5'}`}
+                                            className={`hud hud-btn hud-accent [--hud-c:5px] shrink-0 h-7 px-2 font-mono text-[9px] font-bold tracking-[0.2em] uppercase disabled:opacity-60 disabled:cursor-wait text-accent-ink`}
                                         >
                                             {worn ? 'Unequip' : 'Equip'}
                                         </button>
@@ -149,7 +149,7 @@ const HunterTitles: React.FC<HunterTitlesProps> = ({ theme, achievements, equipp
                                 type="button"
                                 onClick={() => setShowAll(v => !v)}
                                 aria-expanded={showAll}
-                                className={`h-8 px-2 font-mono text-[10px] font-bold tracking-widest uppercase ${theme.highlightText} ${theme.isDark ? 'hover:bg-white/5' : 'hover:bg-black/5'} transition-colors`}
+                                className={`hud hud-ghost h-8 px-2 font-mono text-[10px] font-bold tracking-widest uppercase ${theme.highlightText}`}
                             >
                                 {showAll ? 'Fewer titles' : `All titles · ${ordered.length}`}
                             </button>

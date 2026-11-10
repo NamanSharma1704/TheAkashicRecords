@@ -75,7 +75,7 @@ const TrashPanel: React.FC<TrashPanelProps> = ({ isOpen, onClose, theme, onResto
         }
     };
 
-    const rowBtn = `h-8 px-2.5 flex items-center gap-1.5 border font-mono text-[10px] font-bold tracking-widest uppercase transition-colors disabled:opacity-40 disabled:cursor-wait`;
+    const rowBtn = 'hud hud-btn [--hud-c:5px] h-8 px-2.5 flex items-center gap-1.5 font-mono text-[10px] font-bold tracking-widest uppercase disabled:opacity-40 disabled:cursor-wait';
 
     return (
         <AnimatePresence>
@@ -97,14 +97,14 @@ const TrashPanel: React.FC<TrashPanelProps> = ({ isOpen, onClose, theme, onResto
                         animate={{ scale: 1, opacity: 1 }}
                         exit={{ scale: 0.95, opacity: 0 }}
                         transition={{ type: 'spring', damping: 25, stiffness: 220 }}
-                        className={`w-full max-w-lg max-h-[80dvh] flex flex-col border ${theme.isDark ? 'border-white/10 bg-[#0a0a0a]' : 'border-violet-200 bg-white'} shadow-2xl rounded-sm overflow-hidden`}
+                        className={`hud hud-shell w-full max-w-lg max-h-[80dvh] flex flex-col ${theme.isDark ? 'bg-[#0a0a0a]' : 'bg-white'} overflow-hidden`}
                     >
                         <div className={`flex items-center justify-between px-5 py-3.5 border-b ${theme.borderSubtle} ${theme.isDark ? 'bg-black/40' : 'bg-violet-50/70'} shrink-0`}>
                             <div id="trash-title" className={`flex items-center gap-2.5 ${theme.highlightText} font-mono text-[11px] tracking-widest uppercase font-bold`}>
                                 <Trash2 size={13} aria-hidden="true" />
                                 ARCHIVE_TRASH
                             </div>
-                            <button type="button" onClick={onClose} aria-label="Close" title="Close" className={`w-7 h-7 flex items-center justify-center border ${theme.borderSubtle} ${theme.mutedText} transition-colors rounded-sm ${theme.isDark ? 'hover:bg-white/5' : 'hover:bg-black/5'}`}>
+                            <button type="button" onClick={onClose} aria-label="Close" title="Close" className={`hud hud-tool [--hud-c:5px] w-7 h-7 flex items-center justify-center ${theme.mutedText}`}>
                                 <X size={13} aria-hidden="true" />
                             </button>
                         </div>
@@ -124,7 +124,7 @@ const TrashPanel: React.FC<TrashPanelProps> = ({ isOpen, onClose, theme, onResto
                             ) : (
                                 <ul className="flex flex-col gap-2">
                                     {items.map(q => (
-                                        <li key={q._id} className={`flex items-center gap-3 px-3 py-2.5 border ${theme.borderSubtle} rounded-sm ${theme.isDark ? 'bg-white/[0.02]' : 'bg-violet-50/50'}`}>
+                                        <li key={q._id} className="hud hud-cell flex items-center gap-3 px-3 py-2.5">
                                             <div className="flex-1 min-w-0">
                                                 <p className={`font-mono text-[11px] font-bold uppercase tracking-wide truncate ${theme.headingText}`}>{q.title}</p>
                                                 <p className={`font-mono text-[10px] mt-0.5 ${theme.mutedText}`}>
@@ -136,7 +136,7 @@ const TrashPanel: React.FC<TrashPanelProps> = ({ isOpen, onClose, theme, onResto
                                                 onClick={() => restore(q)}
                                                 disabled={busyId === q._id}
                                                 aria-label={`Restore ${q.title}`}
-                                                className={`${rowBtn} ${theme.border} bg-accent-soft hover:bg-accent-soft-strong`}
+                                                className={`${rowBtn} hud-accent [--hud-plate:var(--accent-soft)]`}
                                                 style={{ color: theme.accentInk }}
                                             >
                                                 <RotateCcw size={12} aria-hidden="true" /> Restore
@@ -147,7 +147,7 @@ const TrashPanel: React.FC<TrashPanelProps> = ({ isOpen, onClose, theme, onResto
                                                 disabled={busyId === q._id}
                                                 aria-label={`Erase ${q.title} for good`}
                                                 title="Erase for good"
-                                                className={`${rowBtn} w-8 px-0 justify-center border-red-900/40 ${theme.isDark ? 'text-red-400' : 'text-red-700'} hover:bg-red-500 hover:text-white hover:border-red-500`}
+                                                className={`${rowBtn} hud-danger w-8 px-0 justify-center`}
                                             >
                                                 <Trash2 size={12} aria-hidden="true" />
                                             </button>

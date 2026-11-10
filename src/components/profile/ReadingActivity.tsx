@@ -72,7 +72,7 @@ const ReadingActivity: React.FC<{ theme: Theme }> = ({ theme }) => {
     }, [grid]);
 
     const empty = theme.isDark ? 'bg-white/[0.06]' : 'bg-black/[0.07]';
-    const panel = `border ${theme.borderSubtle} ${theme.isDark ? 'bg-black/40' : 'bg-white/80'} elev-1 rounded-md backdrop-blur-md px-5 py-5`;
+    const panel = 'hud hud-sheet [--hud-c:12px] px-5 py-5';
 
     if (failed) {
         return <div className={panel}><p className={`font-mono text-[11px] ${theme.mutedText}`}>Reading activity is unavailable right now.</p></div>;

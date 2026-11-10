@@ -41,6 +41,19 @@ export const elevation = (theme: Theme, level: Level): string =>
     (theme.isDark ? DARK_ELEVATION : LIGHT_ELEVATION)[level];
 
 /**
+ * The same elevation in its two parts, for a surface whose plate is cut to a shape (the System
+ * frame kit, SystemFrame). `cast` is what falls outside the surface and goes on the unclipped
+ * wrapper; `rim` is the inset highlight and goes on the cut surface itself, where it follows the
+ * cut. One box-shadow on a clipped element would lose the cast part, and on the wrapper the rim
+ * would draw a stray line across each cut corner.
+ */
+export const elevationParts = (theme: Theme, level: Level): { rim: string; cast: string } => {
+    const layers = elevation(theme, level).split(/,\s*(?![^(]*\))/);
+    const pick = (inset: boolean) => layers.filter(l => l !== 'none' && l.startsWith('inset') === inset).join(', ') || 'none';
+    return { rim: pick(true), cast: pick(false) };
+};
+
+/**
  * Emphasis. The Void spends it as a pure glow (emitted light on black). The bright day theme
  * spends it as a saturated coloured bloom PLUS a cast shadow for height — a white glow can't
  * lighten a light ground, but a saturated amethyst one stains it and reads as a real bloom-halo.

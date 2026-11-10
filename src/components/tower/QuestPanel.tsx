@@ -90,7 +90,8 @@ const QuestPanel: React.FC<QuestPanelProps> = ({ theme, goals, onSave }) => {
 
     const label = `block text-[clamp(7px,0.8vw,9px)] ${theme.mutedText} font-mono tracking-widest uppercase mb-1`;
     const field = `w-full h-8 px-2 bg-transparent border ${theme.borderSubtle} font-mono text-[11px] ${theme.headingText} focus:outline-none focus-visible:border-current`;
-    const textButton = `h-7 px-2 font-mono text-[clamp(8px,0.85vw,10px)] font-bold tracking-widest uppercase ${theme.highlightText} ${theme.isDark ? 'hover:bg-white/5' : 'hover:bg-black/5'} transition-colors`;
+    const buttonText = `h-7 px-2 font-mono text-[clamp(8px,0.85vw,10px)] font-bold tracking-widest uppercase ${theme.highlightText}`;
+    const textButton = `hud hud-ghost ${buttonText}`;
 
     return (
         <div className={`pt-3 border-t ${theme.isDark ? 'border-white/10' : 'border-black/10'} space-y-3`}>
@@ -143,7 +144,7 @@ const QuestPanel: React.FC<QuestPanelProps> = ({ theme, goals, onSave }) => {
                     )}
                     <div className="flex justify-end gap-1">
                         <button type="button" onClick={() => setEditing(false)} className={textButton}>Cancel</button>
-                        <button type="submit" disabled={saving} aria-busy={saving} className={`${textButton} border ${theme.border} disabled:opacity-60 disabled:cursor-wait`}>
+                        <button type="submit" disabled={saving} aria-busy={saving} className={`hud hud-btn hud-accent [--hud-c:5px] ${buttonText} disabled:opacity-60 disabled:cursor-wait`}>
                             {saving ? 'Saving' : 'Save'}
                         </button>
                     </div>

@@ -95,7 +95,7 @@ const FaultScreen: React.FC<FaultScreenProps> = ({ error, theme, scope, onDismis
                                     <button
                                         type="button"
                                         onClick={() => window.location.reload()}
-                                        className={`px-6 py-2 border ${theme.borderSubtle} ${theme.mutedText} hover:${theme.headingText} ${theme.isDark ? 'hover:bg-white/5' : 'hover:bg-black/5'} transition-all font-mono text-[10px] tracking-widest uppercase font-bold inline-flex items-center gap-2`}
+                                        className={`hud hud-btn px-6 py-2 ${theme.mutedText} hover:${theme.headingText} font-mono text-[10px] tracking-widest uppercase font-bold inline-flex items-center gap-2`}
                                     >
                                         <RotateCw size={12} aria-hidden="true" /> Reload
                                     </button>
@@ -104,7 +104,7 @@ const FaultScreen: React.FC<FaultScreenProps> = ({ error, theme, scope, onDismis
                                     type="button"
                                     autoFocus
                                     onClick={onDismiss ?? (() => window.location.reload())}
-                                    className={`px-8 py-2 border ${theme.border} bg-accent-soft ${theme.highlightText} ${theme.isDark ? 'hover:bg-white/5' : 'hover:bg-black/5'} transition-all font-mono text-[10px] tracking-widest uppercase font-bold border-l-4 inline-flex items-center gap-2`}
+                                    className={`hud hud-cmd px-8 py-2 font-mono text-[10px] tracking-widest uppercase font-bold inline-flex items-center gap-2`}
                                 >
                                     {onDismiss ? <><X size={12} aria-hidden="true" /> Close {where}</> : <><RotateCw size={12} aria-hidden="true" /> Reload</>}
                                 </button>

@@ -160,7 +160,7 @@ const ListImportDialog: React.FC<ListImportDialogProps> = ({ theme, initialSourc
 
     const label = `block text-[10px] font-mono font-bold tracking-[0.2em] uppercase mb-1.5 ${theme.mutedText}`;
     const field = `w-full h-10 px-3 bg-transparent border ${theme.borderSubtle} font-mono text-[12px] ${theme.headingText} focus:outline-none focus-visible:border-current`;
-    const action = `h-10 px-4 border font-mono text-[10px] font-bold tracking-widest uppercase transition-colors disabled:opacity-50 disabled:cursor-wait ${theme.border} text-accent-ink ${theme.isDark ? 'hover:bg-white/5' : 'hover:bg-black/5'}`;
+    const action = 'hud hud-btn hud-accent h-10 px-4 font-mono text-[10px] font-bold tracking-widest uppercase disabled:opacity-50 disabled:cursor-wait text-accent-ink';
 
     return (
         <motion.div
@@ -179,12 +179,12 @@ const ListImportDialog: React.FC<ListImportDialogProps> = ({ theme, initialSourc
                 initial={{ scale: 0.96, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 transition={{ type: 'spring', damping: 25, stiffness: 220 }}
-                className={`w-full max-w-lg max-h-[90vh] flex flex-col border ${theme.isDark ? 'border-white/10 bg-[#0a0a0a]' : 'border-violet-200 bg-white'} shadow-2xl rounded-sm overflow-hidden`}
+                className={`hud hud-shell w-full max-w-lg max-h-[90vh] flex flex-col ${theme.isDark ? 'bg-[#0a0a0a]' : 'bg-white'} overflow-hidden`}
                 style={{ colorScheme: theme.isDark ? 'dark' : 'light' }}
             >
                 <div className={`flex items-center justify-between gap-3 px-4 py-3 border-b ${theme.borderSubtle}`}>
                     <h3 id="list-import-title" className={`font-orbitron text-sm font-bold tracking-[0.2em] uppercase ${theme.headingText}`}>Import a reading list</h3>
-                    <button type="button" onClick={onClose} aria-label="Close" title="Close" className={`w-8 h-8 flex items-center justify-center ${theme.mutedText} ${theme.isDark ? 'hover:bg-white/10' : 'hover:bg-black/5'} transition-colors`}>
+                    <button type="button" onClick={onClose} aria-label="Close" title="Close" className={`hud hud-tool hud-ghost w-8 h-8 flex items-center justify-center ${theme.mutedText}`}>
                         <X size={16} aria-hidden="true" />
                     </button>
                 </div>
@@ -198,7 +198,7 @@ const ListImportDialog: React.FC<ListImportDialogProps> = ({ theme, initialSourc
                                 type="button"
                                 aria-pressed={source === s}
                                 onClick={() => switchSource(s)}
-                                className={`h-9 border font-mono text-[10px] font-bold tracking-widest uppercase transition-colors ${source === s ? `${theme.border} bg-accent-soft text-accent-ink` : `${theme.borderSubtle} ${theme.mutedText} ${theme.isDark ? 'hover:bg-white/5' : 'hover:bg-black/5'}`}`}
+                                className={`hud hud-chip h-9 font-mono text-[10px] font-bold tracking-widest uppercase ${source === s ? 'hud-on text-accent-ink' : theme.mutedText}`}
                             >
                                 {s === 'anilist' ? 'AniList' : 'MyAnimeList'}
                             </button>

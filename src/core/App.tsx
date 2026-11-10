@@ -1787,7 +1787,7 @@ const App: React.FC = () => {
     const [chapterCheckBusy, setChapterCheckBusy] = useState(false);
     const checkNewChapters = useCallback(async () => {
         setChapterCheckBusy(true);
-        const pendingId = showToast({ tone: 'INFO', message: 'Scanning for new chapters', detail: 'Checking up to 12 series against MangaDex and AniList…', duration: 0 });
+        const pendingId = showToast({ tone: 'INFO', message: 'Scanning for new chapters', detail: 'Checking up to 20 series, the ones you are reading first, against MangaDex, AniList and MangaUpdates…', duration: 0 });
         try {
             const res = await systemFetch('/api/quests/sync-chapters', { method: 'POST' });
             if (res.status === 401) { dismissToast(pendingId); return; }
@@ -1802,7 +1802,7 @@ const App: React.FC = () => {
                 showToast({
                     tone: 'INFO',
                     message: 'No new chapters found',
-                    detail: `Checked ${data.checked ?? 0} series. Many licensed manhwa are not listed on MangaDex, so not every series can be tracked.`,
+                    detail: `Checked ${data.checked ?? 0} series. Some licensed manhwa are on none of the sources, so not every series can be tracked.`,
                     duration: 8000,
                 });
             }
@@ -2376,6 +2376,7 @@ const App: React.FC = () => {
                                         the jump, where the steppers would take a tap per chapter. */}
                                     <ChapterField
                                         value={activeQuest.currentChapter}
+                                        subject={activeQuest.id}
                                         pad={3}
                                         disabled={activeQuest.id === DEFAULT_QUEST.id}
                                         label={`Chapter ${activeQuest.currentChapter}${activeQuest.totalChapters > 0 ? ` of ${activeQuest.totalChapters}` : ''}. Set chapter`}
@@ -2459,6 +2460,8 @@ const App: React.FC = () => {
                                                 CH
                                                 <ChapterField
                                                     value={activeQuest.currentChapter}
+                                                    subject={activeQuest.id}
+                                                    origin="center"
                                                     label={`Chapter ${activeQuest.currentChapter}${activeQuest.totalChapters > 0 ? ` of ${activeQuest.totalChapters}` : ''}. Set chapter`}
                                                     onCommit={commitTypedChapter}
                                                     className="font-mono font-bold tabular-nums text-[11px] sm:text-xs tracking-widest inline-block min-w-[2.75rem] px-1 py-1.5 -my-1.5 text-center"

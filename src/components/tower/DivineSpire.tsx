@@ -258,7 +258,7 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
             {viewMode === 'TOWER' && (
                 <div className="absolute inset-0 z-0 animate-in fade-in duration-700">
                     <TowerHUD items={items} theme={theme} onActivate={onActivate} isFocused={isFocused} selectedFloorIndex={selectedFloorIndex} streak={streak} goals={goals} onSaveGoals={onSaveGoals} />
-                    <TowerStructure theme={theme} onSelectFloor={handleSelectFloor} onFocus={handleFocus} items={items} isPaused={false} />
+                    <TowerStructure theme={theme} onSelectFloor={handleSelectFloor} onFocus={handleFocus} isPaused={false} />
                 </div>
             )}
 

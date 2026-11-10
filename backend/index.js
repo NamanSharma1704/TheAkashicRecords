@@ -9,7 +9,7 @@ const { getModel } = require('./models/modelFactory');
 const { normalizeTitle } = require('./utils/normalizeTitle');
 const { ACHIEVEMENTS, ACHIEVEMENT_KEYS, measureArchive } = require('./utils/achievements');
 const { fetchAniListList, lookupMalIds, ImportError } = require('./utils/listImport');
-const { fetchAniList, fetchMangaDex, fetchJikan, fetchBest, fetchGenresOnly, fetchLatestChapter } = require('./utils/metadataProxy');
+const { fetchAniList, fetchMangaDex, fetchJikan, fetchBest, fetchGenresOnly, checkLatestChapter, prefetchChapterBatch, CHAPTER_SOURCE_KEYS } = require('./utils/metadataProxy');
 const crypto = require('crypto');
 const User = require('./models/User');
 const MetadataCache = require('./models/MetadataCache');
@@ -1191,6 +1191,10 @@ app.put('/api/quests/:id', authenticate, writeLimiter, async (req, res) => {
                     .findOne({ _id: { $ne: existing._id }, normalizedTitle: body.normalizedTitle, ...LIVE })
                     .select('title');
                 if (clash) return res.status(409).json({ message: `Archive Collision: "${clash.title}" is already in the archive.` });
+                // Another title is another series as far as the sources go: forget where the
+                // old one was found (and found missing), and check the new one soon.
+                body.chaptersCheckedAt = null;
+                body.$unset = { sourceIds: 1, sourceMissedAt: 1 };
             }
         }
 
@@ -2081,34 +2085,103 @@ app.post('/api/admin/reap-sandboxes', async (req, res) => {
 
 // ─── NEW-CHAPTER TRACKING ─────────────────────────────────────────────────────
 
-/** Statuses worth checking: a CONQUERED or SEVERED series has nothing you are waiting for,
- *  while a planned or paused one still releases chapters you will want to know about. */
-const SYNC_STATUSES = ['ACTIVE', 'PLANNED', 'STASIS'];
+/**
+ * Which series to check, and how often. A CONQUERED or SEVERED series has nothing you are
+ * waiting for. An ACTIVE one is what you are reading, so it is checked most: every 2 hours
+ * when the hourly run has room. PLANNED and STASIS ones still release chapters you will want
+ * to know about, but you are not waiting on them: every 12 hours.
+ */
+const ACTIVE_CHECK_MS = 2 * 60 * 60 * 1000;
+const RESTING_CHECK_MS = 12 * 60 * 60 * 1000;
+const RESTING_STATUSES = ['PLANNED', 'STASIS'];
+/** A source whose title search found nothing is searched again after this, not every run. */
+const SOURCE_MISS_RETRY_MS = 7 * 24 * 60 * 60 * 1000;
+/** Series checked at once. MangaDex allows about 5 requests a second; a series asks it for
+ *  one (by id) or two (a search, then the chapters). */
+const SYNC_CONCURRENCY = 3;
+const SYNC_PAUSE_MS = 350;
 
 /**
- * Check up to `limit` series for newly released chapters, least recently checked first, so
- * repeated runs walk the whole library (the hourly workflow takes a slice each time). When a
- * source shows more chapters than the stored total, the total is raised and the difference
- * added to `newChapters`, which the app shows as "+N NEW" until you read on. Totals are never
- * lowered: a source is often behind the site you actually read on.
- *
- * Two series at a time with a pause between pairs: MangaDex allows about 5 requests a second
- * and each series costs it two (search, aggregate).
+ * The series due a check, ACTIVE first. `dueOnly` (the hourly run): only those past their
+ * interval, oldest check first. Otherwise (the app's button): the least recently checked,
+ * ACTIVE first, whatever their interval, since the reader asked.
  */
-const syncChapters = async (conn, limit) => {
+const pickDueSeries = async (Quest, limit, dueOnly) => {
+    const now = Date.now();
+    const fields = 'title totalChapters status chaptersCheckedAt +sourceIds +sourceMissedAt';
+    const overdue = (ms) => (dueOnly ? { $or: [{ chaptersCheckedAt: null }, { chaptersCheckedAt: { $lt: new Date(now - ms) } }] } : {});
+    const oldestFirst = { chaptersCheckedAt: 1, _id: 1 }; // never checked (null) sorts first
+    const active = await Quest.find({ ...LIVE, status: 'ACTIVE', ...overdue(ACTIVE_CHECK_MS) })
+        .sort(oldestFirst).limit(limit).select(fields).lean();
+    const room = limit - active.length;
+    const resting = room > 0
+        ? await Quest.find({ ...LIVE, status: { $in: RESTING_STATUSES }, ...overdue(RESTING_CHECK_MS) })
+            .sort(oldestFirst).limit(room).select(fields).lean()
+        : [];
+    return [...active, ...resting];
+};
+
+/**
+ * Check series for newly released chapters. When a source shows more chapters than the stored
+ * total, the total is raised and the difference added to `newChapters`, which the app shows as
+ * "+N NEW" until you read on. Totals are never lowered: a source is often behind the site you
+ * actually read on.
+ *
+ * Faster than it was (2026-11-10): each series keeps the id every source filed it under, the
+ * first time a title search matches (`sourceIds`), and is asked for by id from then on: one
+ * request where a search took two, AniList's for the whole run in one batch. A source that
+ * found nothing by title is searched again weekly, not hourly (`sourceMissedAt`). So a run
+ * covers several times more series, and the ones you are reading come round every 2 hours.
+ *
+ * Bounded by time as well as count: no new series is started after `budgetMs`, so a slow
+ * source can never push the run past the platform's 60 s limit. Series not reached keep their
+ * old check time and come first next run.
+ */
+const syncChapters = async (conn, { limit, budgetMs, dueOnly }) => {
     const Quest = getModel(conn, 'Quest');
-    const due = await Quest.find({ ...LIVE, status: { $in: SYNC_STATUSES } })
-        .sort({ chaptersCheckedAt: 1, _id: 1 }) // never checked (null) sorts first
-        .limit(limit)
-        .select('title totalChapters')
-        .lean();
+    const started = Date.now();
+    const due = await pickDueSeries(Quest, limit, dueOnly);
+
+    const idsOf = (q, k) => q.sourceIds?.[k] || null;
+    const batch = await prefetchChapterBatch({
+        mangadex: due.map((q) => idsOf(q, 'mangadex')).filter(Boolean),
+        anilist: due.map((q) => idsOf(q, 'anilist')).filter(Boolean),
+    });
 
     const updated = [];
-    for (let i = 0; i < due.length; i += 2) {
-        await Promise.all(due.slice(i, i + 2).map(async (q) => {
-            const latest = await fetchLatestChapter(q.title).catch(() => null);
-            const total = q.totalChapters || 0;
+    const asked = { byId: 0, bySearch: 0, skipped: 0 };
+    let checked = 0;
+    for (let i = 0; i < due.length; i += SYNC_CONCURRENCY) {
+        if (Date.now() - started > budgetMs) break;
+        await Promise.all(due.slice(i, i + SYNC_CONCURRENCY).map(async (q) => {
+            const ids = Object.fromEntries(CHAPTER_SOURCE_KEYS.map((k) => [k, idsOf(q, k)]));
+            const now = Date.now();
+            // By id where known; by title unless that came up empty within the week.
+            const ask = CHAPTER_SOURCE_KEYS.filter((k) => {
+                if (ids[k]) { asked.byId++; return true; }
+                const missed = q.sourceMissedAt?.[k];
+                if (missed && now - new Date(missed).getTime() < SOURCE_MISS_RETRY_MS) { asked.skipped++; return false; }
+                asked.bySearch++;
+                return true;
+            });
+            const { latest, answers } = await checkLatestChapter(q.title, { ids, ask, batch })
+                .catch(() => ({ latest: null, answers: {} }));
+
             const set = { chaptersCheckedAt: new Date() };
+            const unset = {};
+            for (const [k, a] of Object.entries(answers)) {
+                if (a.outcome === 'found') {
+                    if (a.id !== null && String(a.id) !== String(ids[k] ?? '')) set[`sourceIds.${k}`] = a.id;
+                    if (q.sourceMissedAt?.[k]) unset[`sourceMissedAt.${k}`] = 1;
+                } else if (a.outcome === 'miss') {
+                    set[`sourceMissedAt.${k}`] = new Date();
+                } else if (a.outcome === 'lost') {
+                    // Gone from the source: search for it again next time.
+                    unset[`sourceIds.${k}`] = 1;
+                }
+            }
+
+            const total = q.totalChapters || 0;
             // Far past the record is likelier the wrong series than a burst of releases.
             const plausible = latest !== null && (total === 0 || latest <= total * 3 + 50);
             let added = 0;
@@ -2121,18 +2194,24 @@ const syncChapters = async (conn, limit) => {
             } else if (latest !== null && !plausible) {
                 console.warn(`[Chapters] Ignored ${latest} for "${q.title}" (record says ${total}): implausible match.`);
             }
-            await Quest.updateOne({ _id: q._id }, added > 0 ? { $set: set, $inc: { newChapters: added } } : { $set: set });
+            await Quest.updateOne({ _id: q._id }, {
+                $set: set,
+                ...(Object.keys(unset).length ? { $unset: unset } : {}),
+                ...(added > 0 ? { $inc: { newChapters: added } } : {}),
+            });
+            checked++;
         }));
-        if (i + 2 < due.length) await sleep(400);
+        if (i + SYNC_CONCURRENCY < due.length) await sleep(SYNC_PAUSE_MS);
     }
-    return { checked: due.length, updated };
+    return { checked, due: due.length, updated, asked, ms: Date.now() - started };
 };
 
 // POST /api/quests/sync-chapters - Check your own library now (the app's "check" button).
 // Each call fans out to public APIs, hence its own limiter.
 app.post('/api/quests/sync-chapters', chapterSyncLimiter, authenticate, async (req, res) => {
     try {
-        res.json(await syncChapters(req.dbConn, 12));
+        // The reader is waiting on this one: fewer series, and a shorter budget.
+        res.json(await syncChapters(req.dbConn, { limit: 20, budgetMs: 20000, dueOnly: false }));
     } catch (err) {
         return sendError(res, 500, 'Chapter check failed.', err);
     }
@@ -2144,9 +2223,11 @@ app.post('/api/admin/sync-chapters', async (req, res) => {
         return res.status(403).json({ message: 'Forbidden: System Authority Refused.' });
     }
     try {
-        const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 15, 1), 30);
+        const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 40, 1), 80);
         const conn = await getTenantDb(process.env.SYNC_TENANT || 'akashic_records');
-        res.json({ message: 'Chapter sync complete.', ...(await syncChapters(conn, limit)) });
+        // No series is started after 38 s: the last ones can still take 16 s (a title search,
+        // then the chapters, each with an 8 s timeout), inside the 60 s function limit.
+        res.json({ message: 'Chapter sync complete.', ...(await syncChapters(conn, { limit, budgetMs: 38000, dueOnly: true })) });
     } catch (err) {
         return sendError(res, 500, 'Chapter sync failed.', err);
     }

@@ -23,6 +23,30 @@ const QuestSchema = new mongoose.Schema({
     newChapters: { type: Number, default: 0 },
     chaptersCheckedAt: { type: Date, default: null, index: true },
     chaptersUpdatedAt: { type: Date, default: null },
+    // Where the chapter checks found this series: each source's own id, kept the first time a
+    // title search matches exactly, so later checks ask the source directly instead of
+    // searching again (see checkLatestChapter in utils/metadataProxy.js). Cleared on a rename.
+    // Internal: `select: false` keeps them out of every reply unless asked for (+sourceIds).
+    sourceIds: {
+        type: new mongoose.Schema({
+            mangadex: { type: String, default: null },
+            anilist: { type: Number, default: null },
+            mangaupdates: { type: String, default: null },
+        }, { _id: false }),
+        default: undefined,
+        select: false,
+    },
+    // When a title search last found nothing at a source, so that source is searched again
+    // weekly rather than on every check. Cleared on a rename, and per source on a match.
+    sourceMissedAt: {
+        type: new mongoose.Schema({
+            mangadex: { type: Date, default: null },
+            anilist: { type: Date, default: null },
+            mangaupdates: { type: Date, default: null },
+        }, { _id: false }),
+        default: undefined,
+        select: false,
+    },
     // Cover backfill (see backfillCovers in index.js): when a missing cover was last looked
     // up, so a title no source knows is retried weekly rather than on every run.
     coverCheckedAt: { type: Date, default: null },

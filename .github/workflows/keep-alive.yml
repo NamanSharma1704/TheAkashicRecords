@@ -28,9 +28,10 @@ jobs:
             -H "x-system-secret: $SYSTEM_ADMIN_SECRET" \
             https://the-akashic-records.vercel.app/api/admin/reap-sandboxes
 
-      # New-chapter tracking: each run checks the 15 least-recently-checked ACTIVE/PLANNED
-      # series against MangaDex and AniList, so the whole library is covered over the day.
-      # Best-effort by design: a failed run is retried by the next one.
+      # New-chapter tracking: each run checks up to 60 series that are due (ACTIVE ones every
+      # 2 hours, PLANNED and on-hold ones every 12), asking MangaDex, AniList and MangaUpdates
+      # by each series' stored id (36 series took 8 s locally). Best-effort by design: a failed
+      # run is retried by the next, and the server stops starting series after 38 s.
       - name: Check for new chapters
         env:
           SYSTEM_ADMIN_SECRET: ${{ secrets.SYSTEM_ADMIN_SECRET }}
@@ -38,7 +39,7 @@ jobs:
           if [ -z "$SYSTEM_ADMIN_SECRET" ]; then exit 0; fi
           curl -s -X POST --max-time 58 \
             -H "x-system-secret: $SYSTEM_ADMIN_SECRET" \
-            "https://the-akashic-records.vercel.app/api/admin/sync-chapters?limit=15" || true
+            "https://the-akashic-records.vercel.app/api/admin/sync-chapters?limit=60" || true
 
       # Cover backfill: up to 6 records with no cover are looked up (through the metadata
       # cache) and given one when a source has the same series. A title no source has a

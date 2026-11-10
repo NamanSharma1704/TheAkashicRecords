@@ -437,24 +437,37 @@ const titleKey = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
 /** An honest name for the release APIs (MangaDex, for one, refuses a disguised browser). */
 const SOURCE_UA = 'AkashicRecords/1.0 (+https://the-akashic-records.vercel.app)';
 
-/** MangaDex: the highest English chapter it hosts, from an exact title or alt-title match. */
-const latestFromMangaDex = async (title, key) => {
-    const search = await fetchWithTimeout(
-        `https://api.mangadex.org/manga?title=${encodeURIComponent(title)}&limit=10&order[relevance]=desc&contentRating[]=safe&contentRating[]=suggestive&contentRating[]=erotica`,
-        {}, 8000
-    );
-    const data = await search.json();
-    const match = (data.data || []).find((m) => {
-        const a = m.attributes || {};
-        const titles = [...Object.values(a.title || {}), ...(a.altTitles || []).flatMap((t) => Object.values(t))];
-        return titles.some((t) => titleKey(t) === key);
-    });
-    if (!match) return [];
-    const counts = [];
-    const last = parseFloat(match.attributes.lastChapter);
-    if (Number.isFinite(last) && last > 0) counts.push(Math.floor(last));
-    const agg = await fetchWithTimeout(`https://api.mangadex.org/manga/${match.id}/aggregate?translatedLanguage[]=en`, {}, 8000);
-    const aggregate = await agg.json();
+/*
+ * NEW-CHAPTER CHECKS. Each source is asked for one series in one of two ways:
+ *  - BY ID, when an earlier check found the series there and the record kept the id
+ *    (`sourceIds`, see syncChapters in index.js): one request, or none for AniList, whose ids
+ *    are answered for the whole run in one batched query.
+ *  - BY TITLE otherwise: a search, accepted only on an exact title (or alt-title) match, as
+ *    always. A match hands back the id, so the next check goes straight to it.
+ * Every source answers with an outcome, which is what lets the caller keep its records honest:
+ *    found  the series is there (`id`; `counts` may be empty: AniList gives no count until a
+ *           series has finished)
+ *    miss   searched, and no exact match (searched again only after a while)
+ *    lost   the stored id is gone from the source (a removal): forget it, search next time
+ *    error  the source could not be asked (network, rate limit): nothing is concluded
+ * A search that fails is an ERROR, never a miss: a 429 used to read as "no such series".
+ */
+const answer = (outcome, counts = [], id = null) => ({ outcome, counts, id });
+
+/** Throws on any non-OK reply (so it counts as an error) except the statuses given. */
+const okOr = (res, ...allowed) => {
+    if (!res.ok && !allowed.includes(res.status)) throw new Error(`HTTP ${res.status}`);
+    return res;
+};
+
+const MD_RATINGS = 'contentRating[]=safe&contentRating[]=suggestive&contentRating[]=erotica';
+
+/** MangaDex's highest English chapter for one series, or null if MangaDex no longer has it. */
+const mangaDexHighest = async (id) => {
+    const res = okOr(await fetchWithTimeout(`https://api.mangadex.org/manga/${encodeURIComponent(id)}/aggregate?translatedLanguage[]=en`,
+        { headers: { 'User-Agent': SOURCE_UA } }, 8000), 404);
+    if (res.status === 404) return null;
+    const aggregate = await res.json();
     let highest = 0;
     for (const volume of Object.values(aggregate.volumes || {})) {
         for (const chapter of Object.values(volume.chapters || {})) {
@@ -462,28 +475,75 @@ const latestFromMangaDex = async (title, key) => {
             if (Number.isFinite(n) && n > highest) highest = n;
         }
     }
-    if (highest > 0) counts.push(Math.floor(highest));
-    return counts;
+    return Math.floor(highest);
+};
+
+/** A finished series' final chapter, as MangaDex states it (a licensed one may host fewer). */
+const mangaDexLastChapter = (attributes) => {
+    const last = parseFloat(attributes?.lastChapter);
+    return Number.isFinite(last) && last > 0 ? Math.floor(last) : 0;
+};
+
+/** MangaDex: the highest English chapter it hosts, and the series' stated final chapter. */
+const latestFromMangaDex = async (title, key, id, batch) => {
+    if (id) {
+        const highest = await mangaDexHighest(id);
+        if (highest === null) return answer('lost');
+        const counts = [highest, batch.mangadexLast?.get(id) || 0].filter((n) => n > 0);
+        return answer('found', counts, id);
+    }
+    const search = okOr(await fetchWithTimeout(
+        `https://api.mangadex.org/manga?title=${encodeURIComponent(title)}&limit=10&order[relevance]=desc&${MD_RATINGS}`,
+        { headers: { 'User-Agent': SOURCE_UA } }, 8000
+    ));
+    const data = await search.json();
+    const match = (data.data || []).find((m) => {
+        const a = m.attributes || {};
+        const titles = [...Object.values(a.title || {}), ...(a.altTitles || []).flatMap((t) => Object.values(t))];
+        return titles.some((t) => titleKey(t) === key);
+    });
+    if (!match) return answer('miss');
+    const highest = await mangaDexHighest(match.id);
+    const counts = [highest || 0, mangaDexLastChapter(match.attributes)].filter((n) => n > 0);
+    return answer('found', counts, match.id);
 };
 
 /** AniList: a chapter count, which it reports only once a series has finished. */
-const latestFromAniList = async (title, key) => {
-    const res = await fetchWithTimeout('https://graphql.anilist.co', {
+const latestFromAniList = async (title, key, id, batch) => {
+    if (id) {
+        // Answered by the run's one batched query (prefetchChapterBatch).
+        if (!batch.anilist) throw new Error('batch unavailable');
+        if (!batch.anilist.has(Number(id))) return answer('lost');
+        const chapters = batch.anilist.get(Number(id));
+        return answer('found', chapters > 0 ? [chapters] : [], Number(id));
+    }
+    const res = okOr(await fetchWithTimeout('https://graphql.anilist.co', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
         body: JSON.stringify({
-            query: 'query ($s: String) { Media(search: $s, type: MANGA, sort: SEARCH_MATCH) { chapters title { english romaji native } synonyms } }',
+            query: 'query ($s: String) { Media(search: $s, type: MANGA, sort: SEARCH_MATCH) { id chapters title { english romaji native } synonyms } }',
             variables: { s: title }
         })
-    }, 8000);
-    const media = (await res.json())?.data?.Media;
-    if (!media || !(media.chapters > 0)) return [];
+    }, 8000), 404); // AniList answers "no such media" with a 404
+    const media = res.status === 404 ? null : (await res.json())?.data?.Media;
+    if (!media) return answer('miss');
     const names = [...Object.values(media.title || {}), ...(media.synonyms || [])];
-    return names.some((t) => titleKey(t) === key) ? [media.chapters] : [];
+    if (!names.some((t) => titleKey(t) === key)) return answer('miss');
+    // Kept even without a count: an ongoing series gets one when it finishes.
+    return answer('found', media.chapters > 0 ? [media.chapters] : [], media.id);
 };
 
 /** MangaUpdates formats that are not the comic itself: a novel, a doujinshi, an artbook. */
 const MU_NOT_THE_COMIC = new Set(['Novel', 'Doujinshi', 'Artbook', 'Drama CD']);
+
+/** MangaUpdates' latest recorded chapter for one series, or null if the series is gone. */
+const mangaUpdatesLatest = async (id) => {
+    const res = okOr(await fetchWithTimeout(`https://api.mangaupdates.com/v1/series/${encodeURIComponent(id)}`,
+        { headers: { 'Accept': 'application/json', 'User-Agent': SOURCE_UA } }, 8000), 404);
+    if (res.status === 404) return null;
+    const n = Number((await res.json())?.latest_chapter);
+    return Number.isInteger(n) && n > 0 ? n : 0;
+};
 
 /**
  * MangaUpdates: the latest chapter its release tracking has recorded. It covers licensed
@@ -491,29 +551,86 @@ const MU_NOT_THE_COMIC = new Set(['Novel', 'Doujinshi', 'Artbook', 'Drama CD']);
  * the title it matched (`hit_title`), so a series filed under its official English name
  * ("Return of the Blossoming Blade") is still found by the name it is read under ("Return of
  * the Mount Hua Sect"); the same exact-title rule as the other sources applies to that name
- * or the series' own title. The count itself needs the series record, a second request.
+ * or the series' own title. The count itself needs the series record, a second request (the
+ * only request, once the id is known).
  */
-const latestFromMangaUpdates = async (title, key) => {
-    const res = await fetchWithTimeout('https://api.mangaupdates.com/v1/series/search', {
+const latestFromMangaUpdates = async (title, key, id) => {
+    if (id) {
+        const n = await mangaUpdatesLatest(id);
+        if (n === null) return answer('lost');
+        return answer('found', n > 0 ? [n] : [], String(id));
+    }
+    const res = okOr(await fetchWithTimeout('https://api.mangaupdates.com/v1/series/search', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'User-Agent': SOURCE_UA },
         body: JSON.stringify({ search: title, perpage: 10 })
-    }, 8000);
+    }, 8000));
     const hit = ((await res.json())?.results || []).find((r) =>
         r?.record?.series_id && !MU_NOT_THE_COMIC.has(r.record.type)
         && [r.hit_title, r.record.title].some((t) => titleKey(t) === key));
-    if (!hit) return [];
-    const series = await fetchWithTimeout(`https://api.mangaupdates.com/v1/series/${hit.record.series_id}`,
-        { headers: { 'Accept': 'application/json', 'User-Agent': SOURCE_UA } }, 8000);
-    const n = Number((await series.json())?.latest_chapter);
-    return Number.isInteger(n) && n > 0 ? [n] : [];
+    if (!hit) return answer('miss');
+    const seriesId = String(hit.record.series_id);
+    const n = await mangaUpdatesLatest(seriesId);
+    return answer('found', n ? [n] : [], seriesId);
 };
 
-const CHAPTER_SOURCES = [['MangaDex', latestFromMangaDex], ['AniList', latestFromAniList], ['MangaUpdates', latestFromMangaUpdates]];
+/** The sources, by the key each one's id is kept under on a record (`sourceIds.<key>`). */
+const CHAPTER_SOURCES = [
+    ['mangadex', 'MangaDex', latestFromMangaDex],
+    ['anilist', 'AniList', latestFromAniList],
+    ['mangaupdates', 'MangaUpdates', latestFromMangaUpdates],
+];
+const CHAPTER_SOURCE_KEYS = CHAPTER_SOURCES.map(([k]) => k);
 
 /**
- * Best-effort count of released chapters, for new-chapter tracking. Returns a whole number,
- * or null when no source knows.
+ * What a whole run can learn in one request per source, before the series are checked:
+ * AniList's count for every known AniList id (one GraphQL page per 50), and MangaDex's stated
+ * final chapter for every known MangaDex id (one listing per 100). A batch that fails leaves
+ * its map unset: AniList's id'd series then count as an error this run, and MangaDex's simply
+ * go without the final-chapter figure (their hosted chapters still come per series).
+ */
+const prefetchChapterBatch = async ({ mangadex = [], anilist = [] }) => {
+    const batch = { anilist: null, mangadexLast: null };
+    const chunks = (list, n) => Array.from({ length: Math.ceil(list.length / n) }, (_, i) => list.slice(i * n, i * n + n));
+    await Promise.all([
+        (async () => {
+            if (!anilist.length) { batch.anilist = new Map(); return; }
+            const found = new Map();
+            for (const ids of chunks(anilist.map(Number), 50)) {
+                const res = okOr(await fetchWithTimeout('https://graphql.anilist.co', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                    body: JSON.stringify({
+                        query: 'query ($ids: [Int]) { Page(perPage: 50) { media(id_in: $ids, type: MANGA) { id chapters } } }',
+                        variables: { ids }
+                    })
+                }, 8000));
+                for (const m of (await res.json())?.data?.Page?.media || []) found.set(m.id, m.chapters || 0);
+            }
+            batch.anilist = found;
+        })().catch((e) => console.warn(`[Chapters] AniList batch unavailable: ${e.message}`)),
+        (async () => {
+            if (!mangadex.length) return;
+            const found = new Map();
+            for (const ids of chunks(mangadex, 100)) {
+                const qs = ids.map((id) => `ids[]=${encodeURIComponent(id)}`).join('&');
+                const res = okOr(await fetchWithTimeout(`https://api.mangadex.org/manga?${qs}&limit=100&${MD_RATINGS}`,
+                    { headers: { 'User-Agent': SOURCE_UA } }, 8000));
+                for (const m of (await res.json())?.data || []) found.set(m.id, mangaDexLastChapter(m.attributes));
+            }
+            batch.mangadexLast = found;
+        })().catch((e) => console.warn(`[Chapters] MangaDex batch unavailable: ${e.message}`)),
+    ]);
+    return batch;
+};
+
+/**
+ * Best-effort count of released chapters for one series, for new-chapter tracking.
+ *
+ * `ids` are the ids the record kept from earlier checks; `ask` the sources to ask at all (the
+ * caller skips a source that recently found nothing by title); `batch` comes from
+ * prefetchChapterBatch. Returns `latest` (a whole number, or null when no source knows) and
+ * each asked source's answer, so the caller can keep new ids and forget lost ones.
  *
  * The sources are patchy, and this is honest about it:
  *  - MangaDex's /aggregate lists every chapter it hosts in English, ongoing series included,
@@ -521,21 +638,23 @@ const CHAPTER_SOURCES = [['MangaDex', latestFromMangaDex], ['AniList', latestFro
  *  - AniList (`chapters`) only reports a count once a series has FINISHED.
  *  - MangaUpdates records releases, licensed series included; its figure can lead or trail
  *    the site you read on by a chapter or two.
- * So a match is accepted ONLY on an exact title (or alt-title) match: a fuzzy hit on the wrong
- * series could invent hundreds of chapters. The sources are asked at once; the highest figure
- * wins, and the caller never lowers a stored total on it (a source is often behind the site
- * you read on). One source failing never costs the others.
+ * So a title is matched ONLY exactly (or by alt-title): a fuzzy hit on the wrong series could
+ * invent hundreds of chapters. The sources are asked at once; the highest figure wins, and the
+ * caller never lowers a stored total on it (a source is often behind the site you read on).
+ * One source failing never costs the others.
  */
-const fetchLatestChapter = async (title) => {
+const checkLatestChapter = async (title, { ids = {}, ask = CHAPTER_SOURCE_KEYS, batch = {} } = {}) => {
     const key = titleKey(title);
-    if (!key) return null;
-    const results = await Promise.all(CHAPTER_SOURCES.map(([name, ask]) =>
-        ask(title, key).catch((e) => {
+    if (!key) return { latest: null, answers: {} };
+    const answers = {};
+    await Promise.all(CHAPTER_SOURCES.filter(([k]) => ask.includes(k)).map(async ([k, name, lookup]) => {
+        answers[k] = await lookup(title, key, ids[k] || null, batch).catch((e) => {
             console.warn(`[Chapters] ${name} unavailable for "${title}": ${e.message}`);
-            return [];
-        })));
-    const counts = results.flat();
-    return counts.length ? Math.max(...counts) : null;
+            return answer('error');
+        });
+    }));
+    const counts = Object.values(answers).flatMap((a) => a.counts);
+    return { latest: counts.length ? Math.max(...counts) : null, answers };
 };
 
-module.exports = { fetchAniList, fetchMangaDex, fetchJikan, fetchBest, fetchGenresOnly, fetchLatestChapter };
+module.exports = { fetchAniList, fetchMangaDex, fetchJikan, fetchBest, fetchGenresOnly, checkLatestChapter, prefetchChapterBatch, CHAPTER_SOURCE_KEYS };

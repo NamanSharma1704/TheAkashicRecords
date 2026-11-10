@@ -1,6 +1,6 @@
 import React, { useRef, useEffect } from 'react';
 import * as THREE from 'three';
-import { FLOOR_DEFS, floorIndexForItem } from './floors';
+import { FLOOR_DEFS } from './floors';
 
 // Divine Spire 8.0: Holographic ascending isles.
 // A spiral of translucent faceted islands (bright wireframe edges) climbing toward a
@@ -17,11 +17,10 @@ interface TowerStructureProps {
     onSelectFloor: (floorIndex: number) => void;
     theme: { isDark: boolean };
     onFocus?: (isFocused: boolean, floorIndex?: number) => void;
-    items?: any[]; // Pass items to detect empty floors
     isPaused?: boolean;
 }
 
-const TowerStructure: React.FC<TowerStructureProps> = ({ onSelectFloor, theme, onFocus, items = [], isPaused = false }) => {
+const TowerStructure: React.FC<TowerStructureProps> = ({ onSelectFloor, theme, onFocus, isPaused = false }) => {
     const mountRef = useRef<HTMLDivElement>(null);
     const onSelectFloorRef = useRef(onSelectFloor);
     // isPaused must be read through a ref: the scene effect below is scoped to [theme], so a
@@ -95,14 +94,86 @@ const TowerStructure: React.FC<TowerStructureProps> = ({ onSelectFloor, theme, o
         // --- MATERIALS (holographic: translucent bodies + bright wireframe edges) ---
         // Fully opaque so platforms read solid (writes depth to occlude their own back faces);
         // polygonOffset pushes faces back a touch so the bright wireframe edges sit cleanly on top.
-        const bodyMat = new THREE.MeshBasicMaterial({ color: BODY_COLOR, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 });
-        const edgeMat = new THREE.LineBasicMaterial({ color: EDGE_COLOR, transparent: true, opacity: 0.7 });
+        // Each floor's body, edge, pad, rim and core come from its mood (below); the hover pair
+        // is shared, so a selection reads the same on every floor.
         const edgeHoverMat = new THREE.LineBasicMaterial({ color: HOVER_COLOR, transparent: true, opacity: 1.0 });
-        const padMat = new THREE.MeshBasicMaterial({ color: PRIMARY_COLOR, transparent: true, opacity: 0.9 });
         const padHoverMat = new THREE.MeshBasicMaterial({ color: HOVER_COLOR, transparent: true, opacity: 1.0 });
-        const rimMat = new THREE.MeshBasicMaterial({ color: RIM_COLOR });
-        const hotMat = new THREE.MeshBasicMaterial({ color: HOT_COLOR });
-        disposables.push(bodyMat, edgeMat, edgeHoverMat, padMat, padHoverMat, rimMat, hotMat);
+        disposables.push(edgeHoverMat, padHoverMat);
+
+        // --- FLOOR MOODS. Each floor reads its stage through energy, not colour: the theme's
+        // accent throughout, neutral ink for the depowered, and one exception, the Throne in
+        // the relic gold every conquered series wears (RelicFrame; artwork, the same in both
+        // themes). Keyed by label, so a reordered FLOOR_DEFS keeps its moods.
+        //   SEVERED    dropped: depowered. Faint, grey, edges broken into dashes, no glow, still.
+        //   STASIS     on hold: frozen. Muted, and it bobs and turns at a tenth of the speed.
+        //   SEALED     untouched: locked. Dimmed, the emblem still, no bob.
+        //   THRESHOLD..CREST  the climb: today's look, a touch brighter with each floor.
+        //   VIGIL      caught up: on watch. The emblem turns 1.3x and the pad breathes.
+        //   THRONE     conquered: relic gold, at full brightness, with gold motes rising.
+        // Hover and focus keep the shared hover materials on every floor: the selection reads
+        // the same wherever it lands. ---
+        interface Mood {
+            body: number; bodyOpacity: number;
+            edge: number; edgeOpacity: number; dashed?: boolean;
+            pad: number; padOpacity: number;
+            rim: number; rimOpacity: number;
+            hot: number; hotOpacity: number;
+            bob: number; spin: number;
+            pulse?: boolean; relicMotes?: boolean;
+        }
+        // Toward the neutral ink of each theme: the depowered floors lose the accent's charge.
+        // theme-color-ok: WebGL colours, which cannot read CSS variables
+        const NEUTRAL = isDark ? 0x8a8478 : 0x8e86a3;
+        const toward = (hex: number, k: number) => new THREE.Color(hex).lerp(new THREE.Color(NEUTRAL), k).getHex();
+        // The relic gold (RelicFrame's GOLD_DEEP / GOLD / GOLD_LIGHT), artwork in both themes.
+        const RELIC_BODY = 0xb8892f;
+        const RELIC = 0xe2b552;
+        const RELIC_LIGHT = 0xfbe9b0;
+        const base: Mood = {
+            body: BODY_COLOR, bodyOpacity: 1, edge: EDGE_COLOR, edgeOpacity: 0.7,
+            pad: PRIMARY_COLOR, padOpacity: 0.9, rim: RIM_COLOR, rimOpacity: 1, hot: HOT_COLOR, hotOpacity: 1,
+            bob: 1, spin: 1,
+        };
+        const climb = (c: number): Mood => ({ ...base, edgeOpacity: 0.6 + 0.2 * c, padOpacity: 0.84 + 0.12 * c });
+        const MOODS: Record<string, Mood> = {
+            SEVERED: {
+                body: toward(BODY_COLOR, 0.75), bodyOpacity: 0.18, edge: toward(EDGE_COLOR, 0.7), edgeOpacity: 0.55, dashed: true,
+                pad: toward(PRIMARY_COLOR, 0.75), padOpacity: 0.16, rim: toward(RIM_COLOR, 0.75), rimOpacity: 0.22,
+                hot: HOT_COLOR, hotOpacity: 0, bob: 0, spin: 0,
+            },
+            STASIS: {
+                body: toward(BODY_COLOR, 0.35), bodyOpacity: 0.38, edge: toward(EDGE_COLOR, 0.3), edgeOpacity: 0.5,
+                pad: toward(PRIMARY_COLOR, 0.35), padOpacity: 0.35, rim: toward(RIM_COLOR, 0.35), rimOpacity: 0.45,
+                hot: HOT_COLOR, hotOpacity: 0.4, bob: 0.1, spin: 0.1,
+            },
+            SEALED: { ...base, bodyOpacity: 0.55, edgeOpacity: 0.5, padOpacity: 0.45, rimOpacity: 0.55, hotOpacity: 0.5, bob: 0, spin: 0 },
+            THRESHOLD: climb(0),
+            TRIALS: climb(1 / 3),
+            ASCENT: climb(2 / 3),
+            CREST: climb(1),
+            VIGIL: { ...climb(1), spin: 1.3, pulse: true },
+            THRONE: {
+                body: RELIC_BODY, bodyOpacity: 1, edge: RELIC_LIGHT, edgeOpacity: 0.95,
+                pad: RELIC, padOpacity: 1, rim: RELIC, rimOpacity: 1, hot: RELIC_LIGHT, hotOpacity: 1,
+                bob: 1, spin: 1, relicMotes: true,
+            },
+        };
+        /** One floor's materials, from its mood. Faint parts are transparent and skip the depth
+         *  write, so a ghostly isle does not cut holes in what is behind it. */
+        const moodMaterials = (m: Mood) => {
+            const see = (o: number) => ({ transparent: o < 1, opacity: o, depthWrite: o >= 1 });
+            const mats = {
+                body: new THREE.MeshBasicMaterial({ color: m.body, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1, ...see(m.bodyOpacity) }),
+                edge: m.dashed
+                    ? new THREE.LineDashedMaterial({ color: m.edge, dashSize: 0.55, gapSize: 0.5, transparent: true, opacity: m.edgeOpacity })
+                    : new THREE.LineBasicMaterial({ color: m.edge, transparent: true, opacity: m.edgeOpacity }),
+                pad: new THREE.MeshBasicMaterial({ color: m.pad, transparent: true, opacity: m.padOpacity }),
+                rim: new THREE.MeshBasicMaterial({ color: m.rim, ...see(m.rimOpacity) }),
+                hot: new THREE.MeshBasicMaterial({ color: m.hot, ...see(m.hotOpacity) }),
+            };
+            disposables.push(mats.body, mats.edge, mats.pad, mats.rim, mats.hot);
+            return mats;
+        };
 
         // --- HELPERS ---
         const jitter = (g: THREE.BufferGeometry, a: number) => {
@@ -140,7 +211,10 @@ const TowerStructure: React.FC<TowerStructureProps> = ({ onSelectFloor, theme, o
             label: THREE.Sprite;
             isle: THREE.Group;
             originalY: number;
-            isEmpty: boolean;
+            mood: Mood;
+            edgeMat: THREE.Material;
+            padMat: THREE.MeshBasicMaterial;
+            relicMotes: THREE.Points | null;
         }[] = [];
 
         const isMobile = window.innerWidth < 768;
@@ -156,24 +230,32 @@ const TowerStructure: React.FC<TowerStructureProps> = ({ onSelectFloor, theme, o
             isle.position.set(Math.cos(ang) * rad, yPos, Math.sin(ang) * rad);
             isle.rotation.y = Math.random() * Math.PI;
 
-            const isEmpty = !items.some(it => floorIndexForItem(it) === i);
+            const mood = MOODS[FLOOR_DEFS[i].label] ?? base;
+            const mats = moodMaterials(mood);
             const edges: THREE.LineSegments[] = [];
+            // Dashed lines are measured along their length; plain ones ignore the attribute.
+            const edgeLines = (geo: THREE.BufferGeometry) => {
+                const line = new THREE.LineSegments(geo, mats.edge);
+                if (mood.dashed) line.computeLineDistances();
+                return line;
+            };
 
             // main floating rock
             const rGeo = rockGeo(s);
-            isle.add(new THREE.Mesh(rGeo, bodyMat));
+            isle.add(new THREE.Mesh(rGeo, mats.body));
             const rEdgeGeo = new THREE.EdgesGeometry(rGeo, 22);
-            const rEdge = new THREE.LineSegments(rEdgeGeo, edgeMat);
+            const rEdge = edgeLines(rEdgeGeo);
             isle.add(rEdge); edges.push(rEdge);
             disposables.push(rGeo, rEdgeGeo);
 
             // glowing hex pad (the clickable floor marker) + rim + floating glyph
             const padGeo = new THREE.CylinderGeometry(s * 0.42, s * 0.5, 0.5, 6);
-            const pad = new THREE.Mesh(padGeo, padMat); pad.position.y = s * 0.55; isle.add(pad);
+            const pad = new THREE.Mesh(padGeo, mats.pad); pad.position.y = s * 0.55; isle.add(pad);
             const ringGeo = new THREE.TorusGeometry(s * 0.5, 0.09, 6, 6);
-            const ring = new THREE.Mesh(ringGeo, rimMat); ring.rotation.x = Math.PI / 2; ring.position.y = s * 0.62; isle.add(ring);
+            const ring = new THREE.Mesh(ringGeo, mats.rim); ring.rotation.x = Math.PI / 2; ring.position.y = s * 0.62; isle.add(ring);
             const glyphGeo = new THREE.TorusGeometry(s * 0.22, 0.07, 6, 6);
-            const glyph = new THREE.Mesh(glyphGeo, hotMat); glyph.rotation.x = Math.PI / 2; glyph.position.y = s * 0.95; isle.add(glyph);
+            const glyph = new THREE.Mesh(glyphGeo, mats.hot); glyph.rotation.x = Math.PI / 2; glyph.position.y = s * 0.95; isle.add(glyph);
+            glyph.visible = mood.hotOpacity > 0;
             disposables.push(padGeo, ringGeo, glyphGeo);
 
             // debris shards
@@ -182,9 +264,9 @@ const TowerStructure: React.FC<TowerStructureProps> = ({ onSelectFloor, theme, o
                 dGeo.computeVertexNormals();
                 const da = Math.random() * Math.PI * 2, dr = s * 1.05 + Math.random() * s * 0.7;
                 const dPos = new THREE.Vector3(Math.cos(da) * dr, (Math.random() - 0.4) * s * 0.9, Math.sin(da) * dr);
-                const dMesh = new THREE.Mesh(dGeo, bodyMat); dMesh.position.copy(dPos); isle.add(dMesh);
+                const dMesh = new THREE.Mesh(dGeo, mats.body); dMesh.position.copy(dPos); isle.add(dMesh);
                 const dEdgeGeo = new THREE.EdgesGeometry(dGeo);
-                const dEdge = new THREE.LineSegments(dEdgeGeo, edgeMat); dEdge.position.copy(dPos); isle.add(dEdge); edges.push(dEdge);
+                const dEdge = edgeLines(dEdgeGeo); dEdge.position.copy(dPos); isle.add(dEdge); edges.push(dEdge);
                 disposables.push(dGeo, dEdgeGeo);
             }
 
@@ -280,8 +362,10 @@ const TowerStructure: React.FC<TowerStructureProps> = ({ onSelectFloor, theme, o
             isle.add(label);
             disposables.push(labelMat, labelTex);
 
+            // The Throne's relic motes: a few gold sparks rising off its pad, in the isle's own
+            // space so they ride its bob. Built after the moteTex below exists (see 4.).
             group.add(isle);
-            floorObjects.push({ hitbox, edges, pad, glyph, label, isle, originalY: yPos, isEmpty });
+            floorObjects.push({ hitbox, edges, pad, glyph, label, isle, originalY: yPos, mood, edgeMat: mats.edge, padMat: mats.pad, relicMotes: null });
         }
 
         // --- 2. HUD GROUND GRID (radar disc) ---
@@ -325,6 +409,40 @@ const TowerStructure: React.FC<TowerStructureProps> = ({ onSelectFloor, theme, o
         const motes = new THREE.Points(moteGeo, moteMat);
         group.add(motes);
         disposables.push(moteGeo, moteTex, moteMat);
+
+        // The Throne's relic motes (see FLOOR MOODS): gold, rising a short way off the pad and
+        // fading as they go, then starting again. Each isle keeps its size (`s`) in scale terms:
+        // the pad sits at 0.55 of it.
+        const RELIC_MOTES = 14;
+        const RELIC_RISE = 9;
+        floorObjects.forEach((obj, i) => {
+            if (!obj.mood.relicMotes) return;
+            const t = i / (TOWER_FLOORS - 1);
+            const s = 5.6 * (1.3 - t * 0.3);
+            const g = new THREE.BufferGeometry();
+            const p = new Float32Array(RELIC_MOTES * 3);
+            const speeds: number[] = [];
+            for (let k = 0; k < RELIC_MOTES; k++) {
+                const a = Math.random() * Math.PI * 2, r = Math.random() * s * 0.55;
+                p[k * 3] = Math.cos(a) * r;
+                p[k * 3 + 1] = s * 0.6 + Math.random() * RELIC_RISE;
+                p[k * 3 + 2] = Math.sin(a) * r;
+                speeds.push(1.6 + Math.random() * 1.8);
+            }
+            g.setAttribute('position', new THREE.BufferAttribute(p, 3));
+            g.userData = { floorY: s * 0.6, speeds };
+            // On the light page additive gold would vanish into the pale ground; it draws
+            // normally there, a shade deeper, so it still reads as gold.
+            const m = new THREE.PointsMaterial({
+                size: 1.25, map: moteTex, transparent: true, depthWrite: false,
+                blending: isDark ? THREE.AdditiveBlending : THREE.NormalBlending,
+                color: isDark ? RELIC : RELIC_BODY, opacity: isDark ? 0.95 : 0.85,
+            });
+            const pts = new THREE.Points(g, m);
+            obj.isle.add(pts);
+            obj.relicMotes = pts;
+            disposables.push(g, m);
+        });
 
         // --- SCROLL / CAMERA / TOUCH LOGIC ---
         const getZoomLevels = () => {
@@ -653,8 +771,22 @@ const TowerStructure: React.FC<TowerStructureProps> = ({ onSelectFloor, theme, o
             if (!reduceMotion) {
                 const et = clock.getElapsedTime();
                 floorObjects.forEach((obj, k) => {
-                    obj.isle.position.y = obj.originalY + Math.sin(et * 0.6 + k) * 0.8;
-                    obj.glyph.rotation.z += dt * 0.5;
+                    // Each floor at its mood's pace (constant per floor, so scaling time keeps
+                    // the wave continuous).
+                    obj.isle.position.y = obj.originalY + Math.sin(et * 0.6 * obj.mood.bob + k) * 0.8 * Math.min(1, obj.mood.bob * 4);
+                    obj.glyph.rotation.z += dt * 0.5 * obj.mood.spin;
+                    // The Vigil's pad breathes, slowly: on watch for the next chapter.
+                    if (obj.mood.pulse) obj.padMat.opacity = obj.mood.padOpacity - 0.3 + 0.3 * (0.5 + 0.5 * Math.sin(et * 2.2));
+                    if (obj.relicMotes) {
+                        const rp = obj.relicMotes.geometry.attributes.position;
+                        const { floorY, speeds } = obj.relicMotes.geometry.userData as { floorY: number; speeds: number[] };
+                        for (let q = 0; q < RELIC_MOTES; q++) {
+                            let y = rp.getY(q) + speeds[q] * dt;
+                            if (y > floorY + RELIC_RISE) y = floorY;
+                            rp.setY(q, y);
+                        }
+                        rp.needsUpdate = true;
+                    }
                 });
                 const mp = motes.geometry.attributes.position;
                 for (let k = 0; k < MOTE_COUNT; k++) {
@@ -673,8 +805,8 @@ const TowerStructure: React.FC<TowerStructureProps> = ({ onSelectFloor, theme, o
             // Hover styling & focus highlight
             floorObjects.forEach((obj, idx) => {
                 const isHover = (obj.hitbox === hoveredFloor) || (focusedFloorIndex === idx);
-                obj.edges.forEach(e => { e.material = isHover ? edgeHoverMat : edgeMat; });
-                obj.pad.material = isHover ? padHoverMat : padMat;
+                obj.edges.forEach(e => { e.material = isHover ? edgeHoverMat : obj.edgeMat; });
+                obj.pad.material = isHover ? padHoverMat : obj.padMat;
                 obj.label.material.opacity = isHover ? 1 : 0.8;
                 // Never smaller than LABEL_MIN_PX on screen: a fixed world size let the names
                 // shrink to ~4px letters at tablet widths, where the camera sits far back.

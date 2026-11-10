@@ -508,6 +508,47 @@ html.theme-switching *::after {
     .crest-pulse { display: none; }
 }
 
+/* THE SLOT ROLL (ChapterField): the chapter number's changed digits roll like a counter's
+   wheels. Each digit is a cell clipped top and bottom (clip-path, not overflow: overflow would
+   move the cell's baseline and the number would jump); the old digit leaves one way as the new
+   one arrives from the other, on the same curve, so the two move as one wheel (the old digit
+   on ease-in lingered at full strength under the arriving one for 100 ms). --roll-dir is 1
+   reading on (new rises from below), -1 stepping back. --roll-ms and --roll-delay come per
+   digit from ChapterField. */
+.chapter-roll-cell {
+    position: relative;
+    display: inline-block;
+    clip-path: inset(-0.12em -0.2em);
+}
+.chapter-roll-out {
+    position: absolute;
+    inset: 0;
+    animation: chapter-roll-out var(--roll-ms, 160ms) cubic-bezier(0.2, 0.8, 0.25, 1) var(--roll-delay, 0ms) both;
+}
+.chapter-roll-in {
+    animation: chapter-roll-in var(--roll-ms, 160ms) cubic-bezier(0.2, 0.8, 0.25, 1) var(--roll-delay, 0ms) both;
+}
+.chapter-recoil {
+    animation: chapter-recoil 180ms cubic-bezier(0.3, 0.7, 0.4, 1);
+}
+@keyframes chapter-roll-in {
+    from { transform: translateY(calc(var(--roll-dir, 1) * 0.62em)); opacity: 0.3; }
+    to { transform: none; opacity: 1; }
+}
+@keyframes chapter-roll-out {
+    0% { transform: none; opacity: 1; }
+    55% { opacity: 0; }
+    100% { transform: translateY(calc(var(--roll-dir, 1) * -0.62em)); opacity: 0; }
+}
+@keyframes chapter-recoil {
+    0%, 100% { transform: scale(1); }
+    40% { transform: scale(1.06); }
+}
+@media (prefers-reduced-motion: reduce) {
+    .chapter-roll-in, .chapter-recoil { animation: none; }
+    .chapter-roll-out { display: none; }
+}
+
 /* THE STAR-PATH (StarPath): a crossed milestone glows; one crossed while the page is open
    flares once. */
 .star-node-lit { filter: drop-shadow(0 0 4px var(--accent-glow)); }

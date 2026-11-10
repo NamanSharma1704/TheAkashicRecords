@@ -75,6 +75,13 @@ interface ChapterBurst {
     inFlight: boolean;
     /** A save was requested while one was already in the air. */
     dirty: boolean;
+    /** When saves started failing for want of a connection (null while they go through). The
+     *  burst is held and retried until RETRY_GIVE_UP_MS after this. */
+    failedSince: number | null;
+    /** Retries so far in this outage, which picks the next wait from RETRY_STEPS_MS. */
+    attempts: number;
+    /** It came through an outage: a quiet "Saved" when it finally lands. */
+    recovering: boolean;
 }
 interface ChapterRequestOpts {
     /** 'merge' waits CHAPTER_MERGE_MS for more taps; 'now' sends at once; 'hold' waits for the stepper's release. */
@@ -88,6 +95,19 @@ interface ChapterRequestOpts {
 }
 /** Taps closer together than this merge into one save. */
 const CHAPTER_MERGE_MS = 600;
+/**
+ * A chapter save that fails for want of a connection is held and retried rather than undone:
+ * the number stays where the reader put it. These are the waits between tries (the last one
+ * repeats), and how long the outage may last before the save is given up and the number
+ * returns to the last chapter the server confirmed. Retries live only while the page is open:
+ * keeping them across a reload could let an old save overwrite newer progress from another
+ * device. A save that only gets through after midnight counts for the new day (accepted).
+ */
+const RETRY_STEPS_MS = [2000, 4000, 8000, 15000, 30000];
+const RETRY_GIVE_UP_MS = 2 * 60 * 1000;
+/** Replies worth trying again: a timeout, rate limiting, or the server or its gateway down.
+ *  Any other refusal (400, 403, 409) would only be refused again. */
+const isRetryableStatus = (status: number) => status === 408 || status === 429 || status >= 500;
 
 /**
  * Should this device start in low-power effects mode? Conservative on purpose: only a
@@ -1402,17 +1422,19 @@ const App: React.FC = () => {
         setLibrary(prev => prev.map(q => q.id === questId ? { ...q, currentChapter: pair.current, totalChapters: pair.total } : q));
     }, []);
 
-    /** After a burst lands: offer Undo for a big move, and mark a climb to a higher floor. */
-    const announceBurst = useCallback((b: ChapterBurst, final: ChapterPair, savedStatus: string) => {
+    /** After a burst lands: offer Undo for a big move, and mark a climb to a higher floor.
+     *  Returns whether it showed a notice (a save that came through an outage otherwise says
+     *  "Saved" itself). */
+    const announceBurst = useCallback((b: ChapterBurst, final: ChapterPair, savedStatus: string): boolean => {
         const quest = libraryRef.current.find(q => q.id === b.questId);
-        if (!quest) return;
+        if (!quest) return false;
         // Reading on in a SEALED or STASIS series opens it (server-side); `quest` is still the
         // copy from before the save, so it carries the old status.
         const reopened = (quest.status === 'PLANNED' || quest.status === 'STASIS') && savedStatus === 'ACTIVE';
         const reopenNote = reopened ? `Gate opened: ${statusLabel(quest.status)} → ACTIVE` : '';
         if (b.undo) {
             showToast({ tone: 'INFO', message: `Restored · CH ${final.current}`, detail: quest.title, duration: 3000 });
-            return;
+            return true;
         }
         const from = b.start;
         // The landing floor reads the saved status: a paused series that reopens leaves the
@@ -1424,7 +1446,7 @@ const App: React.FC = () => {
         const undoable = b.typed || raised || Math.abs(final.current - from.current) >= UNDO_THRESHOLD;
         if (!ascended && !undoable) {
             if (reopened) showToast({ tone: 'SUCCESS', message: 'Gate opened', detail: `${quest.title} moved from ${statusLabel(quest.status)} to your active quests.`, duration: 5000 });
-            return;
+            return reopened;
         }
 
         const moved = `Chapter ${from.current} → ${final.current}`;
@@ -1443,7 +1465,19 @@ const App: React.FC = () => {
                 : undefined,
             duration: undoable ? 8000 : 4500,
         });
+        return true;
     }, [showToast]);
+
+    // The one "Saving when the connection returns" notice, while any save is held for a
+    // connection. It goes once none is (a save landed, was given up, or the series is gone);
+    // a later notice may have replaced it already, which dismissToast leaves alone.
+    const offlineNotice = useRef<number | null>(null);
+    const releaseOfflineNotice = useCallback(() => {
+        if (offlineNotice.current === null) return;
+        for (const b of bursts.current.values()) if (b.failedSince !== null) return;
+        dismissToast(offlineNotice.current);
+        offlineNotice.current = null;
+    }, [dismissToast]);
 
     /** Send a quest's pending chapter. Safe to call at any time; it never double-sends. */
     const sendBurst = useCallback(async (questId: string, keepalive = false): Promise<void> => {
@@ -1456,6 +1490,7 @@ const App: React.FC = () => {
         if (sent.current === b.confirmed.current && sent.total === b.confirmed.total) {
             // Moved and moved back before the save went out: nothing to send.
             bursts.current.delete(questId);
+            releaseOfflineNotice();
             return;
         }
         b.inFlight = true;
@@ -1463,45 +1498,99 @@ const App: React.FC = () => {
         const body: Record<string, number> = { currentChapter: sent.current };
         if (sent.total !== b.confirmed.total) body.totalChapters = sent.total;
 
+        // Back to the last chapter the server confirmed, and say so.
+        const giveUp = (why: string) => {
+            bursts.current.delete(questId);
+            if (b.timer) { clearTimeout(b.timer); b.timer = null; }
+            applyChapter(questId, b.confirmed);
+            releaseOfflineNotice();
+            showToast({ tone: 'ERROR', message: 'SYNC_FAILED', detail: `${why} Back to chapter ${b.confirmed.current}.`, duration: 8000 });
+        };
+
+        let res: Response | null = null;
         try {
-            const res = await systemFetch(`${API_URL}/${questId}`, { method: 'PUT', body: JSON.stringify(body), keepalive });
-            b.inFlight = false;
-            if (bursts.current.get(questId) !== b) return; // signed out meanwhile
-            if (res.status === 401) { bursts.current.delete(questId); return; } // session handler takes over
-            if (res.status === 404) {
-                // Deleted from another tab or device: the record is gone, not unsaved.
-                bursts.current.delete(questId);
-                setLibrary(prev => prev.filter(q => q.id !== questId));
-                showToast({ tone: 'WARNING', message: 'Record not found', detail: 'This series was removed elsewhere, so the chapter was not saved.', duration: 7000 });
+            res = await systemFetch(`${API_URL}/${questId}`, { method: 'PUT', body: JSON.stringify(body), keepalive });
+        } catch {
+            res = null; // no connection: fetch itself failed
+        }
+        b.inFlight = false;
+        if (bursts.current.get(questId) !== b) return; // signed out meanwhile
+        if (res?.status === 401) { bursts.current.delete(questId); releaseOfflineNotice(); return; } // session handler takes over
+        if (res?.status === 404) {
+            // Deleted from another tab or device: the record is gone, not unsaved.
+            bursts.current.delete(questId);
+            releaseOfflineNotice();
+            setLibrary(prev => prev.filter(q => q.id !== questId));
+            showToast({ tone: 'WARNING', message: 'Record not found', detail: 'This series was removed elsewhere, so the chapter was not saved.', duration: 7000 });
+            return;
+        }
+
+        // No connection, or a reply worth trying again: hold the number where it is and retry.
+        if (!res || isRetryableStatus(res.status)) {
+            const now = Date.now();
+            if (b.failedSince === null) b.failedSince = now;
+            b.recovering = true;
+            if (now - b.failedSince >= RETRY_GIVE_UP_MS) {
+                giveUp('No connection for two minutes, so the chapter was not saved.');
                 return;
             }
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            const saved = mapQuest(await res.json());
-            b.confirmed = sent;
-
-            if (b.dirty) { void sendBurst(questId); return; }      // more arrived mid-flight
-            if (b.target.current !== sent.current || b.target.total !== sent.total) return; // a merge timer will send the rest
-
-            // Settled. Adopt the server's copy (it carries lastRead and the like).
-            bursts.current.delete(questId);
-            setLibrary(prev => prev.map(q => q.id === questId ? saved : q));
-            announceBurst(b, sent, saved.status);
-            // Streak and daily-absorbed are the only other state a chapter changes server-side.
-            refreshUserState().catch(() => { /* counters refresh on the next load */ });
-        } catch (e) {
-            b.inFlight = false;
-            console.error('Chapter save failed', e);
-            if (bursts.current.get(questId) !== b) return;
-            bursts.current.delete(questId);
-            applyChapter(questId, b.confirmed);
-            showToast({
-                tone: 'ERROR',
-                message: 'SYNC_FAILED',
-                detail: `Couldn't save — back to chapter ${b.confirmed.current}. Check your connection.`,
-                duration: 8000,
-            });
+            const wait = RETRY_STEPS_MS[Math.min(b.attempts, RETRY_STEPS_MS.length - 1)];
+            b.attempts++;
+            if (b.timer) clearTimeout(b.timer);
+            b.timer = setTimeout(() => { void sendBurst(questId); }, wait);
+            // One notice for the whole outage, kept current: which series wait, at which chapter.
+            const held = [...bursts.current.values()].filter(x => x.failedSince !== null);
+            const only = held.length === 1 ? libraryRef.current.find(q => q.id === held[0].questId) : undefined;
+            const detail = `${only ? `${only.title} stays at chapter ${held[0].target.current}.` : `${held.length} series keep their chapters.`} The System keeps trying for two minutes.`;
+            if (offlineNotice.current === null) {
+                offlineNotice.current = showToast({ tone: 'INFO', message: 'Saving when the connection returns', detail, duration: 0 });
+            } else {
+                updateToast(offlineNotice.current, { detail });
+            }
+            return;
         }
-    }, [announceBurst, applyChapter, refreshUserState, showToast]);
+
+        let saved: Quest;
+        try {
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            saved = mapQuest(await res.json());
+        } catch (e) {
+            console.error('Chapter save failed', e);
+            giveUp(res.ok ? "Couldn't read the System's reply." : 'The System refused the chapter.');
+            return;
+        }
+        b.confirmed = sent;
+        b.failedSince = null;
+        b.attempts = 0;
+        releaseOfflineNotice();
+
+        if (b.dirty) { void sendBurst(questId); return; }      // more arrived mid-flight
+        if (b.target.current !== sent.current || b.target.total !== sent.total) return; // a merge timer will send the rest
+
+        // Settled. Adopt the server's copy (it carries lastRead and the like).
+        bursts.current.delete(questId);
+        setLibrary(prev => prev.map(q => q.id === questId ? saved : q));
+        const spoke = announceBurst(b, sent, saved.status);
+        // Through an outage, a word that it made it (unless the landing already said something).
+        if (b.recovering && !spoke) {
+            showToast({ tone: 'SUCCESS', message: `Saved · CH ${sent.current}`, detail: saved.title, duration: 3000 });
+        }
+        // Streak and daily-absorbed are the only other state a chapter changes server-side.
+        refreshUserState().catch(() => { /* counters refresh on the next load */ });
+    }, [announceBurst, applyChapter, refreshUserState, showToast, updateToast, releaseOfflineNotice]);
+
+    // The connection is back: every held save goes now rather than at its next scheduled try.
+    useEffect(() => {
+        const onOnline = () => {
+            bursts.current.forEach((b, id) => {
+                if (b.failedSince === null || b.inFlight) return;
+                if (b.timer) { clearTimeout(b.timer); b.timer = null; }
+                void sendBurst(id);
+            });
+        };
+        window.addEventListener('online', onOnline);
+        return () => window.removeEventListener('online', onOnline);
+    }, [sendBurst]);
 
     /**
      * Move a quest to `wanted`. Returns false when that is no change (a held stepper stops on it).
@@ -1525,7 +1614,7 @@ const App: React.FC = () => {
 
         if (!b) {
             const now: ChapterPair = { current: quest.currentChapter, total: quest.totalChapters };
-            b = { questId, confirmed: now, start: { ...now }, target: { ...now }, typed: false, undo: false, timer: null, inFlight: false, dirty: false };
+            b = { questId, confirmed: now, start: { ...now }, target: { ...now }, typed: false, undo: false, timer: null, inFlight: false, dirty: false, failedSince: null, attempts: 0, recovering: false };
             bursts.current.set(questId, b);
             // The dais answers a chapter read, once per burst: a run of taps or a held stepper
             // is one burst, so it flares at the first step, not at every chapter. Only reading
@@ -1600,6 +1689,7 @@ const App: React.FC = () => {
         setTourId(null);
         bursts.current.forEach(b => { if (b.timer) clearTimeout(b.timer); });
         bursts.current.clear();
+        offlineNotice.current = null;
     }, [isAuth]);
 
     /** Send everything pending now, e.g. when the page is going away. */

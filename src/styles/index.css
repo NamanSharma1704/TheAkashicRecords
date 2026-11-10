@@ -549,6 +549,62 @@ html.theme-switching *::after {
     .chapter-roll-out { display: none; }
 }
 
+/* THE PHONE HUD RAIL (MobileTabBar). The bar's plate is dark in both themes, so these read
+   the accent family directly. The tab on screen (aria-current="page") locks on: its reticle
+   closes in from 1.35x, its glyph lights, a wash rises behind it; the lit segment on the rail
+   slides to it. Reduced motion: the global reset makes each of these an instant change. */
+.tab-rail-edge {
+    background: linear-gradient(90deg, transparent, var(--accent-line) 10%, var(--accent-line) 90%, transparent);
+}
+.tab-rail-ticks {
+    background: repeating-linear-gradient(90deg, var(--accent-line) 0 3px, transparent 3px 7px);
+}
+.tab-rail-indicator {
+    transition: transform 340ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.tab-rail-segment {
+    background: var(--accent-solid);
+    box-shadow: 0 0 10px var(--accent-glow), 0 0 2px var(--accent-color);
+}
+/* Small notches either side of the segment, the frame kit's tab in miniature. */
+.tab-rail-segment::before,
+.tab-rail-segment::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    width: 3px;
+    height: 4px;
+    background: var(--accent-solid);
+}
+.tab-rail-segment::before { left: -5px; }
+.tab-rail-segment::after { right: -5px; }
+.tab-reticle {
+    --tab-c: var(--accent-solid);
+    background:
+        linear-gradient(var(--tab-c), var(--tab-c)) left top / 7px 1.5px no-repeat,
+        linear-gradient(var(--tab-c), var(--tab-c)) left top / 1.5px 6px no-repeat,
+        linear-gradient(var(--tab-c), var(--tab-c)) right top / 7px 1.5px no-repeat,
+        linear-gradient(var(--tab-c), var(--tab-c)) right top / 1.5px 6px no-repeat,
+        linear-gradient(var(--tab-c), var(--tab-c)) left bottom / 7px 1.5px no-repeat,
+        linear-gradient(var(--tab-c), var(--tab-c)) left bottom / 1.5px 6px no-repeat,
+        linear-gradient(var(--tab-c), var(--tab-c)) right bottom / 7px 1.5px no-repeat,
+        linear-gradient(var(--tab-c), var(--tab-c)) right bottom / 1.5px 6px no-repeat;
+    opacity: 0;
+    transform: scale(1.35);
+    transition: opacity 220ms ease, transform 280ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.tab-wash {
+    background: radial-gradient(ellipse 70% 85% at 50% 0%, var(--accent-soft-strong), transparent 70%);
+    opacity: 0;
+    transition: opacity 300ms ease;
+}
+.tab-glyph {
+    transition: filter 300ms ease;
+}
+.tab-slot[aria-current='page'] .tab-reticle { opacity: 1; transform: none; }
+.tab-slot[aria-current='page'] .tab-wash { opacity: 1; }
+.tab-slot[aria-current='page'] .tab-glyph { filter: drop-shadow(0 0 5px var(--accent-glow)); }
+
 /* THE STAR-PATH (StarPath): a crossed milestone glows; one crossed while the page is open
    flares once. */
 .star-node-lit { filter: drop-shadow(0 0 4px var(--accent-glow)); }

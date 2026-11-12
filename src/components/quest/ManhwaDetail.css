@@ -94,6 +94,6 @@
    safe area), fully visible again where the column's own top padding ends (88px, or 72px
    under the notch). So nothing is faded at rest; only what has scrolled up under the bar. */
 .manhwa-detail-scroll-container {
-    -webkit-mask-image: linear-gradient(to bottom, transparent max(64px, calc(env(safe-area-inset-top, 0px) + 40px)), #000 max(88px, calc(env(safe-area-inset-top, 0px) + 72px)));
-    mask-image: linear-gradient(to bottom, transparent max(64px, calc(env(safe-area-inset-top, 0px) + 40px)), #000 max(88px, calc(env(safe-area-inset-top, 0px) + 72px)));
+    -webkit-mask-image: linear-gradient(to bottom, transparent max(64px, calc(var(--safe-top, 0px) + 40px)), #000 max(88px, calc(var(--safe-top, 0px) + 72px)));
+    mask-image: linear-gradient(to bottom, transparent max(64px, calc(var(--safe-top, 0px) + 40px)), #000 max(88px, calc(var(--safe-top, 0px) + 72px)));
 }

@@ -51,8 +51,12 @@
 
     /* THE INSTALLED APP (Add to Home Screen). The page asks to draw under the status bar
        (viewport-fit=cover + black-translucent, index.html), so:
-         --safe-top  the status bar's height, which every view that reaches the top of the
-                     screen pads by. 0 in a browser tab and on desktop, so nothing moves there.
+         --safe-top  how far every view that reaches the top of the screen pads down: the
+                     status bar's height plus up to 20px, because iOS 26.1+ draws its own dark
+                     gradient over the status bar in an installed app and it fades out a little
+                     below the bar (it dimmed the headers' top lines on the owner's iPad,
+                     2026-11-12; the fix flight-tracker #212 ships). 0 in a browser tab and on
+                     desktop, where the inset is 0, so nothing moves there.
          --app-h     the app's full height. 100dvh in a browser.
        iOS 26 has a bug in installed web apps (WebKit 301108 / 316008): with this status bar,
        100% and 100dvh come out SHORT by the status bar, and the page starts under it, which
@@ -63,7 +67,7 @@
        it, dvh + inset is the screen; without it, lvh caps the sum). Fixed bars then reach the
        real bottom. The html/body/#root heights beat index.html's inline 100% on specificity. */
     :root {
-        --safe-top: env(safe-area-inset-top, 0px);
+        --safe-top: calc(env(safe-area-inset-top, 0px) + min(20px, env(safe-area-inset-top, 0px)));
         --app-h: 100dvh;
     }
     @media (display-mode: standalone) {

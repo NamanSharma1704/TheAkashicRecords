@@ -85,7 +85,7 @@ const SystemTour: React.FC<{ theme: Theme; id: TourId; guest: boolean; onClose: 
             aria-labelledby="system-tour-title"
             aria-describedby="system-tour-body"
             tabIndex={-1}
-            className={`fixed inset-0 z-[900] flex justify-center ${placement} p-4 sm:p-8 outline-none`}
+            className={`fixed inset-0 z-[900] flex justify-center ${placement} p-4 sm:p-8 pt-[max(1rem,var(--safe-top))] pb-[max(1rem,env(safe-area-inset-bottom))] outline-none`}
             onKeyDown={(e) => {
                 if (e.key === 'ArrowRight') { e.preventDefault(); go(index + 1); }
                 if (e.key === 'ArrowLeft') { e.preventDefault(); go(index - 1); }

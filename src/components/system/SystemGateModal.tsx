@@ -303,12 +303,12 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
             initial={{ opacity: reduceMotion ? 0 : 1 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className={`fixed inset-0 z-[500] flex items-center justify-center bg-black/60 backdrop-blur-sm p-3 sm:p-4 outline-none ${reduceMotion ? '' : 'rift-reveal'}`}
+            className={`fixed inset-0 z-[500] flex items-center justify-center bg-black/60 backdrop-blur-sm p-3 sm:p-4 pt-[max(0.75rem,var(--safe-top))] pb-[max(0.75rem,env(safe-area-inset-bottom))] outline-none ${reduceMotion ? '' : 'rift-reveal'}`}
         >
             <SystemFrame 
                 variant="full" 
                 theme={theme} 
-                className="w-full max-w-lg max-h-[92dvh] relative"
+                className="w-full max-w-lg max-h-[min(92dvh,100%)] relative"
                 initial={reduceMotion ? { scaleX: 0, opacity: 0, filter: 'brightness(2) blur(10px)' } : false}
                 animate={{ scaleX: 1, opacity: 1, filter: 'brightness(1) blur(0px)' }}
                 exit={{ scaleX: 0, opacity: 0, filter: 'brightness(2) blur(10px)' }}

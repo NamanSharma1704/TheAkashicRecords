@@ -502,7 +502,7 @@ const SacredFrame: React.FC<{ p: BootPalette }> = ({ p }) => {
 };
 
 const SovereignHeader: React.FC<{ p: BootPalette }> = ({ p }) => (
-    <div className="absolute top-4 sm:top-8 md:top-12 left-4 sm:left-8 md:left-12 right-4 sm:right-8 md:right-12 z-40 flex justify-between items-start pointer-events-none font-mono text-[7px] sm:text-[9px] md:text-[10px] tracking-[0.3em] uppercase">
+    <div className="absolute top-[calc(1rem+var(--safe-top))] sm:top-[calc(2rem+var(--safe-top))] md:top-[calc(3rem+var(--safe-top))] left-4 sm:left-8 md:left-12 right-4 sm:right-8 md:right-12 z-40 flex justify-between items-start pointer-events-none font-mono text-[7px] sm:text-[9px] md:text-[10px] tracking-[0.3em] uppercase">
         <div className="flex flex-col gap-2 sm:gap-3">
             <div className="flex items-center gap-2 sm:gap-4">
                 <div className="w-1.5 h-1.5 rounded-sm animate-pulse" style={{ backgroundColor: p.accent }} />
@@ -865,14 +865,14 @@ const BootScreen: React.FC<BootScreenProps> = ({ onComplete, theme }) => {
                     type="button"
                     onClick={finish}
                     aria-label="Skip intro"
-                    className="absolute right-4 sm:right-8 md:right-12 bottom-4 sm:bottom-8 md:bottom-12 z-[210] px-2 py-1 font-mono text-[9px] md:text-[10px] tracking-[0.3em] uppercase font-medium border border-transparent outline-none focus-visible:border-current cursor-pointer"
+                    className="absolute right-4 sm:right-8 md:right-12 bottom-[calc(1rem+env(safe-area-inset-bottom,0px))] sm:bottom-[calc(2rem+env(safe-area-inset-bottom,0px))] md:bottom-[calc(3rem+env(safe-area-inset-bottom,0px))] z-[210] px-2 py-1 font-mono text-[9px] md:text-[10px] tracking-[0.3em] uppercase font-medium border border-transparent outline-none focus-visible:border-current cursor-pointer"
                     style={{ color: p.isDark ? `${p.ink}b3` : `${p.ink}cc` }}
                 >
                     SKIP <span style={{ color: p.accentInk }}>[ESC]</span>
                 </button>
 
                 {/* BOTTOM-LEFT TELEMETRY FOOTER */}
-                <div aria-hidden="true" className="absolute left-4 sm:left-8 md:left-12 bottom-4 sm:bottom-8 md:bottom-12 z-40 text-left text-[7px] sm:text-[9px] md:text-[10px] tracking-[0.3em] leading-[2] uppercase hidden sm:block">
+                <div aria-hidden="true" className="absolute left-4 sm:left-8 md:left-12 bottom-[calc(1rem+env(safe-area-inset-bottom,0px))] sm:bottom-[calc(2rem+env(safe-area-inset-bottom,0px))] md:bottom-[calc(3rem+env(safe-area-inset-bottom,0px))] z-40 text-left text-[7px] sm:text-[9px] md:text-[10px] tracking-[0.3em] leading-[2] uppercase hidden sm:block">
                     <div className="flex gap-4 sm:gap-8">
                         <span className="font-medium" style={{ color: `${p.ink}99` }}>SEC: <span style={{ color: p.accentInk }}>57</span></span>
                         <span className="font-medium" style={{ color: `${p.ink}99` }}>M_ID: <span style={{ color: p.accentInk }}>6E28</span></span>

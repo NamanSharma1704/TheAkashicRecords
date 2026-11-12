@@ -48,6 +48,46 @@
             --tabbar-h: calc(56px + env(safe-area-inset-bottom, 0px));
         }
     }
+
+    /* THE INSTALLED APP (Add to Home Screen). The page asks to draw under the status bar
+       (viewport-fit=cover + black-translucent, index.html), so:
+         --safe-top  the status bar's height, which every view that reaches the top of the
+                     screen pads by. 0 in a browser tab and on desktop, so nothing moves there.
+         --app-h     the app's full height. 100dvh in a browser.
+       iOS 26 has a bug in installed web apps (WebKit 301108 / 316008): with this status bar,
+       100% and 100dvh come out SHORT by the status bar, and the page starts under it, which
+       left a status-bar-tall black band under the tab bar and the header under the clock
+       (owner's iPhone, 2026-11-12). Only 100lvh is the full screen. The viewport is short only
+       while the page is shorter than the screen, so in standalone the page is made screen-tall:
+       `min(100lvh, 100dvh + the inset)` is the full height whether or not iOS has the bug (with
+       it, dvh + inset is the screen; without it, lvh caps the sum). Fixed bars then reach the
+       real bottom. The html/body/#root heights beat index.html's inline 100% on specificity. */
+    :root {
+        --safe-top: env(safe-area-inset-top, 0px);
+        --app-h: 100dvh;
+    }
+    @media (display-mode: standalone) {
+        :root {
+            --app-h: min(100lvh, calc(100dvh + env(safe-area-inset-top, 0px)));
+        }
+        html:root,
+        html:root > body,
+        html:root #root {
+            height: var(--app-h);
+        }
+        /* The status bar's icons are always white with this style. On the light theme they
+           would sit white on lavender, so a band in the tab bar's dark plate goes behind them
+           (`--hud-status-scrim`, core/tokens.ts: transparent on the Void). */
+        html:root > body::before {
+            content: '';
+            position: fixed;
+            inset: 0 0 auto 0;
+            height: env(safe-area-inset-top, 0px);
+            background: var(--hud-status-scrim, transparent);
+            z-index: 2000;
+            pointer-events: none;
+        }
+    }
 }
 
 /* Reduced motion, globally. Most loops here are Tailwind `animate-*` utilities (ping,

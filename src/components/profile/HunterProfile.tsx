@@ -612,7 +612,7 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
     const springConfig = { type: "spring" as const, stiffness: 60, damping: 15 };
 
     return (
-        <div className={`fixed inset-0 z-[300] ${theme.isDark ? 'bg-[#020202]' : 'bg-[#f1edf7]'} flex flex-col overflow-hidden transition-colors duration-700 outline-none`}
+        <div className={`fixed inset-0 z-[300] pt-[var(--safe-top)] ${theme.isDark ? 'bg-[#020202]' : 'bg-[#f1edf7]'} flex flex-col overflow-hidden transition-colors duration-700 outline-none`}
             style={{ '--elev-1': elevation(theme, 1) } as React.CSSProperties}
             ref={profileRef}
             role="dialog"

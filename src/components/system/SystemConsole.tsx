@@ -23,7 +23,7 @@ const SystemConsole: React.FC<SystemConsoleProps> = ({ theme, onShowShortcuts })
         <div
             // Desktop only (lg+): below lg the phone tab bar owns the bottom edge.
             className={`fixed bottom-0 left-0 w-full
-  h-[28px]
+  h-[calc(28px+env(safe-area-inset-bottom,0px))]
   backdrop-blur-[2px]
   hidden lg:flex items-center px-4 font-mono text-[9px]
   ${theme.isDark

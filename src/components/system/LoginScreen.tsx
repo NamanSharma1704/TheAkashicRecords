@@ -114,7 +114,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, theme, onTogg
         ${theme.isDark ? 'text-white placeholder:text-gray-400' : 'text-stone-900 placeholder:text-stone-600'}`;
 
     return (
-        <div className={`fixed inset-0 z-[200] ${theme.appBg} font-mono overflow-y-auto hide-scrollbar transition-colors duration-700`}>
+        <div className={`fixed inset-0 z-[200] pt-[var(--safe-top)] ${theme.appBg} font-mono overflow-y-auto hide-scrollbar transition-colors duration-700`}>
             {/* Same ambient stack the dashboard uses, rather than a one-off field. isMobile is
                 passed through so phones skip the ring and ripple layers here too. */}
             <BackgroundController theme={theme} isMobile={isMobile} />
@@ -131,7 +131,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, theme, onTogg
 
             {/* Theme toggle, positioned like the in-app header control. */}
             {onToggleTheme && (
-                <div className="absolute top-4 right-4 sm:top-6 sm:right-6 z-20">
+                <div className="absolute top-[calc(1rem+var(--safe-top))] right-4 sm:top-[calc(1.5rem+var(--safe-top))] sm:right-6 z-20">
                     <button
                         type="button"
                         onClick={onToggleTheme}

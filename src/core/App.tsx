@@ -2038,7 +2038,7 @@ const App: React.FC = () => {
                     animate={{ y: 0, opacity: 1 }}
                     exit={{ y: -100, opacity: 0 }}
                     transition={{ type: 'spring', damping: 20, stiffness: 100 }}
-                    className="fixed top-0 w-full z-40 bg-transparent h-16 px-4 flex items-center justify-between gap-2"
+                    className="fixed top-[var(--safe-top)] w-full z-40 bg-transparent h-16 px-4 flex items-center justify-between gap-2"
                 >
                     {/* A guest's header carries the countdown plus three glyphs, which measured
                         408px of content on a 375px phone and pushed Create off the screen. Phones
@@ -2145,7 +2145,7 @@ const App: React.FC = () => {
 
     const memoizedMain = useMemo(() => (
         <main id="content-scroll"
-            className="relative mt-16 h-[calc(100dvh-64px-var(--tabbar-h))] lg:h-[calc(100dvh-100px)] overflow-y-auto lg:overflow-hidden overflow-x-hidden hide-scrollbar px-4 pb-6 lg:pb-2 z-10 flex flex-col">
+            className="relative mt-[calc(4rem+var(--safe-top))] h-[calc(var(--app-h)-4rem-var(--safe-top)-var(--tabbar-h))] lg:h-[calc(var(--app-h)-100px-var(--safe-top)-env(safe-area-inset-bottom,0px))] overflow-y-auto lg:overflow-hidden overflow-x-hidden hide-scrollbar px-4 pb-6 lg:pb-2 z-10 flex flex-col">
             <div className={`w-full max-w-[1400px] flex-1 min-h-0 flex flex-col lg:flex-row gap-3 lg:gap-8 pt-2 lg:pt-2 pb-0 ${sidebarCollapsed ? 'lg:mx-auto' : 'lg:ml-auto'}`}>
                 {/* LEFT COLUMN: HERO CANVAS. HeroRings centres the background circle on it. */}
                 <div ref={setHeroColumn} className="flex-none lg:flex-1 flex flex-col lg:h-full order-1 overflow-visible relative">
@@ -2848,7 +2848,7 @@ const App: React.FC = () => {
         <TourContext.Provider value={requestTour}>
         <div 
             id="main-scroll-area" 
-            className={`relative h-[100dvh] overflow-hidden ${theme.appBg} ${theme.baseText} font-sans selection:bg-accent-wash transition-colors duration-700 ease-in-out`}
+            className={`relative h-[var(--app-h)] overflow-hidden ${theme.appBg} ${theme.baseText} font-sans selection:bg-accent-wash transition-colors duration-700 ease-in-out`}
             /* The accent variables (--accent-color, --accent-ink, …) are set on :root from
                src/core/tokens.ts; see the layout effect near the top of App. Two accents,
                deliberately: --accent-color and its derivatives are decorative (fills, glows),

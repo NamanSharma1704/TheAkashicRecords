@@ -34,6 +34,8 @@ import { Theme } from './types';
  *   hud-ink-muted       the muted ink (mutedText), for kit states that recolour it
  *   hud-sheet-glass     the plate of a reading sheet (the series page's sections)
  *   hud-panel-solid     an opaque panel plate (panelBg), for menus
+ *   hud-status-scrim    behind the installed app's status bar (styles/index.css): the light
+ *                       theme's dark plate under the always-white status icons
  */
 export const accentVars = (theme: Theme): Record<string, string> => ({
     '--accent-color': theme.accentColor,
@@ -60,4 +62,5 @@ export const accentVars = (theme: Theme): Record<string, string> => ({
     '--hud-ink-muted': theme.isDark ? '#9ca3af' : '#655a80',
     '--hud-sheet-glass': theme.isDark ? 'rgba(0, 0, 0, 0.32)' : 'rgba(255, 255, 255, 0.72)',
     '--hud-panel-solid': theme.isDark ? '#0a0a0c' : '#fbf9ff',
+    '--hud-status-scrim': theme.isDark ? 'transparent' : 'rgba(16, 8, 26, 0.92)',
 });

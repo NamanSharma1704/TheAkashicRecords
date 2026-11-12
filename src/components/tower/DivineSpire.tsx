@@ -243,7 +243,7 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
             aria-modal="true"
             aria-labelledby="divine-spire-title"
             tabIndex={-1}
-            className={`fixed inset-0 z-[60] bg-transparent animate-in fade-in zoom-in-95 duration-500 flex flex-col pb-[var(--tabbar-h)] transition-colors duration-700 outline-none`}
+            className={`fixed inset-0 z-[60] bg-transparent animate-in fade-in zoom-in-95 duration-500 flex flex-col pt-[var(--safe-top)] pb-[var(--tabbar-h)] transition-colors duration-700 outline-none`}
             style={{ '--elev-1': elevation(theme, 1) } as React.CSSProperties}
         >
             {/* AMBIENT BACKGROUND GLOW (Root-level to cover header) */}

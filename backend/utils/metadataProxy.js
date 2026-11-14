@@ -657,4 +657,35 @@ const checkLatestChapter = async (title, { ids = {}, ask = CHAPTER_SOURCE_KEYS, 
     return { latest: counts.length ? Math.max(...counts) : null, answers };
 };
 
-module.exports = { fetchAniList, fetchMangaDex, fetchJikan, fetchBest, fetchGenresOnly, checkLatestChapter, prefetchChapterBatch, CHAPTER_SOURCE_KEYS };
+/**
+ * RELEASE RADAR: the days a source recorded releases of one series, newest first, distinct.
+ * MangaUpdates first (it records official and group releases, licensed series included; the
+ * release date is a day, no time); else MangaDex's English chapters (readableAt). By the ids the
+ * chapter tracker already keeps, never by a title search. `{ source, days }`; no days when
+ * neither source has the series by id.
+ */
+const releaseDaysFor = async (ids = {}) => {
+    if (ids.mangaupdates) {
+        const res = okOr(await fetchWithTimeout('https://api.mangaupdates.com/v1/releases/search', {
+            method: 'POST',
+            headers: { 'Accept': 'application/json', 'Content-Type': 'application/json', 'User-Agent': SOURCE_UA },
+            body: JSON.stringify({ search: String(ids.mangaupdates), search_type: 'series', perpage: 40, orderby: 'date', asc: 'desc' }),
+        }, 8000));
+        const data = await res.json();
+        const days = [...new Set((data?.results || []).map((r) => r?.record?.release_date).filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d || '')))];
+        if (days.length) return { source: 'MangaUpdates', days };
+    }
+    if (ids.mangadex) {
+        const res = okOr(await fetchWithTimeout(
+            `https://api.mangadex.org/manga/${encodeURIComponent(ids.mangadex)}/feed?translatedLanguage[]=en&order[readableAt]=desc&limit=40&${MD_RATINGS}`,
+            { headers: { 'User-Agent': SOURCE_UA } }, 8000), 404);
+        if (res.ok) {
+            const data = await res.json();
+            const days = [...new Set((data?.data || []).map((c) => String(c?.attributes?.readableAt || c?.attributes?.publishAt || '').slice(0, 10)).filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d)))];
+            if (days.length) return { source: 'MangaDex', days };
+        }
+    }
+    return { source: null, days: [] };
+};
+
+module.exports = { fetchAniList, fetchMangaDex, fetchJikan, fetchBest, fetchGenresOnly, checkLatestChapter, prefetchChapterBatch, releaseDaysFor, CHAPTER_SOURCE_KEYS };

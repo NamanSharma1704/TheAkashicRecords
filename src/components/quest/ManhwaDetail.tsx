@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, useReducedMotion } from 'motion/react';
-import { X, Users, Share2, Zap, Edit2, Target, AlignLeft, Check, Activity, ExternalLink, Crown, Gauge, History, HelpCircle } from 'lucide-react';
+import { X, Check, ExternalLink, HelpCircle } from 'lucide-react';
+import { ChronicleGlyph, CrownGlyph, EntitiesGlyph, GaugeGlyph, InscribeGlyph, PulseGlyph, ResonanceGlyph, ReticleGlyph, ScrollGlyph } from '../system/SystemGlyphs';
+import { InfinitePortalIcon } from '../system/CustomIcons';
 import { getProxiedImageUrl, cleanDescription } from '../../utils/api';
 import { systemFetch } from '../../utils/auth';
 import { sanitizeHtml } from '../../utils/sanitize';
@@ -14,6 +16,7 @@ import RankSigil from './RankSigil';
 import CoverArt from './CoverArt';
 import StatusFrame from './StatusFrame';
 import RiftOpening from '../fx/RiftOpening';
+import ReleaseRadar from './ReleaseRadar';
 import StarPath from './StarPath';
 import AppraisalPips from './AppraisalPips';
 import { getQuestRankObj } from '../../utils/ranks';
@@ -28,6 +31,8 @@ interface ManhwaDetailProps {
     onSetActive?: (id: string) => void;
     onUpdate?: (id: string, updates: Partial<Quest>) => Promise<void>;
     onEdit?: (quest: Quest) => void;
+    /** ENTER PORTAL was used: the trip is noted, for Return from the Gate. */
+    onEnterPortal?: (questId: string) => void;
 }
 
 /** One series' Chronicle, from GET /api/quests/:id/history. */
@@ -166,7 +171,7 @@ const SectionHeader: React.FC<{ index: string; icon: React.ReactNode; label: str
 };
 
 // --- COMPONENT ---
-const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, theme, allQuests, onSetActive, onUpdate, onEdit }) => {
+const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, theme, allQuests, onSetActive, onUpdate, onEdit, onEnterPortal }) => {
     const [media, setMedia] = useState<AniListMedia | null>(null);
     const [isEditingSynopsis, setIsEditingSynopsis] = useState(false);
     const [draftSynopsis, setDraftSynopsis] = useState("");
@@ -564,8 +569,9 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                         className="hud hud-cmd hud-hash hud-glow col-span-2 justify-center xl:justify-start px-8 xl:pr-14 py-3 font-bold flex items-center gap-3 group/dive cursor-pointer"
                                         title="Enter Portal"
                                         aria-label="Enter Portal"
+                                        onClick={() => { if (quest) onEnterPortal?.(quest.id); }}
                                     >
-                                        <Zap size={16} aria-hidden="true" className="group-hover/dive:animate-pulse" />
+                                        <InfinitePortalIcon size={16} aria-hidden="true" className="group-hover/dive:animate-pulse" />
                                         <ScrambleText text="ENTER_PORTAL" className="text-[10px] tracking-[0.2em] font-orbitron font-mono" />
                                     </a>
                                 )}
@@ -573,7 +579,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                     onClick={() => quest && onEdit && onEdit(quest)}
                                     className={`${chipBtn} min-w-0 justify-center px-2 xl:px-6 py-3 font-bold flex items-center gap-2 xl:gap-3 group/edit`}
                                 >
-                                    <Edit2 size={16} className="shrink-0 opacity-70 group-hover/edit:opacity-100 transition-opacity" />
+                                    <InscribeGlyph size={16} className="shrink-0 opacity-70 group-hover/edit:opacity-100 transition-opacity" />
                                     <span className="text-[10px] tracking-[0.12em] xl:tracking-[0.2em] font-orbitron whitespace-nowrap">EDIT_ARTIFACT</span>
                                 </button>
                                 <button
@@ -585,14 +591,14 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                     }}
                                     className={`${chipBtn} min-w-0 justify-center px-2 xl:px-6 py-3 font-bold flex items-center gap-2 xl:gap-3 group/active`}
                                 >
-                                    <Target size={16} className="shrink-0 opacity-70 group-hover/active:opacity-100 transition-opacity" />
+                                    <ReticleGlyph size={16} className="shrink-0 opacity-70 group-hover/active:opacity-100 transition-opacity" />
                                     <span className="text-[10px] tracking-[0.12em] xl:tracking-[0.2em] font-orbitron whitespace-nowrap">MARK_TARGET</span>
                                 </button>
                             </div>
 
                             {canConquer && (
                                 <div className="hud hud-accent [--hud-c:10px] [--hud-plate:var(--accent-soft)] mt-4 w-full max-w-md flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 text-left">
-                                    <Crown size={16} aria-hidden="true" className="shrink-0 text-accent-icon" />
+                                    <CrownGlyph size={16} aria-hidden="true" className="shrink-0 text-accent-icon" />
                                     <span className={`flex-1 min-w-[12rem] text-[11px] font-mono leading-snug ${theme.isDark ? 'text-white/85' : 'text-stone-800'}`}>
                                         This series has finished, and you are on its last chapter.
                                     </span>
@@ -672,7 +678,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                     <motion.div variants={itemVariants} className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-4">
                         {/* LEFT: Synopsis */}
                         <div className="hud hud-sheet lg:col-span-2 p-4 md:p-8 group/synopsis">
-                            <SectionHeader index="01" icon={<AlignLeft size={16} className={theme.isDark ? 'text-white' : 'text-stone-600'} />} label="ARCHIVE_SYNOPSIS" theme={theme}>
+                            <SectionHeader index="01" icon={<ScrollGlyph size={16} className={theme.isDark ? 'text-white' : 'text-stone-600'} />} label="ARCHIVE_SYNOPSIS" theme={theme}>
                                 <button
                                     onClick={() => {
                                         if (isEditingSynopsis) {
@@ -684,7 +690,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                     }}
                                     className={`hud hud-btn [--hud-c:5px] shrink-0 min-h-[28px] px-3 py-1.5 text-[9px] font-mono tracking-widest uppercase flex items-center gap-2 ${theme.isDark ? 'text-white/60 hover:text-white' : 'text-stone-600 hover:text-stone-900'}`}
                                 >
-                                    {isEditingSynopsis ? <><Check size={12} /> SAVE_OVERRIDE</> : <><Edit2 size={12} /> MODIFY</>}
+                                    {isEditingSynopsis ? <><Check size={12} /> SAVE_OVERRIDE</> : <><InscribeGlyph size={12} /> MODIFY</>}
                                 </button>
                             </SectionHeader>
 
@@ -714,7 +720,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                             {/* HUNTER_APPRAISAL: your own score, beside the source's RESONANCE below. */}
                             <div data-tour="series-appraisal" className="hud hud-sheet p-6 flex flex-col gap-4">
                                 <div className="flex items-center gap-2">
-                                    <Gauge size={16} aria-hidden="true" className={theme.isDark ? 'text-white/60' : 'text-stone-600'} />
+                                    <GaugeGlyph size={16} aria-hidden="true" className={theme.isDark ? 'text-white/60' : 'text-stone-600'} />
                                     <span className={`text-[10px] font-mono tracking-[0.3em] font-bold uppercase ${theme.isDark ? 'text-white/60' : 'text-stone-600'}`}>HUNTER_APPRAISAL</span>
                                 </div>
                                 <AppraisalPips
@@ -727,7 +733,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                             {/* CHRONICLE: this series' own history, from the reading log. */}
                             <div data-tour="series-chronicle" className="hud hud-sheet p-6 flex flex-col gap-4">
                                 <div className="flex items-center gap-2">
-                                    <History size={16} aria-hidden="true" className={theme.isDark ? 'text-white/60' : 'text-stone-600'} />
+                                    <ChronicleGlyph size={16} aria-hidden="true" className={theme.isDark ? 'text-white/60' : 'text-stone-600'} />
                                     <span className={`text-[10px] font-mono tracking-[0.3em] font-bold uppercase ${theme.isDark ? 'text-white/60' : 'text-stone-600'}`}>CHRONICLE</span>
                                 </div>
                                 {chronicle ? (
@@ -783,12 +789,15 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                 )}
                             </div>
 
+                            {/* RELEASE RADAR: when it usually releases, from the source's release history. */}
+                            <ReleaseRadar questId={quest.id} theme={theme} labelClass={labelClass} cellClass={metricCellClass} strongText={strongText} />
+
                             {/* RECORD METRICS (AniList-derived: score, year, chapters, source) */}
                             {(isLoadingMedia || media) && (
                                 <div className="hud hud-sheet p-6 flex flex-col gap-5">
                                     {/* Tiered by colour, not opacity-60: faded, the light label measured 2.7:1. */}
                                     <div className="flex items-center gap-2">
-                                        <Activity size={16} aria-hidden="true" className={theme.isDark ? 'text-white/60' : 'text-stone-600'} />
+                                        <PulseGlyph size={16} aria-hidden="true" className={theme.isDark ? 'text-white/60' : 'text-stone-600'} />
                                         <span className={`text-[10px] font-mono tracking-[0.3em] font-bold uppercase ${theme.isDark ? 'text-white/60' : 'text-stone-600'}`}>RECORD_METRICS</span>
                                     </div>
 
@@ -877,7 +886,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                     {/* CHARACTERS ROW (API DRIVEN) */}
                     {(isLoadingMedia || media) && (
                         <motion.div variants={itemVariants} className="mt-8">
-                            <SectionHeader index="02" icon={<Users size={16} className={iconText} />} label="ENTITIES_DETECTED" theme={theme}>
+                            <SectionHeader index="02" icon={<EntitiesGlyph size={16} className={iconText} />} label="ENTITIES_DETECTED" theme={theme}>
                                 {isLoadingMedia && (
                                     <div className="shrink-0 flex items-center gap-2">
                                         <div className={`w-2 h-2 rounded-full ${theme.id === 'LIGHT' ? 'bg-violet-500' : 'bg-amber-500'} animate-ping`} />
@@ -892,7 +901,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                 // honest offline state instead of silently hiding the section.
                                 <div className={`flex items-center gap-4 px-5 py-8 rounded-xl border border-dashed ${theme.isDark ? 'border-white/10 bg-black/10' : 'border-stone-400 bg-violet-50'}`}>
                                     <div className={`w-10 h-10 rounded-full border flex items-center justify-center shrink-0 ${theme.isDark ? 'border-white/10' : 'border-stone-400'}`}>
-                                        <Users size={18} className={theme.isDark ? 'text-white/30' : 'text-[#8a7bad]'} aria-hidden="true" />
+                                        <EntitiesGlyph size={18} className={theme.isDark ? 'text-white/30' : 'text-[#8a7bad]'} aria-hidden="true" />
                                     </div>
                                     <div className="flex flex-col gap-1">
                                         <span className={`text-[10px] font-mono tracking-[0.3em] uppercase ${theme.isDark ? 'text-white/60' : 'text-stone-800'}`}>No entities on record</span>
@@ -929,7 +938,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                     {/* SIMILAR RECORDS (PURELY DATABASE DRIVEN) */}
                     {similarQuests.length > 0 && (
                         <motion.div variants={itemVariants} className="mt-8">
-                                <SectionHeader index="03" icon={<Share2 size={16} className={iconText} />} label="SIMILAR_RECORDS" theme={theme}>
+                                <SectionHeader index="03" icon={<ResonanceGlyph size={16} className={iconText} />} label="SIMILAR_RECORDS" theme={theme}>
                                     <span className={`shrink-0 text-[9px] font-mono tracking-widest uppercase border px-2 py-0.5 rounded ${theme.isDark ? 'border-white/20 text-white' : 'border-stone-400 text-stone-800'}`}>
                                         DATABASE_SYNC: {quest.classType}
                                     </span>

@@ -1,20 +1,21 @@
 import React, { useMemo, useState } from 'react';
-import { Anchor, Award, Flame, Hexagon, Library, Moon, Orbit, RotateCcw, Sparkles, Star, Swords, Zap } from 'lucide-react';
+import { CodexGlyph, ConquestGlyph, DepthGlyph, GaugeGlyph, ManaGlyph, NovaGlyph, RecalibrateGlyph, ResonanceGlyph, SigilGlyph, StackGlyph, TitleGlyph, VoidGlyph } from '../system/SystemGlyphs';
 import { Achievement, Theme } from '../../core/types';
 
 /** One icon per kind of feat; the catalogue itself lives on the server. */
+// Each kind of title wears a System glyph (SystemGlyphs.tsx) drawn from what earns it.
 const KIND_ICON: Record<string, React.ElementType> = {
-    FIRST: Sparkles,
-    STREAK: Flame,
-    SURGE: Zap,
-    BREADTH: Orbit,
-    NIGHT: Moon,
-    RETURN: RotateCcw,
-    CONQUEST: Swords,
-    DEPTH: Anchor,
-    CLASSES: Hexagon,
-    APPRAISAL: Star,
-    ARCHIVE: Library,
+    FIRST: SigilGlyph,
+    STREAK: NovaGlyph,
+    SURGE: ManaGlyph,
+    BREADTH: ResonanceGlyph,
+    NIGHT: VoidGlyph,
+    RETURN: RecalibrateGlyph,
+    CONQUEST: ConquestGlyph,
+    DEPTH: DepthGlyph,
+    CLASSES: StackGlyph,
+    APPRAISAL: GaugeGlyph,
+    ARCHIVE: CodexGlyph,
 };
 
 const dateFmt = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
@@ -65,7 +66,7 @@ const HunterTitles: React.FC<HunterTitlesProps> = ({ theme, achievements, equipp
     return (
         <div className="w-full">
             <div className={`flex items-center gap-2 mb-2 ${theme.highlightText}`}>
-                <Award size={13} aria-hidden="true" />
+                <TitleGlyph size={13} aria-hidden="true" />
                 <h3 className={`text-[10px] font-mono font-bold tracking-[0.3em] uppercase ${theme.isDark ? '' : `text-transparent bg-clip-text bg-gradient-to-r ${theme.labelGradient}`}`}>Hunter Titles</h3>
                 {achievements && (
                     <span className={`ml-auto font-mono text-[10px] tracking-widest uppercase tabular-nums ${theme.mutedText}`}>
@@ -82,7 +83,7 @@ const HunterTitles: React.FC<HunterTitlesProps> = ({ theme, achievements, equipp
                 <>
                     <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                         {shown.map(a => {
-                            const Icon = KIND_ICON[a.kind] || Award;
+                            const Icon = KIND_ICON[a.kind] || TitleGlyph;
                             const earned = !!a.unlockedAt;
                             const worn = earned && a.key === equipped;
                             const reached = Math.min(a.value, a.target);

@@ -5,7 +5,7 @@ import QuestPanel from './QuestPanel';
 import { getPlayerRank, expOf } from '../../utils/ranks';
 import CoverArt from '../quest/CoverArt';
 import { FLOOR_DEFS, floorIndexForItem } from './floors';
-import { Activity, Target, Layers, Database, Sword } from 'lucide-react';
+import { BladeGlyph, CodexGlyph, CrownGlyph, PulseGlyph, StackGlyph } from '../system/SystemGlyphs';
 
 interface TowerHUDProps {
     items: Quest[];
@@ -81,7 +81,7 @@ const TowerHUD: React.FC<TowerHUDProps> = ({ items, theme, onActivate, isFocused
                         <div data-tour="tower-metrics" className="p-1 md:p-3 lg:p-4 space-y-3 lg:space-y-4">
                             <div className="flex flex-col border-b border-gray-500/20 pb-2 gap-1 lg:gap-2 w-full">
                                 <div className="flex items-center gap-2">
-                                    <Activity size={14} className={`${theme.highlightText} motion-safe:animate-spin`} />
+                                    <PulseGlyph size={14} className={`${theme.highlightText} motion-safe:animate-spin`} />
                                     <span className={`text-[clamp(9px,1vw,12px)] font-bold tracking-[0.2em] font-orbitron ${theme.isDark ? theme.headingText : `text-transparent bg-clip-text bg-gradient-to-r ${theme.labelGradient}`}`}>PLAYER_METRICS</span>
                                 </div>
                                 {isFocused && (
@@ -108,7 +108,7 @@ const TowerHUD: React.FC<TowerHUDProps> = ({ items, theme, onActivate, isFocused
                                     <div className={`text-[clamp(8px,0.8vw,10px)] ${theme.mutedText} font-mono uppercase tracking-widest`}>Streak</div>
                                     <div className="flex items-center gap-1.5">
                                         <div className={`text-[clamp(18px,2vw,32px)] font-bold font-mono tabular-nums leading-tight ${theme.isDark ? 'text-amber-400' : 'text-[#5b21b6]'}`}>{streak}</div>
-                                        <Activity size={12} className={theme.highlightText} />
+                                        <PulseGlyph size={12} className={theme.highlightText} />
                                     </div>
                                 </div>
                             </div>
@@ -143,7 +143,7 @@ const TowerHUD: React.FC<TowerHUDProps> = ({ items, theme, onActivate, isFocused
                             <SystemFrame variant="brackets" theme={theme} frosted={false} className="shadow-none w-full">
                                 <div className="p-3 lg:p-4">
                                     <div className="flex items-center gap-2 mb-3">
-                                        <Layers size={13} className={theme.highlightText} />
+                                        <StackGlyph size={13} className={theme.highlightText} />
                                         <span className={`text-[clamp(9px,1vw,11px)] font-bold tracking-[0.2em] font-orbitron ${theme.isDark ? theme.headingText : `text-transparent bg-clip-text bg-gradient-to-r ${theme.labelGradient}`}`}>ASCENT_KEY</span>
                                     </div>
                                     <div className="flex flex-col">
@@ -174,7 +174,7 @@ const TowerHUD: React.FC<TowerHUDProps> = ({ items, theme, onActivate, isFocused
                     <div className="w-full">
                         <div className={`flex items-center gap-2 mb-3 ${theme.highlightText} w-full justify-end`}>
                             <span className={`text-[clamp(10px,1vw,12px)] font-bold tracking-[0.2em] font-orbitron uppercase ${theme.isDark ? '' : `text-transparent bg-clip-text bg-gradient-to-r ${theme.labelGradient}`}`}>TOP_REVELATIONS</span>
-                            <Layers size={14} />
+                            <StackGlyph size={14} />
                         </div>
                         <div className="flex flex-col gap-3">
                             {[...displayItems].sort((a, b) => (b.totalChapters || 0) - (a.totalChapters || 0)).slice(0, 3).map((item, i) => (
@@ -193,7 +193,7 @@ const TowerHUD: React.FC<TowerHUDProps> = ({ items, theme, onActivate, isFocused
                     <div className="w-full">
                         <div className={`flex items-center gap-2 mb-3 mt-4 ${theme.highlightText} w-full justify-end`}>
                             <span className={`text-[clamp(10px,1vw,12px)] font-bold tracking-[0.2em] font-orbitron uppercase ${theme.isDark ? '' : `text-transparent bg-clip-text bg-gradient-to-r ${theme.labelGradient}`}`}>SYNERGY_INDEX</span>
-                            <Database size={14} />
+                            <CodexGlyph size={14} />
                         </div>
                         <div className="space-y-4">
                             {classEntries.slice(0, 4).map(([cls, count]) => {
@@ -217,7 +217,7 @@ const TowerHUD: React.FC<TowerHUDProps> = ({ items, theme, onActivate, isFocused
                     <div data-tour="tower-recents" className="w-full mt-auto">
                         <div className={`flex items-center gap-2 mb-3 ${theme.highlightText} w-full justify-end`}>
                             <span className={`text-[clamp(10px,1vw,12px)] font-bold tracking-[0.2em] font-orbitron uppercase ${theme.isDark ? '' : `text-transparent bg-clip-text bg-gradient-to-r ${theme.labelGradient}`}`}>RECENT_DATA</span>
-                            <Sword size={14} />
+                            <BladeGlyph size={14} />
                         </div>
                         <div className="flex flex-col gap-2">
                             {recents.map(item => (
@@ -245,7 +245,7 @@ const TowerHUD: React.FC<TowerHUDProps> = ({ items, theme, onActivate, isFocused
                         {/* ROW 1: RANK + PROGRESS */}
                         <div className={`px-4 pt-2.5 pb-1.5 flex items-center gap-3 border-b ${theme.borderSubtle}`}>
                             <div className="flex items-center gap-1.5 shrink-0">
-                                <Target size={10} className={theme.highlightText} />
+                                <CrownGlyph size={10} className={theme.highlightText} />
                                 <span className={`text-[11px] font-black tracking-widest font-orbitron ${theme.highlightText} uppercase`}>{rawRank.label}</span>
                             </div>
                             <div className="flex-1 flex flex-col gap-0.5">
@@ -286,7 +286,7 @@ const TowerHUD: React.FC<TowerHUDProps> = ({ items, theme, onActivate, isFocused
                                 <span className={`text-[7px] ${theme.mutedText} font-mono uppercase tracking-tighter`}>Streak</span>
                                 <div className="flex items-center gap-0.5">
                                     <span className={`text-[13px] font-bold ${theme.isDark ? 'text-amber-400' : 'text-[#5b21b6]'}`}>{streak}</span>
-                                    <Activity size={8} className={theme.highlightText} />
+                                    <PulseGlyph size={8} className={theme.highlightText} />
                                 </div>
                             </div>
                         </div>

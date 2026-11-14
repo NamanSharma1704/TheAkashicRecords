@@ -1,5 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowUpRight, Search, X, Zap } from 'lucide-react';
+import { X } from 'lucide-react';
+import { OpenRecordGlyph, SearchGlyph } from '../system/SystemGlyphs';
+import { InfinitePortalIcon } from '../system/CustomIcons';
 import { Quest, Theme } from '../../core/types';
 import { STATUS_INFO, statusLabel } from '../../core/constants';
 import CoverArt from '../quest/CoverArt';
@@ -36,7 +38,7 @@ interface CommandMatrixProps {
     onSort: (sort: SpireSort) => void;
     onOpen: (id: string) => void;
     onStep: (id: string, delta?: number) => void;
-    onPortal: (link: string) => void;
+    onPortal: (link: string, questId: string) => void;
 }
 
 const isField = (el: Element | null) =>
@@ -66,7 +68,7 @@ interface RowProps {
     onMark: (id: string) => void;
     onStep: (id: string) => void;
     onOpen: (id: string) => void;
-    onPortal: (link: string) => void;
+    onPortal: (link: string, questId: string) => void;
 }
 
 /** One record. Memoized, with stable callbacks from the Matrix, so a save re-renders the row
@@ -118,11 +120,11 @@ const Row = React.memo<RowProps>(({ q, index, isActive, theme, onMark, onStep, o
                     +1
                 </button>
                 <button type="button" onClick={() => onOpen(q.id)} aria-label={`Open ${q.title}`} title="Open the series page (O)" className={iconBtn}>
-                    <ArrowUpRight size={15} aria-hidden="true" />
+                    <OpenRecordGlyph size={15} aria-hidden="true" />
                 </button>
                 {link ? (
-                    <button type="button" onClick={() => onPortal(link)} aria-label={`Enter portal for ${q.title}`} title="Open its reading link (Enter)" className={iconBtn}>
-                        <Zap size={14} aria-hidden="true" />
+                    <button type="button" onClick={() => onPortal(link, q.id)} aria-label={`Enter portal for ${q.title}`} title="Open its reading link (Enter)" className={iconBtn}>
+                        <InfinitePortalIcon size={14} aria-hidden="true" />
                     </button>
                 ) : (
                     <span aria-hidden="true" className="w-9 h-9" />
@@ -184,7 +186,7 @@ const CommandMatrix: React.FC<CommandMatrixProps> = ({ items, theme, sortBy, onS
     const mark = useCallback((id: string) => setActiveId(id), []);
     const step = useCallback((id: string) => { setActiveId(id); handlers.current.onStep(id); }, []);
     const open = useCallback((id: string) => handlers.current.onOpen(id), []);
-    const portal = useCallback((link: string) => handlers.current.onPortal(link), []);
+    const portal = useCallback((link: string, questId: string) => handlers.current.onPortal(link, questId), []);
 
     useEffect(() => {
         const onKey = (e: KeyboardEvent) => {
@@ -229,7 +231,7 @@ const CommandMatrix: React.FC<CommandMatrixProps> = ({ items, theme, sortBy, onS
                     if (row) { e.preventDefault(); setActiveId(row.id); open(row.id); } break;
                 case 'Enter':
                     // A focused button or link keeps its own Enter.
-                    if (row?.link && !(el instanceof HTMLButtonElement || el instanceof HTMLAnchorElement)) { e.preventDefault(); portal(row.link); }
+                    if (row?.link && !(el instanceof HTMLButtonElement || el instanceof HTMLAnchorElement)) { e.preventDefault(); portal(row.link, row.id); }
                     break;
                 case '/':
                     e.preventDefault(); searchRef.current?.focus(); break;
@@ -247,7 +249,7 @@ const CommandMatrix: React.FC<CommandMatrixProps> = ({ items, theme, sortBy, onS
             <div data-tour="matrix-tools" className="shrink-0 px-3 md:px-4 pt-3 md:pt-5 pb-2 flex flex-col gap-2">
                 <div className="flex items-center gap-2">
                     <div className="hud hud-field hud-well flex-1 min-w-0 flex items-center gap-2 h-9 px-3">
-                        <Search size={15} aria-hidden="true" className={`shrink-0 ${theme.highlightText} opacity-70`} />
+                        <SearchGlyph size={15} aria-hidden="true" className={`shrink-0 ${theme.highlightText} opacity-70`} />
                         <input
                             ref={searchRef}
                             type="search"

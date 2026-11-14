@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { motion } from 'motion/react';
-import { Download, Share2, X } from 'lucide-react';
+import { X } from 'lucide-react';
+import { ExportGlyph, TransmitGlyph } from '../system/SystemGlyphs';
 import { Theme } from '../../core/types';
 import { useDialogFocus } from '../../utils/useDialogFocus';
 import { CARD_H, CARD_W, HunterCardData, renderHunterCard } from './hunterCard';
@@ -111,11 +112,11 @@ const HunterCardDialog: React.FC<HunterCardDialogProps> = ({ theme, data, onClos
                         {note && <span role="status" className={`mr-auto font-mono text-[11px] ${theme.mutedText}`}>{note}</span>}
                         {canShare && (
                             <button type="button" onClick={() => { void share(); }} className={actionClass}>
-                                <Share2 size={13} aria-hidden="true" /> Share
+                                <TransmitGlyph size={13} aria-hidden="true" /> Share
                             </button>
                         )}
                         <button type="button" onClick={download} disabled={!png} className={actionClass}>
-                            <Download size={13} aria-hidden="true" /> Download PNG
+                            <ExportGlyph size={13} aria-hidden="true" /> Download PNG
                         </button>
                     </div>
                 </div>

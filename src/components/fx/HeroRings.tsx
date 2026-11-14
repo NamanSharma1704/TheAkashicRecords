@@ -1,7 +1,8 @@
-import React, { useLayoutEffect, useRef } from 'react';
-import { Theme } from '../../core/types';
+import React, { useLayoutEffect, useRef, useState } from 'react';
+import { QuestGoals, Theme } from '../../core/types';
 import SanctuaryRing from './SanctuaryRing';
 import ArcaneSigil from './ArcaneSigil';
+import ManaRing from './ManaRing';
 
 /**
  * The dashboard's ring system: one whole circle, as tall as the screen, centred on the hero.
@@ -19,15 +20,22 @@ import ArcaneSigil from './ArcaneSigil';
  * nowhere else.
  *
  * Each theme keeps its own ring language: the Void's concentric SanctuaryRing, the day
- * theme's summoning sigil.
+ * theme's summoning sigil. Over either, the Mana Ring (ManaRing.tsx) fills with today's Divine
+ * Mandate.
  */
 const HeroRings: React.FC<{
     theme: Theme;
     paused: boolean;
     /** The hero column; null until it mounts. */
     anchor: HTMLElement | null;
-}> = ({ theme, paused, anchor }) => {
+    /** Today's quests, for the Mana Ring; null until the state loads. */
+    goals?: QuestGoals | null;
+    /** Low-power mode: the Mana Ring is set, not drawn. */
+    still?: boolean;
+}> = ({ theme, paused, anchor, goals = null, still = false }) => {
     const layerRef = useRef<HTMLDivElement>(null);
+    // The diameter again as state, for the Mana Ring's own geometry (its strokes are in px).
+    const [diameter, setDiameter] = useState(0);
 
     useLayoutEffect(() => {
         const layer = layerRef.current;
@@ -40,6 +48,7 @@ const HeroRings: React.FC<{
             const d = Math.max(0, l.height - 4);
             layer.style.setProperty('--ring-cx', `${cx}px`);
             layer.style.setProperty('--ring-d', `${d}px`);
+            setDiameter(Math.round(d));
         };
         measure();
         // The hero column resizes as the sidebar's width animates, and the layer with the
@@ -64,6 +73,17 @@ const HeroRings: React.FC<{
                 <SanctuaryRing theme={theme} isPaused={paused} className={`${place} w-[calc(var(--ring-d)/0.96)] h-[calc(var(--ring-d)/0.96)]`} />
             ) : (
                 <ArcaneSigil theme={theme} paused={paused} className={`${place} w-[calc(var(--ring-d)/0.95)] h-[calc(var(--ring-d)/0.95)]`} />
+            )}
+            {goals && goals.daily.target > 0 && (
+                <ManaRing
+                    theme={theme}
+                    d={diameter}
+                    mandate={goals.daily}
+                    day={goals.today}
+                    still={still}
+                    hold={paused && !still}
+                    className={`${place} w-[var(--ring-d)] h-[var(--ring-d)]`}
+                />
             )}
         </div>
     );

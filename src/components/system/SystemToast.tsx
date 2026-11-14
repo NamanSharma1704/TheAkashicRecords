@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { AlertTriangle, Award, CheckCircle, Info, XCircle, X } from 'lucide-react';
+import { AlertTriangle, CheckCircle, Info, XCircle, X } from 'lucide-react';
+import { TitleGlyph } from './SystemGlyphs';
 import { Theme } from '../../core/types';
 import SystemFrame from './SystemFrame';
 import StreakNova from './StreakNova';
@@ -75,7 +76,7 @@ const SystemToast: React.FC<SystemToastProps> = ({ toast, onDismiss, theme }) =>
         const accentIcon = 'text-accent-icon';
         switch (tone) {
             case 'SUCCESS': return <CheckCircle size={18} className={accentIcon} />;
-            case 'REWARD': return <Award size={18} className={accentIcon} />;
+            case 'REWARD': return <TitleGlyph size={18} className={accentIcon} />;
             case 'WARNING': return <AlertTriangle size={18} style={{ color: theme.warningInk }} />;
             case 'ERROR': return <XCircle size={18} className={theme.isDark ? 'text-red-500' : 'text-red-600'} />;
             default: return <Info size={18} className={accentIcon} />;
@@ -91,7 +92,7 @@ const SystemToast: React.FC<SystemToastProps> = ({ toast, onDismiss, theme }) =>
             role="status"
             aria-live="polite"
             aria-atomic="true"
-            className="fixed z-[1100] left-4 right-4 bottom-[7.5rem] sm:left-auto sm:right-6 sm:w-[23rem] lg:bottom-12 pointer-events-none"
+            className="fixed z-[1100] left-4 right-4 bottom-[calc(7.5rem+var(--return-sheet-h,0px))] sm:left-auto sm:right-6 sm:w-[23rem] lg:bottom-[calc(3rem+var(--return-sheet-h,0px))] pointer-events-none"
         >
             {/* popLayout: a replaced toast leaves the flow at once and fades where it was,
                 instead of stacking with its successor and shoving it up for the exit. */}

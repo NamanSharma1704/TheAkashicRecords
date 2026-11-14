@@ -7,7 +7,9 @@ import EntityAvatar from './EntityAvatar';
 import BackgroundController from '../fx/BackgroundController';
 import ArcaneSigil from '../fx/ArcaneSigil';
 import { readerTimeZone } from '../../utils/auth';
-import { Shield, Terminal, Key, Cpu, Zap, Sun, Moon } from 'lucide-react';
+import { Shield, Key, Cpu } from 'lucide-react';
+import { SigilGlyph, TerminalGlyph, VoidGlyph } from './SystemGlyphs';
+import { InfinitePortalIcon } from './CustomIcons';
 
 interface LoginScreenProps {
     /** The session itself arrives as an httpOnly cookie; this carries only display state. */
@@ -142,8 +144,8 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, theme, onTogg
                         {/* Light's sun was amber-600, 2.9:1 on the violet-50 plate; it takes the
                             accent icon ink like the in-app toggle. */}
                         {theme.isDark
-                            ? <Moon size={14} className="text-accent-icon transition-colors duration-700" />
-                            : <Sun size={14} className="text-accent-icon transition-colors duration-700" />}
+                            ? <VoidGlyph size={14} className="text-accent-icon transition-colors duration-700" />
+                            : <SigilGlyph size={14} className="text-accent-icon transition-colors duration-700" />}
                     </button>
                 </div>
             )}
@@ -211,7 +213,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, theme, onTogg
                                             className="text-[10px] tracking-[0.3em] uppercase flex items-center gap-2 font-bold"
                                             style={{ color: theme.accentInk }}
                                         >
-                                            <Terminal size={11} aria-hidden="true" /> Hunter_ID
+                                            <TerminalGlyph size={11} aria-hidden="true" /> Hunter_ID
                                         </label>
                                         <input
                                             id="login-username"
@@ -281,7 +283,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, theme, onTogg
                                     >
                                         {loading
                                             ? <><Cpu size={16} className="animate-spin" /> Synchronizing...</>
-                                            : <><Zap size={16} /> Initiate_Login</>}
+                                            : <><InfinitePortalIcon size={16} /> Initiate_Login</>}
                                     </button>
 
                                     <SectionLabel theme={theme}>Alt_Protocol</SectionLabel>

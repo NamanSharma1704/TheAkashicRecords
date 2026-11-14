@@ -1,7 +1,8 @@
 import React, { useRef } from 'react';
 import { Theme } from '../../core/types';
 import SystemFrame from './SystemFrame';
-import { AlertTriangle, CheckCircle, Info, XCircle, Terminal } from 'lucide-react';
+import { AlertTriangle, CheckCircle, Info, XCircle } from 'lucide-react';
+import { TerminalGlyph } from './SystemGlyphs';
 import { useDialogFocus } from '../../utils/useDialogFocus';
 
 interface SystemNotificationProps {
@@ -54,7 +55,7 @@ const SystemNotification: React.FC<SystemNotificationProps> = ({
                         {/* Header Decoration */}
                         <div className="flex items-center justify-between mb-6">
                             <div className="flex items-center gap-2">
-                                <Terminal size={12} aria-hidden="true" className={theme.highlightText} />
+                                <TerminalGlyph size={12} aria-hidden="true" className={theme.highlightText} />
                                 <span id="sys-note-title" className={`font-mono text-[9px] tracking-[0.3em] font-bold uppercase ${theme.mutedText}`}>System Notification</span>
                             </div>
                             {/* borderSubtle is a border-COLOUR class, and this div has no border

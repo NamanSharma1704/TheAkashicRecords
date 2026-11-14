@@ -11,7 +11,8 @@ import { SPIRE_COMPARE, SPIRE_SORTS, SpireSort } from './spireSort';
 import SystemLogo from '../system/SystemLogo';
 import ScrambleText from '../system/ScrambleText';
 import { getQuestRankObj } from '../../utils/ranks';
-import { ChevronLeft, ChevronRight, X, Search, AlertCircle, ChevronDown, Filter, ArrowDownUp, Check, CheckSquare, Trash2, HelpCircle, Layers, List } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X, AlertCircle, ChevronDown, Filter, ArrowDownUp, Check, CheckSquare, HelpCircle } from 'lucide-react';
+import { MatrixGlyph, PurgeGlyph, SearchGlyph, StackGlyph } from '../system/SystemGlyphs';
 import { useDialogFocus } from '../../utils/useDialogFocus';
 import { usePageTour } from '../../core/tours';
 
@@ -25,7 +26,8 @@ interface DivineSpireProps {
      *  chapter path, merged with the taps around it. */
     onStepChapter: (id: string, delta?: number) => void;
     /** Opens a record's reading link (the Matrix's portal button and Enter). */
-    onEnterPortal: (link: string) => void;
+    /** Open a series' reading link (and note the trip, for Return from the Gate). */
+    onEnterPortal: (link: string, questId?: string) => void;
     playerRank: { name: string };
     streak: number;
     /** The daily and weekly quests, shown and adjusted in the HUD; null until loaded. */
@@ -303,7 +305,10 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
                                 label ramp (the ink ramp's #a855f7 middle measured 3.14:1). A touch
                                 smaller on a phone, where the floor view's Select shares the row
                                 and the title otherwise broke onto two lines. */}
-                            <h2 id="divine-spire-title" className={`font-orbitron text-sm sm:text-base tracking-[0.15em] sm:tracking-[0.2em] font-bold bg-clip-text text-transparent bg-gradient-to-r ${theme.isDark ? 'from-amber-600 via-yellow-400 to-white' : theme.labelGradient} transition-colors duration-700`}>THE DIVINE SPIRE</h2>
+                            <h2 id="divine-spire-title" className={`font-orbitron text-sm sm:text-base tracking-[0.15em] sm:tracking-[0.2em] font-bold bg-clip-text text-transparent bg-gradient-to-r ${theme.isDark ? 'from-amber-600 via-yellow-400 to-white' : theme.labelGradient} transition-colors duration-700`}>
+                                {/* Decodes as the Spire lands (the Phase Shift). */}
+                                <ScrambleText text="THE DIVINE SPIRE" decodeOnMount maxMs={500} glyphClassName="text-accent-ink" />
+                            </h2>
                         </div>
                     </div>
                     <div className="flex items-center gap-1">
@@ -313,8 +318,8 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
                         button leads back to the tower, where the switch is. */}
                     <div data-tour="spire-views" role="group" aria-label="Spire view" className={`hud hud-well hud-cut-all [--hud-c:6px] mr-0.5 sm:mr-1 shrink-0 ${viewMode === 'FLOOR' ? 'hidden sm:flex' : 'flex'} items-center gap-0.5 p-[3px]`}>
                         {([
-                            { v: 'TOWER' as const, label: 'Tower', Icon: Layers },
-                            { v: 'MATRIX' as const, label: 'Matrix', Icon: List },
+                            { v: 'TOWER' as const, label: 'Tower', Icon: StackGlyph },
+                            { v: 'MATRIX' as const, label: 'Matrix', Icon: MatrixGlyph },
                         ]).map(({ v, label, Icon }) => {
                             const on = v === 'MATRIX' ? viewMode === 'MATRIX' : viewMode !== 'MATRIX';
                             return (
@@ -385,7 +390,7 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
                             <div data-tour="floor-search" className="relative group w-full">
                                 <div className={`absolute -inset-1 bg-gradient-to-r ${theme.gradient} opacity-20 blur-md group-focus-within:opacity-40 transition-all duration-500`} />
                                 <div className="hud hud-field hud-well hud-accent [--hud-c:12px] px-3 py-2 md:px-4 md:py-3 flex items-center">
-                                    <Search size={18} aria-hidden="true" className={`${theme.highlightText} mr-2 md:mr-3 opacity-70 shrink-0`} />
+                                    <SearchGlyph size={18} aria-hidden="true" className={`${theme.highlightText} mr-2 md:mr-3 opacity-70 shrink-0`} />
                                     {/* The placeholder is this field's only visible label, so it keeps
                                         full muted strength (it was muted at 50%, ~2.3:1), and the
                                         field carries a real name. */}
@@ -591,7 +596,7 @@ const DivineSpire: React.FC<DivineSpireProps> = ({ isOpen, onClose, theme, items
                                         {STATUS_INFO.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
                                     </select>
                                     <button type="button" onClick={trashSelected} disabled={selected.size === 0} className="hud hud-btn hud-danger [--hud-c:5px] h-8 px-2 flex items-center gap-1.5 font-mono text-[10px] font-bold tracking-widest uppercase disabled:opacity-40">
-                                        <Trash2 size={12} aria-hidden="true" /> Trash
+                                        <PurgeGlyph size={12} aria-hidden="true" /> Trash
                                     </button>
                                 </div>
                             </div>

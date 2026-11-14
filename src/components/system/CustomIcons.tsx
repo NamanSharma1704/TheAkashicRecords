@@ -9,6 +9,8 @@ interface IconProps {
     size?: number;
     color?: string;
     className?: string;
+    /** Accepted for drop-in use beside the stock icons; the glyph is always decorative. */
+    'aria-hidden'?: boolean | 'true' | 'false';
 }
 
 /**
@@ -16,7 +18,7 @@ interface IconProps {
  * Features a diamond core with radiating data lines.
  */
 export const InfinitePortalIcon: React.FC<IconProps> = ({ size = 16, color = 'currentColor', className }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={className} aria-hidden="true">
         <path d="M12 4L20 12L12 20L4 12Z" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
         <path d="M12 8L16 12L12 16L8 12Z" fill={color} fillOpacity="0.3" stroke={color} strokeWidth="1" />
         <path d="M2 12H6M18 12H22M12 2V6M12 18V22" stroke={color} strokeWidth="1" strokeLinecap="round" strokeDasharray="2 2" className="opacity-60" />
@@ -56,6 +58,9 @@ interface TabGlyphProps {
     size?: number;
     className?: string;
     active?: boolean;
+    /** Accepted for drop-in use beside the stock icons; the glyph is always decorative. */
+    'aria-hidden'?: boolean | 'true' | 'false';
+    style?: React.CSSProperties;
 }
 
 /** THE SANCTUM (Home): the hero card, projected in a cone of light over its holo-dais. */

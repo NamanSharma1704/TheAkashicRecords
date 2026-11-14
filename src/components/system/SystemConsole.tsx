@@ -1,23 +1,37 @@
 import React from 'react';
 import { Theme } from '../../core/types';
-import { Activity } from 'lucide-react';
-import { SYSTEM_LOGS } from '../../core/constants';
+import { PulseGlyph } from './SystemGlyphs';
+import ScrambleText from './ScrambleText';
 
 interface SystemConsoleProps {
     theme: Theme;
     /** Opens the keyboard shortcut list. The button only shows from lg, where keyboards are. */
     onShowShortcuts?: () => void;
+    /** OMNI_LOG's status lines, built by App from the reader's own state (THE LIVING SYSTEM
+     *  LOG): today's mandate, the weekly decree, the streak, the next rank, new chapters, the
+     *  last event. */
+    lines?: string[];
 }
 
-const SystemConsole: React.FC<SystemConsoleProps> = ({ theme, onShowShortcuts }) => {
-    const [sysLog, setSysLog] = React.useState(SYSTEM_LOGS[0]);
+const BOOT_LINE = 'System initializing...';
+const BOOT_MS = 3000;
+const CYCLE_MS = 6000;
 
+const SystemConsole: React.FC<SystemConsoleProps> = ({ theme, onShowShortcuts, lines = [] }) => {
+    // "System initializing..." for the first moments only; then the real lines, in turn, each
+    // decoding in as it arrives.
+    const [booted, setBooted] = React.useState(false);
+    const [index, setIndex] = React.useState(0);
     React.useEffect(() => {
-        const interval = setInterval(() => {
-            setSysLog(SYSTEM_LOGS[Math.floor(Math.random() * SYSTEM_LOGS.length)]);
-        }, 4000);
-        return () => clearInterval(interval);
+        const t = window.setTimeout(() => setBooted(true), BOOT_MS);
+        return () => window.clearTimeout(t);
     }, []);
+    React.useEffect(() => {
+        if (!booted || lines.length < 2) return;
+        const interval = window.setInterval(() => setIndex((i) => i + 1), CYCLE_MS);
+        return () => window.clearInterval(interval);
+    }, [booted, lines.length]);
+    const sysLog = !booted ? BOOT_LINE : lines.length ? lines[index % lines.length] : 'Awaiting directive.';
 
     return (
         <div
@@ -34,9 +48,11 @@ const SystemConsole: React.FC<SystemConsoleProps> = ({ theme, onShowShortcuts })
   pb-[env(safe-area-inset-bottom)]`}
         >
             <div className="flex items-center gap-3 w-full max-w-[1920px] mx-auto">
-                <Activity size={10} className={`${theme.highlightText} animate-pulse transition-colors duration-700`} />
+                <PulseGlyph size={10} className={`${theme.highlightText} animate-pulse transition-colors duration-700`} />
                 <span className={`${theme.highlightText} font-bold opacity-100 transition-colors duration-700`}>OMNI_LOG //</span>
-                <span className={`truncate ${theme.headingText} font-bold opacity-100 transition-colors duration-700`}>{sysLog}</span>
+                <span className={`truncate ${theme.headingText} font-bold opacity-100 transition-colors duration-700`}>
+                    <ScrambleText text={sysLog} maxMs={600} glyphClassName="text-accent-ink" />
+                </span>
                 <div className="ml-auto flex items-center gap-2 shrink-0">
                     {onShowShortcuts && (
                         <button

@@ -14,8 +14,30 @@ export const USER_RANKS = [
     { label: 'PARAGON', minExp: 5000 },
     { label: 'SOVEREIGN', minExp: 7500 },
     { label: 'ECLIPSE', minExp: 10000 },
-    { label: 'MONARCH', minExp: 15000 }
+    { label: 'MONARCH', minExp: 15000 },
+    // BEYOND MONARCH (2026-11-13): the Transcendent tiers, so the ladder does not end where the
+    // owner was about to arrive (10,936 EXP at the time). Still chapters read and nothing else.
+    { label: 'ABSOLUTE', minExp: 25000 },
+    { label: 'PRIMORDIAL', minExp: 40000 },
+    { label: 'AKASHIC', minExp: 60000 }
 ];
+
+/** The first Transcendent tier's index: everything from here on is beyond MONARCH. */
+export const TRANSCENDENT_FROM = 9;
+
+/** How many ranks the profile's ladder shows at once (it slides along past MONARCH). */
+export const LADDER_SPAN = 9;
+
+/**
+ * The ladder's window: nine ranks ending at the rank after yours, never before the ninth. Until
+ * MONARCH it is the whole original ladder; from MONARCH on it slides, so the next tier is always
+ * on it and nine labels never have to share the width twelve would need.
+ */
+export const ladderWindow = (rankIndex: number) => {
+    const end = Math.min(USER_RANKS.length - 1, Math.max(LADDER_SPAN - 1, rankIndex + 1));
+    const start = end - (LADDER_SPAN - 1);
+    return { start, ranks: USER_RANKS.slice(start, end + 1) };
+};
 
 /** EXP: chapters read across the library, each record's current chapter (so reading done
  *  before the tracker existed counts too). */
@@ -26,11 +48,12 @@ export const getPlayerRank = (exp: number) => {
 };
 
 /**
- * The avatar's frame evolves with rank: five stages over the nine ranks, two ranks a stage and
- * the last one MONARCH's alone. Drawn by EntityAvatar (see AvatarStage.tsx).
+ * The avatar's frame evolves with rank: five stages over the first nine ranks, two ranks a stage
+ * and the last one MONARCH's alone, then one for each Transcendent tier, each built on the one
+ * before. Drawn by EntityAvatar (see AvatarStage.tsx).
  */
-export const AVATAR_STAGES = ['DORMANT', 'FORGED', 'ARGENT', 'PRISMATIC', 'SINGULARITY'] as const;
-const STAGE_OF_RANK = [0, 0, 1, 1, 2, 2, 3, 3, 4];   // by USER_RANKS index
+export const AVATAR_STAGES = ['DORMANT', 'FORGED', 'ARGENT', 'PRISMATIC', 'SINGULARITY', 'BINARY', 'GENESIS', 'CODEX'] as const;
+const STAGE_OF_RANK = [0, 0, 1, 1, 2, 2, 3, 3, 4, 5, 6, 7];   // by USER_RANKS index
 /** The frame stage (0-4) a rank wears; 0 for no rank or one older builds wrote. */
 export const avatarStageOf = (rankLabel?: string) => {
     const i = USER_RANKS.findIndex(r => r.label === rankLabel);

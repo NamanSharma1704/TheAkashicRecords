@@ -126,9 +126,3 @@ export const STATUS_INFO: { value: string; label: string; plain: string }[] = [
 /** The System's name for a stored status (PLANNED reads SEALED); unknown values pass through. */
 export const statusLabel = (status: string) => STATUS_INFO.find(s => s.value === status)?.label ?? status;
 
-/** The footer console cycles through these. */
-export const SYSTEM_LOGS = [
-    'System initializing...',
-    'Scanning neural pathways...',
-    'Establishing connection to the Spire...',
-];

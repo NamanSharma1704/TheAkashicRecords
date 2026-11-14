@@ -9,6 +9,13 @@ import React from 'react';
  *   3 PRISMATIC    SOVEREIGN, ECLIPSE    an iridescent frame with gems, a rayed halo, a crest
  *   4 SINGULARITY  MONARCH               a black sun behind the hood, its accretion disk, a crown,
  *                                        the frame lit by the void
+ *   BEYOND MONARCH, the Transcendent tiers, each built on the stage before it:
+ *   5 BINARY       ABSOLUTE              a second accretion disk crossing the first; the corner
+ *                                        black holes ringed twice
+ *   6 GENESIS      PRIMORDIAL            + an orbit of System glyphs around the hood, turning the
+ *                                        other way; glyph marks at the middle of each side
+ *   7 CODEX        AKASHIC               + the archive's sigil (the hexagon and diamond of the
+ *                                        System's own logo) in place of the crown
  *
  * Two layers, both in the avatar's 100×100 box: the HALO sits behind the figure (only its edges
  * show around the hood), the FRAME over it. Metals (iron, silver, the prism) are the same in
@@ -128,8 +135,31 @@ export const StageHalo: React.FC<{ stage: number; accent: string; uid: string }>
                 <ellipse cx={HX} cy={HY} rx="45" ry="7.5" stroke={accent} strokeWidth="0.9" opacity="0.75" filter={`url(#${glow})`} />
                 <ellipse cx={HX} cy={HY} rx="40" ry="5.6" stroke="#ffffff" strokeWidth="0.35" opacity="0.55" />
             </g>
+            {/* BINARY: a second disk, crossing the first. */}
+            {stage >= 5 && (
+                <g transform={`rotate(22 ${HX} ${HY})`} fill="none">
+                    <ellipse cx={HX} cy={HY} rx="43" ry="6.4" stroke={accent} strokeWidth="0.7" opacity="0.6" filter={`url(#${glow})`} />
+                    <ellipse cx={HX} cy={HY} rx="38" ry="4.8" stroke="#ffffff" strokeWidth="0.3" opacity="0.45" />
+                </g>
+            )}
             <circle cx={HX} cy={HY} r="25" fill={VOID} />
             <circle cx={HX} cy={HY} r="25.6" fill="none" stroke={`url(#${accretion})`} strokeWidth="1.4" filter={`url(#${glow})`} />
+            {/* GENESIS: System glyphs on a wide orbit, turning against the motes. */}
+            {stage >= 6 && (() => {
+                const orbit = spin('motion-safe:animate-[spin_48s_linear_infinite_reverse]');
+                return (
+                    <g className={orbit.className} style={orbit.style} fill="none" stroke={accent} strokeWidth="0.55" opacity="0.9">
+                        {Array.from({ length: 6 }, (_, i) => {
+                            const a = (i / 6) * Math.PI * 2;
+                            const x = HX + Math.cos(a) * 36;
+                            const y = HY + Math.sin(a) * 36;
+                            return i % 2
+                                ? <path key={i} d={`M${x} ${y - 2.4}L${x + 2.4} ${y}L${x} ${y + 2.4}L${x - 2.4} ${y}Z`} />
+                                : <path key={i} d={`M${x} ${y - 2.5}L${x + 2.15} ${y - 1.25}V${y + 1.25}L${x} ${y + 2.5}L${x - 2.15} ${y + 1.25}V${y - 1.25}Z`} />;
+                        })}
+                    </g>
+                );
+            })()}
             <g className={motes.className} style={motes.style}>
                 {[0, 1, 2].map((i) => {
                     const a = (i / 3) * Math.PI * 2 - Math.PI / 2;
@@ -228,19 +258,39 @@ export const StageFrame: React.FC<{ stage: number; accent: string; uid: string }
             <rect x="4.2" y="4.2" width="91.6" height="91.6" fill="none" stroke={accent} strokeWidth="0.35" strokeDasharray="6 3" opacity="0.6" />
             {MIRRORS.map((t) => (
                 <g key={t || 'tl'} transform={t || undefined}>
-                    {/* A small black hole in each corner, its disk tilted. */}
+                    {/* A small black hole in each corner, its disk tilted; BINARY rings it twice. */}
                     <ellipse cx="5.2" cy="5.2" rx="4.4" ry="1.5" transform="rotate(-35 5.2 5.2)" fill="none" stroke="#ffffff" strokeWidth="0.3" opacity="0.8" />
+                    {stage >= 5 && <ellipse cx="5.2" cy="5.2" rx="4" ry="1.3" transform="rotate(35 5.2 5.2)" fill="none" stroke={accent} strokeWidth="0.3" opacity="0.8" />}
                     <circle cx="5.2" cy="5.2" r="2.4" fill={VOID} stroke={accent} strokeWidth="0.6" filter={`url(#${glow})`} />
                 </g>
             ))}
-            {/* The crown: five points, a jewel on each. */}
-            <g filter={`url(#${glow})`}>
-                <path d="M40.5 8.2 L41 2.8 L43.3 5.6 L45.5 1.4 L47.8 4.6 L50 0.4 L52.2 4.6 L54.5 1.4 L56.7 5.6 L59 2.8 L59.5 8.2 Z" fill={`url(#${crown})`} stroke={VOID} strokeWidth="0.55" strokeLinejoin="round" />
-                <rect x="40.5" y="6.8" width="19" height="1.4" fill={VOID} opacity="0.55" />
-                {[[41, 2.8], [45.5, 1.4], [50, 0.4], [54.5, 1.4], [59, 2.8]].map(([x, y]) => (
-                    <circle key={x} cx={x} cy={y} r="0.6" fill="#ffffff" />
-                ))}
-            </g>
+            {/* GENESIS: a glyph at the middle of each side. */}
+            {stage >= 6 && (
+                <g fill={VOID} stroke={accent} strokeWidth="0.45" filter={`url(#${glow})`}>
+                    <path d="M98.4 47.6 L100.8 50 L98.4 52.4 L96 50 Z" />
+                    <path d="M1.6 47.6 L4 50 L1.6 52.4 L-0.8 50 Z" />
+                    <path d="M50 96 L52.4 98.4 L50 100.8 L47.6 98.4 Z" />
+                </g>
+            )}
+            {stage >= 7 ? (
+                /* CODEX: the archive's sigil where the crown was, the System logo's hexagon with
+                   its diamond core. */
+                <g filter={`url(#${glow})`}>
+                    <path d="M50 0.2 L54.2 2.6 V7.4 L50 9.8 L45.8 7.4 V2.6 Z" fill={VOID} stroke={`url(#${crown})`} strokeWidth="0.8" strokeLinejoin="round" />
+                    <path d="M50 2.4 L52.4 5 L50 7.6 L47.6 5 Z" fill={`url(#${crown})`} />
+                    <circle cx="50" cy="5" r="0.55" fill="#ffffff" />
+                    <path d="M41 5 H44.6 M55.4 5 H59" stroke={accent} strokeWidth="0.5" strokeLinecap="round" />
+                </g>
+            ) : (
+                /* The crown: five points, a jewel on each. */
+                <g filter={`url(#${glow})`}>
+                    <path d="M40.5 8.2 L41 2.8 L43.3 5.6 L45.5 1.4 L47.8 4.6 L50 0.4 L52.2 4.6 L54.5 1.4 L56.7 5.6 L59 2.8 L59.5 8.2 Z" fill={`url(#${crown})`} stroke={VOID} strokeWidth="0.55" strokeLinejoin="round" />
+                    <rect x="40.5" y="6.8" width="19" height="1.4" fill={VOID} opacity="0.55" />
+                    {[[41, 2.8], [45.5, 1.4], [50, 0.4], [54.5, 1.4], [59, 2.8]].map(([x, y]) => (
+                        <circle key={x} cx={x} cy={y} r="0.6" fill="#ffffff" />
+                    ))}
+                </g>
+            )}
         </svg>
     );
 };

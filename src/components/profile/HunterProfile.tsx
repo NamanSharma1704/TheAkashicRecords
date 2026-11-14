@@ -1,11 +1,11 @@
-import React, { useMemo, useState, useRef, useEffect } from 'react';
+import React, { useMemo, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Theme, Quest, Achievement, ImportRow } from '../../core/types';
 import SystemLogo from '../system/SystemLogo';
-import SystemFrame from '../system/SystemFrame';
 import EntityAvatar from '../system/EntityAvatar';
 import StatBox from '../system/StatBox';
-import { X, Database, Layers, Target, Download, Upload, RefreshCw, LogOut, Terminal, Edit2, KeyRound, User2, AlertCircle, CheckCircle2, Trash2, Activity, Gauge, ImagePlus, Share2, HelpCircle, Volume2, VolumeX, SlidersHorizontal } from 'lucide-react';
+import { X, HelpCircle, Volume2, VolumeX } from 'lucide-react';
+import { CodexGlyph, ConquestGlyph, CoversGlyph, DisconnectGlyph, ExportGlyph, GaugeGlyph, ImportGlyph, InscribeGlyph, PulseGlyph, PurgeGlyph, RecalibrateGlyph, ReticleGlyph, StackGlyph, TransmitGlyph, TuneGlyph } from '../system/SystemGlyphs';
 import TrashPanel from './TrashPanel';
 import ReadingActivity from './ReadingActivity';
 import HunterTitles from './HunterTitles';
@@ -13,141 +13,22 @@ import HunterCardDialog from './HunterCardDialog';
 import { HunterCardData } from './hunterCard';
 import ListImportDialog from './ListImportDialog';
 import CoverArt from '../quest/CoverArt';
-import { USER_RANKS } from '../../utils/ranks';
+import { USER_RANKS, LADDER_SPAN, TRANSCENDENT_FROM, ladderWindow } from '../../utils/ranks';
+import ScrambleText from '../system/ScrambleText';
 import { getProxiedImageUrl } from '../../utils/api';
 import GalaxyNebula from '../fx/GalaxyNebula';
 import OmniscientField from '../fx/OmniscientField';
 import NoiseOverlay from '../fx/NoiseOverlay';
 import SanctuaryRing from '../fx/SanctuaryRing';
-import { systemFetch, getStoredUser, saveAuthData } from '../../utils/auth';
+import { systemFetch, getStoredUser } from '../../utils/auth';
 import { accentRGB, elevation, emphasis } from '../../core/depth';
 import { useDialogFocus } from '../../utils/useDialogFocus';
 import { usePageTour } from '../../core/tours';
-
-type CalibrationEntry = { processed: number; total: number; title: string; cls: string; changed: boolean };
-type CalibrationState = {
-    phase: 'running' | 'done' | 'error';
-    processed: number;
-    total: number;
-    updated: number;
-    currentTitle: string;
-    log: CalibrationEntry[];
-    errorMsg: string;
-};
-const CLASS_COLORS: Record<string, string> = {
-    NECROMANCER: 'text-purple-400',
-    CONSTELLATION: 'text-violet-500',
-    MAGE: 'text-blue-400',
-    IRREGULAR: 'text-orange-400',
-    PLAYER: 'text-emerald-400',
-};
-
-/**
- * The same hues four rungs down, for the light theme. The -400 set above is tuned for
- * near-black and measures 1.9:1 to 2.5:1 on a white panel; these all clear 4.6:1 while
- * keeping each class identifiable by colour rather than by position.
- */
-const CLASS_COLORS_LIGHT: Record<string, string> = {
-    NECROMANCER: 'text-purple-700',
-    CONSTELLATION: 'text-amber-700',
-    MAGE: 'text-blue-700',
-    IRREGULAR: 'text-orange-700',
-    PLAYER: 'text-emerald-700',
-};
-
-/** Class colour for the active theme, falling back to a readable neutral. */
-const classColor = (cls: string, isDark: boolean): string =>
-    (isDark ? CLASS_COLORS[cls] : CLASS_COLORS_LIGHT[cls]) || (isDark ? 'text-gray-400' : 'text-stone-600');
-
-// ── SYSTEM: HIGH-FIDELITY CUSTOM CLASS ARCHETYPES ──
-const ArcaneIcon = ({ className }: { className?: string }) => (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className={className}>
-        {/* Magic Circle Grid */}
-        <circle cx="12" cy="12" r="9" strokeWidth="1" strokeDasharray="2 4" strokeLinecap="square" opacity="0.4" />
-        <path d="M12 3 L12 21 M3 12 L21 12" strokeWidth="1" opacity="0.2" />
-        {/* Core Crystal */}
-        <polygon points="12,5 17,12 12,19 7,12" strokeWidth="1.5" fill="currentColor" fillOpacity="0.2" strokeLinejoin="miter" />
-        {/* Floating Runes */}
-        <polygon points="12,8 14,12 12,16 10,12" fill="currentColor" />
-        <path d="M5 5 L7 7 M19 19 L17 17 M19 5 L17 7 M5 19 L7 17" strokeWidth="1.5" strokeLinecap="square" />
-    </svg>
-);
-
-const PlayerIcon = ({ className }: { className?: string }) => (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className={className}>
-        {/* Shattered Impact Background */}
-        <path d="M12 2L14 9L22 12L14 15L12 22L10 15L2 12L10 9Z" strokeWidth="1" strokeLinejoin="miter" opacity="0.2" fill="currentColor" fillOpacity="0.1" />
-        {/* Aggressive Twin Serrated Daggers */}
-        <path d="M4 20L10 14" strokeWidth="2.5" strokeLinecap="square" />
-        <path d="M8 12L17 3L21 3L21 7L12 16L8 12Z" strokeWidth="1.5" fill="currentColor" fillOpacity="0.3" strokeLinejoin="miter" />
-        <path d="M20 4L14 10" strokeWidth="1.5" />
-        <path d="M3 3L7 7" strokeWidth="2" strokeLinecap="square" opacity="0.5" />
-    </svg>
-);
-
-const IrregularIcon = ({ className }: { className?: string }) => (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className={className}>
-        {/* Dimensional Rift */}
-        <path d="M4 12 L10 4 L14 20 L20 12" strokeWidth="1" strokeLinejoin="miter" strokeDasharray="3 3" opacity="0.4" />
-        {/* Erratic Strike */}
-        <path d="M13 2L3 14H12L11 22L21 10H12L13 2Z" fill="currentColor" fillOpacity="0.2" strokeWidth="1.5" strokeLinejoin="miter" />
-        <path d="M5 14H10M20 10H15" strokeWidth="3" strokeLinecap="square" />
-        {/* Glitch Particles */}
-        <rect x="2" y="5" width="2" height="2" fill="currentColor" />
-        <rect x="19" y="19" width="3" height="1" fill="currentColor" />
-    </svg>
-);
-
-const NecroIcon = ({ className }: { className?: string }) => (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className={className}>
-        {/* Shadow Soldier Cowl */}
-        <path d="M12 2 L6 8 L6 16 L12 22 L18 16 L18 8 Z" fill="currentColor" fillOpacity="0.1" strokeWidth="1.5" strokeLinejoin="miter" />
-        {/* Horns & Crown */}
-        <path d="M12 2 L9 7 M12 2 L15 7" strokeWidth="1.5" />
-        <path d="M5 6 L8 9 M19 6 L16 9" strokeWidth="1.5" />
-        {/* Hollow Glaring Eyes */}
-        <path d="M9 13 L11 11" strokeWidth="2.5" strokeLinecap="square" />
-        <path d="M15 13 L13 11" strokeWidth="2.5" strokeLinecap="square" />
-        <path d="M12 18 L12 16" strokeWidth="2" strokeLinecap="square" opacity="0.6" />
-        {/* Aura Embers */}
-        <circle cx="4" cy="18" r="1" fill="currentColor" />
-        <circle cx="20" cy="18" r="1.5" fill="currentColor" opacity="0.6" />
-    </svg>
-);
-
-const ConstellationIcon = ({ className }: { className?: string }) => (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className={className}>
-        {/* Hexagonal Outer Eye Boundary */}
-        <polygon points="12,2 21,7 21,17 12,22 3,17 3,7" strokeWidth="1" strokeDasharray="4 4" opacity="0.4" />
-        {/* Intersecting Orbit Coordinates */}
-        <path d="M2 12 Q 12 2 22 12" strokeWidth="1.5" strokeLinecap="square" opacity="0.6" />
-        <path d="M2 12 Q 12 22 22 12" strokeWidth="1.5" strokeLinecap="square" opacity="0.6" />
-        {/* Inner God Eye Pupil */}
-        <circle cx="12" cy="12" r="4" fill="currentColor" fillOpacity="0.2" strokeWidth="1.5" />
-        <circle cx="12" cy="12" r="1.5" fill="currentColor" />
-        <circle cx="12" cy="6" r="1" fill="currentColor" />
-        <circle cx="12" cy="18" r="1" fill="currentColor" />
-    </svg>
-);
-
-// ── CLASS ICON ENGINE ──
-const ClassIcon = ({ cls, isDark, className }: { cls: string, isDark?: boolean, className?: string }) => {
-    const colorClass = classColor(cls, isDark ?? true);
-    
-    let Icon: React.ElementType = Database;
-    if (cls === 'MAGE') Icon = ArcaneIcon;
-    else if (cls === 'PLAYER') Icon = PlayerIcon;
-    else if (cls === 'IRREGULAR') Icon = IrregularIcon;
-    else if (cls === 'NECROMANCER') Icon = NecroIcon;
-    else if (cls === 'CONSTELLATION') Icon = ConstellationIcon;
-
-    return (
-        <div className={`relative flex items-center justify-center w-7 h-7 rounded bg-gradient-to-br from-current/20 to-transparent ${isDark ? 'border border-black/50' : 'border border-current/20'} ${colorClass} ${className}`}>
-            <div className="absolute inset-0 bg-current/5 blur-sm" />
-            <Icon className="relative z-10 w-4 h-4 drop-shadow-[0_0_8px_currentColor]" />
-        </div>
-    );
-};
+import { ClassIcon } from './ClassIcon';
+import { classColor } from './classColor';
+import { useMenuDismiss } from '../../utils/useMenuDismiss';
+import CalibrationOverlay, { CalibrationState } from './CalibrationOverlay';
+import AccountDialog from './AccountDialog';
 
 interface HunterProfileProps {
     isOpen: boolean;
@@ -175,32 +56,6 @@ interface HunterProfileProps {
     chapterSounds: boolean;
     onToggleChapterSounds: () => void;
 }
-
-/**
- * A toolbar dropdown's dismissal. While it is open, a press outside it closes it, and Escape
- * closes the menu alone, handing focus back to its button: Escape is caught on window in the
- * capture phase, ahead of the profile's own document listener, wherever focus happens to be.
- */
-const useMenuDismiss = (open: boolean, setOpen: (open: boolean) => void, ref: React.RefObject<HTMLDivElement>) => {
-    useEffect(() => {
-        if (!open) return;
-        const close = (e: PointerEvent) => {
-            if (!ref.current?.contains(e.target as Node)) setOpen(false);
-        };
-        const onKey = (e: KeyboardEvent) => {
-            if (e.key !== 'Escape') return;
-            e.stopPropagation();
-            setOpen(false);
-            ref.current?.querySelector<HTMLButtonElement>('button')?.focus();
-        };
-        document.addEventListener('pointerdown', close);
-        window.addEventListener('keydown', onKey, true);
-        return () => {
-            document.removeEventListener('pointerdown', close);
-            window.removeEventListener('keydown', onKey, true);
-        };
-    }, [open, setOpen, ref]);
-};
 
 const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, items, playerRank, achievements, equippedTitle, onEquipTitle, onImport, onRefresh, onLogout, showNotification, onSelectManhwa, onRestoreQuest, lowPower, onToggleLowPower, chapterSounds, onToggleChapterSounds }) => {
     const [showTrash, setShowTrash] = useState(false);
@@ -238,67 +93,21 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
         .map(i => ({ ...i, pct: Math.min(100, Math.round((i.currentChapter / i.totalChapters) * 100)) }))
         .sort((a, b) => b.pct - a.pct), [items]);
 
-    // Current rank index for rank history
+    // Current rank index for rank history, and the nine-rank window the ladder shows (it
+    // slides along once the reader is past MONARCH, so the next tier is always on it).
     const currentRankIdx = useMemo(() => USER_RANKS.findIndex((r: any) => r.label === playerRank.name), [playerRank]);
+    const ladder = useMemo(() => ladderWindow(Math.max(0, currentRankIdx)), [currentRankIdx]);
 
     // --- CALIBRATION STATE ---
     const [calibration, setCalibration] = useState<CalibrationState | null>(null);
-    const logEndRef = useRef<HTMLDivElement>(null);
     const abortControllerRef = useRef<AbortController | null>(null);
 
     // --- ACCOUNT MODAL STATE ---
     const [storedUser, setStoredUser] = useState(() => getStoredUser());
     const [showAccountModal, setShowAccountModal] = useState(false);
     const [showCard, setShowCard] = useState(false);
-    const [accountForm, setAccountForm] = useState({ newUsername: '', currentPassword: '', newPassword: '', confirmPassword: '' });
-    const [accountStatus, setAccountStatus] = useState<{ type: 'error' | 'success'; msg: string } | null>(null);
-    const [accountLoading, setAccountLoading] = useState(false);
-
-    const handleAccountUpdate = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setAccountStatus(null);
-        if (accountForm.newPassword && accountForm.newPassword !== accountForm.confirmPassword) {
-            setAccountStatus({ type: 'error', msg: 'New passwords do not match.' });
-            return;
-        }
-        if (!accountForm.newUsername.trim() && !accountForm.newPassword) {
-            setAccountStatus({ type: 'error', msg: 'Provide a new username or new password to update.' });
-            return;
-        }
-        setAccountLoading(true);
-        try {
-            const res = await systemFetch('/api/auth/update', {
-                method: 'PUT',
-                body: JSON.stringify({
-                    newUsername: accountForm.newUsername.trim() || undefined,
-                    currentPassword: accountForm.currentPassword,
-                    newPassword: accountForm.newPassword || undefined,
-                }),
-            });
-            const data = await res.json();
-            if (!res.ok) {
-                setAccountStatus({ type: 'error', msg: data.message || 'Update failed.' });
-            } else {
-                // Persist new token + user to localStorage
-                saveAuthData(data);
-                // Immediately update the displayed username in the UI
-                setStoredUser(data.user);
-                setAccountStatus({ type: 'success', msg: 'Credentials updated. Changes saved to database.' });
-                setAccountForm({ newUsername: '', currentPassword: '', newPassword: '', confirmPassword: '' });
-            }
-        } catch {
-            setAccountStatus({ type: 'error', msg: 'Network error. Try again.' });
-        } finally {
-            setAccountLoading(false);
-        }
-    };
 
 
-    useEffect(() => {
-        if (logEndRef.current) {
-            logEndRef.current.scrollIntoView({ behavior: 'smooth' });
-        }
-    }, [calibration?.log.length]);
 
     // ─── COVER BACKFILL ───
     // Looks up records with no cover (up to 8 per press, never-tried first) and stores a cover
@@ -587,13 +396,7 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
     // dialogs. Escape closes whichever is on top; calibration ignores it while running —
     // stopping a scan is ABORT_PROTOCOL's job, not a stray key's.
     const profileRef = useRef<HTMLDivElement>(null);
-    const accountRef = useRef<HTMLDivElement>(null);
-    const calibrationRef = useRef<HTMLDivElement>(null);
     useDialogFocus(profileRef, isOpen, onClose);
-    useDialogFocus(accountRef, showAccountModal, () => setShowAccountModal(false));
-    useDialogFocus(calibrationRef, !!calibration, () => {
-        if (calibration?.phase !== 'running') setCalibration(null);
-    });
 
     const startProfileTour = usePageTour('profile', isOpen);
 
@@ -655,7 +458,10 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                         <span className={`font-mono text-[9px] tracking-[0.2em] ${theme.mutedText} uppercase`}>SYSTEM.ROOT</span>
                         {/* Light takes the label ramp: at 16px this is body-size text, and the ink
                             ramp's bright #a855f7 middle measured 3.43:1 on the page. */}
-                        <h2 id="hunter-profile-title" className={`font-orbitron text-base tracking-[0.2em] font-bold bg-clip-text text-transparent bg-gradient-to-r ${theme.isDark ? 'from-amber-600 via-yellow-400 to-white' : theme.labelGradient} transition-colors duration-700`}>HUNTER PROFILE</h2>
+                        <h2 id="hunter-profile-title" className={`font-orbitron text-base tracking-[0.2em] font-bold bg-clip-text text-transparent bg-gradient-to-r ${theme.isDark ? 'from-amber-600 via-yellow-400 to-white' : theme.labelGradient} transition-colors duration-700`}>
+                            {/* Decodes as the Profile lands (the Phase Shift). */}
+                            <ScrambleText text="HUNTER PROFILE" decodeOnMount maxMs={500} glyphClassName="text-accent-ink" />
+                        </h2>
                     </div>
                 </div>
                 {/* Below 360px the eight tools ran 37px past a 320px screen (close off it), so
@@ -667,7 +473,7 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                         button, because a phone's toolbar has no room left. */}
                     <div ref={exportMenuRef} className="relative">
                         <button type="button" onClick={() => setExportMenuOpen(o => !o)} aria-haspopup="menu" aria-expanded={exportMenuOpen} title="Export archive" aria-label="Export archive" className={`hud hud-tool w-9 h-9 flex items-center justify-center ${theme.mutedText} hover:${theme.headingText} cursor-pointer`}>
-                            <Download size={14} aria-hidden="true" />
+                            <ExportGlyph size={14} aria-hidden="true" />
                         </button>
                         {exportMenuOpen && (
                             <div role="menu" aria-label="Export archive" className={`absolute left-0 top-full mt-1.5 z-50 w-64 p-1 hud hud-menu shadow-xl`}>
@@ -694,7 +500,7 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                         MyAnimeList. A menu, like Export, for the same lack of toolbar room. */}
                     <div ref={importMenuRef} className="relative">
                         <button type="button" onClick={() => setImportMenuOpen(o => !o)} aria-haspopup="menu" aria-expanded={importMenuOpen} title="Import into the archive" aria-label="Import into the archive" className={`hud hud-tool w-9 h-9 flex items-center justify-center ${theme.mutedText} hover:${theme.headingText} cursor-pointer`}>
-                            <Upload size={14} aria-hidden="true" />
+                            <ImportGlyph size={14} aria-hidden="true" />
                         </button>
                         {importMenuOpen && (
                             <div role="menu" aria-label="Import into the archive" className={`absolute left-0 top-full mt-1.5 z-50 w-64 p-1 hud hud-menu shadow-xl`}>
@@ -733,10 +539,10 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                         }} />
                     </div>
                     <button type="button" onClick={() => setShowTrash(true)} title="Trash (deleted records)" aria-label="Open the Trash" className={`hud hud-tool w-9 h-9 flex items-center justify-center ${theme.mutedText} hover:${theme.headingText} cursor-pointer`}>
-                        <Trash2 size={14} aria-hidden="true" />
+                        <PurgeGlyph size={14} aria-hidden="true" />
                     </button>
                     <button type="button" onClick={findMissingCovers} disabled={coverBusy} aria-busy={coverBusy} title="Find missing covers" aria-label="Find missing covers" className={`hud hud-tool w-9 h-9 flex items-center justify-center ${theme.mutedText} hover:${theme.headingText} cursor-pointer disabled:cursor-wait`}>
-                        <ImagePlus size={14} aria-hidden="true" className={coverBusy ? 'animate-pulse' : ''} />
+                        <CoversGlyph size={14} aria-hidden="true" className={coverBusy ? 'animate-pulse' : ''} />
                     </button>
                     {/* System settings: the per-device switches, low-power effects and chapter
                         sounds. One menu rather than a button each, like Export and Import: with
@@ -746,12 +552,12 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                         ON or OFF), and the menu stays open to show the change. */}
                     <div ref={settingsMenuRef} className="relative">
                         <button type="button" onClick={() => setSettingsMenuOpen(o => !o)} aria-haspopup="menu" aria-expanded={settingsMenuOpen} title="System settings" aria-label="System settings" className={`hud hud-tool w-9 h-9 flex items-center justify-center cursor-pointer ${lowPower || chapterSounds ? 'hud-accent text-accent-ink' : theme.mutedText} hover:${theme.headingText}`}>
-                            <SlidersHorizontal size={14} aria-hidden="true" />
+                            <TuneGlyph size={14} aria-hidden="true" />
                         </button>
                         {settingsMenuOpen && (
                             <div role="menu" aria-label="System settings" className={`absolute left-1/2 -translate-x-1/2 top-full mt-1.5 z-50 w-56 p-1 hud hud-menu shadow-xl`}>
                                 {[
-                                    { label: 'Low-power effects', hint: 'Holds the animated background, rings and dais still.', on: lowPower, toggle: onToggleLowPower, icon: <Gauge size={14} aria-hidden="true" /> },
+                                    { label: 'Low-power effects', hint: 'Holds the animated background, rings and dais still.', on: lowPower, toggle: onToggleLowPower, icon: <GaugeGlyph size={14} aria-hidden="true" /> },
                                     { label: 'Chapter sounds', hint: 'A rising note for each chapter read. Plays one when turned on.', on: chapterSounds, toggle: onToggleChapterSounds, icon: chapterSounds ? <Volume2 size={14} aria-hidden="true" /> : <VolumeX size={14} aria-hidden="true" /> },
                                 ].map((item, i) => (
                                     <button
@@ -777,19 +583,19 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                         )}
                     </div>
                     <button type="button" onClick={handleRecalibrate} title="System recalibration" className={`hud hud-btn hud-accent h-9 px-3 hidden sm:flex items-center justify-center gap-2 ${theme.highlightText} cursor-pointer group`}>
-                        <RefreshCw size={14} className="relative z-10" aria-hidden="true" />
+                        <RecalibrateGlyph size={14} className="relative z-10" aria-hidden="true" />
                         <span className="font-mono text-[10px] tracking-widest uppercase relative z-10">Re-Calibrate</span>
                     </button>
                     <button type="button" onClick={handleRecalibrate} title="System recalibration" aria-label="System recalibration" className={`hud hud-tool sm:hidden w-9 h-9 flex items-center justify-center ${theme.highlightText} cursor-pointer`}>
-                        <RefreshCw size={14} aria-hidden="true" />
+                        <RecalibrateGlyph size={14} aria-hidden="true" />
                     </button>
 
                     <div className={`w-px h-5 ${theme.isDark ? 'bg-gray-800' : 'bg-gray-300'} mx-1 hidden sm:block`} aria-hidden="true" />
 
                     <button type="button" onClick={onLogout} title="Log out" aria-label="Log out" className="hud hud-btn hud-danger h-9 px-3 sm:px-4 flex items-center justify-center gap-2 font-mono text-[10px] tracking-widest uppercase cursor-pointer group">
-                        <LogOut size={14} className="group-hover:-translate-x-1 transition-transform hidden sm:block" aria-hidden="true" />
+                        <DisconnectGlyph size={14} className="group-hover:-translate-x-1 transition-transform hidden sm:block" aria-hidden="true" />
                         <span className="hidden sm:inline">Logout</span>
-                        <LogOut size={14} className="sm:hidden" aria-hidden="true" />
+                        <DisconnectGlyph size={14} className="sm:hidden" aria-hidden="true" />
                     </button>
                     <button type="button" onClick={onClose} aria-label="Close profile" title="Close profile" className={`hud hud-tool w-9 h-9 flex items-center justify-center ${theme.mutedText} hover:${theme.highlightText} cursor-pointer`}>
                         <X size={16} aria-hidden="true" />
@@ -866,8 +672,8 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                                             lives here, not in the toolbar, which has no room on a phone. */}
                                         <div className="order-last mt-5 lg:order-none lg:mt-0 flex flex-wrap items-center gap-2">
                                             {[
-                                                { label: 'Edit Profile', icon: Edit2, onClick: () => { setAccountStatus(null); setShowAccountModal(true); } },
-                                                { label: 'Hunter Card', icon: Share2, onClick: () => setShowCard(true) },
+                                                { label: 'Edit Profile', icon: InscribeGlyph, onClick: () => setShowAccountModal(true) },
+                                                { label: 'Hunter Card', icon: TransmitGlyph, onClick: () => setShowCard(true) },
                                                 { label: 'Tour', icon: HelpCircle, onClick: startProfileTour },
                                             ].map(({ label, icon: Icon, onClick }) => (
                                                 <button
@@ -901,7 +707,7 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                                             <div
                                                 className="absolute top-0 left-0 h-full rounded-full"
                                                 style={{
-                                                    width: `${Math.min(100, Math.max(0, currentRankIdx / (USER_RANKS.length - 1)) * 100)}%`,
+                                                    width: `${Math.min(100, Math.max(0, (currentRankIdx - ladder.start) / (LADDER_SPAN - 1)) * 100)}%`,
                                                     background: theme.isDark
                                                         ? 'linear-gradient(90deg, rgba(251,191,36,0.5) 0%, rgba(251,191,36,1) 100%)'
                                                         : 'linear-gradient(90deg, rgba(167,139,250,0.4) 0%, rgba(124,58,237,1) 100%)',
@@ -912,8 +718,11 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                                             />
                                             {/* Rank Nodes */}
                                             <div className="absolute top-1/2 -translate-y-1/2 left-0 w-full flex justify-between items-center z-10">
-                                                {USER_RANKS.map((rank: any, idx: number) => {
+                                                {ladder.ranks.map((rank, i) => {
+                                                    const idx = ladder.start + i;
                                                     const isReached = idx <= currentRankIdx;
+                                                    // The Transcendent tiers are diamonds, not dots: past MONARCH.
+                                                    const shape = idx >= TRANSCENDENT_FROM ? 'rounded-[2px] rotate-45' : 'rounded-full';
                                                     const isCurrent = idx === currentRankIdx;
                                                     // theme-color-ok: rank-track pips use the lighter -400 highlight shades, not the accent
                                                     const accentColor = theme.isDark ? '#fbbf24' : '#a78bfa';
@@ -921,16 +730,16 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                                                         <div key={rank.label} className="relative flex flex-col items-center" title={`${rank.label} · ${rank.minExp.toLocaleString()} EXP`}>
                                                             {isCurrent ? (
                                                                 <div
-                                                                    className={`w-4 h-4 lg:w-[18px] lg:h-[18px] rounded-full border-[2.5px] bg-transparent transition-all duration-500`}
+                                                                    className={`w-4 h-4 lg:w-[18px] lg:h-[18px] ${shape} border-[2.5px] bg-transparent transition-all duration-500`}
                                                                     style={{ borderColor: accentColor, boxShadow: `0 0 12px 4px ${accentColor}60, 0 0 24px 6px ${accentColor}30` }}
                                                                 />
                                                             ) : isReached ? (
                                                                 <div
-                                                                    className={`w-[10px] h-[10px] lg:w-3 lg:h-3 rounded-full transition-all duration-500 ${theme.isDark ? 'bg-amber-400' : 'bg-[#a78bfa]'}`}
+                                                                    className={`w-[10px] h-[10px] lg:w-3 lg:h-3 ${shape} transition-all duration-500 ${theme.isDark ? 'bg-amber-400' : 'bg-[#a78bfa]'}`}
                                                                     style={{ boxShadow: `0 0 7px 2px ${accentColor}80` }}
                                                                 />
                                                             ) : (
-                                                                <div className={`w-2 h-2 rounded-full transition-all duration-500 ${theme.isDark ? 'bg-white/20' : 'bg-violet-400/30'}`} />
+                                                                <div className={`w-2 h-2 ${shape} transition-all duration-500 ${theme.isDark ? 'bg-white/20' : 'bg-violet-400/30'}`} />
                                                             )}
                                                             {/* Below sm nine nowrap labels cannot share the
                                                                 width without overprinting, so only the current
@@ -994,17 +803,17 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                 <motion.div variants={itemVariants} className="w-full flex justify-center">
                     <div className="w-full">
                         <div className={`flex items-center gap-2 mb-2 ${theme.highlightText}`}>
-                            <Database size={13} />
+                            <CodexGlyph size={13} />
                             <span className={`text-[10px] font-mono font-bold tracking-[0.3em] uppercase ${theme.isDark ? '' : `text-transparent bg-clip-text bg-gradient-to-r ${theme.labelGradient}`}`}>Combat Metrics</span>
                         </div>
                         {/* Four bracketed stat tiles — the shared StatBox, the same framed tile
                             vocabulary as the rest of the profile, with a staggered entrance. */}
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                             {[
-                                { label: 'Total Titles', value: totalManhwa, icon: Layers },
-                                { label: 'Conquered', value: conquered, icon: Target },
-                                { label: 'In Progress', value: active, icon: RefreshCw },
-                                { label: 'Ch Absorbed', value: totalChapters.toLocaleString(), icon: Database },
+                                { label: 'Total Titles', value: totalManhwa, icon: StackGlyph },
+                                { label: 'Conquered', value: conquered, icon: ConquestGlyph },
+                                { label: 'In Progress', value: active, icon: RecalibrateGlyph },
+                                { label: 'Ch Absorbed', value: totalChapters.toLocaleString(), icon: CodexGlyph },
                             ].map((stat, idx) => (
                                 <StatBox
                                     key={stat.label}
@@ -1028,7 +837,7 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                 {/* READING ACTIVITY — the reading log, a year of days */}
                 <motion.div data-tour="profile-activity" variants={itemVariants} className="w-full">
                     <div className={`flex items-center gap-2 mb-2 ${theme.highlightText}`}>
-                        <Activity size={13} />
+                        <PulseGlyph size={13} />
                         <span className={`text-[10px] font-mono font-bold tracking-[0.3em] uppercase ${theme.isDark ? '' : `text-transparent bg-clip-text bg-gradient-to-r ${theme.labelGradient}`}`}>Reading Activity</span>
                     </div>
                     <ReadingActivity theme={theme} />
@@ -1040,12 +849,12 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                     {/* CLASS DISTRIBUTION */}
                     <div className="flex flex-col">
                         <div className={`flex items-center gap-2 mb-2 ${theme.highlightText}`}>
-                            <Database size={13} />
+                            <CodexGlyph size={13} />
                             <span className={`text-[10px] font-mono font-bold tracking-[0.3em] uppercase ${theme.isDark ? '' : `text-transparent bg-clip-text bg-gradient-to-r ${theme.labelGradient}`}`}>Class Distribution</span>
                         </div>
                         <div className={`hud hud-sheet [--hud-c:12px] px-5 py-5 lg:py-6 flex flex-col flex-1 relative overflow-hidden group hover:-translate-y-0.5 transition-transform duration-300`}>
                             <div className="absolute -right-12 -bottom-12 opacity-[0.03] pointer-events-none mix-blend-screen scale-150 transition-transform duration-1000 group-hover:rotate-12">
-                                <Database size={240} className={theme.highlightText} />
+                                <CodexGlyph size={240} className={theme.highlightText} />
                             </div>
                             <div className="flex flex-col justify-between h-full flex-1 gap-5 relative z-10">
                                 {classEntries.slice(0, 4).map(([cls, count]) => (
@@ -1069,7 +878,7 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                     {/* TOP SERIES */}
                     <div className="flex flex-col">
                         <div className={`flex items-center gap-2 mb-2 ${theme.highlightText}`}>
-                            <Layers size={13} />
+                            <StackGlyph size={13} />
                             <span className={`text-[10px] font-mono font-bold tracking-[0.3em] uppercase ${theme.isDark ? '' : `text-transparent bg-clip-text bg-gradient-to-r ${theme.labelGradient}`}`}>Top Series</span>
                         </div>
                         <div className={`hud hud-sheet [--hud-c:12px] p-4 flex flex-col gap-3 flex-1 relative hover:-translate-y-0.5 transition-transform duration-300`}>
@@ -1102,7 +911,7 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                 {/* BOTTOM FULL-WIDTH ROW: ACTIVE PROGRESS — horizontal cover cards */}
                 <motion.div variants={itemVariants} className="flex flex-col">
                     <div className={`flex items-center gap-2 mb-2 ${theme.highlightText}`}>
-                        <Target size={13} />
+                        <ReticleGlyph size={13} />
                         <span className={`text-[10px] font-mono font-bold tracking-[0.3em] uppercase ${theme.isDark ? '' : `text-transparent bg-clip-text bg-gradient-to-r ${theme.labelGradient}`}`}>Active Progress</span>
                     </div>
                     <div className={`hud hud-sheet [--hud-c:12px] p-4 relative`}>
@@ -1151,178 +960,13 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
 
             </motion.div>
 
-            {/* ── CALIBRATION PROGRESS OVERLAY ── */}
-            <AnimatePresence>
-                {calibration && (
-                    <motion.div 
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        ref={calibrationRef}
-                        role="dialog"
-                        aria-modal="true"
-                        aria-labelledby="calibration-title"
-                        tabIndex={-1}
-                        className="fixed inset-0 z-[500] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 outline-none"
-                    >
-                        <SystemFrame 
-                            variant="full" 
-                            theme={theme} 
-                            className="w-full max-w-2xl max-h-[85dvh] relative pointer-events-auto"
-                            initial={{ scale: 0.95, opacity: 0 }}
-                            animate={{ scale: 1, opacity: 1 }}
-                            exit={{ scale: 0.95, opacity: 0 }}
-                            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                        >
-                            {/* Scanline Effect Overlay */}
-                            {calibration.phase === 'running' && (
-                                <motion.div 
-                                    initial={{ top: '-100%' }}
-                                    animate={{ top: '100%' }}
-                                    transition={{ repeat: Infinity, duration: 3, ease: "linear" }}
-                                    className={`absolute left-0 right-0 h-[1px] bg-gradient-to-r from-transparent ${theme.id === 'LIGHT' ? 'via-violet-500/50' : 'via-amber-500/50'} to-transparent z-40 pointer-events-none`}
-                                />
-                            )}
-                            {/* Every plate in here was a black wash (bg-black/40-70) in BOTH themes, over a
-                                SystemFrame that is white on light — so light rendered mid-grey
-                                panels carrying the page's own ink, 2.1:1 at worst. The void
-                                keeps its washes; light gets pale slate plates instead. */}
-                            <div className={`flex flex-col h-[75vh] max-h-[700px] ${theme.isDark ? 'bg-black/50' : 'bg-white/70'} overflow-hidden`}>
 
-                                {/* ── HEADER ── */}
-                                <div className={`flex justify-between items-center px-5 py-3.5 border-b ${theme.borderSubtle} shrink-0 ${theme.isDark ? 'bg-black/40' : 'bg-violet-50/70'}`}>
-                                    <span id="calibration-title" className={`${theme.highlightText} font-mono tracking-widest text-[11px] sm:text-sm flex items-center gap-2.5 uppercase`}>
-                                        <span aria-hidden="true" className={`w-1.5 h-1.5 rounded-full bg-accent-solid ${calibration.phase === 'running' ? 'animate-ping' : ''}`} />
-                                        <Terminal size={14} className={calibration.phase === 'running' ? 'animate-pulse' : ''} />
-                                        SYS_CALIBRATION_PROTOCOL
-                                    </span>
-                                    {calibration.phase === 'running' ? (
-                                        <button onClick={() => abortControllerRef.current?.abort()}
-                                            className={`hud hud-btn [--hud-c:5px] flex items-center justify-center ${theme.headingText} text-[10px] sm:text-xs font-orbitron px-3 py-1.5 font-bold tracking-wider group`}>
-                                            <div className="absolute inset-0 bg-white/5 group-hover:bg-transparent transition-all" />
-                                            <span className="relative z-10">ABORT_PROTOCOL</span>
-                                        </button>
-                                    ) : (
-                                        <button type="button" onClick={() => setCalibration(null)} aria-label="Close" title="Close"
-                                            className={`hud hud-tool [--hud-c:5px] w-7 h-7 flex items-center justify-center ${theme.mutedText} hover:${theme.headingText}`}>
-                                            <X size={14} aria-hidden="true" />
-                                        </button>
-                                    )}
-                                </div>
-
-                                {/* ── BODY ── */}
-                                <div className="flex-1 min-h-0 flex flex-col p-5 gap-5 pb-5">
-                                    
-                                    {/* METRICS & PROGRESS */}
-                                    <div className="space-y-4">
-                                        <div className="flex items-center justify-between">
-                                            <div className="space-y-1">
-                                                <div className={`text-[8px] font-orbitron ${theme.headingText} opacity-80 font-bold tracking-[0.3em] uppercase`}>Runtime_Status</div>
-                                                <div className={`text-xs font-mono font-bold ${theme.highlightText}`}>
-                                                    {calibration.phase === 'running' ? 'EXECUTING_SCAN...' : calibration.phase === 'done' ? 'CALIBRATION_COMPLETE' : 'CRITICAL_FAILURE'}
-                                                </div>
-                                            </div>
-                                            
-                                            <div className="flex gap-6 text-right">
-                                                <div className="space-y-0.5">
-                                                    <div className={`text-[7px] font-orbitron ${theme.headingText} opacity-80 font-bold tracking-widest uppercase`}>Processed</div>
-                                                    <div className={`text-xl font-mono ${theme.headingText}`}>{calibration.processed}<span className={`text-xs ${theme.mutedText}`}>/{calibration.total || '?'}</span></div>
-                                                </div>
-                                                <div className="space-y-0.5">
-                                                    <div className={`text-[7px] font-orbitron ${theme.headingText} opacity-80 font-bold tracking-widest uppercase`}>Reclassified</div>
-                                                    <div className={`text-xl font-mono ${theme.highlightText}`}>{calibration.updated}</div>
-                                                </div>
-                                                <div className="space-y-0.5">
-                                                    <div className={`text-[7px] font-orbitron ${theme.headingText} opacity-80 font-bold tracking-widest uppercase`}>Unchanged</div>
-                                                    <div className={`text-xl font-mono ${theme.headingText} opacity-70`}>{calibration.processed - calibration.updated}</div>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        {/* PROGRESS BAR */}
-                                        <div className="space-y-1.5">
-                                            <div className="flex justify-between items-center px-1">
-                                                {/* The failure reason was stored but never shown; an
-                                                    error now says what went wrong, as an alert. */}
-                                                <div
-                                                    role={calibration.phase === 'error' ? 'alert' : undefined}
-                                                    className={`text-[8px] font-mono ${calibration.phase === 'error' ? (theme.isDark ? 'text-red-400' : 'text-red-700') : theme.highlightText} truncate max-w-[300px] uppercase`}
-                                                    title={calibration.phase === 'error' ? calibration.errorMsg : undefined}
-                                                >
-                                                    {calibration.phase === 'running'
-                                                        ? `> SCANNING: ${calibration.currentTitle}`
-                                                        : calibration.phase === 'error'
-                                                            ? `> ${calibration.errorMsg || 'UNKNOWN_FAULT'}`
-                                                            : '> SYSTEM READY.'}
-                                                </div>
-                                                <div className={`text-[9px] font-orbitron ${theme.highlightText} font-bold`}>
-                                                    {calibration.total > 0 ? Math.round((calibration.processed / calibration.total) * 100) : 0}%
-                                                </div>
-                                            </div>
-                                            <div role="progressbar" aria-label="Calibration progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={calibration.total > 0 ? Math.round((calibration.processed / calibration.total) * 100) : 0} className={`relative h-[2px] w-full ${theme.isDark ? 'bg-black/60' : 'bg-stone-200'} overflow-hidden`}>
-                                                <motion.div
-                                                    className={`absolute top-0 left-0 h-full bg-gradient-to-r ${theme.gradient}`}
-                                                    initial={{ width: '0%' }}
-                                                    animate={{ width: calibration.total > 0 ? `${(calibration.processed / calibration.total) * 100}%` : '0%' }}
-                                                    transition={{ duration: 0.3, ease: 'easeOut' }}
-                                                />
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* TERMINAL LOG */}
-                                    <div className={`flex flex-col flex-1 min-h-0 border ${theme.borderSubtle} ${theme.isDark ? 'bg-black/40' : 'bg-white/80'} relative`}>
-                                        <div className={`absolute top-0 left-0 w-2 h-2 border-t border-l ${theme.border} opacity-50`} />
-                                        <div className={`absolute bottom-0 right-0 w-2 h-2 border-b border-r ${theme.border} opacity-50`} />
-                                        
-                                        <div className={`px-4 py-2 border-b ${theme.borderSubtle} flex justify-between items-center ${theme.isDark ? 'bg-white/[0.02]' : 'bg-stone-100/70'} shrink-0`}>
-                                            <span className={`text-[7px] font-orbitron ${theme.mutedText} tracking-[0.2em] uppercase`}>Diagnostic_Feed</span>
-                                            <span className={`text-[7px] font-orbitron ${theme.mutedText} tracking-widest uppercase`}>{calibration.log.length}_ENTRIES</span>
-                                        </div>
-                                        
-                                        <div className="flex-1 overflow-y-auto p-3 custom-scrollbar hide-scrollbar space-y-[2px]">
-                                            {calibration.log.length === 0 ? (
-                                                <div className={`text-[9px] font-mono ${theme.mutedText} uppercase tracking-widest p-2 ${calibration.phase === 'running' ? 'animate-pulse' : ''}`}>
-                                                    {calibration.phase === 'running' ? '> AWAITING_DATA_STREAM...' : '> NO ENTRIES RECORDED.'}
-                                                </div>
-                                            ) : (
-                                                calibration.log.map((entry, i) => (
-                                                    <div key={i} className={`flex items-start gap-4 text-[10px] font-mono leading-relaxed px-2 py-1.5 transition-colors ${entry.changed ? (theme.id === 'LIGHT' ? 'bg-violet-500/10' : 'bg-amber-500/10') : (theme.isDark ? 'hover:bg-white/5' : 'hover:bg-black/5')}`}>
-                                                        <span className={`${theme.mutedText} shrink-0`}>[{String(entry.processed).padStart(2, '0')}/{entry.total}]</span>
-                                                        <span className={`flex-1 truncate uppercase tracking-widest ${entry.changed ? theme.headingText : theme.baseText}`}>
-                                                            {entry.title}
-                                                        </span>
-                                                        <div className="shrink-0 flex items-center justify-end w-[130px] gap-2">
-                                                            <span className={`${classColor(entry.cls, theme.isDark)} tracking-wider font-bold`}>{entry.cls}</span>
-                                                            <span className={`w-3 text-right ${entry.changed ? theme.highlightText : 'text-transparent'}`}>{entry.changed ? '↻' : ''}</span>
-                                                        </div>
-                                                    </div>
-                                                ))
-                                            )}
-                                            <div ref={logEndRef} className="h-1" />
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* ── FOOTER ── */}
-                                {(calibration.phase === 'done' || calibration.phase === 'error') && (
-                                    <div className={`px-5 py-3.5 ${theme.isDark ? 'bg-black/70' : 'bg-white/80'} backdrop-blur-md border-t ${theme.borderSubtle} shrink-0 relative overflow-hidden flex`}>
-                                        <div className={`absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent ${theme.id === 'LIGHT' ? 'via-violet-500/40' : 'via-amber-500/40'} to-transparent`} />
-                                        
-                                        <button
-                                            type="button"
-                                            onClick={() => setCalibration(null)}
-                                            className={`hud hud-btn hud-accent hud-ticks flex-1 ${theme.highlightText} font-orbitron font-black uppercase tracking-[0.25em] text-[11px] sm:text-xs py-3.5 group/ack`}
-                                        >
-                                            {calibration.phase === 'done' ? 'ACKNOWLEDGE_UPDATE' : 'DISMISS_CRITICAL_ERROR'}
-                                        </button>
-                                    </div>
-                                )}
-                            </div>
-                        </SystemFrame>
-                    </motion.div>
-                )}
-            </AnimatePresence>
+            <CalibrationOverlay
+                theme={theme}
+                calibration={calibration}
+                onAbort={() => abortControllerRef.current?.abort()}
+                onDismiss={() => setCalibration(null)}
+            />
 
             <TrashPanel
                 isOpen={showTrash}
@@ -1370,134 +1014,14 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                 )}
             </AnimatePresence>
 
-            {/* ACCOUNT SETTINGS MODAL */}
-            <AnimatePresence>
-                {showAccountModal && (
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        ref={accountRef}
-                        role="dialog"
-                        aria-modal="true"
-                        aria-labelledby="account-modal-title"
-                        tabIndex={-1}
-                        className="fixed inset-0 z-[600] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 outline-none"
-                        onClick={(e) => { if (e.target === e.currentTarget) setShowAccountModal(false); }}
-                    >
-                        <motion.div
-                            initial={{ scale: 0.95, opacity: 0 }}
-                            animate={{ scale: 1, opacity: 1 }}
-                            exit={{ scale: 0.95, opacity: 0 }}
-                            transition={{ type: 'spring', damping: 25, stiffness: 220 }}
-                            className={`hud hud-shell w-full max-w-md ${theme.isDark ? 'bg-[#0a0a0a]' : 'bg-white'} overflow-hidden`}
-                        >
-                            {/* Modal Header */}
-                            <div className={`flex items-center justify-between px-5 py-3.5 border-b ${theme.borderSubtle} ${theme.isDark ? 'bg-black/40' : 'bg-violet-50/70'}`}>
-                                <div id="account-modal-title" className={`flex items-center gap-2.5 ${theme.highlightText} font-mono text-[11px] tracking-widest uppercase font-bold`}>
-                                    <KeyRound size={13} aria-hidden="true" />
-                                    HUNTER_CREDENTIALS
-                                </div>
-                                <button type="button" onClick={() => setShowAccountModal(false)} aria-label="Close" title="Close" className={`hud hud-tool [--hud-c:5px] w-7 h-7 flex items-center justify-center ${theme.mutedText} hover:${theme.highlightText}`}>
-                                    <X size={13} aria-hidden="true" />
-                                </button>
-                            </div>
 
-                            {/* Modal Body */}
-                            <form onSubmit={handleAccountUpdate} className="p-5 flex flex-col gap-4">
-                                {/* Current username display */}
-                                <div className={`flex items-center gap-2 px-3 py-2 border ${theme.borderSubtle} rounded-sm ${theme.isDark ? 'bg-white/[0.03]' : 'bg-violet-50/70'}`}>
-                                    <User2 size={12} className={theme.mutedText} />
-                                    <span className={`text-[10px] font-mono ${theme.mutedText} uppercase tracking-widest`}>Current:</span>
-                                    <span className={`text-[11px] font-mono font-bold ${theme.highlightText}`}>{storedUser?.username || '—'}</span>
-                                </div>
-
-                                {/* New username */}
-                                <div className="flex flex-col gap-1.5">
-                                    <label htmlFor="account-new-username" className={`text-[9px] font-mono font-bold uppercase tracking-widest ${theme.mutedText}`}>New Username <span className="font-normal">(leave blank to keep)</span></label>
-                                    <input
-                                        id="account-new-username"
-                                        autoComplete="username"
-                                        type="text"
-                                        value={accountForm.newUsername}
-                                        onChange={e => setAccountForm(f => ({ ...f, newUsername: e.target.value }))}
-                                        placeholder={storedUser?.username || ''}
-                                        className={`w-full px-3 py-2 text-[11px] font-mono border ${theme.borderSubtle} ${theme.isDark ? 'bg-white/5 text-white placeholder:text-white/20' : 'bg-violet-50 text-stone-900 placeholder:text-stone-600'} rounded-sm outline-none focus:${theme.border} transition-colors`}
-                                    />
-                                </div>
-
-                                {/* Current password */}
-                                <div className="flex flex-col gap-1.5">
-                                    <label htmlFor="account-current-password" className={`text-[9px] font-mono font-bold uppercase tracking-widest ${theme.mutedText}`}>Current Password <span className={theme.isDark ? 'text-red-400' : 'text-red-700'} aria-hidden="true">*</span></label>
-                                    <input
-                                        id="account-current-password"
-                                        autoComplete="current-password"
-                                        type="password"
-                                        required
-                                        value={accountForm.currentPassword}
-                                        onChange={e => setAccountForm(f => ({ ...f, currentPassword: e.target.value }))}
-                                        placeholder="••••••••"
-                                        className={`w-full px-3 py-2 text-[11px] font-mono border ${theme.borderSubtle} ${theme.isDark ? 'bg-white/5 text-white placeholder:text-white/20' : 'bg-violet-50 text-stone-900 placeholder:text-stone-600'} rounded-sm outline-none focus:${theme.border} transition-colors`}
-                                    />
-                                </div>
-
-                                {/* New password */}
-                                <div className="flex flex-col gap-1.5">
-                                    <label htmlFor="account-new-password" className={`text-[9px] font-mono font-bold uppercase tracking-widest ${theme.mutedText}`}>New Password <span className="font-normal">(leave blank to keep)</span></label>
-                                    <input
-                                        id="account-new-password"
-                                        autoComplete="new-password"
-                                        type="password"
-                                        value={accountForm.newPassword}
-                                        onChange={e => setAccountForm(f => ({ ...f, newPassword: e.target.value }))}
-                                        placeholder="••••••••"
-                                        className={`w-full px-3 py-2 text-[11px] font-mono border ${theme.borderSubtle} ${theme.isDark ? 'bg-white/5 text-white placeholder:text-white/20' : 'bg-violet-50 text-stone-900 placeholder:text-stone-600'} rounded-sm outline-none focus:${theme.border} transition-colors`}
-                                    />
-                                </div>
-
-                                {/* Confirm new password */}
-                                {accountForm.newPassword && (
-                                    <div className="flex flex-col gap-1.5">
-                                        <label htmlFor="account-confirm-password" className={`text-[9px] font-mono font-bold uppercase tracking-widest ${theme.mutedText}`}>Confirm New Password</label>
-                                        <input
-                                            id="account-confirm-password"
-                                            autoComplete="new-password"
-                                            type="password"
-                                            value={accountForm.confirmPassword}
-                                            onChange={e => setAccountForm(f => ({ ...f, confirmPassword: e.target.value }))}
-                                            placeholder="••••••••"
-                                            className={`w-full px-3 py-2 text-[11px] font-mono border ${theme.borderSubtle} ${theme.isDark ? 'bg-white/5 text-white placeholder:text-white/20' : 'bg-violet-50 text-stone-900 placeholder:text-stone-600'} rounded-sm outline-none focus:${theme.border} transition-colors`}
-                                        />
-                                    </div>
-                                )}
-
-                                {/* Status message */}
-                                {accountStatus && (
-                                    // -400 status text is tuned for the void and sits near 2.5:1 on
-                                    // this white panel; light takes the -700 rungs (5.9 / 5.5:1).
-                                    <div role={accountStatus.type === 'error' ? 'alert' : 'status'} className={`flex items-center gap-2 px-3 py-2 rounded-sm text-[10px] font-mono font-bold ${
-                                        accountStatus.type === 'error'
-                                            ? `bg-red-500/10 border border-red-500/30 ${theme.isDark ? 'text-red-400' : 'text-red-700'}`
-                                            : `bg-emerald-500/10 border border-emerald-500/30 ${theme.isDark ? 'text-emerald-400' : 'text-emerald-700'}`
-                                    }`}>
-                                        {accountStatus.type === 'error' ? <AlertCircle size={12} /> : <CheckCircle2 size={12} />}
-                                        {accountStatus.msg}
-                                    </div>
-                                )}
-
-                                {/* Submit */}
-                                <button
-                                    type="submit"
-                                    disabled={accountLoading}
-                                    className="hud hud-cmd hud-hash w-full py-2.5 font-mono font-black text-[11px] uppercase tracking-[0.25em] disabled:opacity-40 group/submit"
-                                >
-                                    {accountLoading ? 'SYNCHRONIZING...' : 'UPDATE_CREDENTIALS'}
-                                </button>
-                            </form>
-                        </motion.div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
+            <AccountDialog
+                theme={theme}
+                open={showAccountModal}
+                onClose={() => setShowAccountModal(false)}
+                username={storedUser?.username}
+                onUpdated={setStoredUser}
+            />
         </div>
     );
 };

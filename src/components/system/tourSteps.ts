@@ -33,7 +33,7 @@ export const tourSteps = (id: TourId, guest: boolean): TourStep[] => {
                     : 'The Akashic Records tracks the manhwa you read, run by the System. Here is the HUD in six steps.',
             },
             { target: 'read', title: 'Log a chapter', body: 'Press + when you finish a chapter; hold it to count quickly. ENTER PORTAL opens the series on its reading site.' },
-            { target: 'rank', title: 'Earn your rank', body: 'Every chapter read is 1 EXP. EXP raises your rank from Drifter to Monarch, and reading earns Hunter Titles along the way.' },
+            { target: 'rank', title: 'Earn your rank', body: 'Every chapter read is 1 EXP. EXP raises your rank from Drifter to Monarch and the Transcendent tiers beyond it, and reading earns Hunter Titles along the way.' },
             { target: 'quests', title: 'Active quests', body: 'The series you are reading now. Tap one to bring it up, drag its handle to reorder, and use New chapters to check for releases.' },
             { target: 'spire', title: 'The Divine Spire', body: 'The whole library as a tower: each floor holds the series at one stage of progress. Search, sorting and your daily quests live there.' },
             { target: 'profile', title: 'Hunter Profile', body: 'Your rank ladder, titles, reading activity, backups and a shareable Hunter Card. Add a series of your own with CREATE_GATE.' },

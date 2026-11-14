@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { RotateCcw, Trash2, X } from 'lucide-react';
+import { RotateCcw, X } from 'lucide-react';
+import { PurgeGlyph } from '../system/SystemGlyphs';
 import { Theme } from '../../core/types';
 import { systemFetch } from '../../utils/auth';
 import { useDialogFocus } from '../../utils/useDialogFocus';
@@ -101,7 +102,7 @@ const TrashPanel: React.FC<TrashPanelProps> = ({ isOpen, onClose, theme, onResto
                     >
                         <div className={`flex items-center justify-between px-5 py-3.5 border-b ${theme.borderSubtle} ${theme.isDark ? 'bg-black/40' : 'bg-violet-50/70'} shrink-0`}>
                             <div id="trash-title" className={`flex items-center gap-2.5 ${theme.highlightText} font-mono text-[11px] tracking-widest uppercase font-bold`}>
-                                <Trash2 size={13} aria-hidden="true" />
+                                <PurgeGlyph size={13} aria-hidden="true" />
                                 ARCHIVE_TRASH
                             </div>
                             <button type="button" onClick={onClose} aria-label="Close" title="Close" className={`hud hud-tool [--hud-c:5px] w-7 h-7 flex items-center justify-center ${theme.mutedText}`}>
@@ -149,7 +150,7 @@ const TrashPanel: React.FC<TrashPanelProps> = ({ isOpen, onClose, theme, onResto
                                                 title="Erase for good"
                                                 className={`${rowBtn} hud-danger w-8 px-0 justify-center`}
                                             >
-                                                <Trash2 size={12} aria-hidden="true" />
+                                                <PurgeGlyph size={12} aria-hidden="true" />
                                             </button>
                                         </li>
                                     ))}

@@ -2,7 +2,8 @@ import React from 'react';
 import { motion } from 'motion/react';
 import { Theme, Quest, Rank } from '../../core/types';
 import { statusLabel } from '../../core/constants';
-import { Fingerprint, BookOpen } from 'lucide-react';
+import { Fingerprint } from 'lucide-react';
+import { CodexGlyph } from '../system/SystemGlyphs';
 import { getProxiedImageUrl } from '../../utils/api';
 import RankSigil from './RankSigil';
 import CoverArt from './CoverArt';
@@ -114,7 +115,7 @@ const QuestCard = React.memo<DivineMonolithProps>(({ item, onClick, index, id, t
                         <div className="h-[1px] w-full bg-white/10 overflow-hidden relative"><div className={`absolute inset-0 w-full h-full ${rankStyle.bg} -translate-x-full group-hover:translate-x-0 group-focus-visible:translate-x-0 transition-transform duration-1000 delay-100`} /></div>
                         <div className="flex justify-between items-center text-xs md:text-sm font-mono text-gray-400 group-hover:text-gray-300 transition-colors delay-300 duration-700">
                             <span className="flex items-center gap-2">
-                                <BookOpen size={14} aria-hidden="true" /> CH: {item.currentChapter}
+                                <CodexGlyph size={14} aria-hidden="true" /> CH: {item.currentChapter}
                                 {/* The Hunter's Appraisal, when given. Dark-plate ink: this row is on the scrim. */}
                                 {item.rating ? <span className="text-accent-plate font-bold">· {item.rating}/10</span> : null}
                             </span>

@@ -5,7 +5,8 @@ import SystemFrame from './SystemFrame';
 import RiftOpening from '../fx/RiftOpening';
 import AppraisalPips from '../quest/AppraisalPips';
 import { STATUS_INFO } from '../../core/constants';
-import { X, RefreshCw, AlertCircle, CheckCircle, Database, Search, Activity, Trash2, HelpCircle } from 'lucide-react';
+import { X, AlertCircle, CheckCircle, HelpCircle } from 'lucide-react';
+import { PulseGlyph, PurgeGlyph, RecalibrateGlyph, ScanGlyph, SearchGlyph } from './SystemGlyphs';
 import { fetchMangadex, fetchAuto, fetchAnilistCover, fetchJikanCover, getProxiedImageUrl, cleanDescription } from '../../utils/api';
 import { useDialogFocus } from '../../utils/useDialogFocus';
 import { usePageTour } from '../../core/tours';
@@ -329,7 +330,7 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
                     <div className={`flex justify-between items-center px-5 py-3.5 border-b ${theme.borderSubtle} shrink-0 ${theme.isDark ? 'bg-black/30' : 'bg-violet-50/70'}`}>
                         <span id="gate-modal-title" aria-live="polite" className={`${theme.highlightText} font-mono tracking-widest text-[11px] sm:text-sm flex items-center gap-2.5`}>
                             <span aria-hidden="true" className={`w-1.5 h-1.5 rounded-full ${isScanning ? 'bg-accent-solid animate-ping' : 'bg-accent-line'}`} />
-                            <RefreshCw size={12} aria-hidden="true" className={isScanning ? 'animate-spin' : ''} />
+                            <RecalibrateGlyph size={12} aria-hidden="true" className={isScanning ? 'animate-spin' : ''} />
                             {isScanning ? 'ANALYZING_COORDINATES...' : (initialData ? 'SYSTEM_OVERWRITE' : 'CREATE_GATE')}
                         </span>
                         <div className="flex items-center gap-1.5">
@@ -419,7 +420,7 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
                                     disabled={!formData.link || isScanning}
                                     className="hud hud-btn hud-accent hud-cut-br absolute right-0 top-0 h-full px-4 font-orbitron text-[10px] font-black tracking-wider text-accent-ink disabled:opacity-50 flex items-center gap-1.5 group/btn"
                                 >
-                                    {isScanning ? <Activity size={14} className="animate-pulse" /> : <Search size={14} />}
+                                    {isScanning ? <PulseGlyph size={14} className="animate-pulse" /> : <SearchGlyph size={14} />}
                                     SCAN_CORE
                                 </button>
                             </div>
@@ -458,7 +459,7 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
                                     title="Search archives by title"
                                     aria-label="Search archives by title"
                                 >
-                                    <Database size={16} aria-hidden="true" className="group-hover/archive:scale-110 transition-transform" />
+                                    <ScanGlyph size={16} aria-hidden="true" className="group-hover/archive:scale-110 transition-transform" />
                                 </button>
                             </div>
                         </div>
@@ -649,7 +650,7 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
                                 title="Purge artifact (moves it to the Trash; Undo available)"
                                 aria-label="Purge artifact"
                             >
-                                <Trash2 size={16} aria-hidden="true" className="relative z-10 group-active:scale-75 transition-transform" />
+                                <PurgeGlyph size={16} aria-hidden="true" className="relative z-10 group-active:scale-75 transition-transform" />
                             </button>
                         )}
 
@@ -660,7 +661,7 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
                         >
                             {isScanning ? (
                                 <>
-                                    <RefreshCw size={16} className="animate-spin" />
+                                    <RecalibrateGlyph size={16} className="animate-spin" />
                                     SYNC_IN_PROGRESS...
                                 </>
                             ) : (

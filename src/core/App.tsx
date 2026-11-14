@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useLayoutEffect, useMemo, Suspense, lazy, useRef, useCallback } from 'react';
 import { flushSync } from 'react-dom';
-import { motion, AnimatePresence, Reorder, useDragControls } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import { Quest, Achievement, QuestGoals, ImportRow } from './types';
 import SystemFrame from '../components/system/SystemFrame';
-import SystemLogo from '../components/system/SystemLogo';
 import ScrambleText from '../components/system/ScrambleText';
-import { Activity, Sun, Moon, Plus, Zap, Crown, LayoutTemplate, GripVertical, ChevronLeft, ChevronRight, LogOut, RefreshCw, Search } from 'lucide-react';
-import { getPlayerRank, calculateQuestRank, USER_RANKS, expOf, AVATAR_STAGES, avatarStageOf } from '../utils/ranks';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { CrownGlyph, ManaGlyph, PulseGlyph, RecalibrateGlyph, SearchGlyph } from '../components/system/SystemGlyphs';
+import { getPlayerRank, calculateQuestRank, USER_RANKS, expOf, avatarStageOf } from '../utils/ranks';
 import { soundsEnabled, setSoundsEnabled, playResonance, previewResonance } from '../utils/resonance';
 import { THEMES, ThemeId, statusLabel, startingThemeId, hasSavedTheme, dailyObjective } from './constants';
 
@@ -29,303 +29,30 @@ import HoloDais from '../components/dais/HoloDais';
 import Card3D from '../components/quest/Card3D';
 import CoverArt from '../components/quest/CoverArt';
 import HeroRings from '../components/fx/HeroRings';
+import PhaseShift from '../components/fx/PhaseShift';
 import StatusFrame from '../components/quest/StatusFrame';
 import AscensionRite, { RiteSubject } from '../components/system/AscensionRite';
+import RankRite, { RankRiteSubject } from '../components/system/RankRite';
 import { accentRGB, elevation, emphasis } from './depth';
 import { accentVars } from './tokens';
-import { InfinitePortalIcon, CalibratedPlusIcon, CalibratedMinusIcon } from '../components/system/CustomIcons';
+import { CalibratedMinusIcon, CalibratedPlusIcon, InfinitePortalIcon, NewGateIcon, SpireIcon } from '../components/system/CustomIcons';
 
-import { unproxyImageUrl } from '../utils/api';
 import { saveAuthData, performLogout, systemFetch, isAuthenticated, getStoredUser } from '../utils/auth';
 import LoginScreen from '../components/system/LoginScreen';
 import GlitchOverlay from '../components/fx/GlitchOverlay';
 import { AuthResponse } from './types';
-
-const API_URL = '/api/quests';
-
-// Placeholder shown when the library is empty. Module scope, not component scope: as a
-// per-render object literal it was a fresh reference every time, which made every useMemo
-// depending on it recompute on every render.
-const DEFAULT_QUEST: Quest = {
-    id: '0',
-    title: 'No Active Quest',
-    coverUrl: "",
-    totalChapters: 0,
-    currentChapter: 0,
-    status: 'LOCKED',
-    classType: 'UNKNOWN',
-    link: ''
-};
-
-// ─── CHAPTER PROGRESS ─────────────────────────────────────────────────────────
-// See requestChapter in App for the full model. A "burst" is one run of chapter changes to
-// a single quest that ends in one save: merged taps, a held stepper, or a typed number.
-type ChapterPair = { current: number; total: number };
-interface ChapterBurst {
-    questId: string;
-    /** What the server last acknowledged. A failed save returns here. */
-    confirmed: ChapterPair;
-    /** Where this burst began. Undo returns here. */
-    start: ChapterPair;
-    /** The latest requested values, already on screen. */
-    target: ChapterPair;
-    typed: boolean;
-    undo: boolean;
-    timer: ReturnType<typeof setTimeout> | null;
-    inFlight: boolean;
-    /** A save was requested while one was already in the air. */
-    dirty: boolean;
-    /** When saves started failing for want of a connection (null while they go through). The
-     *  burst is held and retried until RETRY_GIVE_UP_MS after this. */
-    failedSince: number | null;
-    /** Retries so far in this outage, which picks the next wait from RETRY_STEPS_MS. */
-    attempts: number;
-    /** It came through an outage: a quiet "Saved" when it finally lands. */
-    recovering: boolean;
-}
-interface ChapterRequestOpts {
-    /** 'merge' waits CHAPTER_MERGE_MS for more taps; 'now' sends at once; 'hold' waits for the stepper's release. */
-    mode: 'merge' | 'now' | 'hold';
-    /** Explicit total (Undo restores it). Defaults to the total on screen. */
-    total?: number;
-    /** Typed by hand: always offered for Undo, and allowed to raise the total. */
-    typed?: boolean;
-    /** This change is an Undo; its settle confirms the restore instead of offering another. */
-    undo?: boolean;
-}
-/** Taps closer together than this merge into one save. */
-const CHAPTER_MERGE_MS = 600;
-/** The guest sandbox's countdown turns to the warning ink for its last 10 minutes. */
-const LINK_LOW_MS = 10 * 60 * 1000;
-/**
- * A chapter save that fails for want of a connection is held and retried rather than undone:
- * the number stays where the reader put it. These are the waits between tries (the last one
- * repeats), and how long the outage may last before the save is given up and the number
- * returns to the last chapter the server confirmed. Retries live only while the page is open:
- * keeping them across a reload could let an old save overwrite newer progress from another
- * device. A save that only gets through after midnight counts for the new day (accepted).
- */
-const RETRY_STEPS_MS = [2000, 4000, 8000, 15000, 30000];
-const RETRY_GIVE_UP_MS = 2 * 60 * 1000;
-/** Replies worth trying again: a timeout, rate limiting, or the server or its gateway down.
- *  Any other refusal (400, 403, 409) would only be refused again. */
-const isRetryableStatus = (status: number) => status === 408 || status === 429 || status >= 500;
-
-/**
- * Should this device start in low-power effects mode? Conservative on purpose: only a
- * Save-Data connection, or hardware reporting 2 GB of memory or 2 CPU cores or fewer. Most
- * phones and every iPad report more than that and keep the full effects unless the reader
- * switches them off. (Safari reports no deviceMemory, so it is judged on cores alone.)
- */
-const prefersLowPower = (): boolean => {
-    try {
-        const nav = navigator as Navigator & { deviceMemory?: number; connection?: { saveData?: boolean } };
-        return !!nav.connection?.saveData
-            || (typeof nav.deviceMemory === 'number' && nav.deviceMemory <= 2)
-            || (typeof nav.hardwareConcurrency === 'number' && nav.hardwareConcurrency > 0 && nav.hardwareConcurrency <= 2);
-    } catch {
-        return false;
-    }
-};
-
-/** The dashboard's keyboard shortcuts, shown by "?" and by the console bar's KEYS button. */
-const SHORTCUT_HELP = [
-    'SYSTEM SHORTCUTS',
-    '→ / ←   Next / previous chapter. Hold the key to keep going.',
-    'Tap the chapter number to type a chapter in.',
-    'Enter   Open the reading link (when nothing else has focus).',
-    '/   Search the Divine Spire.',
-    'N   Open a new gate.',
-    'Ctrl+Z   Undo the last change while its notice is showing.',
-    '?   Show this list.',
-].join('\n');
-/** A burst that moves at least this many chapters gets an Undo toast. */
-const UNDO_THRESHOLD = 5;
-
-/**
- * The Hunter's Appraisal as the app holds it: a whole 1-10, or null for unrated.
- *
- * Records saved by the February build carry its old 0-10 rating, which stored 0 for "unrated"
- * and allowed tenths. Kept as they were, a 0 went back to the server with any save from the
- * editor and the whole save was refused ("The appraisal must be a whole number from 1 to 10").
- * So 0 reads as unrated and tenths round to the nearest whole; the next save writes it clean.
- */
-const appraisalOf = (r: unknown): number | null => {
-    const n = typeof r === 'number' ? r : typeof r === 'string' && r.trim() ? Number(r) : NaN;
-    if (!Number.isFinite(n) || n < 0.5) return null;
-    return Math.min(10, Math.round(n));
-};
-
-// Helper to normalize quest data from both MongoDB and local BASE_QUESTS
-const mapQuest = (q: any): Quest => ({
-    id: String(q._id || q.id || ""),
-    title: q.title || "",
-    // Keep the ORIGIN url in state. Proxying happens at render time instead, because
-    // this value round-trips back to the database through the edit form — mapping it to
-    // a proxied path here is what caused "/api/proxy/image?url=..." to be persisted as
-    // the cover. unproxyImageUrl also repairs records already written that way.
-    coverUrl: unproxyImageUrl(q.cover || q.coverUrl || ""),
-    link: q.readLink || q.link || q.siteUrl || "",
-    // Undefined, not "", when the record came from the library list (which omits synopses):
-    // "" would read as "no synopsis" and an untouched edit form would save it over the real
-    // one. An undefined field is dropped from the save, so the stored synopsis is never hit.
-    synopsis: typeof q.synopsis === 'string' ? q.synopsis : undefined,
-    currentChapter: Number(q.currentChapter) || 0,
-    totalChapters: Number(q.totalChapters) || 0,
-    status: (q.status || 'ACTIVE').toUpperCase(),
-    classType: q.classType || "PLAYER",
-    lastUpdated: q.lastRead || q.lastUpdated || Date.now(),
-    newChapters: Number(q.newChapters) || 0,
-    rating: appraisalOf(q.rating),
-});
-
-/** One full record, synopsis included; the library list leaves synopses out. Null on failure. */
-const fetchFullQuest = async (id: string): Promise<Quest | null> => {
-    if (!id || id === DEFAULT_QUEST.id || id.startsWith('optimistic-')) return null;
-    try {
-        const res = await systemFetch(`${API_URL}/${id}`);
-        return res.ok ? mapQuest(await res.json()) : null;
-    } catch {
-        return null;
-    }
-};
-
-// SUB-COMPONENT: QuestListItem to handle individual drag controls and touch scrolling
-const QuestListItem = ({ item, theme, activeId, handleLogClick, onDragStateChange }: any) => {
-    const dragControls = useDragControls();
-    const isHighlighted = activeId === item.id;
-
-    const handleDragStart = (e: React.PointerEvent) => {
-        e.preventDefault();
-        onDragStateChange?.(true);   // tell scroll container: lock scroll
-        dragControls.start(e);
-    };
-
-    const handleDragEnd = () => {
-        onDragStateChange?.(false);  // restore scroll
-    };
-
-    return (
-        <Reorder.Item
-            key={item.id}
-            value={item}
-            dragListener={false}
-            dragControls={dragControls}
-            onDragEnd={handleDragEnd}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className={`hud hud-row group cursor-pointer border border-transparent py-1.5 px-3 ${isHighlighted ? 'hud-on' : ''}`}
-        >
-            <div className="flex justify-between items-center h-full">
-                <div className="flex items-center gap-2 max-w-[85%] min-w-0">
-                    {/* Drag Handle — always visible on touch (mobile/tablet), hover-only on desktop.
-                        Raised above the row button's stretched hit area so a press here drags
-                        rather than selects. */}
-                    <div
-                        aria-hidden="true"
-                        className={`relative z-10 cursor-grab active:cursor-grabbing flex-none touch-none select-none ${theme.baseText}
-                            p-2 -ml-2
-                            opacity-40 lg:opacity-0 group-hover:opacity-70 active:opacity-100
-                            transition-opacity
-                            [@media(pointer:coarse)]:opacity-60
-                            flex items-center justify-center min-w-[28px] min-h-[32px]
-                        `}
-                        onPointerDown={handleDragStart}
-                    >
-                        <GripVertical size={16} />
-                    </div>
-
-                    {/* The row's action is a real button so it can be reached and fired from
-                        the keyboard (an <li> with onClick cannot). Its ::after stretches over
-                        the whole row, so the click target is unchanged. */}
-                    <button
-                        type="button"
-                        onClick={() => handleLogClick(item.id)}
-                        aria-current={isHighlighted ? 'true' : undefined}
-                        className="flex items-center gap-2 min-w-0 text-left cursor-pointer after:content-[''] after:absolute after:inset-0"
-                    >
-                    {/* Every row gets a thumbnail box, so titles line up: a row without a
-                        cover used to render none and sat out of line with its neighbours.
-                        Decorative (alt ""): the title is right beside it. */}
-                    <CoverArt
-                        url={item.coverUrl}
-                        title={item.title}
-                        size="thumb"
-                        className={`w-8 h-[45px] xl:w-10 xl:h-[56px] flex-none rounded-sm border ${theme.isDark ? 'border-gray-800' : 'border-gray-300'} opacity-80 group-hover:opacity-100 transition-opacity shadow-sm shrink-0`}
-                    />
-                    <div className="flex flex-col min-w-0 pr-2">
-                        <span className={`font-bold font-mono text-[11px] leading-tight ${isHighlighted ? theme.highlightText : `${theme.mutedText} group-hover:${theme.headingText}`} transition-colors duration-700 uppercase line-clamp-2`}>{item.title}</span>
-                        <div className="flex items-center gap-2 mt-1 min-w-0">
-                            <div className={`w-1 h-1 rounded-full flex-none ${item.status === 'ACTIVE' ? (theme.isDark ? 'bg-amber-400' : 'bg-[#7c3aed]') : 'bg-gray-400'}`} />
-                            <span className={`text-[9px] ${theme.mutedText} uppercase font-mono tracking-widest transition-colors duration-700 truncate`}>{statusLabel(item.status)}</span>
-                            {/* Released since you last read on (the chapter tracker). Reading
-                                forward clears it, server-side. */}
-                            {item.newChapters > 0 && (
-                                <span
-                                    className="hud hud-tag flex-none px-1.5 text-[9px] font-mono font-bold tracking-widest leading-[15px]"
-                                >
-                                    +{item.newChapters} NEW
-                                </span>
-                            )}
-                        </div>
-                    </div>
-                    </button>
-                </div>
-                <div className="flex items-center gap-2">
-                    {isHighlighted && <Sun size={14} className={`${theme.highlightText} animate-spin-slow transition-colors duration-700 shrink-0`} />}
-                </div>
-            </div>
-        </Reorder.Item>
-    );
-};
-
-// SUB-COMPONENT: ActiveQuestList — owns touch-action state for drag-vs-scroll resolution
-// On touch devices, the browser fights between scroll and drag. This component:
-//   1. Keeps touchAction='pan-y' normally (allows vertical scroll)
-//   2. Switches to touchAction='none' the instant a drag begins (blocks scroll so Motion can move the item)
-//   3. Restores 'pan-y' when drag ends
-const ActiveQuestList = ({ orderedActiveQuests, handleReorderActiveQuests, theme, activeId, handleLogClick, loaded }: any) => {
-    const [isDragging, setIsDragging] = React.useState(false);
-
-    const handleDragStateChange = React.useCallback((dragging: boolean) => {
-        setIsDragging(dragging);
-    }, []);
-
-    return (
-        <div
-            className={`flex-1 min-h-0 overflow-y-auto hide-scrollbar overscroll-contain ${isDragging ? 'touch-none' : 'touch-pan-y'}`}
-        >
-            {/* An empty list says how to fill it, rather than leaving a blank panel; but only
-                once the library has loaded and the ordered copy has caught up with it, or it
-                flashed on every load before the records arrived. */}
-            {loaded && orderedActiveQuests.length === 0 && (
-                <p className={`px-1 py-3 font-mono text-[11px] leading-relaxed ${theme.mutedText}`}>
-                    No active quests yet. Open a gate to add one, or set a record ACTIVE from its detail view in the Divine Spire.
-                </p>
-            )}
-            <Reorder.Group
-                axis="y"
-                values={orderedActiveQuests}
-                onReorder={handleReorderActiveQuests}
-                className="flex flex-col gap-1 h-full pb-6"
-            >
-                <AnimatePresence initial={false}>
-                    {orderedActiveQuests.map((item: any) => (
-                        <QuestListItem
-                            key={item.id}
-                            item={item}
-                            theme={theme}
-                            activeId={activeId}
-                            handleLogClick={handleLogClick}
-                            onDragStateChange={handleDragStateChange}
-                        />
-                    ))}
-                </AnimatePresence>
-            </Reorder.Group>
-        </div>
-    );
-};
+import { API_URL, DEFAULT_QUEST, mapQuest, fetchFullQuest } from './questRecords';
+import { ChapterBurst, ChapterPair, ChapterRequestOpts, CHAPTER_MERGE_MS, RETRY_STEPS_MS, RETRY_GIVE_UP_MS, isRetryableStatus, UNDO_THRESHOLD } from './chapterSaves';
+import { prefersLowPower, SHORTCUT_HELP } from './appSettings';
+import { ActiveQuestList } from '../components/quest/ActiveQuestList';
+import { HeavyLoader } from '../components/system/HeavyLoader';
+import DashboardHeader from '../components/system/DashboardHeader';
+import { buildPortalLoader } from '../utils/portalLoader';
+import { recordGateTrip, takeReturnedTrip } from '../utils/gateTrip';
+import ReturnSheet from '../components/quest/ReturnSheet';
+import EventLog from '../components/system/EventLog';
+import { useSystemEvents, eventTime } from './useSystemEvents';
+import type { DormantGate } from '../components/quest/DormantSweep';
 
 // ----------------------------------------------------------------------
 // LAZY LOADED HEAVY COMPONENTS 
@@ -336,56 +63,8 @@ const DivineSpire = lazy(() => import('../components/tower/DivineSpire'));
 const SystemGateModal = lazy(() => import('../components/system/SystemGateModal'));
 // Only guests on a first visit, or anyone pressing "?", ever open a tour.
 const SystemTour = lazy(() => import('../components/system/SystemTour'));
-
-// Loading Fallback Strategy
-const HeavyLoader = ({ theme }: { theme: any }) => (
-    <div className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm flex items-center justify-center" role="status" aria-label="Loading">
-        <div className={`w-16 h-16 border-2 border-dashed ${theme.id === 'LIGHT' ? 'border-violet-400' : 'border-amber-500'} rounded-full animate-spin`} />
-    </div>
-);
-
-// --- PORTAL DIVE (Entering the gate, travelling to a new world) ---
-// Builds a self-contained "dimensional dive" page painted into the freshly-opened tab, which
-// then redirects to the manhwa. The open + write happen inside the click gesture, so Safari's
-// popup blocker (which kills a window.open deferred past the gesture) never trips — and the
-// animation is actually seen, since focus follows the new tab. No inline <script> is used:
-// the tab inherits the site CSP (script-src 'self'), which blocks inline scripts; the redirect
-// is a <meta refresh>, and the ring/streak markup is pre-generated here (parent origin).
-const buildPortalLoader = (href: string, accent: string, accent2: string): string => {
-    const rings = Array.from({ length: 12 }, (_, i) => `<div class="ring" style="animation-delay:${(i * 0.11).toFixed(2)}s"><svg viewBox="0 0 120 120" aria-hidden="true"><polygon points="60,6 111,36 111,84 60,114 9,84 9,36" fill="none" stroke="${accent}" stroke-width="1.4"/><polygon points="60,20 98,42 98,78 60,100 22,78 22,42" fill="none" stroke="${accent2}" stroke-width="0.7" opacity="0.5"/></svg></div>`).join('');
-    const streaks = Array.from({ length: 26 }, (_, i) => `<div class="streak" style="--r:${Math.round((i * 360) / 26)}deg;animation-delay:${(Math.random() * 0.8).toFixed(2)}s"></div>`).join('');
-    const metaUrl = href.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="2; url=${metaUrl}"><title>Akashic Link</title><style>
-:root{--a:${accent};--b:${accent2}}
-*{margin:0;padding:0;box-sizing:border-box}
-html,body{height:100%;overflow:hidden;background:#030205}
-.scene{position:fixed;inset:0;overflow:hidden;perspective:520px;perspective-origin:50% 47%;background:radial-gradient(circle at 50% 47%,#100b16 0%,#060409 55%,#030205 100%);font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
-.space{position:absolute;inset:0;transform-style:preserve-3d}
-.ring{position:absolute;left:50%;top:47%;width:340px;height:340px;margin:-170px 0 0 -170px;opacity:0;animation:fly 1.3s cubic-bezier(.55,0,.85,1) forwards}
-.ring svg{width:100%;height:100%;display:block;filter:drop-shadow(0 0 6px var(--a))}
-.streaks{position:absolute;inset:0;overflow:hidden;pointer-events:none}
-.streak{position:absolute;left:50%;top:47%;width:2px;height:60vh;transform-origin:top center;background:linear-gradient(to bottom,transparent,var(--b),#fff);opacity:0;animation:warp 1.1s cubic-bezier(.6,0,.9,1) forwards}
-.core{position:absolute;left:50%;top:47%;width:26px;height:26px;margin:-13px 0 0 -13px;border-radius:50%;background:radial-gradient(circle,#fff 0%,var(--b) 34%,var(--a) 58%,transparent 80%);animation:core 2s cubic-bezier(.6,0,.85,1) forwards}
-.cb{position:absolute;width:24px;height:24px;border-color:var(--a);opacity:0;animation:lock 2s ease-out forwards}
-.cb.tl{top:22px;left:22px;border-top:2px solid;border-left:2px solid}
-.cb.tr{top:22px;right:22px;border-top:2px solid;border-right:2px solid}
-.cb.bl{bottom:22px;left:22px;border-bottom:2px solid;border-left:2px solid}
-.cb.br{bottom:22px;right:22px;border-bottom:2px solid;border-right:2px solid}
-.lock{position:absolute;left:50%;top:47%;transform:translate(-50%,-50%);opacity:0;animation:lockr 2s ease-out forwards;filter:drop-shadow(0 0 8px var(--a))}
-.spin{transform-box:fill-box;transform-origin:center;animation:spin 3s linear infinite}
-.cap{position:absolute;left:0;right:0;bottom:76px;text-align:center;font-size:11px;letter-spacing:.42em;color:var(--a);font-weight:700;opacity:0;text-shadow:0 0 12px var(--a);animation:cap 2s ease-out forwards}
-.flash{position:absolute;inset:0;pointer-events:none;background:radial-gradient(circle at 50% 47%,#fff 0%,var(--b) 38%,transparent 74%);opacity:0;animation:flash 2s ease-in forwards}
-@keyframes spin{to{transform:rotate(360deg)}}
-@keyframes fly{0%{transform:translateZ(-1600px) rotate(0);opacity:0}12%{opacity:.95}82%{opacity:.95}100%{transform:translateZ(360px) rotate(14deg);opacity:0}}
-@keyframes warp{0%{transform:rotate(var(--r)) scaleY(0);opacity:0}25%{opacity:.9}100%{transform:rotate(var(--r)) scaleY(1);opacity:0}}
-@keyframes core{0%{transform:scale(.2);opacity:.2}55%{transform:scale(3);opacity:.9}82%{transform:scale(26);opacity:1}95%{transform:scale(46);opacity:1}100%{transform:scale(46);opacity:1}}
-@keyframes flash{0%,70%{opacity:0}88%{opacity:1}100%{opacity:1}}
-@keyframes lock{0%{opacity:0;transform:scale(.7)}4%{opacity:1;transform:scale(1)}14%{opacity:1}22%{opacity:0;transform:scale(1.15)}100%{opacity:0}}
-@keyframes lockr{0%{opacity:0;transform:translate(-50%,-50%) scale(.6)}5%{opacity:1;transform:translate(-50%,-50%) scale(1)}16%{opacity:.9}26%{opacity:0;transform:translate(-50%,-50%) scale(1.5)}100%{opacity:0}}
-@keyframes cap{0%,4%{opacity:0}10%{opacity:1;letter-spacing:.42em}30%{opacity:1}46%{opacity:0;letter-spacing:1.2em}100%{opacity:0}}
-@media (prefers-reduced-motion:reduce){.ring,.streak,.core,.cb,.lock,.spin,.cap{animation:none}.flash{animation:none;opacity:1}}
-</style></head><body><div class="scene"><div class="space">${rings}</div><div class="streaks">${streaks}</div><div class="core"></div><span class="cb tl"></span><span class="cb tr"></span><span class="cb bl"></span><span class="cb br"></span><div class="lock"><svg viewBox="0 0 120 120" width="150" height="150" aria-hidden="true"><g class="spin"><circle cx="60" cy="60" r="52" fill="none" stroke="${accent}" stroke-width="1" stroke-dasharray="2 6"/></g><polygon points="60,18 96.4,39 96.4,81 60,102 23.6,81 23.6,39" fill="none" stroke="${accent}" stroke-width="1.4"/></svg></div><div class="cap">ENTERING THE GATE</div><div class="flash"></div></div></body></html>`;
-};
+// Once a week at most, and only when there is something to file.
+const DormantSweep = lazy(() => import('../components/quest/DormantSweep'));
 
 // --- APP ---
 const App: React.FC = () => {
@@ -497,7 +176,10 @@ const App: React.FC = () => {
 
     // Cover-extracted accent color — dynamically sampled per active quest
 
-    const handleEnterPortal = useCallback((rawUrl: string) => {
+    // RETURN FROM THE GATE: a portal opened for a known series notes the trip (gateTrip.ts),
+    // filled in below once the library and the chapter path exist.
+    const noteGateTrip = useRef<(questId: string) => void>(() => {});
+    const handleEnterPortal = useCallback((rawUrl: string, questId?: string) => {
         if (!rawUrl || rawUrl === '#') return;
         // Only real web links are portal targets.
         let target: URL;
@@ -522,6 +204,7 @@ const App: React.FC = () => {
             // Popup blocked outright — fall back to a plain in-gesture open.
             window.open(target.href, '_blank', 'noopener,noreferrer');
         }
+        if (questId) noteGateTrip.current(questId);
     }, [theme.accentColor, theme.isDark]);
 
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -541,6 +224,25 @@ const App: React.FC = () => {
     const [isProfileOpen, setIsProfileOpen] = useState(false);
     const [isDetailOpen, setIsDetailOpen] = useState(false);
     const detailOpenedFromProfile = useRef(false);
+
+    // THE PHASE SHIFT (PhaseShift.tsx): Home, the Spire and the Profile hand over with one
+    // 280 ms transition, whatever asked for the change. Not when the series page or the editor
+    // is opening or closing over it: those have their rift. A layout effect, so the veil is up
+    // before the new view's first paint. `homeEpoch` re-decodes the AKASHIC wordmark on the way
+    // home (the header stays mounted under the Profile).
+    const phase = isSpireOpen ? 'SPIRE' : isProfileOpen ? 'PROFILE' : 'HOME';
+    const [phaseShift, setPhaseShift] = useState(0);
+    const [homeEpoch, setHomeEpoch] = useState(0);
+    const phaseSeen = useRef({ phase, detail: isDetailOpen });
+    useLayoutEffect(() => {
+        const prev = phaseSeen.current;
+        if (prev.phase !== phase && !isDetailOpen && !prev.detail && !isModalOpen) {
+            setPhaseShift((n) => n + 1);
+            if (phase === 'HOME') setHomeEpoch((n) => n + 1);
+        }
+        phaseSeen.current = { phase, detail: isDetailOpen };
+    }, [phase, isDetailOpen, isModalOpen]);
+    const endPhaseShift = useCallback(() => setPhaseShift(0), []);
     const lastCoverTap = useRef<number>(0);
 
     const [selectedQuest, setSelectedQuest] = useState<Quest | null>(null);
@@ -649,6 +351,9 @@ const App: React.FC = () => {
     // THE ASCENSION RITE (AscensionRite): plays once when ONE series is conquered by hand.
     const [rite, setRite] = useState<RiteSubject | null>(null);
     const closeRite = useCallback(() => setRite(null), []);
+    // THE RANK ASCENSION (RankRite): plays when a rank earned while reading evolves the frame.
+    const [rankRite, setRankRite] = useState<RankRiteSubject | null>(null);
+    const closeRankRite = useCallback(() => setRankRite(null), []);
 
     const handleLoginSuccess = (auth: AuthResponse) => {
         // The session cookie is already set by the server; this only records display state.
@@ -673,14 +378,6 @@ const App: React.FC = () => {
     }, [showSystemNotification]);
 
     const [guestTimeLeft, setGuestTimeLeft] = useState<number | null>(null);
-
-    // Format milliseconds to MM:SS or HH:MM:SS
-    const formatTime = (ms: number) => {
-        const totalSecs = Math.floor(ms / 1000);
-        const mins = Math.floor(totalSecs / 60);
-        const secs = totalSecs % 60;
-        return `${mins}:${secs.toString().padStart(2, '0')}`;
-    };
 
     // GUEST SESSION REAPER & TIMER (Hard 2-hour Limit)
     useEffect(() => {
@@ -885,11 +582,15 @@ const App: React.FC = () => {
     // never pushes a chapter's Undo off the screen, and several arrive one after another.
     const [rewardQueue, setRewardQueue] = useState<Omit<ToastSpec, 'id'>[]>([]);
     const queueReward = useCallback((spec: Omit<ToastSpec, 'id'>) => setRewardQueue(q => [...q, spec]), []);
+    // Rewards also wait while the Dormant Gate Sweep is open (declared further down, so the
+    // queue reads it through a ref, and re-checks when it closes).
+    const sweepOpenRef = useRef(false);
+    const [sweepWaits, setSweepWaits] = useState(0);
     useEffect(() => {
-        if (!rewardQueue.length || toast || tourOpen || rite) return;
+        if (!rewardQueue.length || toast || tourOpen || rite || rankRite || sweepOpenRef.current) return;
         showToast(rewardQueue[0]);
         setRewardQueue(q => q.slice(1));
-    }, [rewardQueue, toast, tourOpen, rite, showToast]);
+    }, [rewardQueue, toast, tourOpen, rite, rankRite, showToast, sweepWaits]);
 
     // A rank earned while reading is announced once: the payoff of EXP. Not on load (the first
     // rank seen is the baseline, and each session takes its own), not when a correction drops
@@ -899,15 +600,21 @@ const App: React.FC = () => {
         if (!libraryLoaded) { rankBaseline.current = null; return; }
         const idx = USER_RANKS.findIndex(r => r.label === playerRank.name);
         if (rankBaseline.current !== null && idx > rankBaseline.current) {
-            // A rank that opens a new avatar stage says so: the frame is the visible half of it.
+            // A rank that opens a new avatar stage is a ceremony (RankRite): the frame is the
+            // visible half of it. That is every second rank up to MONARCH and every Transcendent
+            // tier after it. The rest keep their toast.
+            const from = USER_RANKS[rankBaseline.current]?.label;
             const stage = avatarStageOf(playerRank.name);
-            const evolved = stage > avatarStageOf(USER_RANKS[rankBaseline.current]?.label) ? ` Your frame evolves: ${AVATAR_STAGES[stage]}.` : '';
-            queueReward({
-                tone: 'REWARD',
-                message: `Rank up · ${playerRank.name}`,
-                detail: `${playerRank.exp.toLocaleString()} EXP reached.${evolved} ${playerRank.next ? `Next: ${playerRank.next.label} at ${playerRank.next.minExp.toLocaleString()} EXP.` : 'There is no rank above this one.'}`,
-                duration: 8000,
-            });
+            if (stage > avatarStageOf(from)) {
+                setRankRite({ from: from ?? USER_RANKS[0].label, to: playerRank.name, exp: playerRank.exp });
+            } else {
+                queueReward({
+                    tone: 'REWARD',
+                    message: `Rank up · ${playerRank.name}`,
+                    detail: `${playerRank.exp.toLocaleString()} EXP reached. ${playerRank.next ? `Next: ${playerRank.next.label} at ${playerRank.next.minExp.toLocaleString()} EXP.` : 'There is no rank above this one.'}`,
+                    duration: 8000,
+                });
+            }
         }
         rankBaseline.current = idx;
     }, [libraryLoaded, playerRank, queueReward]);
@@ -1676,6 +1383,78 @@ const App: React.FC = () => {
         }
     }, [sendBurst]);
 
+    // ─── THE LIVING SYSTEM LOG ───────────────────────────────────────────────────
+    // EVENT_LOG (beside the hero) and OMNI_LOG (the console bar) tell what actually happened
+    // (useSystemEvents, GET /api/events). The log is fetched again whenever something it tells
+    // about may have changed: the reader's state (a save settling refreshes it, and so does a
+    // chapter check), the titles, a gate conquered.
+    const { events: systemEvents, refresh: refreshEvents } = useSystemEvents(isAuth && libraryLoaded);
+    const conqueredCount = useMemo(() => library.filter(q => q.status === 'CONQUERED').length, [library]);
+    const eventsPrimed = useRef(false);
+    useEffect(() => {
+        if (!isAuth || !libraryLoaded) { eventsPrimed.current = false; return; }
+        if (!eventsPrimed.current) { eventsPrimed.current = true; return; } // the first load fetched already
+        refreshEvents();
+    }, [isAuth, libraryLoaded, userState, achievements, conqueredCount, refreshEvents]);
+    const omniLines = useMemo(() => {
+        const lines: string[] = [];
+        const g = userState.goals;
+        if (g) {
+            lines.push(`Daily mandate · ${g.daily.progress} / ${g.daily.target} ${g.daily.kind === 'SERIES' ? 'stories' : 'chapters'} absorbed today`);
+            lines.push(`Weekly decree · ${g.weekly.progress.toLocaleString()} / ${g.weekly.target.toLocaleString()} chapters`);
+        }
+        if (userState.streak > 0) lines.push(`Streak · day ${userState.streak}`);
+        lines.push(playerRank.next
+            ? `Next rank · ${playerRank.next.label} in ${(playerRank.next.minExp - playerRank.exp).toLocaleString()} chapters`
+            : `Highest rank · ${playerRank.name} · ${playerRank.exp.toLocaleString()} EXP`);
+        const fresh = library.filter(q => q.status !== 'CONQUERED' && (q.newChapters ?? 0) > 0);
+        if (fresh.length) lines.push(`${fresh.length} gate${fresh.length === 1 ? '' : 's'} report new chapters`);
+        const last = systemEvents?.[0];
+        if (last) lines.push(`Last event [${eventTime(last.at)}] ${last.text}`);
+        return lines;
+    }, [userState, playerRank, library, systemEvents]);
+
+    // ─── RETURN FROM THE GATE ───────────────────────────────────────────────────
+    // ENTER PORTAL notes the trip (series, chapter, time; this device only). Back in the app
+    // three minutes or more later, the ReturnSheet offers to log what was read, once per trip.
+    // Not when the chapter has already moved since (it was logged some other way), and not
+    // over the editor, a series page, a rite, a tour or a notice: it waits for them to close.
+    noteGateTrip.current = (questId: string) => {
+        const q = libraryRef.current.find(x => x.id === questId);
+        if (!q || q.id === DEFAULT_QUEST.id) return;
+        const b = bursts.current.get(q.id);
+        recordGateTrip(getStoredUser()?.id ?? '', { questId: q.id, chapter: b ? b.target.current : q.currentChapter, at: Date.now() });
+    };
+    const [returnTrip, setReturnTrip] = useState<{ questId: string; startChapter: number } | null>(null);
+    const closeReturnSheet = useCallback(() => setReturnTrip(null), []);
+    const checkReturnFromGate = useCallback(() => {
+        if (!libraryLoaded || document.visibilityState !== 'visible') return;
+        const trip = takeReturnedTrip(getStoredUser()?.id ?? '');
+        if (!trip) return;
+        const q = libraryRef.current.find(x => x.id === trip.questId);
+        if (!q) return;
+        const b = bursts.current.get(q.id);
+        const now = b ? b.target.current : q.currentChapter;
+        if (now > trip.chapter) return;
+        setReturnTrip({ questId: q.id, startChapter: now });
+    }, [libraryLoaded]);
+    useEffect(() => {
+        checkReturnFromGate();
+        const onVisible = () => { if (document.visibilityState === 'visible') checkReturnFromGate(); };
+        document.addEventListener('visibilitychange', onVisible);
+        window.addEventListener('focus', onVisible);
+        return () => {
+            document.removeEventListener('visibilitychange', onVisible);
+            window.removeEventListener('focus', onVisible);
+        };
+    }, [checkReturnFromGate]);
+    const typeReturnChapter = useCallback((chapter: number) => {
+        if (returnTrip) requestChapter(returnTrip.questId, chapter, { mode: 'now', typed: true });
+    }, [returnTrip, requestChapter]);
+    const stepReturnChapter = useCallback((delta: number) => {
+        if (returnTrip) stepQuestChapter(returnTrip.questId, delta);
+    }, [returnTrip, stepQuestChapter]);
+
     const holdPrev = useHoldRepeat(() => stepChapter(-1, 'hold'), releaseStepper);
     const holdNext = useHoldRepeat(() => stepChapter(1, 'hold'), releaseStepper);
 
@@ -1779,6 +1558,88 @@ const App: React.FC = () => {
             duration: 10000,
         });
     }, [bulkRequest, restoreStatuses, showToast]);
+
+    // ─── THE DORMANT GATE SWEEP ─────────────────────────────────────────────────
+    // Once a session, ask the server for Active series with no chapter read in 30 days; when a
+    // sweep is due (weekly) and there are some, a notice offers REVIEW (DormantSweep). Filing
+    // goes through the bulk status route, one request per status, with one Undo for the lot;
+    // the gates kept Active are left alone for another 30 days. Left unreviewed, it asks again
+    // next session; LATER puts it off a week.
+    const [sweepGates, setSweepGates] = useState<DormantGate[] | null>(null);
+    const [sweepOpen, setSweepOpen] = useState(false);
+    useEffect(() => {
+        sweepOpenRef.current = sweepOpen;
+        if (!sweepOpen) setSweepWaits((n) => n + 1);
+    }, [sweepOpen]);
+    const sweepAsked = useRef(false);
+    const markSwept = useCallback(async (kept: string[]) => {
+        const res = await systemFetch('/api/user/dormant', { method: 'POST', body: JSON.stringify({ kept }) });
+        if (!res.ok && res.status !== 401) throw new Error(`HTTP ${res.status}`);
+    }, []);
+    const laterSweep = useCallback(() => {
+        setSweepOpen(false);
+        setSweepGates(null);
+        void markSwept([]).catch(() => { /* asked again next session */ });
+    }, [markSwept]);
+    const applySweep = useCallback(async (changes: Record<string, string>, kept: string[]): Promise<boolean> => {
+        const previous = new Map(libraryRef.current.filter(q => changes[q.id] && q.status !== changes[q.id]).map(q => [q.id, q.status] as const));
+        setLibrary(prev => prev.map(q => (changes[q.id] ? { ...q, status: changes[q.id] } : q)));
+        const groups = new Map<string, string[]>();
+        Object.entries(changes).forEach(([id, st]) => groups.set(st, [...(groups.get(st) ?? []), id]));
+        try {
+            for (const [st, ids] of groups) await bulkRequest({ ids, action: 'status', status: st });
+            await markSwept(kept);
+        } catch (e: any) {
+            setLibrary(prev => prev.map(q => (previous.has(q.id) ? { ...q, status: previous.get(q.id)! } : q)));
+            showToast({ tone: 'ERROR', message: 'Sweep not filed', detail: e?.message || 'Check your connection and try again.', duration: 8000 });
+            return false;
+        }
+        setSweepOpen(false);
+        setSweepGates(null);
+        const parts = [...groups].map(([st, ids]) => `${ids.length} → ${statusLabel(st)}`);
+        if (kept.length) parts.push(`${kept.length} kept active`);
+        showToast({
+            tone: 'SUCCESS',
+            message: `Sweep filed · ${plural(kept.length + previous.size, 'gate')}`,
+            detail: parts.join(', ') || 'Nothing changed.',
+            action: previous.size ? { label: 'Undo', onAction: () => { void restoreStatuses(previous); } } : undefined,
+            duration: 10000,
+        });
+        return true;
+    }, [bulkRequest, markSwept, restoreStatuses, showToast]);
+    useEffect(() => {
+        if (!isAuth) { sweepAsked.current = false; setSweepGates(null); setSweepOpen(false); return; }
+        if (!libraryLoaded || sweepAsked.current) return;
+        sweepAsked.current = true;
+        void (async () => {
+            try {
+                const res = await systemFetch('/api/user/dormant');
+                if (!res.ok) return;
+                const data = await res.json();
+                if (!data?.due || !Array.isArray(data.gates) || data.gates.length === 0) return;
+                const gates: DormantGate[] = data.gates.map((g: any) => {
+                    const own = libraryRef.current.find(q => q.id === g._id);
+                    return {
+                        id: String(g._id),
+                        title: own?.title ?? g.title,
+                        coverUrl: own?.coverUrl ?? g.cover ?? '',
+                        currentChapter: own?.currentChapter ?? g.currentChapter,
+                        totalChapters: own?.totalChapters ?? g.totalChapters,
+                        newChapters: own?.newChapters ?? g.newChapters,
+                        lastReadAt: g.lastReadAt,
+                    };
+                });
+                setSweepGates(gates);
+                queueReward({
+                    tone: 'INFO',
+                    message: `Dormant gates detected · ${gates.length}`,
+                    detail: `${gates.length === 1 ? 'An Active series has' : 'Active series have'} had no chapter read in 30 days.`,
+                    action: { label: 'Review', onAction: () => setSweepOpen(true) },
+                    duration: 15000,
+                });
+            } catch { /* quiet: asked again next session */ }
+        })();
+    }, [isAuth, libraryLoaded, queueReward]);
 
     /** Bring records back out of the Trash (bulk Undo). Any whose title is live again stays. */
     const bulkRestore = useCallback(async (ids: string[]) => {
@@ -1912,7 +1773,7 @@ const App: React.FC = () => {
     const toastRef = useRef(toast);
     toastRef.current = toast;
     const showShortcuts = useCallback(() => { void showSystemNotification(SHORTCUT_HELP, 'INFO'); }, [showSystemNotification]);
-    const shortcutsBlocked = !isAuth || booting || isSpireOpen || isModalOpen || isProfileOpen || isDetailOpen || sysNote.isOpen || tourOpen;
+    const shortcutsBlocked = !isAuth || booting || isSpireOpen || isModalOpen || isProfileOpen || isDetailOpen || sysNote.isOpen || tourOpen || sweepOpen;
 
     // Pages ask for their tour through TourContext (usePageTour). An automatic ask is honoured
     // only for a guest, only for a page whose tour this sandbox has not seen (kept per page
@@ -1971,7 +1832,7 @@ const App: React.FC = () => {
                     // Only from the page itself: Enter on a focused control belongs to it.
                     if (focused && focused !== document.body) return;
                     const link = activeQuestRef.current.link;
-                    if (link) { e.preventDefault(); handleEnterPortal(link); }
+                    if (link) { e.preventDefault(); handleEnterPortal(link, activeQuestRef.current.id); }
                     return;
                 }
                 case '/':
@@ -2030,87 +1891,21 @@ const App: React.FC = () => {
         }
     }, [currentTheme]);
 
-    const memoizedHeader = useMemo(() => (
-        <AnimatePresence>
-            {isHeaderVisible && (
-                <motion.header
-                    initial={{ y: -100, opacity: 0 }}
-                    animate={{ y: 0, opacity: 1 }}
-                    exit={{ y: -100, opacity: 0 }}
-                    transition={{ type: 'spring', damping: 20, stiffness: 100 }}
-                    className="fixed top-[var(--safe-top)] w-full z-40 bg-transparent h-16 px-4 flex items-center justify-between gap-2"
-                >
-                    {/* A guest's header carries the countdown plus three glyphs, which measured
-                        408px of content on a 375px phone and pushed Create off the screen. Phones
-                        get a smaller emblem, a smaller wordmark (dropped entirely under 360px)
-                        and tighter gaps; Log out moves to the profile panel below sm. */}
-                    <div className="flex items-center gap-3 sm:gap-4">
-                        <div className="relative w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center">
-                            <SystemLogo theme={theme} className="w-full h-full" />
-                        </div>
-                        <div className="flex flex-col leading-none max-[359px]:hidden">
-                            <div className="flex gap-2 items-baseline">
-                                <span className={`font-mono text-[10px] tracking-[0.2em] ${theme.headingText} font-bold transition-colors duration-700`}>SYSTEM.ROOT</span>
-                            </div>
-                            <ScrambleText
-                                text="AKASHIC"
-                                className="font-orbitron font-mono text-base sm:text-lg tracking-[0.3em] font-bold drop-shadow-sm transition-colors duration-700"
-                                decodeOnMount
-                                glyphClassName="text-accent-ink"
-                                animatedGradient={true}
-                                /* Light used sky-500 -> cyan-500, which measured 2.08:1 on the
-                                   page for 18px text. The wordmark is read, so it takes the ink
-                                   ramp; the shimmer still travels across it. */
-                                gradientColors={theme.isDark ? "from-amber-600 via-yellow-400 to-white" : theme.inkGradient}
-                            />
-                        </div>
-                    </div>
-                    <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-                        {guestTimeLeft !== null && (
-                            <div className="flex flex-col items-end leading-none sm:mr-2">
-                                {/* The sandbox's time left, in the theme's ink while there is plenty
-                                    of it, and in the warning ink for the last 10 minutes, when it is a
-                                    warning. It was always the warning ink, from the cyan era, when a
-                                    countdown was to stay amber whatever the theme; on the violet light
-                                    theme that read as a stray gold (owner, 2026-11-10). On dark the two
-                                    inks are the same amber, so dark is unchanged. The glow is dark's
-                                    only: there is nothing on a pale page for an amber spill to brighten. */}
-                                <span className="text-[7px] font-mono tracking-[0.2em] font-black uppercase" style={{ color: guestTimeLeft <= LINK_LOW_MS ? theme.warningInk : theme.accentInk }}>LINK_STABILITY</span>
-                                <span
-                                    className="text-[14px] font-mono font-black"
-                                    style={{ color: guestTimeLeft <= LINK_LOW_MS ? theme.warningInk : theme.accentInk, filter: theme.isDark ? 'drop-shadow(0 0 8px rgba(245,158,11,0.5))' : undefined }}
-                                >
-                                    {formatTime(guestTimeLeft)}
-                                </span>
-                            </div>
-                        )}
-                        <button
-                            type="button"
-                            onClick={toggleTheme}
-                            aria-label={theme.isDark ? 'Switch to light theme' : 'Switch to dark theme'}
-                            title={theme.isDark ? 'Switch to light theme' : 'Switch to dark theme'}
-                            className="hud hud-tool w-8 h-8 flex items-center justify-center"
-                        >
-                            {currentTheme === 'LIGHT' ? <Sun size={14} className="text-[#7c3aed] transition-colors duration-700" /> : <Moon size={14} className="text-amber-400 transition-colors duration-700" />}
-                        </button>
-                        <button
-                            type="button"
-                            onClick={handleLogout}
-                            aria-label="Log out"
-                            title="Log out"
-                            className="hud hud-tool hud-warn hud-muted hidden sm:flex w-8 h-8 items-center justify-center"
-                        >
-                            <LogOut size={14} />
-                        </button>
-                        {/* Below lg, creating a gate is the tab bar's New (MobileTabBar). */}
-                        <button type="button" onClick={() => { setEditingItem(null); setIsModalOpen(true); }} title="New gate (N)" className={`hud hud-btn hud-accent hidden lg:flex px-4 py-1.5 ${theme.highlightText} font-mono text-[10px] tracking-widest items-center gap-2 cursor-pointer`}>
-                            <Plus size={12} /> CREATE_GATE
-                        </button>
-                    </div>
-                </motion.header>
-            )}
-        </AnimatePresence>
-    ), [theme, currentTheme, isHeaderVisible, guestTimeLeft, toggleTheme, handleLogout]);
+    // The header (DashboardHeader, memoised on these same inputs). Opening the editor from it
+    // touches only setters, so the callback never changes.
+    const openNewGate = useCallback(() => { setEditingItem(null); setIsModalOpen(true); }, []);
+    const memoizedHeader = (
+        <DashboardHeader
+            theme={theme}
+            currentTheme={currentTheme}
+            visible={isHeaderVisible}
+            guestTimeLeft={guestTimeLeft}
+            onToggleTheme={toggleTheme}
+            onLogout={handleLogout}
+            onCreateGate={openNewGate}
+            homeEpoch={homeEpoch}
+        />
+    );
 
     /** True while any full-screen view covers the dashboard. Both the background field
      *  and the hero dais stop their loops on this rather than rendering behind an overlay. */
@@ -2167,7 +1962,7 @@ const App: React.FC = () => {
                                 <div className="flex flex-col items-end gap-6 xl:gap-8 w-full -mt-[30px]">
                                     <div className="flex flex-col items-end w-max max-w-none">
                                         <div className={`text-[10px] font-mono ${theme.mutedText} tracking-[0.3em] uppercase mb-2 flex items-center justify-end gap-1.5`}>
-                                            <Crown size={10} style={{ color: theme.accentInk }} />
+                                            <CrownGlyph size={10} style={{ color: theme.accentInk }} />
                                             <span style={{ marginRight: '-0.3em' }} className={theme.isDark ? '' : `text-transparent bg-clip-text bg-gradient-to-r ${theme.labelGradient}`}>RANK ASSESSMENT</span>
                                         </div>
                                         <div className={`text-6xl xl:text-[80px] font-black font-orbitron leading-none transition-colors duration-700 text-right [filter:drop-shadow(0_0_25px_var(--accent-glow))] ${theme.isDark ? 'text-[var(--accent-ink)]' : `text-transparent bg-clip-text bg-gradient-to-b ${theme.inkGradient}`}`}>
@@ -2322,6 +2117,7 @@ const App: React.FC = () => {
                                 <HoloDais
                                     theme={theme}
                                     paused={effectsPaused}
+                                    still={lowPower}
                                     pulseRef={daisPulse}
                                     /* Narrower on a phone: the card is nearly the whole
                                        screen there, so 190% of it overflowed the viewport.
@@ -2498,16 +2294,7 @@ const App: React.FC = () => {
                                         `opacity-40` on top of that, which landed them near 1.9:1. The
                                         timestamps are secondary, so they use the muted token rather than
                                         an alpha knocked out of the ink. */}
-                                    <div className={`flex flex-col gap-1.5 text-[9px] font-mono leading-relaxed tracking-wider mt-2`} style={{ color: theme.accentInk }}>
-                                        <div className="flex gap-2">
-                                            <span className={`shrink-0 ${theme.mutedText}`}>[{new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' })}]</span>
-                                            <span className="whitespace-nowrap">Signal acquired.</span>
-                                        </div>
-                                        <div className="flex gap-2">
-                                            <span className={`shrink-0 ${theme.mutedText}`}>[{new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' })}]</span>
-                                            <span className={`font-bold whitespace-nowrap`} style={{ color: theme.accentInk, textShadow: theme.isDark ? `0 0 10px ${theme.accentColor}` : undefined }}>Awaiting directive.</span>
-                                        </div>
-                                    </div>
+                                    <EventLog theme={theme} events={systemEvents} />
                                 </div>
                             </div>
 
@@ -2544,7 +2331,7 @@ const App: React.FC = () => {
                             {/* Progress */}
                             <div className="space-y-1.5 max-w-3xl w-full mx-auto">
                                 <div className={`flex justify-between items-center gap-2 text-[11px] sm:text-xs font-mono font-bold tracking-widest drop-shadow-md`}>
-                                    <span className={`flex items-center gap-1.5 ${theme.headingText}`}><Zap size={14} style={{ color: theme.accentInk }} /> COMPLETION_RATE</span>
+                                    <span className={`flex items-center gap-1.5 ${theme.headingText}`}><ManaGlyph size={14} style={{ color: theme.accentInk }} /> COMPLETION_RATE</span>
                                     <span className="flex items-center gap-2.5">
                                         {/* Below md the SEQUENCE DATA column, and with it the chapter
                                             number, is hidden, so phones saw only the percentage. This
@@ -2598,7 +2385,7 @@ const App: React.FC = () => {
                                         title="New gate (N)"
                                         className="hud hud-cmd hud-hash hud-glow h-12 flex-1 max-w-[400px] flex items-center justify-center gap-2 font-mono font-bold tracking-widest text-[12px] cursor-pointer"
                                     >
-                                        <Plus size={16} aria-hidden="true" /> {library.length > 0 ? 'OPEN A NEW GATE' : 'OPEN YOUR FIRST GATE'}
+                                        <NewGateIcon size={16} aria-hidden="true" /> {library.length > 0 ? 'OPEN A NEW GATE' : 'OPEN YOUR FIRST GATE'}
                                     </motion.button>
                                 </div>
                             ) : (
@@ -2620,7 +2407,7 @@ const App: React.FC = () => {
                                     whileHover={{ scale: 1.02 }}
                                     whileTap={{ scale: 0.96 }}
                                     type="button"
-                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleEnterPortal(activeQuest.link || '#'); }}
+                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleEnterPortal(activeQuest.link || '#', activeQuest.id); }}
                                     disabled={!activeQuest.link || activeQuest.link === '#'}
                                     title="Open the reading link (Enter)"
                                     /* The label takes `accent-on`, the ink chosen per theme for a solid
@@ -2750,7 +2537,7 @@ const App: React.FC = () => {
                         <SystemFrame variant="brackets" theme={theme}>
                             <div className="px-3 py-2 flex flex-col gap-1">
                                 <div className={`flex items-center gap-2 ${theme.highlightText} font-mono text-[9px] tracking-widest font-bold mb-1`}>
-                                    <Activity size={11} /> <span className={theme.isDark ? '' : `text-transparent bg-clip-text bg-gradient-to-r ${theme.labelGradient}`}>QUEST_METRICS</span>
+                                    <PulseGlyph size={11} /> <span className={theme.isDark ? '' : `text-transparent bg-clip-text bg-gradient-to-r ${theme.labelGradient}`}>QUEST_METRICS</span>
                                 </div>
                                 <div className="grid grid-cols-4 gap-2">
                                     <div className="flex flex-col gap-0.5">
@@ -2793,7 +2580,7 @@ const App: React.FC = () => {
                                 aria-label="Search the library"
                                 className={`hud hud-ghost h-6 w-7 -my-1 flex items-center justify-center ${theme.highlightText}`}
                             >
-                                <Search size={12} aria-hidden="true" />
+                                <SearchGlyph size={12} aria-hidden="true" />
                             </button>
                             {/* Asks the chapter tracker about this library now; the hourly job
                                 does the owner's archive anyway. Results land as "+N NEW". */}
@@ -2804,7 +2591,7 @@ const App: React.FC = () => {
                                 title="Check for new chapters"
                                 className={`hud hud-ghost h-6 -my-1 px-1.5 flex items-center gap-1.5 font-mono text-[9px] font-bold tracking-widest uppercase ${theme.highlightText} disabled:opacity-50 disabled:cursor-wait`}
                             >
-                                <RefreshCw size={11} aria-hidden="true" className={chapterCheckBusy ? 'animate-spin' : ''} />
+                                <RecalibrateGlyph size={11} aria-hidden="true" className={chapterCheckBusy ? 'animate-spin' : ''} />
                                 New chapters
                             </button>
                             </div>
@@ -2821,7 +2608,7 @@ const App: React.FC = () => {
 
                     {/* DIVINE SPIRE BUTTON. Light: an opaque pale-sky plate. The 10% sky wash it had
                         composited darker over the bottom of the page gradient and left the ink at 4.37:1. */}
-                    <button data-tour="spire" aria-label="Open Divine Spire" onClick={() => { setIsSpireOpen(true); }} className={`hud hud-btn hud-accent hud-deep hud-ticks [--hud-c:10px] mt-auto hidden lg:flex w-full h-12 ${theme.highlightText} font-mono font-bold tracking-widest uppercase items-center justify-center gap-2 text-[12px] shrink-0 cursor-pointer`}><LayoutTemplate size={16} /> DIVINE SPIRE</button>
+                    <button data-tour="spire" aria-label="Open Divine Spire" onClick={() => { setIsSpireOpen(true); }} className={`hud hud-btn hud-accent hud-deep hud-ticks [--hud-c:10px] mt-auto hidden lg:flex w-full h-12 ${theme.highlightText} font-mono font-bold tracking-widest uppercase items-center justify-center gap-2 text-[12px] shrink-0 cursor-pointer`}><SpireIcon size={16} /> DIVINE SPIRE</button>
                     </div>{/* end full panel */}
                 </div>
             </div>
@@ -2831,7 +2618,10 @@ const App: React.FC = () => {
         // waits for the ordered copy to catch up with it.) effectsPaused IS read (the
         // hero rings, sigil and dais hold still on it), and it only changes on an explicit
         // open/close or a low-power toggle, so recomputing then is correct, not wasteful.
-    ), [theme, activeQuest, progressPercent, activeId, handleLogClick, orderedActiveQuests, handleReorderActiveQuests, totalChaptersRead, playerRank, stepChapter, commitTypedChapter, holdPrev, holdNext, checkNewChapters, chapterCheckBusy, handleEnterPortal, effectsPaused, libraryLoaded, activeQuests, sidebarCollapsed, holoEdge, holoSoft]);
+        // lowPower is listed on its own as well: the dais's `still` reads it, and switched on
+        // from the Profile (an overlay, so effectsPaused was already true) it changes nothing
+        // else. library.length picks the empty-state call to action.
+    ), [theme, activeQuest, progressPercent, activeId, handleLogClick, orderedActiveQuests, handleReorderActiveQuests, totalChaptersRead, playerRank, stepChapter, commitTypedChapter, holdPrev, holdNext, checkNewChapters, chapterCheckBusy, handleEnterPortal, effectsPaused, lowPower, libraryLoaded, library.length, activeQuests, sidebarCollapsed, holoEdge, holoSoft, systemEvents]);
 
     if (booting) return <BootScreen onComplete={finishBooting} theme={theme} />;
 
@@ -2876,7 +2666,7 @@ const App: React.FC = () => {
 
             {/* The ring system: one whole circle, top of the screen to the bottom, centred on
                 the hero. Beneath the dashboard, which paints over it (z-10). */}
-            {!isSpireOpen && <HeroRings theme={theme} paused={effectsPaused} anchor={heroColumn} />}
+            {!isSpireOpen && <HeroRings theme={theme} paused={effectsPaused} anchor={heroColumn} goals={userState.goals} still={lowPower} />}
 
             {/* HEADER */}
             {!isSpireOpen && memoizedHeader}
@@ -2889,7 +2679,7 @@ const App: React.FC = () => {
                 !isModalOpen &&
                 !isProfileOpen &&
                 !isDetailOpen && (
-                    <SystemConsole theme={theme} onShowShortcuts={showShortcuts} />
+                    <SystemConsole theme={theme} onShowShortcuts={showShortcuts} lines={omniLines} />
                 )}
 
             {/* Each overlay has its own boundary, outside its Suspense so a chunk that fails
@@ -2947,6 +2737,7 @@ const App: React.FC = () => {
                             setIsModalOpen(true);
                             // Keep detail open to maintain context
                         }}
+                        onEnterPortal={(id) => noteGateTrip.current(id)}
                     />
                 )}
             </Suspense>
@@ -3010,6 +2801,8 @@ const App: React.FC = () => {
                 onNew={() => { setEditingItem(null); setIsModalOpen(true); }}
             />
 
+            {phaseShift > 0 && <PhaseShift key={phaseShift} theme={theme} onDone={endPhaseShift} />}
+
             <SystemNotification
                 isOpen={sysNote.isOpen}
                 message={sysNote.message}
@@ -3020,6 +2813,33 @@ const App: React.FC = () => {
             />
 
             {rite && <AscensionRite subject={rite} onClose={closeRite} />}
+            {rankRite && !rite && <RankRite subject={rankRite} theme={theme} onClose={closeRankRite} />}
+
+            <AnimatePresence>
+                {(() => {
+                    const q = returnTrip && library.find(x => x.id === returnTrip.questId);
+                    const clear = !isModalOpen && !isDetailOpen && !rite && !rankRite && !tourOpen && !sysNote.isOpen && !sweepOpen;
+                    return q && clear ? (
+                        <ReturnSheet
+                            key={returnTrip!.questId}
+                            theme={theme}
+                            quest={q}
+                            startChapter={returnTrip!.startChapter}
+                            onStep={stepReturnChapter}
+                            onType={typeReturnChapter}
+                            onClose={closeReturnSheet}
+                        />
+                    ) : null;
+                })()}
+            </AnimatePresence>
+
+            <Suspense fallback={null}>
+                <AnimatePresence>
+                    {sweepOpen && sweepGates && (
+                        <DormantSweep key="dormant-sweep" theme={theme} gates={sweepGates} onApply={applySweep} onLater={laterSweep} />
+                    )}
+                </AnimatePresence>
+            </Suspense>
 
             <SystemToast toast={toast} onDismiss={dismissToast} theme={theme} />
             {tourId && (

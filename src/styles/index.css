@@ -417,6 +417,34 @@ html.theme-switching *::after {
     background: rgba(194, 86, 74, 0.14);
 }
 @keyframes rite-fade { from { opacity: 0; } to { opacity: 1; } }
+/* RETURNED FROM THE GATE (ReturnSheet.tsx): the line along the sheet's foot runs down the time
+   left before it slips away; the sheet sets the duration and restarts it on each touch. */
+@keyframes return-sheet-idle { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+.return-sheet-idle { animation-name: return-sheet-idle; animation-timing-function: linear; animation-fill-mode: both; }
+
+/* THE PHASE SHIFT (PhaseShift.tsx, PHASE_MS 280): the veil wipes away under a scanline that
+   runs top to bottom on the same curve, so the line rides the veil's edge. */
+@keyframes phase-wipe { from { clip-path: inset(0 0 0 0); } to { clip-path: inset(100% 0 0 0); } }
+@keyframes phase-line {
+    0% { top: 0%; opacity: 1; }
+    80% { opacity: 1; }
+    100% { top: 100%; opacity: 0; }
+}
+@keyframes phase-fade { from { opacity: 1; } to { opacity: 0; } }
+.phase-wipe { animation: phase-wipe 280ms cubic-bezier(0.6, 0, 0.3, 1) both; }
+.phase-line { animation: phase-line 280ms cubic-bezier(0.6, 0, 0.3, 1) both; }
+.phase-fade { animation: phase-fade 220ms ease-out both; }
+@media (prefers-reduced-motion: reduce) {
+    .phase-wipe, .phase-line { animation: none; display: none; }
+}
+/* THE MANA RING closing (ManaRing.tsx): the ring flares once, outwards from its own stroke. */
+@keyframes mana-flare {
+    0% { opacity: 0; stroke-width: 2px; }
+    22% { opacity: 0.8; stroke-width: 9px; }
+    100% { opacity: 0; stroke-width: 30px; }
+}
+.mana-flare { animation: mana-flare 1.6s cubic-bezier(0.22, 1, 0.36, 1) both; }
+@media (prefers-reduced-motion: reduce) { .mana-flare { display: none; } }
 @keyframes rite-rise { from { opacity: 0; transform: translateY(18px) scale(0.92); } to { opacity: 1; transform: none; } }
 @keyframes rite-draw { to { stroke-dashoffset: 0; } }
 @keyframes rite-rune {

@@ -1,5 +1,6 @@
 import React from 'react';
-import { Terminal, XCircle, RotateCw, X } from 'lucide-react';
+import { XCircle, RotateCw, X } from 'lucide-react';
+import { TerminalGlyph } from './SystemGlyphs';
 import { Theme } from '../../core/types';
 import { THEMES, startingThemeId } from '../../core/constants';
 import { accentVars } from '../../core/tokens';
@@ -63,7 +64,7 @@ const FaultScreen: React.FC<FaultScreenProps> = ({ error, theme, scope, onDismis
                         <div className="p-6">
                             <div className="flex items-center justify-between mb-6">
                                 <div className="flex items-center gap-2">
-                                    <Terminal size={12} aria-hidden="true" className={theme.highlightText} />
+                                    <TerminalGlyph size={12} aria-hidden="true" className={theme.highlightText} />
                                     <span className={`font-mono text-[9px] tracking-[0.3em] font-bold uppercase ${theme.mutedText}`}>System Fault</span>
                                 </div>
                                 <div className={`h-[1px] flex-1 mx-4 ${theme.isDark ? 'bg-white/10' : 'bg-black/10'}`} />

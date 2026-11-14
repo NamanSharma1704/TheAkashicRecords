@@ -20,6 +20,11 @@ const userSettingsSchema = new mongoose.Schema({
     // The ACTIVE QUESTS list order (quest ids), so every device shows the same one. Empty
     // until the reader first drags a row (or a browser hands up the order it kept locally).
     questOrder: { type: [String], default: [] },
+    // THE DORMANT GATE SWEEP: when the reader last reviewed the Active series gone quiet, and
+    // the ones they chose to keep active then (left alone for another 30 days). Not in the
+    // backup: it only paces a reminder.
+    dormantSweptAt: { type: Date, default: null },
+    dormantKept: { type: [{ questId: String, at: Date, _id: false }], default: [] },
 }, {
     timestamps: true,
     collection: 'user_settings'

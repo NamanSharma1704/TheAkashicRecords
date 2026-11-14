@@ -23,6 +23,16 @@ const QuestSchema = new mongoose.Schema({
     newChapters: { type: Number, default: 0 },
     chaptersCheckedAt: { type: Date, default: null, index: true },
     chaptersUpdatedAt: { type: Date, default: null },
+    // RELEASE RADAR: the days the source recorded releases (YYYY-MM-DD, newest first, at most
+    // 40; lib/radar.js, refreshed daily when the series page asks), and the days the tracker
+    // itself saw a fresh release (`foundDays`: a find of 3 chapters or fewer on a series also
+    // checked within 3 days, so a backlog caught up on is never dated as a release). Which
+    // source, and when it was last asked. A cache of public facts, left out of the list and the
+    // backup.
+    releaseDays: { type: [String], default: undefined, select: false },
+    foundDays: { type: [String], default: undefined, select: false },
+    releaseSource: { type: String, default: null, select: false },
+    releasesFetchedAt: { type: Date, default: null, select: false },
     // Where the chapter checks found this series: each source's own id, kept the first time a
     // title search matches exactly, so later checks ask the source directly instead of
     // searching again (see checkLatestChapter in utils/metadataProxy.js). Cleared on a rename.

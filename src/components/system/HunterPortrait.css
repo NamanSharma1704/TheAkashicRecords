@@ -1,0 +1,115 @@
+/* The hunter's portrait (HunterPortrait.tsx), alive where the art already glows. */
+
+.hp-root {
+    --hp-glow: 245, 158, 11;
+    --hp-hot: 255, 236, 180;
+    position: absolute;
+    inset: 0;
+    z-index: 10;
+    /* The art carries its own shape (keyed from the owner's green-screen portrait): the
+       avatar's HUD rings and rank halo show between its points. A clip to the box: with the
+       art's filter animating, the composited layer left a 1 px seam just outside it at 1x
+       (measured in the profile banner's portal). */
+    clip-path: inset(0);
+    transition: transform 1s ease;
+}
+.hp-root[data-tone='light'] {
+    --hp-glow: 167, 139, 250;
+    --hp-hot: 246, 240, 255;
+}
+.group:hover > .hp-root { transform: scale(1.03); }
+
+.hp-art {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    user-select: none;
+    animation: hp-breathe 5s ease-in-out infinite alternate;
+}
+@keyframes hp-breathe {
+    from { filter: brightness(0.95) saturate(1); }
+    to { filter: brightness(1.07) saturate(1.1); }
+}
+
+/* Mana round the rune band: two arcs of light, half a turn apart, masked to the band. */
+.hp-band {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: conic-gradient(from 0deg,
+        transparent 0deg 110deg, rgba(var(--hp-glow), 0.85) 168deg, rgba(var(--hp-hot), 1) 178deg, transparent 180deg,
+        transparent 180deg 290deg, rgba(var(--hp-glow), 0.85) 348deg, rgba(var(--hp-hot), 1) 358deg, transparent 360deg);
+    -webkit-mask-image: radial-gradient(circle closest-side, transparent 77%, #000 80.5%, #000 89%, transparent 92%);
+    mask-image: radial-gradient(circle closest-side, transparent 77%, #000 80.5%, #000 89%, transparent 92%);
+    mix-blend-mode: screen;
+    animation: hp-spin 7s linear infinite;
+    will-change: transform;
+}
+@keyframes hp-spin { to { transform: rotate(360deg); } }
+
+/* The eyes kindle and dim. */
+.hp-eye {
+    position: absolute;
+    width: 9%;
+    height: 5%;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    background: radial-gradient(closest-side, rgba(var(--hp-hot), 0.95), rgba(var(--hp-glow), 0.6) 45%, transparent);
+    mix-blend-mode: screen;
+    animation: hp-eyes 3.4s ease-in-out infinite;
+}
+@keyframes hp-eyes {
+    0%, 100% { opacity: 0.2; }
+    42% { opacity: 1; }
+    52% { opacity: 0.8; }
+}
+
+/* The sigil breathes. */
+.hp-core {
+    position: absolute;
+    width: 24%;
+    height: 24%;
+    border-radius: 50%;
+    background: radial-gradient(closest-side, rgba(var(--hp-glow), 0.65), rgba(var(--hp-glow), 0.2) 55%, transparent);
+    mix-blend-mode: screen;
+    animation: hp-core 4.6s ease-in-out infinite alternate;
+}
+@keyframes hp-core {
+    from { opacity: 0.25; transform: translate(-50%, -50%) scale(0.9); }
+    to { opacity: 0.9; transform: translate(-50%, -50%) scale(1.08); }
+}
+
+/* A crystal glints: a four-point star flares and turns away. */
+.hp-glint {
+    position: absolute;
+    width: 12%;
+    height: 12%;
+    opacity: 0;
+    mix-blend-mode: screen;
+    animation: hp-glint 4.8s ease-out infinite;
+}
+.hp-glint::before,
+.hp-glint::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+}
+.hp-glint::before { width: 100%; height: 1.5px; background: linear-gradient(to right, transparent, rgb(var(--hp-hot)), transparent); }
+.hp-glint::after { width: 1.5px; height: 100%; background: linear-gradient(to bottom, transparent, rgb(var(--hp-hot)), transparent); }
+@keyframes hp-glint {
+    0%, 72%, 100% { opacity: 0; transform: translate(-50%, -50%) scale(0.2) rotate(0deg); }
+    80% { opacity: 1; transform: translate(-50%, -50%) scale(1) rotate(45deg); }
+    90% { opacity: 0; transform: translate(-50%, -50%) scale(0.4) rotate(90deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .hp-root,
+    .hp-root * { animation: none !important; }
+    .hp-band,
+    .hp-glint { display: none; }
+    .hp-eye { opacity: 0.6; }
+    .hp-core { opacity: 0.5; transform: translate(-50%, -50%); }
+}

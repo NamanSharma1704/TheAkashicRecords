@@ -124,14 +124,18 @@ export interface QuestGoals {
 /** A title the System grants (the server's catalogue, backend/utils/achievements.js). */
 export interface Achievement {
     key: string;
-    name: string;
-    /** Picks the icon: FIRST, STREAK, SURGE, BREADTH, NIGHT, RETURN, CONQUEST, DEPTH, CLASSES, APPRAISAL, ARCHIVE. */
+    /** Null for a hidden title not yet earned (THE TITLES CODEX): a secret until it is. */
+    name: string | null;
+    /** Picks the icon: FIRST, STREAK, SURGE, BREADTH, NIGHT, RETURN, CONQUEST, DEPTH, CLASSES,
+     *  APPRAISAL, ARCHIVE, DEVOTION, CAUGHT_UP, DAWN. */
     kind: string;
-    /** What earns it, in plain words. */
-    description: string;
-    /** The measure's bar, and where the archive stands on it (it can pass the bar). */
-    target: number;
-    value: number;
+    /** What earns it, in plain words (null while hidden). */
+    description: string | null;
+    /** The measure's bar, and where the archive stands on it (it can pass the bar); null while hidden. */
+    target: number | null;
+    value: number | null;
+    /** One of the hidden titles: shown UNDECODED until earned, then decoded. */
+    hidden?: boolean;
     /** ISO time it was granted; null while locked. */
     unlockedAt: string | null;
     /** Granted on the first evaluation, from records that predate titles. */

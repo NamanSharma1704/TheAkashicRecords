@@ -16,6 +16,9 @@ import RankSigil from './RankSigil';
 import CoverArt from './CoverArt';
 import StatusFrame from './StatusFrame';
 import RiftOpening from '../fx/RiftOpening';
+import DomainBackplane from '../domain/DomainBackplane';
+import DomainShroud from '../domain/DomainShroud';
+import { DOMAIN_NAME, realmOf } from '../domain/realms';
 import ReleaseRadar from './ReleaseRadar';
 import StarPath from './StarPath';
 import AppraisalPips from './AppraisalPips';
@@ -33,6 +36,8 @@ interface ManhwaDetailProps {
     onEdit?: (quest: Quest) => void;
     /** ENTER PORTAL was used: the trip is noted, for Return from the Gate. */
     onEnterPortal?: (questId: string) => void;
+    /** Low-power mode: the class's domain (Realm Signature) is shown settled and held still. */
+    lowPower?: boolean;
 }
 
 /** One series' Chronicle, from GET /api/quests/:id/history. */
@@ -171,12 +176,18 @@ const SectionHeader: React.FC<{ index: string; icon: React.ReactNode; label: str
 };
 
 // --- COMPONENT ---
-const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, theme, allQuests, onSetActive, onUpdate, onEdit, onEnterPortal }) => {
+const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, theme, allQuests, onSetActive, onUpdate, onEdit, onEnterPortal, lowPower = false }) => {
     const [media, setMedia] = useState<AniListMedia | null>(null);
     const [isEditingSynopsis, setIsEditingSynopsis] = useState(false);
     const [draftSynopsis, setDraftSynopsis] = useState("");
     const [isLoadingMedia, setIsLoadingMedia] = useState(false);
     const dialogRef = useRef<HTMLDivElement>(null);
+    // The cover (the class domain's epicenter) and the hero section (as wide as the content
+    // column, which the domain's backplane stays quiet under).
+    const coverRef = useRef<HTMLDivElement>(null);
+    const heroRef = useRef<HTMLDivElement>(null);
+    // The scrolling column: the Mage's leylines break around its dais as the page scrolls.
+    const scrollRef = useRef<HTMLDivElement>(null);
     const prefersReduced = useReducedMotion();
 
     // Dialog behaviour: focus the panel on open, trap Tab inside it, close on Escape, and
@@ -364,6 +375,10 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
     const metricCellClass = 'hud hud-cell flex flex-col gap-1 p-3';
 
     // Theme accent shorthands + this quest's rank sigil.
+    // The class's domain (Feature 30). None for a series with no class: it keeps the standard
+    // backdrop. Settled and held still in low-power mode and under reduced motion.
+    const realm = realmOf(quest.classType);
+    const domainStill = lowPower || !!prefersReduced;
     const accentBorder = theme.id === 'LIGHT' ? 'border-violet-400' : 'border-amber-400';
     const accentBg = theme.id === 'LIGHT' ? 'bg-[#a855f7]' : 'bg-amber-400';
     // Cover corner reticles take the amethyst ramp on light (a diagonal gradient per L, sweeping
@@ -418,8 +433,23 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                 {/* BASE GRADIENT LAYER */}
                 <div className="absolute inset-0 z-[1] manhwa-detail-base-gradient" />
 
+                {/* A CLASS DOMAIN replaces, never stacks: its backplane stands in for the blurred
+                    cover, the vignette, the HUD grid and the starfield below. */}
+                {realm && (
+                    <DomainBackplane
+                        key={quest.id}
+                        realm={realm}
+                        isDark={theme.isDark}
+                        still={domainStill}
+                        seed={quest.id}
+                        coverRef={coverRef}
+                        columnRef={heroRef}
+                        scrollRef={scrollRef}
+                    />
+                )}
+
                 {/* COVER ART AURA */}
-                {(quest?.coverUrl || media?.bannerImage || finalCover) ? (
+                {!realm && (quest?.coverUrl || media?.bannerImage || finalCover) ? (
                     <img
                         src={getProxiedImageUrl(quest?.coverUrl || media?.bannerImage || finalCover)}
                         className="w-full h-full object-cover blur-3xl scale-125 transform-gpu manhwa-detail-aura"
@@ -429,22 +459,26 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                     />
                 ) : null}
 
-                {/* DEPTH VIGNETTE */}
-                <div className="absolute inset-0 z-[2] pointer-events-none manhwa-detail-vignette" />
+                {!realm && (
+                    <>
+                        {/* DEPTH VIGNETTE */}
+                        <div className="absolute inset-0 z-[2] pointer-events-none manhwa-detail-vignette" />
 
-                {/* HUD GRID OVERLAY (Boot/Login consistency) */}
-                <div className="absolute inset-0 z-[2] pointer-events-none manhwa-detail-grid" />
+                        {/* HUD GRID OVERLAY (Boot/Login consistency) */}
+                        <div className="absolute inset-0 z-[2] pointer-events-none manhwa-detail-grid" />
 
-                {/* AMBIENT STARFIELD */}
-                <div className="absolute inset-0 z-[3] pointer-events-none">
-                    {STARS.map((s, i) => (
-                        <span
-                            key={i}
-                            className="absolute rounded-full manhwa-detail-star"
-                            style={{ left: `${s.left}%`, top: `${s.top}%`, width: s.size, height: s.size, opacity: s.opacity }}
-                        />
-                    ))}
-                </div>
+                        {/* AMBIENT STARFIELD */}
+                        <div className="absolute inset-0 z-[3] pointer-events-none">
+                            {STARS.map((s, i) => (
+                                <span
+                                    key={i}
+                                    className="absolute rounded-full manhwa-detail-star"
+                                    style={{ left: `${s.left}%`, top: `${s.top}%`, width: s.size, height: s.size, opacity: s.opacity }}
+                                />
+                            ))}
+                        </div>
+                    </>
+                )}
             </div>
 
             {/* TOP NAVIGATION BAR */}
@@ -454,7 +488,16 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                     the screen. */}
                 <div className="flex items-center gap-3 min-w-0">
                     <div className={`shrink-0 w-1 h-8 ${theme.id === 'LIGHT' ? 'bg-violet-500' : 'bg-amber-500'} shadow-[0_0_15px_currentColor]`} />
-                    <div className={`min-w-0 truncate font-mono text-[10px] tracking-[0.25em] sm:tracking-[0.4em] ${inkText} font-bold uppercase`}>SYSTEM.ARCHIVE_INSPECTION</div>
+                    <div className={`min-w-0 truncate font-mono text-[10px] tracking-[0.25em] sm:tracking-[0.4em] ${inkText} font-bold uppercase`}>
+                        SYSTEM.ARCHIVE_INSPECTION
+                        {/* The domain that has opened, named as the System names things. */}
+                        {realm && (
+                            <span className="hidden sm:inline">
+                                <span aria-hidden="true" className="opacity-50"> {'//'} </span>
+                                <ScrambleText key={quest.id} text={`DOMAIN: ${DOMAIN_NAME[realm]}`} decodeOnMount />
+                            </span>
+                        )}
+                    </div>
                 </div>
                 <div className="shrink-0 flex items-center gap-2 pointer-events-auto">
                 <button
@@ -479,22 +522,25 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
 
             {/* MAIN SCROLLABLE CONTENT (CENTERED COLUMN) */}
             <div
-                className="relative z-30 w-full h-full overflow-y-auto overscroll-contain custom-scrollbar pb-32 px-4 sm:px-8 md:px-16 manhwa-detail-scroll-container"
+                ref={scrollRef}
+                className={`relative z-30 w-full h-full overflow-y-auto overflow-x-hidden overscroll-contain custom-scrollbar pb-32 px-4 sm:px-8 md:px-16 manhwa-detail-scroll-container ${realm ? 'domain-page' : ''}`}
                 style={{ paddingTop: 'calc(max(80px, var(--safe-top) + 64px) + 8px)' }}
                 data-theme={theme.isDark ? 'dark' : 'light'}
             >
                 <motion.div variants={containerVariants} initial="hidden" animate="visible" className="max-w-6xl mx-auto flex flex-col gap-6 md:gap-12">
 
                     {/* HERO SECTION: COVER + TITLE + STATS */}
-                    <motion.div variants={itemVariants} className="flex flex-col md:flex-row gap-8 md:gap-12 items-start md:items-start">
+                    <motion.div ref={heroRef} variants={itemVariants} data-realm={realm ?? undefined} className={`relative isolate flex flex-col md:flex-row gap-8 md:gap-12 items-start md:items-start ${realm ? 'domain-hero' : ''}`}>
                         {/* COVER ART — SCANNED ARTIFACT */}
                         {/* On a phone the cover is the page's centrepiece: about two thirds of the
                             screen (it was a fixed 180px, under half of it). Beside the title from md. */}
-                        <div className="shrink-0 w-[min(66vw,264px)] md:w-[240px] lg:w-[280px] relative group mx-auto md:mx-0">
+                        <div ref={coverRef} className="shrink-0 w-[min(66vw,264px)] md:w-[240px] lg:w-[280px] relative group mx-auto md:mx-0">
+                            {/* The domain's epicenter: behind the cover, never on it. */}
+                            {realm && <DomainShroud key={quest.id} part="cover" realm={realm} isDark={theme.isDark} still={domainStill} seed={quest.id} />}
                             {/* Data spine */}
                             <div className="hidden md:flex flex-col justify-between items-center absolute top-4 bottom-4 -left-5 z-20">
                                 {[`CH ${quest.currentChapter}`, `${Math.round(progress * 100)}%`, statusLabel(quest.status)].map((s, i) => (
-                                    <span key={i} className={`manhwa-detail-spine text-[9px] font-mono tracking-[0.15em] ${theme.id === 'LIGHT' ? 'text-violet-950' : 'text-amber-400/80'}`}>{s}</span>
+                                    <span key={i} className={`manhwa-detail-spine text-[9px] font-mono tracking-[0.15em] ${realm ? 'domain-plate' : ''} ${theme.id === 'LIGHT' ? 'text-violet-950' : 'text-amber-400/80'}`}>{s}</span>
                                 ))}
                             </div>
 
@@ -530,30 +576,43 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
 
                         {/* TITLE & METADATA */}
                         <div className="flex-1 min-w-0 w-full md:w-auto flex flex-col items-center md:items-start text-center md:text-left">
+                            {/* The title stack. Its own box, hugging the words, so a class domain can
+                                frame exactly them (DomainShroud), and its text carries a halo of the
+                                page's ground over the domain (.domain-ink). The space under the stack
+                                is the stack's margin, not the last line's. */}
+                            <div className={`relative max-w-full flex flex-col items-center md:items-start ${realm ? 'domain-ink' : ''} ${media?.title?.native || realm === 'PLAYER' ? 'mb-8' : 'mb-2'}`}>
+                            {realm && <DomainShroud key={quest.id} part="title" realm={realm} isDark={theme.isDark} still={domainStill} seed={quest.id} chapter={quest.currentChapter} total={totalCh} />}
                             {/* Rank emblem */}
                             <div className="flex items-center gap-3 mb-4">
-                                <RankSigil rank={rank} theme={theme} size={44} />
-                                <span className={`text-[10px] font-mono tracking-[0.25em] uppercase font-bold ${theme.id === 'LIGHT' ? 'text-violet-950' : 'text-amber-400'}`}>RANK {rank.name}</span>
+                                <span data-domain-anchor="rank" className="flex"><RankSigil rank={rank} theme={theme} size={44} /></span>
+                                <span className={`text-[10px] font-mono tracking-[0.25em] uppercase font-bold ${realm ? 'domain-plate' : ''} ${theme.id === 'LIGHT' ? 'text-violet-950' : 'text-amber-400'}`}>RANK {rank.name}</span>
                             </div>
                             <div className="flex flex-wrap gap-2 justify-center md:justify-start mb-4">
                                 {media?.status && (
-                                    <span className={`px-2 py-0.5 border text-[9px] font-bold tracking-widest uppercase ${getStatusColor(media.status)}`}>
+                                    <span className={`px-2 py-0.5 border text-[9px] font-bold tracking-widest uppercase ${realm ? 'domain-plate' : ''} ${getStatusColor(media.status)}`}>
                                         {media.status.replace('_', ' ')}
                                     </span>
                                 )}
-                                <span className={`px-2 py-0.5 border text-[9px] font-mono tracking-widest uppercase ${theme.isDark ? 'border-white/10 bg-white/5 text-white/70' : 'border-stone-400 bg-violet-50 text-stone-800'}`}>
+                                <span className={`px-2 py-0.5 border text-[9px] font-mono tracking-widest uppercase ${realm ? 'domain-plate' : ''} ${theme.isDark ? 'border-white/10 bg-white/5 text-white/70' : 'border-stone-400 bg-violet-50 text-stone-800'}`}>
                                     CLASS: {quest.classType}
                                 </span>
                             </div>
 
-                            <h1 id="manhwa-detail-title" className={`text-3xl md:text-4xl lg:text-6xl font-black ${theme.isDark ? strongText : `text-transparent bg-clip-text bg-gradient-to-br ${theme.inkGradient}`} mb-2 leading-tight tracking-tighter drop-shadow-xl uppercase break-words`}>
+                            <h1 id="manhwa-detail-title" className={`text-3xl md:text-4xl lg:text-6xl font-black ${theme.isDark ? strongText : `text-transparent bg-clip-text bg-gradient-to-br ${theme.inkGradient}`} ${media?.title?.native || realm === 'PLAYER' ? 'mb-2' : ''} leading-tight tracking-tighter drop-shadow-xl uppercase break-words`}>
                                 {quest.title || media?.title?.english || media?.title?.romaji}
                             </h1>
                             {media?.title?.native && (
-                                <h2 className={`text-xl md:text-2xl font-medium mb-8 ${theme.isDark ? 'text-white/60' : 'text-stone-800'}`}>
+                                <h2 className={`text-xl md:text-2xl font-medium ${realm === 'PLAYER' ? 'mb-3' : ''} ${theme.isDark ? 'text-white/60' : 'text-stone-800'}`}>
                                     {media.title.native}
                                 </h2>
                             )}
+                            {/* PLAYER: the System's own line of telemetry under the title. */}
+                            {realm === 'PLAYER' && (
+                                <div className={`domain-telemetry font-mono ${inkText}`}>
+                                    <i aria-hidden="true" />SYSTEM.CLASS_OVERRIDE: PLAYER<b aria-hidden="true" />
+                                </div>
+                            )}
+                            </div>
 
                             {/* PROTOCOL BUTTONS: one block on shared edges, the portal full width
                                 and the two secondary actions as equal halves beneath. They were three

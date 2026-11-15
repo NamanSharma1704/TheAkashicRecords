@@ -2,10 +2,10 @@ import React, { useMemo, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Theme, Quest, Achievement, ImportRow } from '../../core/types';
 import SystemLogo from '../system/SystemLogo';
-import EntityAvatar from '../system/EntityAvatar';
+import HunterBanner from './HunterBanner';
 import StatBox from '../system/StatBox';
-import { X, HelpCircle, Volume2, VolumeX } from 'lucide-react';
-import { CodexGlyph, ConquestGlyph, CoversGlyph, DisconnectGlyph, ExportGlyph, GaugeGlyph, ImportGlyph, InscribeGlyph, PulseGlyph, PurgeGlyph, RecalibrateGlyph, ReticleGlyph, StackGlyph, TransmitGlyph, TuneGlyph } from '../system/SystemGlyphs';
+import { X, Volume2, VolumeX } from 'lucide-react';
+import { CodexGlyph, ConquestGlyph, CoversGlyph, DisconnectGlyph, ExportGlyph, GaugeGlyph, ImportGlyph, PulseGlyph, PurgeGlyph, RecalibrateGlyph, ReticleGlyph, StackGlyph, TuneGlyph } from '../system/SystemGlyphs';
 import TrashPanel from './TrashPanel';
 import ReadingActivity from './ReadingActivity';
 import HunterTitles from './HunterTitles';
@@ -13,7 +13,6 @@ import HunterCardDialog from './HunterCardDialog';
 import { HunterCardData } from './hunterCard';
 import ListImportDialog from './ListImportDialog';
 import CoverArt from '../quest/CoverArt';
-import { USER_RANKS, LADDER_SPAN, TRANSCENDENT_FROM, ladderWindow } from '../../utils/ranks';
 import ScrambleText from '../system/ScrambleText';
 import { getProxiedImageUrl } from '../../utils/api';
 import GalaxyNebula from '../fx/GalaxyNebula';
@@ -95,8 +94,6 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
 
     // Current rank index for rank history, and the nine-rank window the ladder shows (it
     // slides along once the reader is past MONARCH, so the next tier is always on it).
-    const currentRankIdx = useMemo(() => USER_RANKS.findIndex((r: any) => r.label === playerRank.name), [playerRank]);
-    const ladder = useMemo(() => ladderWindow(Math.max(0, currentRankIdx)), [currentRankIdx]);
 
     // --- CALIBRATION STATE ---
     const [calibration, setCalibration] = useState<CalibrationState | null>(null);
@@ -606,197 +603,19 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
             {/* CONTENT - NON SCROLLABLE STRICT LAYOUT */}
             <motion.div variants={containerVariants} initial="hidden" animate="visible" className="relative z-10 flex-1 px-4 lg:px-8 py-3 lg:py-6 overflow-y-auto hide-scrollbar max-w-[1600px] mx-auto w-full flex flex-col gap-3 lg:gap-6 pb-[calc(3rem+var(--tabbar-h))]">
 
-                {/* UNIFIED HERO HEADER: IDENTITY + RANK HISTORY */}
-                <motion.div data-tour="profile-banner" variants={itemVariants} className="hud hud-shell hud-on-plate flex w-full bg-[#0a0a0a] overflow-hidden shrink-0 mb-2 p-4 lg:p-5 pb-2 lg:pb-3">
-                          {/* Full-width sweeping glow at the bottom of the card */}
-                    <div className="absolute bottom-0 left-0 right-0 h-[55%] pointer-events-none"
-                        style={{
-                            background: theme.isDark
-                                ? 'radial-gradient(ellipse 100% 80% at 50% 100%, rgba(251,191,36,0.3) 0%, rgba(251,191,36,0.1) 40%, transparent 70%)'
-                                : 'radial-gradient(ellipse 100% 80% at 50% 100%, rgba(124,58,237,0.9) 0%, rgba(167,139,250,0.5) 30%, rgba(230,221,248,0.2) 55%, transparent 70%)'
-                        }}
+                {/* THE BANNER: identity and rank history on the owner's own art (HunterBanner.tsx). */}
+                <motion.div data-tour="profile-banner" variants={itemVariants} className="w-full shrink-0 mb-2">
+                    <HunterBanner
+                        theme={theme}
+                        playerRank={playerRank}
+                        overallPct={overallPct}
+                        username={storedUser?.username || 'SOVEREIGN'}
+                        equippedName={equippedName}
+                        onEdit={() => setShowAccountModal(true)}
+                        onCard={() => setShowCard(true)}
+                        onTour={startProfileTour}
+                        still={lowPower}
                     />
-
-
-                    {/* INNER WRAPPER — stacks content vertically */}
-                    <div className="flex flex-col w-full">
-
-                        {/* MAIN ROW: AVATAR + RIGHT COLUMN.
-                            Below sm there is ~45px left for the rank name once the avatar and the
-                            donut take their share, so it clipped to "A'" and the donut sat on the
-                            ladder. There the row wraps and the right column dissolves (`contents`):
-                            avatar and donut share the first line, and the designation + ladder
-                            (order-last, full width) run underneath. sm+ is untouched. */}
-                        <div className="flex flex-row flex-wrap sm:flex-nowrap w-full gap-5 lg:gap-8 relative z-10">
-
-                            {/* LEFT COLUMN: AVATAR — EntityAvatar has its own border; username bar continues the frame */}
-                            <div className="shrink-0 flex flex-col items-center gap-1.5">
-                                <div className="flex flex-col">
-                                    {/* EntityAvatar renders its own border (theme.border) — no extra wrapper needed */}
-                                    <EntityAvatar theme={theme} size={110} className="drop-shadow-md" rank={playerRank.name} />
-                                    {/* Username bar — l/r/b borders continue the EntityAvatar frame seamlessly */}
-                                    <div
-                                        className={`w-[110px] flex items-center justify-center px-2 py-1.5 ${theme.isDark ? 'bg-black border-l border-r border-b border-[#f59e0b]' : 'bg-white/90 border-l border-r border-b border-[#7c3aed]'}`}
-                                    >
-                                        <span
-                                            className="text-[11px] font-mono font-bold overflow-hidden text-ellipsis whitespace-nowrap w-full text-center"
-                                            style={{ color: theme.accentInk }}
-                                        >{storedUser?.username || 'SOVEREIGN'}</span>
-                                    </div>
-                                </div>
-                                {/* The equipped title, under the name. Plate ink: the banner is a
-                                    near-black plate in both themes. Long names wrap to two lines. */}
-                                {equippedName && (
-                                    <p className="w-[110px] text-center text-[9px] font-mono font-bold uppercase tracking-[0.15em] leading-snug text-accent-plate">
-                                        <span className="sr-only">Title: </span>{equippedName}
-                                    </p>
-                                )}
-                            </div>
-
-                            {/* RIGHT COLUMN: text + timeline | donut */}
-                            <div className="contents sm:flex flex-1 flex-row justify-between items-start gap-4 pt-1 min-w-0">
-
-                                {/* LEFT PART: text + timeline below */}
-                                {/* basis-full, not just w-full: flex-1's 0% basis is what line
-                                    breaking reads, so without it this never wrapped. */}
-                                <div className="order-last basis-full sm:order-none sm:basis-0 flex flex-col justify-start flex-1 min-w-0">
-                                    {/* HEADER LINE: the label, and from lg the identity actions at the
-                                        far end, their right edge on the ladder's. Below lg the rank
-                                        name needs the width, so the line dissolves (`contents`) and
-                                        the actions drop below the ladder (order-last). Stacked under
-                                        the avatar they made that column the tallest thing here. */}
-                                    <div className="contents lg:flex lg:items-center lg:justify-between lg:gap-6 lg:mb-0.5">
-                                        <div className="text-[9px] lg:text-[10px] font-mono tracking-[0.2em] font-bold uppercase mb-0.5 lg:mb-0 text-accent-plate">HUNTER DESIGNATION</div>
-                                        {/* The banner is a near-black plate in both themes, so these take
-                                            plate inks: light's page inks measured 1.2-2.8:1 here. The tour
-                                            lives here, not in the toolbar, which has no room on a phone. */}
-                                        <div className="order-last mt-5 lg:order-none lg:mt-0 flex flex-wrap items-center gap-2">
-                                            {[
-                                                { label: 'Edit Profile', icon: InscribeGlyph, onClick: () => setShowAccountModal(true) },
-                                                { label: 'Hunter Card', icon: TransmitGlyph, onClick: () => setShowCard(true) },
-                                                { label: 'Tour', icon: HelpCircle, onClick: startProfileTour },
-                                            ].map(({ label, icon: Icon, onClick }) => (
-                                                <button
-                                                    key={label}
-                                                    type="button"
-                                                    onClick={onClick}
-                                                    className="hud hud-btn hud-on-plate [--hud-c:5px] [--hud-line:var(--accent-line)] h-7 flex items-center gap-1.5 px-3 text-accent-plate hover:text-white cursor-pointer"
-                                                >
-                                                    <Icon size={10} aria-hidden="true" />
-                                                    <span className="text-[8px] font-mono font-bold uppercase tracking-widest">{label}</span>
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
-                                    <div className="drop-shadow-sm leading-normal overflow-hidden">
-                                        <span className={`inline-block pr-[6px] text-4xl sm:text-5xl lg:text-[56px] font-black font-orbitron tracking-tight text-transparent bg-clip-text bg-gradient-to-r ${theme.isDark ? theme.inkGradient : 'from-[#c4b5fd] via-[#ddd6fe] to-white'} mb-4`}>
-                                            {playerRank.name}
-                                        </span>
-                                    </div>
-                                    {/* Ranks are earned by EXP (chapters read); say how far the next one is. */}
-                                    <div className="-mt-3 mb-3 text-[10px] font-mono tracking-widest uppercase text-gray-300">
-                                        {(playerRank.exp ?? 0).toLocaleString()} EXP{playerRank.next ? ` · ${(playerRank.next.minExp - (playerRank.exp ?? 0)).toLocaleString()} to ${playerRank.next.label}` : ' · highest rank'}
-                                    </div>
-
-                                    {/* TIMELINE — starts here, right below stats text */}
-                                    <div className="relative pb-5">
-                                        <div className="relative w-full" style={{ height: '5px' }}>
-                                            {/* Base Track */}
-                                            <div className={`absolute top-0 left-0 w-full h-full rounded-full ${theme.isDark ? 'bg-white/[0.08]' : 'bg-violet-200/40'}`} />
-                                            {/* Active Fill — gradient with glow */}
-                                            <div
-                                                className="absolute top-0 left-0 h-full rounded-full"
-                                                style={{
-                                                    width: `${Math.min(100, Math.max(0, (currentRankIdx - ladder.start) / (LADDER_SPAN - 1)) * 100)}%`,
-                                                    background: theme.isDark
-                                                        ? 'linear-gradient(90deg, rgba(251,191,36,0.5) 0%, rgba(251,191,36,1) 100%)'
-                                                        : 'linear-gradient(90deg, rgba(167,139,250,0.4) 0%, rgba(124,58,237,1) 100%)',
-                                                    boxShadow: theme.isDark
-                                                        ? '0 0 10px 3px rgba(251,191,36,0.5), 0 0 20px 6px rgba(251,191,36,0.2)'
-                                                        : '0 0 10px 3px rgba(167,139,250,0.5), 0 0 20px 6px rgba(167,139,250,0.2)'
-                                                }}
-                                            />
-                                            {/* Rank Nodes */}
-                                            <div className="absolute top-1/2 -translate-y-1/2 left-0 w-full flex justify-between items-center z-10">
-                                                {ladder.ranks.map((rank, i) => {
-                                                    const idx = ladder.start + i;
-                                                    const isReached = idx <= currentRankIdx;
-                                                    // The Transcendent tiers are diamonds, not dots: past MONARCH.
-                                                    const shape = idx >= TRANSCENDENT_FROM ? 'rounded-[2px] rotate-45' : 'rounded-full';
-                                                    const isCurrent = idx === currentRankIdx;
-                                                    // theme-color-ok: rank-track pips use the lighter -400 highlight shades, not the accent
-                                                    const accentColor = theme.isDark ? '#fbbf24' : '#a78bfa';
-                                                    return (
-                                                        <div key={rank.label} className="relative flex flex-col items-center" title={`${rank.label} · ${rank.minExp.toLocaleString()} EXP`}>
-                                                            {isCurrent ? (
-                                                                <div
-                                                                    className={`w-4 h-4 lg:w-[18px] lg:h-[18px] ${shape} border-[2.5px] bg-transparent transition-all duration-500`}
-                                                                    style={{ borderColor: accentColor, boxShadow: `0 0 12px 4px ${accentColor}60, 0 0 24px 6px ${accentColor}30` }}
-                                                                />
-                                                            ) : isReached ? (
-                                                                <div
-                                                                    className={`w-[10px] h-[10px] lg:w-3 lg:h-3 ${shape} transition-all duration-500 ${theme.isDark ? 'bg-amber-400' : 'bg-[#a78bfa]'}`}
-                                                                    style={{ boxShadow: `0 0 7px 2px ${accentColor}80` }}
-                                                                />
-                                                            ) : (
-                                                                <div className={`w-2 h-2 ${shape} transition-all duration-500 ${theme.isDark ? 'bg-white/20' : 'bg-violet-400/30'}`} />
-                                                            )}
-                                                            {/* Below sm nine nowrap labels cannot share the
-                                                                width without overprinting, so only the current
-                                                                rank is named there; the nodes still show the rest.
-                                                                Hung from the node's centre, not its top: the three
-                                                                node sizes put labels at three heights. */}
-                                                            <div className={`absolute top-[calc(50%_+_13px)] lg:top-[calc(50%_+_16px)] whitespace-nowrap text-[7px] lg:text-[8px] font-mono tracking-[0.12em] font-bold uppercase transition-all
-                                                                ${isCurrent ? 'text-accent-plate' : `hidden sm:block ${isReached ? 'text-white' : 'text-gray-400'}`}`}>
-                                                                {rank.label}
-                                                            </div>
-                                                        </div>
-                                                    );
-                                                })}
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* RIGHT PART: Overall Completion donut */}
-                                <div className="relative w-[120px] h-[120px] lg:w-[130px] lg:h-[130px] flex items-center justify-center shrink-0 z-10 ml-auto sm:ml-0">
-                                    {/* ml-auto: below sm this sits beside the avatar and pairs to the right. */}
-                                    <div className={`absolute inset-[6px] rounded-full ${theme.isDark
-                                        ? 'bg-[radial-gradient(ellipse_at_center,rgba(251,191,36,0.12)_0%,rgba(0,0,0,0.3)_100%)]'
-                                        : 'bg-[radial-gradient(ellipse_at_center,rgba(255,255,255,0.9)_0%,rgba(240,236,250,0.7)_100%)]'
-                                    } backdrop-blur-sm shadow-inner`} />
-                                    <div className={`absolute inset-0 rounded-full pointer-events-none ${theme.isDark
-                                        ? 'shadow-[0_0_25px_rgba(251,191,36,0.25),0_0_8px_rgba(251,191,36,0.15)]'
-                                        : 'shadow-[0_0_20px_rgba(124,58,237,0.2),0_4px_16px_rgba(124,58,237,0.15)]'
-                                    }`} />
-                                    <div className={`absolute inset-0 rounded-full border border-accent-soft-strong pointer-events-none`} />
-                                    <svg className="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 100 100">
-                                        <defs>
-                                            <linearGradient id="donutGrad2" x1="0%" y1="0%" x2="100%" y2="100%">
-                                                <stop offset="0%" stopColor={theme.isDark ? "#fcd34d" : "#cbb8f0"} />{/* theme-color-ok: SVG donut ramp, three art shades per theme */}
-                                                <stop offset="50%" stopColor={theme.isDark ? "#fbbf24" : "#7c3aed"} />{/* theme-color-ok: SVG donut ramp */}
-                                                <stop offset="100%" stopColor={theme.isDark ? "#b45309" : "#5b21b6"} />{/* theme-color-ok: SVG donut ramp */}
-                                            </linearGradient>
-                                        </defs>
-                                        <circle cx="50" cy="50" r="44" stroke="currentColor" strokeWidth="6" fill="transparent" className={theme.isDark ? 'text-white/10' : 'text-white/10'} />
-                                        <motion.circle cx="50" cy="50" r="44" stroke="url(#donutGrad2)" strokeWidth="7.5" fill="transparent" strokeLinecap="round"
-                                            initial={{ pathLength: 0 }}
-                                            animate={{ pathLength: Math.max(0, Math.min(1, overallPct / 100)) }}
-                                            transition={springConfig}
-                                            style={{ filter: `drop-shadow(0 0 3px ${theme.isDark ? 'rgba(251,191,36,0.6)' : 'rgba(124,58,237,0.6)'})` }}
-                                        />
-                                    </svg>
-                                    <div className="absolute inset-0 flex flex-col items-center justify-center text-center gap-0.5">
-                                        <div className={`text-[7px] font-bold tracking-[0.12em] uppercase leading-[1.3] ${theme.isDark ? 'text-stone-300' : 'text-stone-600'}`}>OVERALL<br/>COMPLETION</div>
-                                        <div className={`text-[26px] lg:text-[30px] font-black ${theme.isDark ? 'text-amber-400' : 'text-[#5b21b6]'} leading-[1] tracking-tight`}>
-                                            {Math.round(overallPct)}<span className="text-[12px] font-bold">%</span>
-                                        </div>
-                                    </div>
-                                </div>
-
-                            </div>{/* end right column */}
-                        </div>{/* end main row */}
-                    </div>{/* end inner wrapper */}
                 </motion.div>
 
                 {/* COMBAT METRICS */}
@@ -853,9 +672,6 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                             <span className={`text-[10px] font-mono font-bold tracking-[0.3em] uppercase ${theme.isDark ? '' : `text-transparent bg-clip-text bg-gradient-to-r ${theme.labelGradient}`}`}>Class Distribution</span>
                         </div>
                         <div className={`hud hud-sheet [--hud-c:12px] px-5 py-5 lg:py-6 flex flex-col flex-1 relative overflow-hidden group hover:-translate-y-0.5 transition-transform duration-300`}>
-                            <div className="absolute -right-12 -bottom-12 opacity-[0.03] pointer-events-none mix-blend-screen scale-150 transition-transform duration-1000 group-hover:rotate-12">
-                                <CodexGlyph size={240} className={theme.highlightText} />
-                            </div>
                             <div className="flex flex-col justify-between h-full flex-1 gap-5 relative z-10">
                                 {classEntries.slice(0, 4).map(([cls, count]) => (
                                     <div key={cls} className="flex-1 flex flex-col justify-center">
@@ -944,7 +760,7 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                                     <div className="relative z-10 h-full flex flex-col justify-end p-2.5">
                                         <span className="text-[9px] font-bold text-white leading-tight line-clamp-2 mb-1.5 drop-shadow-lg">{item.title}</span>
                                         <div className="flex items-center gap-1.5">
-                                            <span className={`px-1.5 py-0.5 rounded-[2px] text-[9px] font-black font-mono shrink-0 ${theme.id === 'LIGHT' ? 'bg-violet-500 text-stone-900' : 'bg-amber-500 text-black'}`}>
+                                            <span className="px-1.5 py-0.5 rounded-[2px] text-[9px] font-black font-mono shrink-0 bg-accent-plate text-black">
                                                 {item.pct}%
                                             </span>
                                             <div className="h-[3px] rounded-full flex-1 bg-white/20 overflow-hidden">

@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
-import { CodexGlyph, ConquestGlyph, DepthGlyph, GaugeGlyph, ManaGlyph, NovaGlyph, RecalibrateGlyph, ResonanceGlyph, SigilGlyph, StackGlyph, TitleGlyph, VoidGlyph } from '../system/SystemGlyphs';
+import { ChronicleGlyph, CodexGlyph, ConquestGlyph, DawnGlyph, DepthGlyph, GaugeGlyph, ManaGlyph, NovaGlyph, RadarGlyph, RecalibrateGlyph, ResonanceGlyph, SigilGlyph, StackGlyph, TitleGlyph, VoidGlyph } from '../system/SystemGlyphs';
+import ScrambleText from '../system/ScrambleText';
 import { Achievement, Theme } from '../../core/types';
 
 /** One icon per kind of feat; the catalogue itself lives on the server. */
@@ -16,7 +17,14 @@ const KIND_ICON: Record<string, React.ElementType> = {
     CLASSES: StackGlyph,
     APPRAISAL: GaugeGlyph,
     ARCHIVE: CodexGlyph,
+    // THE TITLES CODEX (2026-11-14).
+    DEVOTION: ChronicleGlyph,
+    CAUGHT_UP: RadarGlyph,
+    DAWN: DawnGlyph,
 };
+
+/** What a hidden title shows until it is earned. */
+const UNDECODED = '◈✦⬡◇ UNDECODED ◇⬡✦◈';
 
 const dateFmt = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
 
@@ -53,9 +61,10 @@ const HunterTitles: React.FC<HunterTitlesProps> = ({ theme, achievements, equipp
         const earned = achievements
             .filter(a => a.unlockedAt)
             .sort((a, b) => Number(b.key === equipped) - Number(a.key === equipped) || Date.parse(b.unlockedAt!) - Date.parse(a.unlockedAt!));
+        // Locked ones, closest to earned first; the hidden ones (no progress to show) last.
         const locked = achievements
             .filter(a => !a.unlockedAt)
-            .map((a, i) => ({ a, i, p: Math.min(1, a.value / a.target) }))
+            .map((a, i) => ({ a, i, p: a.value !== null && a.target ? Math.min(1, a.value / a.target) : -1 }))
             .sort((x, y) => y.p - x.p || x.i - y.i)
             .map(x => x.a);
         return [...earned, ...locked];
@@ -83,10 +92,13 @@ const HunterTitles: React.FC<HunterTitlesProps> = ({ theme, achievements, equipp
                 <>
                     <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                         {shown.map(a => {
-                            const Icon = KIND_ICON[a.kind] || TitleGlyph;
                             const earned = !!a.unlockedAt;
+                            const secret = !!a.hidden && !earned;
+                            // A secret keeps even its kind's glyph to itself.
+                            const Icon = secret ? TitleGlyph : (KIND_ICON[a.kind] || TitleGlyph);
                             const worn = earned && a.key === equipped;
-                            const reached = Math.min(a.value, a.target);
+                            const target = a.target ?? 0;
+                            const reached = Math.min(a.value ?? 0, target);
                             return (
                                 <li
                                     key={a.key}
@@ -100,7 +112,12 @@ const HunterTitles: React.FC<HunterTitlesProps> = ({ theme, achievements, equipp
                                     </div>
                                     <div className="min-w-0 flex-1">
                                         <p className={`font-orbitron text-[11px] font-bold tracking-[0.14em] uppercase leading-snug ${earned ? theme.headingText : theme.mutedText}`}>
-                                            {a.name}
+                                            {secret
+                                                ? <span aria-label="Hidden title">{UNDECODED}</span>
+                                                : a.hidden
+                                                    // A hidden title, earned: its name decodes in.
+                                                    ? <ScrambleText text={a.name ?? ''} decodeOnMount glyphClassName="text-accent-ink" />
+                                                    : a.name}
                                             {worn && (
                                                 // Outlined in the tile's own ink: the solid accent
                                                 // plate measured 4.2:1 in light at this size.
@@ -109,20 +126,24 @@ const HunterTitles: React.FC<HunterTitlesProps> = ({ theme, achievements, equipp
                                                 </span>
                                             )}
                                         </p>
-                                        <p className={`font-mono text-[10px] leading-snug mt-0.5 ${theme.mutedText}`}>{a.description}</p>
-                                        {earned ? (
+                                        <p className={`font-mono text-[10px] leading-snug mt-0.5 ${theme.mutedText}`}>
+                                            {secret ? 'A hidden title. It decodes when it is earned.' : a.description}
+                                        </p>
+                                        {secret ? (
+                                            <p className={`font-mono text-[9px] tracking-[0.2em] uppercase mt-1.5 ${theme.mutedText}`}>Signal encrypted</p>
+                                        ) : earned ? (
                                             // "Recognised": found in records that predate titles, so
                                             // the date is when the System noticed, not when it happened.
                                             <p className="font-mono text-[9px] font-bold tracking-[0.2em] uppercase mt-1.5 text-accent-ink">
                                                 {a.recognised ? 'Recognised' : 'Acquired'} · {dateFmt.format(new Date(a.unlockedAt!))}
                                             </p>
-                                        ) : a.target > 1 ? (
+                                        ) : target > 1 ? (
                                             <div className="mt-1.5 flex items-center gap-2">
                                                 <div aria-hidden="true" className={`h-[3px] flex-1 ${theme.isDark ? 'bg-white/10' : 'bg-black/10'}`}>
-                                                    <div className="h-full bg-accent-solid" style={{ width: `${(reached / a.target) * 100}%` }} />
+                                                    <div className="h-full bg-accent-solid" style={{ width: `${(reached / target) * 100}%` }} />
                                                 </div>
                                                 <span className={`font-mono text-[9px] tabular-nums ${theme.mutedText}`}>
-                                                    {reached.toLocaleString()} / {a.target.toLocaleString()}
+                                                    {reached.toLocaleString()} / {target.toLocaleString()}
                                                 </span>
                                             </div>
                                         ) : (

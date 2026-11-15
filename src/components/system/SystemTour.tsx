@@ -145,7 +145,6 @@ const SystemTour: React.FC<{ theme: Theme; id: TourId; guest: boolean; onClose: 
                                 type="button"
                                 onClick={() => go(index + 1)}
                                 className={`hud hud-cmd ${buttonBase}`}
-                                style={{ color: theme.accentInk }}
                             >
                                 {last ? 'Begin' : 'Next'}
                             </button>

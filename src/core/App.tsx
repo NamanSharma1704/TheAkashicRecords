@@ -696,11 +696,12 @@ const App: React.FC = () => {
                 queueReward({ tone: 'REWARD', message: `Titles acquired · ${fresh.length}`, detail: fresh.map(a => a.name).join(' · '), duration: 9000 });
             } else {
                 // A streak title (7, 30, 100 days) is the streak's milestone: it wears the supernova.
+                // A fresh title is held, so it comes whole, hidden ones included.
                 fresh.forEach(a => queueReward({
                     tone: 'REWARD',
-                    message: `Title acquired · ${a.name}`,
-                    detail: a.description,
-                    nova: a.kind === 'STREAK' ? { days: a.target, readout: `>> Streak calibrated: day ${a.target}` } : undefined,
+                    message: `Title acquired · ${a.name ?? 'Undecoded'}`,
+                    detail: a.description ?? undefined,
+                    nova: a.kind === 'STREAK' && a.target ? { days: a.target, readout: `>> Streak calibrated: day ${a.target}` } : undefined,
                     duration: 8000,
                 }));
             }
@@ -2738,6 +2739,7 @@ const App: React.FC = () => {
                             // Keep detail open to maintain context
                         }}
                         onEnterPortal={(id) => noteGateTrip.current(id)}
+                        lowPower={lowPower}
                     />
                 )}
             </Suspense>

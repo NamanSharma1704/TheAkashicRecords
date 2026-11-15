@@ -182,7 +182,9 @@ const RankSigil = React.memo<RankSigilProps>(({ rank, theme, size = 48 }) => {
                     })}
                 </g>
 
-                {/* rank letter */}
+                {/* rank letter. A halo of the plate's own colour round it (paint-order stroke), so
+                    the scanline never runs into the strokes: where the bar crossed the letter in
+                    the letter's colour, the measured contrast fell to 1.3:1. */}
                 <text
                     x={CX}
                     y={CY + 0.5}
@@ -192,8 +194,9 @@ const RankSigil = React.memo<RankSigilProps>(({ rank, theme, size = 48 }) => {
                     fontWeight={900}
                     fontFamily="ui-monospace, monospace"
                     fill={c}
-                    stroke={theme.isDark ? '#000' : '#fff'}
-                    strokeWidth={0.4}
+                    stroke={theme.isDark ? 'rgb(11,11,17)' : '#fff'}
+                    strokeWidth={2.4}
+                    strokeLinejoin="round"
                     paintOrder="stroke"
                 >
                     {name}
@@ -227,7 +230,8 @@ const RankSigil = React.memo<RankSigilProps>(({ rank, theme, size = 48 }) => {
                 .rank-sigil .spin-ccw { animation: sigil-spin-rev 18s linear infinite; }
                 .rank-sigil .brackets { animation: sigil-revolve 9s linear infinite; }
                 @media (prefers-reduced-motion: reduce) {
-                    .rank-sigil .scan,
+                    /* Held still, the scanline would rest across the letter: it goes. */
+                    .rank-sigil .scan { display: none; }
                     .rank-sigil .spin-cw,
                     .rank-sigil .spin-ccw,
                     .rank-sigil .brackets { animation: none; }

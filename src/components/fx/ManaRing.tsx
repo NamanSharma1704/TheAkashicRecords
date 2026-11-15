@@ -1,6 +1,7 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useReducedMotion } from 'motion/react';
 import { QuestGoals, Theme } from '../../core/types';
+import { ringInset, scaleOf } from './manaGeometry';
 
 /**
  * THE MANA RING: today's Divine Mandate, drawn on the ring around the hero (2026-11-13).
@@ -11,8 +12,14 @@ import { QuestGoals, Theme } from '../../core/types';
  * fifths of each. When the mandate clears they meet at the seal at the bottom and the ring
  * closes, and the ring flares once as the streak's supernova plays on the toast.
  *
- * The arc is data, nothing else: it is the quest's own progress (GET /api/user/state). A tick
- * marks each unit of the target when there are few enough to count (up to 24).
+ * Its shape (2026-11-14, the owner: circular, not plain, and otherworldly): a gate circle in the
+ * language of the Mage's summoning dais. A band of rune marks runs between two rails, the outer
+ * one graduated; the arms light the band from the gate down, runes and rails together, with mana
+ * orbs at their heads; a sealed node marks the end of each unit of the mandate (when there are
+ * few enough to count, up to 24 a side) and lights as the arm passes it; the gate and the seal
+ * are star medallions, the seal lit once the ring closes.
+ *
+ * The arc is data, nothing else: it is the quest's own progress (GET /api/user/state).
  *
  *   - While a view covers the dashboard (`hold`), the ring keeps the last progress it showed and
  *     fills when the dashboard comes back, so the reader sees it happen.
@@ -24,8 +31,24 @@ import { QuestGoals, Theme } from '../../core/types';
  * at the gate and the seal; the quest panel carries the numbers.
  */
 
-const MAX_TICKS = 24;
+/** A sealed node at the end of each unit, up to this many a side. */
+const MAX_SEALS = 24;
 const EASE = 'cubic-bezier(0.22, 1, 0.36, 1)';
+const f1 = (n: number) => +n.toFixed(1);
+
+type Pt = readonly [number, number];
+/** Rune marks as polylines in a 10 x 14 box about the origin, y up negative: line glyphs, not
+ *  any real script (the same family as the Mage dais's). */
+const RUNES: Pt[][][] = [
+    [[[0, -7], [0, 7]], [[-4, -3], [4, 3]]],
+    [[[-4, -7], [-4, 7]], [[-4, -7], [4, 0], [-4, 7]]],
+    [[[-4, 7], [0, -7], [4, 7]], [[-2, 1], [2, 1]]],
+    [[[0, -7], [0, 7]], [[-4, -7], [4, -1]]],
+    [[[-4, -7], [4, 7]], [[4, -7], [-4, 7]]],
+    [[[-4, -6], [4, -6], [-4, 6], [4, 6]]],
+    [[[0, -7], [4, 0], [0, 7], [-4, 0], [0, -7]]],
+    [[[-4, 7], [-4, -7], [0, -3], [4, -7], [4, 7]]],
+];
 
 const ManaRing: React.FC<{
     theme: Theme;
@@ -41,6 +64,7 @@ const ManaRing: React.FC<{
     className?: string;
 }> = ({ theme, d, mandate, day, still, hold, className = '' }) => {
     const reduce = useReducedMotion();
+    const maskId = `mana-lit-${useId().replace(/:/g, '')}`;
     const target = Math.max(1, mandate.target);
     const frac = Math.min(1, Math.max(0, mandate.progress / target));
 
@@ -59,91 +83,163 @@ const ManaRing: React.FC<{
         before.current = shown;
     }, [shown, still, reduce]);
 
-    if (d <= 0) return null;
+    // The gate circle's carved parts, in px, each as one path: the runes, the graduation, the
+    // unit seals' places.
+    const units = target <= MAX_SEALS ? target : 0;
+    const gate = useMemo(() => {
+        if (d <= 0) return null;
+        const c = d / 2;
+        const s = scaleOf(d);
+        const h = 5 * s, medal = 13 * s, node = 5 * s;
+        // The radius keeps the whole ring on the screen: the gate's rays (30 units out) under its
+        // top edge, and the seal clear of the dashboard's footer strip (about 32 px) at its foot.
+        const r = c - ringInset(d);
+        // Degrees clockwise from the top; out: away from the centre, along: clockwise.
+        const at = (deg: number, rad: number, along = 0, out = 0): Pt => {
+            const a = (deg * Math.PI) / 180, sn = Math.sin(a), cs = Math.cos(a);
+            return [c + rad * sn + along * cs + out * sn, c - rad * cs + along * sn - out * cs];
+        };
+        const P = (p: Pt) => `${f1(p[0])} ${f1(p[1])}`;
+        const sealAngles = Array.from({ length: Math.max(0, units - 1) }, (_, i) => ((i + 1) * 180) / units);
+        // Where the band parts, in degrees either side: around the gate and the seal (whose
+        // medallions are open linework, so nothing may run through them) and each unit's node.
+        const toDeg = (px: number) => (px / r) * (180 / Math.PI);
+        const gateGap = toDeg(medal + 3), nodeGap = toDeg(node + 2.5);
+        const gaps: [number, number][] = [[180, gateGap], ...sealAngles.flatMap((a): [number, number][] => [[a, nodeGap], [360 - a, nodeGap]])];
+        const inGap = (deg: number, pad = 0) => Math.abs(((deg + 540) % 360) - 180) > 180 - gateGap - pad
+            || gaps.some(([m, w]) => Math.abs(((deg - m + 540) % 360) - 180) < w + pad);
+        const arc = (a0: number, a1: number, rad: number) => {
+            const mid = (a0 + a1) / 2;
+            return `M${P(at(a0, rad))}A${f1(rad)} ${f1(rad)} 0 0 1 ${P(at(mid, rad))}A${f1(rad)} ${f1(rad)} 0 0 1 ${P(at(a1, rad))}`;
+        };
+        // A rail: arcs from gap to gap, starting past the gate.
+        const rail = (rad: number) => {
+            const cuts = gaps.map(([m, w]) => [m - w, m + w]).sort((a, b) => a[0] - b[0]);
+            let p = '', from = gateGap;
+            for (const [a0, a1] of cuts) { if (a0 > from) p += arc(from, a0, rad); from = a1; }
+            return p + arc(from, 360 - gateGap, rad);
+        };
+        // Runes about every 17 px, none in a gap.
+        const n = Math.max(24, Math.round((2 * Math.PI * r) / (17 * s) / 2) * 2);
+        let runes = '';
+        for (let i = 0; i < n; i++) {
+            const deg = ((i + 0.5) * 360) / n;
+            if (inGap(deg, toDeg(4 * s))) continue;
+            for (const line of RUNES[(i * 5 + 3) % RUNES.length]) {
+                runes += line.map(([x, y], j) => `${j ? 'L' : 'M'}${P(at(deg, r, x * 0.42 * s, -y * 0.42 * s))}`).join('');
+            }
+        }
+        let ticks = '';
+        for (let i = 0; i < 120; i++) {
+            const deg = i * 3, long = i % 5 === 0;
+            if (inGap(deg)) continue;
+            ticks += `M${P(at(deg, r + h))}L${P(at(deg, r + h + (long ? 4 : 2) * s))}`;
+        }
+        return { c, r, s, h, medal, node, runes, ticks, outer: rail(r + h), inner: rail(r - h), sealAngles, at, P };
+    }, [d, units]);
 
-    const c = d / 2;
-    const r = c * 0.96;
+    if (!gate) return null;
+
+    const { c, r, s, h, medal, node, runes, ticks, outer, inner, sealAngles, at, P } = gate;
     const C = 2 * Math.PI * r;
     const f = shown.frac;
     const closed = f >= 1;
     const arm = (f * C) / 2;
     const deg = f * 180;
     const rgb = theme.accentFillRGB;
-    const lit = theme.isDark ? 0.68 : 0.82;
     const animate = !still && !reduce;
     const glide = animate ? `stroke-dasharray 1200ms ${EASE}` : 'none';
     const turn = animate ? `transform 1200ms ${EASE}` : 'none';
+    const hot = theme.isDark ? '#fff4d6' : '#ffffff';
 
-    // The two arms: one circle turned to start at the top, and its mirror image.
+    // The lit half-circles: one circle turned to start at the top, and its mirror image.
     const right = `rotate(-90 ${c} ${c})`;
     const left = `translate(${d} 0) scale(-1 1) rotate(-90 ${c} ${c})`;
 
-    const ticks = target > 1 && target <= MAX_TICKS
-        ? Array.from({ length: target - 1 }, (_, i) => {
-            const k = i + 1;
-            const a = (k / target) * Math.PI;
-            const on = k / target <= f + 1e-9;
-            return [1, -1].map((side) => {
-                const sx = Math.sin(a) * side;
-                const cy = -Math.cos(a);
-                return (
-                    <line
-                        key={`${k}${side}`}
-                        x1={c + sx * (r - 6)} y1={c + cy * (r - 6)}
-                        x2={c + sx * (r + 6)} y2={c + cy * (r + 6)}
-                        stroke={`rgba(${rgb},${on ? 0.85 : 0.22})`}
-                        strokeWidth="1"
-                    />
-                );
-            });
-        })
-        : null;
+    const star = (x: number, y: number, rad: number, n: number, k: number) => {
+        let p = '';
+        for (let j = 0; j < n; j++) {
+            const a = -Math.PI / 2 + ((j * k) % n) * ((2 * Math.PI) / n);
+            p += `${j ? 'L' : 'M'}${f1(x + rad * Math.cos(a))} ${f1(y + rad * Math.sin(a))}`;
+        }
+        return `${p}Z`;
+    };
+    const tri = (x: number, y: number, rad: number) => star(x, y, rad, 3, 1);
 
-    const diamond = (x: number, y: number, s: number) => `M${x} ${y - s}L${x + s} ${y}L${x} ${y + s}L${x - s} ${y}Z`;
+    /** The band itself: rails, graduation, runes. Drawn dim, then again lit under the mask. */
+    const band = (alpha: number, runeAlpha: number) => (
+        <>
+            <path d={outer} fill="none" stroke={`rgba(${rgb},${alpha})`} strokeWidth="0.9" />
+            <path d={inner} fill="none" stroke={`rgba(${rgb},${alpha * 0.8})`} strokeWidth="0.7" />
+            <path d={ticks} fill="none" stroke={`rgba(${rgb},${alpha})`} strokeWidth="0.8" />
+            <path d={runes} fill="none" stroke={`rgba(${rgb},${runeAlpha})`} strokeWidth="0.9" strokeLinejoin="round" />
+        </>
+    );
 
     return (
-        <div className={`pointer-events-none absolute ${className}`} aria-hidden="true">
+        <div className={`pointer-events-none absolute ${className}`} aria-hidden="true" data-mana-ring="">
             <svg viewBox={`0 0 ${d} ${d}`} className="w-full h-full" style={{ overflow: 'visible' }}>
-                {/* The track. */}
-                <circle cx={c} cy={c} r={r} fill="none" stroke={`rgba(${rgb},${theme.isDark ? 0.1 : 0.12})`} strokeWidth="1" />
-
-                {/* The arms, keyed by day so a new day starts empty instead of draining. */}
-                <g key={shown.day}>
-                    {arm > 0.5 && [right, left].map((t) => (
-                        <g key={t} transform={t}>
-                            <circle
-                                cx={c} cy={c} r={r} fill="none"
-                                stroke={`rgba(${rgb},${closed ? 0.24 : 0.16})`} strokeWidth="8"
-                                strokeDasharray={`${arm} ${C}`}
-                                style={{ transition: glide }}
-                            />
-                            <circle
-                                cx={c} cy={c} r={r} fill="none"
-                                stroke={`rgba(${rgb},${lit})`} strokeWidth="2.5"
-                                strokeDasharray={`${arm} ${C}`}
-                                style={{ transition: glide }}
-                            />
+                <defs>
+                    {/* What is lit: the two arms, as wide strokes along the ring. */}
+                    <mask id={maskId} maskUnits="userSpaceOnUse" x={-20} y={-20} width={d + 40} height={d + 40}>
+                        <g key={shown.day}>
+                            {arm > 0.5 && [right, left].map((t) => (
+                                <g key={t} transform={t}>
+                                    <circle cx={c} cy={c} r={r} fill="none" stroke="#fff" strokeWidth={2 * h + 14 * s} strokeDasharray={`${arm} ${C}`} style={{ transition: glide }} />
+                                </g>
+                            ))}
                         </g>
-                    ))}
+                    </mask>
+                </defs>
 
-                    {/* The heads: where each arm has reached. Gone once the ring is closed. */}
+                {/* The gate circle, unlit. */}
+                {band(theme.isDark ? 0.2 : 0.24, theme.isDark ? 0.22 : 0.26)}
+
+                {/* Lit: a band of mana, and the circle again in full light. Static: the ring sits
+                    on the dashboard all day, and a breathing glow would repaint it every frame. */}
+                <g mask={`url(#${maskId})`}>
+                    <circle cx={c} cy={c} r={r} fill="none" stroke={`rgba(${rgb},${theme.isDark ? 0.12 : 0.1})`} strokeWidth={2 * h} />
+                    <g style={{ filter: `drop-shadow(0 0 ${f1(2 * s)}px rgba(${rgb},0.7))` }}>
+                        {band(0.95, 1)}
+                    </g>
+                </g>
+
+                {/* A sealed node at the end of each unit, lit once the arm has passed it. */}
+                {sealAngles.map((a) => [a, -a].map((g) => {
+                    const on = a / 180 <= f + 1e-9;
+                    const [x, y] = at(g, r);
+                    return (
+                        <g key={g}>
+                            <circle cx={f1(x)} cy={f1(y)} r={f1(node)} fill="none" stroke={`rgba(${rgb},${on ? 0.95 : 0.45})`} strokeWidth="0.9" />
+                            <path d={tri(x, y, node * 0.55)} fill={on ? `rgba(${rgb},0.95)` : 'none'} stroke={`rgba(${rgb},${on ? 0.95 : 0.45})`} strokeWidth="1" />
+                        </g>
+                    );
+                }))}
+
+                {/* The heads: mana orbs where each arm has reached. Gone once the ring is closed. */}
+                <g key={`${shown.day}-heads`}>
                     {f > 0 && !closed && [deg, -deg].map((a) => (
                         <g key={a > 0 ? 'r' : 'l'} style={{ transform: `rotate(${a}deg)`, transformOrigin: `${c}px ${c}px`, transition: turn }}>
-                            <path d={diamond(c, c - r, 4)} fill={theme.isDark ? '#ffffff' : `rgb(${rgb})`} stroke={`rgba(${rgb},0.9)`} strokeWidth="1" />
+                            <circle cx={c} cy={c - r} r={f1(8 * s)} fill={`rgba(${rgb},0.2)`} />
+                            <circle cx={c} cy={c - r} r={f1(3.4 * s)} fill={hot} stroke={`rgba(${rgb},0.95)`} strokeWidth="1" />
                         </g>
                     ))}
                 </g>
 
-                {ticks}
-
-                {/* The gate at the top, where the arms leave; the seal at the bottom, where they meet. */}
-                <path d={diamond(c, c - r, 5)} fill={theme.isDark ? 'rgba(4,3,8,0.9)' : 'rgba(255,255,255,0.9)'} stroke={`rgba(${rgb},0.55)`} strokeWidth="1" />
-                <path
-                    d={diamond(c, c + r, 5)}
-                    fill={closed ? `rgb(${rgb})` : (theme.isDark ? 'rgba(4,3,8,0.9)' : 'rgba(255,255,255,0.9)')}
-                    stroke={`rgba(${rgb},${closed ? 0.95 : 0.35})`}
-                    strokeWidth="1"
-                />
+                {/* The gate at the top, where the arms leave, and the seal at the bottom, where
+                    they meet: star medallions, the seal lit once the ring closes. */}
+                {([[c - r, true], [c + r, closed]] as const).map(([y, on], i) => (
+                    <g key={i}>
+                        <circle cx={c} cy={y} r={f1(medal)} fill="none" stroke={`rgba(${rgb},${on ? 0.95 : 0.5})`} strokeWidth="1.1" />
+                        <circle cx={c} cy={y} r={f1(medal * 0.77)} fill="none" stroke={`rgba(${rgb},${on ? 0.6 : 0.3})`} strokeWidth="0.9" strokeDasharray="2 3" />
+                        <path d={star(c, y, medal * 0.57, i ? 5 : 6, 2)} fill={on && i ? `rgba(${rgb},0.35)` : 'none'} stroke={`rgba(${rgb},${on ? 0.95 : 0.5})`} strokeWidth="1.2" />
+                        <circle cx={c} cy={y} r={f1(2 * s)} fill={on ? hot : `rgba(${rgb},0.5)`} />
+                        {/* Rays off the gate, fanning outward. */}
+                        {!i && [-1, 0, 1].map((g) => (
+                            <path key={g} d={`M${P(at(0, r, g * 5 * s, medal + 3 * s))}L${P(at(0, r, g * 9 * s, (g ? 25 : 30) * s))}`} stroke={`rgba(${rgb},0.6)`} strokeWidth="1" />
+                        ))}
+                    </g>
+                ))}
 
                 {/* The flare as the ring closes. */}
                 {flare > 0 && (

@@ -38,7 +38,8 @@ export const THEMES: Record<ThemeId, Theme> = {
         inputBg: 'bg-black/50',
         baseText: 'text-gray-300',
         headingText: 'text-white',
-        mutedText: 'text-gray-400',
+        // A hair above gray-400 (#9ca3af measured 4.47:1 on the quest list's warm atmosphere).
+        mutedText: 'text-[#a3aab6]',
         highlightText: 'text-[#f59e0b]',
         border: 'border-[#f59e0b]',
         borderSubtle: 'border-white/10',
@@ -71,12 +72,17 @@ export const THEMES: Record<ThemeId, Theme> = {
         panelBg: 'bg-[#fbf9ff]',
         inputBg: 'bg-[#eae3f5]',
         // Aubergine near-black ink for the value range that carries definition; body and muted
-        // step up in lightness, still violet.
-        baseText: 'text-[#463a5c]',
+        // step up in lightness, still violet. Muted is set for the deepest of the atmosphere a
+        // label sits on bare (the foot of the dashboard's quest list, ~#c2a5e6), not just the
+        // page ground: #655a80 measured 3.4-4.1:1 there; #453a5c holds 4.6:1. Body stepped down
+        // with it so muted still reads lighter than body (2026-11-15).
+        baseText: 'text-[#3d3352]',
         headingText: 'text-[#241a33]',
-        mutedText: 'text-[#655a80]',
-        // Deep amethyst accent text — readable at every size on the bright ground.
-        highlightText: 'text-[#5b21b6]',
+        mutedText: 'text-[#453a5c]',
+        // Deep amethyst accent text — readable at every size on the bright ground, and on an
+        // accent-tinted plate over the atmosphere (an earned title's card: #5b21b6 measured
+        // 4.2:1 there). violet-900, the section labels' own start (2026-11-15).
+        highlightText: 'text-[#4c1d95]',
         border: 'border-[#8b5cf6]',
         borderSubtle: 'border-[#d3cae8]',
         overlay: 'bg-[#e7ddf5]/85',
@@ -85,10 +91,12 @@ export const THEMES: Record<ThemeId, Theme> = {
         gradient: 'from-[#7c3aed] to-[#a78bfa]',
         // Display-text gradient: bright violet start, luminous #a855f7 mid, deep end.
         inkGradient: 'from-[#7c3aed] via-[#a855f7] to-[#6d28d9]',
-        // Section-label ramp, readable on the bright panel.
-        labelGradient: 'from-[#7c3aed] to-[#5b21b6]',
+        // Section-label ramp, readable on the bright panel AND on the bare atmosphere, where
+        // the labels are 9-10px, down to the hero's deep violet glow (~#b094e9): violet-900 to
+        // purple-950 (#7c3aed measured 2.3-3.4:1 there; #4a1c90 holds 4.5:1).
+        labelGradient: 'from-[#4a1c90] to-[#3b0764]',
         accentColor: '#7c3aed',
-        accentInk: '#5b21b6',
+        accentInk: '#4c1d95',
         warningInk: '#b0431a',
         // Accent family (see Theme): fills and lines on violet-500, icons on violet-600.
         accentFillRGB: '139, 92, 246',

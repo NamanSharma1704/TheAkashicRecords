@@ -2,6 +2,7 @@ import React, { useId } from 'react';
 import { Theme } from '../../core/types';
 import { avatarStageOf } from '../../utils/ranks';
 import { StageFrame, StageHalo } from './AvatarStage';
+import HunterPortrait from './HunterPortrait';
 
 interface EntityAvatarProps {
     theme: Pick<Theme, 'id' | 'accentInk' | 'accentColor' | 'accentFillRGB' | 'border' | 'isDark'>;
@@ -10,25 +11,22 @@ interface EntityAvatarProps {
     /** The player's rank: the frame evolves with it (AvatarStage.tsx). None, as on the sign-in
      *  screen, is the plain DORMANT Apostle. */
     rank?: string;
+    /** No square of its own (border, plate, hover glow, the square rank frame): standing in
+     *  the banner's portal, which is its frame there. The rank halo and the rings stay. */
+    bare?: boolean;
 }
 
-const EntityAvatar: React.FC<EntityAvatarProps> = ({ theme, size = 64, className = "", rank }) => {
+const EntityAvatar: React.FC<EntityAvatarProps> = ({ theme, size = 64, className = "", rank, bare = false }) => {
     const stage = avatarStageOf(rank);
     const uid = `av${useId().replace(/:/g, '')}`;
     const goldColor = '#f59e0b';
     const mainColor = theme.id === 'LIGHT' ? '#7c3aed' : goldColor;
     const secondaryColor = theme.id === 'LIGHT' ? '#a78bfa' : '#fbbf24';
 
-    // Trifold Palette: Black hood/armor, White face/chest, Golden energy
-    const hoodColor = '#0a0a0a'; // Always black hood for structure
-    const whitePlate = '#fafafa';
-    const armorBase = '#1a1a1a';
-    const armorMid = '#2a2a2a';
-    const armorDeep = '#111111';
 
     return (
         <div
-            className={`relative isolate group flex items-center justify-center overflow-hidden border ${theme.border} ${theme.isDark ? 'bg-[#0a0a0a]' : 'bg-[#eae1f5]'} ${className} transition-all duration-700 hover:shadow-[0_0_30px_rgba(var(--primary-rgb),0.5)]`}
+            className={`relative isolate group flex items-center justify-center overflow-hidden ${bare ? '' : `border ${theme.border} ${theme.isDark ? 'bg-[#0a0a0a]' : 'bg-[#eae1f5]'} hover:shadow-[0_0_30px_rgba(var(--primary-rgb),0.5)]`} ${className} transition-all duration-700`}
             style={{
                 width: size,
                 height: size,
@@ -59,144 +57,18 @@ const EntityAvatar: React.FC<EntityAvatarProps> = ({ theme, size = 64, className
             {/* 1b. THE RANK HALO, behind the figure (from ARGENT). */}
             <StageHalo stage={stage} accent={theme.accentColor} uid={uid} />
 
-            {/* 2. HIGH-DEFINITION SYNTHETIC APOSTLE (SOLID VOLUMETRIC) */}
-            <svg
-                viewBox="0 0 100 100"
-                className="w-[94%] h-[94%] relative z-10"
-            >
-                <defs>
-                    {/* Metallic Armor Gradient */}
-                    <linearGradient id="armorGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" stopColor={armorBase} />
-                        <stop offset="50%" stopColor={armorMid} />
-                        <stop offset="100%" stopColor={armorDeep} />
-                    </linearGradient>
-                    {/* White Divine Plate Gradient */}
-                    <linearGradient id="whiteGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" stopColor="#fff" />
-                        <stop offset="100%" stopColor="#ddd" />
-                    </linearGradient>
-                    {/* Themed Overlay Gradient (Makes the Apostle feel themed) */}
-                    <linearGradient id="themeOverlay" x1="0%" y1="0%" x2="0%" y2="100%">
-                        <stop offset="0%" stopColor={mainColor} stopOpacity="0.05" />
-                        <stop offset="100%" stopColor={mainColor} stopOpacity="0.15" />
-                    </linearGradient>
-                    {/* Energy Highlight Gradient */}
-                    <linearGradient id="highlightGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-                        <stop offset="0%" stopColor={mainColor} stopOpacity="0.8" />
-                        <stop offset="100%" stopColor={mainColor} stopOpacity="0" />
-                    </linearGradient>
-                    {/* Volumetric Shadow Filter */}
-                    <filter id="volScale" x="-10%" y="-10%" width="120%" height="120%">
-                        <feDropShadow dx="0" dy="2" stdDeviation="2" floodOpacity="0.5" />
-                    </filter>
-                </defs>
+            {/* 2. THE HUNTER: the owner's portrait (HunterPortrait.tsx), alive where the art glows,
+                in the avatar's own rings and rank frame. It replaced the drawn Apostle. */}
+            <HunterPortrait isDark={theme.isDark} size={size} />
 
-                <g className="transition-all duration-1000 group-hover:scale-[1.03] origin-bottom" filter="url(#volScale)">
-
-                    {/* A. ARMORED SHOULDERS (SOLID DEFINITION) - BLACK */}
-                    <g fill="url(#armorGrad)" stroke="#333" strokeWidth="0.4">
-                        {/* Shadow layers for depth */}
-                        <path d="M12 85 L22 55 L40 50 L45 85 Z" fill="#000" transform="translate(1,1)" opacity="0.3" />
-                        {/* Main Shoulder Plate Left */}
-                        <path d="M12 85 L22 55 L40 50 L45 85 Z" className="transition-all duration-700 group-hover:opacity-90" />
-                        {/* Main Shoulder Plate Right */}
-                        <path d="M88 85 L78 55 L60 50 L55 85 Z" className="transition-all duration-700 group-hover:opacity-90" />
-
-                        {/* Themed definition lines on shoulders */}
-                        <path d="M15 82 L24 58" fill="none" stroke={mainColor} strokeWidth="0.3" opacity="0.4" />
-                        <path d="M85 82 L76 58" fill="none" stroke={mainColor} strokeWidth="0.3" opacity="0.4" />
-
-                        {/* Chest Base - Black */}
-                        <path d="M38 55 L62 55 L60 85 L40 85 Z" fill="#111" />
-                    </g>
-
-                    {/* B. CENTRAL DIVINE PLATES - WHITE */}
-                    <g fill="url(#whiteGrad)" stroke="#333" strokeWidth="0.2">
-                        {/* Central Chest Plate */}
-                        <path d="M42 58 L58 58 L56 80 L44 80 Z" />
-                        <path d="M42 58 L58 58 L56 80 L44 80 Z" fill="url(#themeOverlay)" opacity="0.4" />
-                    </g>
-
-                    {/* C. ENERGY CORE & VENTS - GOLDEN */}
-                    <g fill={mainColor}>
-                        {/* Shoulder Lights */}
-                        <rect x="20" y="60" width="3" height="12" className="animate-pulse" opacity="0.4" />
-                        <rect x="77" y="60" width="3" height="12" className="animate-pulse" opacity="0.4" />
-                        {/* Chest Reactor */}
-                        <path d="M48 62 L52 62 L51 68 L49 68 Z" className="animate-ping" opacity="0.6" />
-                        <rect x="47" y="60" width="6" height="1" opacity="0.8" />
-                    </g>
-
-                    {/* D. THE HOOD - BLACK */}
-                    <g>
-                        {/* Outer Hood - Deep Black */}
-                        <path
-                            d="M28 50 Q28 2 50 2 Q72 2 72 50 L78 62 Q50 54 22 62 Z"
-                            fill={hoodColor}
-                            stroke="#222"
-                            strokeWidth="0.75"
-                        />
-                        {/* Themed Hood definition line */}
-                        <path d="M50 2 L50 15" fill="none" stroke={mainColor} strokeWidth="0.2" opacity="0.4" />
-
-                        {/* Inner Hood Lip - Theme Accent */}
-                        <path
-                            d="M32 50 Q32 8 50 8 Q68 8 68 50"
-                            fill="none"
-                            stroke={mainColor}
-                            strokeWidth="0.5"
-                            strokeDasharray="10 5"
-                            className="opacity-20 group-hover:opacity-50 transition-opacity duration-1000"
-                        />
-                    </g>
-
-                    {/* E. THE FACE PLATE - WHITE */}
-                    <g>
-                        {/* Main Visor Block - White */}
-                        <path d="M43 32 L50 28 L57 32 V46 L50 50 L43 46 Z" fill={whitePlate} stroke={mainColor} strokeWidth="0.3" opacity="0.95" />
-                        {/* Internal Glowing Ocular Sensor - Golden */}
-                        <g filter="url(#physGlow)">
-                            <circle cx="50" cy="38" r="1.5" fill={mainColor} className="animate-pulse" />
-                            <circle cx="50" cy="38" r="0.5" fill="black" />
-                        </g>
-                        {/* Technical Trim */}
-                        <path d="M45 46 L50 49 L55 46" fill="none" stroke={mainColor} strokeWidth="0.5" strokeDasharray="1 1" opacity="0.5" />
-                    </g>
-
-                    {/* F. MECHANICAL SEAMS & BOLTS */}
-                    <g fill={mainColor} opacity="0.3">
-                        <circle cx="18" cy="80" r="0.4" />
-                        <circle cx="82" cy="80" r="0.4" />
-                        <circle cx="38" cy="53" r="0.4" />
-                        <circle cx="62" cy="53" r="0.4" />
-                    </g>
-                </g>
-            </svg>
-
-            {/* 3. PERIPHERAL TECH DECAL (DEFINED METADATA). Texture, not text (4-5px), so
-                hidden from screen readers, which read it out as "LVL_99 Root.Apostle". */}
-            <div aria-hidden="true" className="absolute top-2 left-2 flex flex-col items-start pointer-events-none group-hover:translate-x-1 transition-transform">
-                <div className="flex items-center gap-1">
-                    <div className="w-1 h-3 bg-current" style={{ color: mainColor }} />
-                    <span className="text-[5px] font-mono font-black tracking-tight" style={{ color: theme.accentInk }}>LVL_99</span>
-                </div>
-                <span className="text-[4px] font-mono opacity-60 uppercase tracking-widest mt-0.5" style={{ color: theme.accentInk }}>Root.Apostle</span>
-            </div>
-
-            {/* Bottom Status Ticker (Physical Integration): texture too, hidden likewise. */}
-            <div aria-hidden="true" className="absolute bottom-1 right-2 flex items-center gap-1 opacity-20 group-hover:opacity-100 transition-opacity">
-                <div className="w-[2px] h-[2px] rounded-full bg-white animate-ping" />
-                {/* The card is #0a0a0a on dark but #f2eef8 on light, where white-on-white
-                    erased this decal entirely. It is 4px texture rather than text, so it
-                    stays faint — but faint in both themes, not absent in one. */}
-                <span className={`text-[4px] font-mono ${theme.isDark ? 'text-white/50' : 'text-[#2c2718]/50'} lowercase tracking-widest`}>Defined_State://True</span>
-            </div>
+            {/* The corner decals that named the drawn Apostle ("LVL_99 Root.Apostle",
+                "Defined_State://True") went with it: they printed over the portrait's frame, and
+                the level was not a real one. */}
 
             {/* THE RANK FRAME, over the figure. At DORMANT it is these two faint brackets; from
                 FORGED the stage's own frame takes their place, and from PRISMATIC a band of
                 light crosses it now and then. */}
-            {stage === 0 ? (
+            {bare ? null : stage === 0 ? (
                 <>
                     <div className={`absolute top-0 left-0 w-3 h-3 border-t-2 border-l-2 ${theme.border} opacity-40`} />
                     <div className={`absolute bottom-0 right-0 w-3 h-3 border-b-2 border-r-2 ${theme.border} opacity-40`} />
@@ -204,7 +76,7 @@ const EntityAvatar: React.FC<EntityAvatarProps> = ({ theme, size = 64, className
             ) : (
                 <StageFrame stage={stage} accent={theme.accentColor} uid={uid} />
             )}
-            {stage >= 3 && <div aria-hidden="true" className="absolute inset-0 z-20 pointer-events-none rank-sheen" />}
+            {stage >= 3 && !bare && <div aria-hidden="true" className="absolute inset-0 z-20 pointer-events-none rank-sheen" />}
         </div>
     );
 };

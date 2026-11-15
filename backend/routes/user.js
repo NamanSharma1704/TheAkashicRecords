@@ -217,7 +217,7 @@ router.post('/api/achievements/sync', authenticate, writeLimiter, async (req, re
             (await Achievement.find({}).select('-_id key unlockedAt recognised').lean()).map((a) => [a.key, a])
         );
         const [settings, held] = await Promise.all([ensureUserSettings(UserSettings, req.user._id), readHeld()]);
-        const values = await measureArchive(req.dbConn, tzOf(req), { skipNight: held.has('night') });
+        const values = await measureArchive(req.dbConn, tzOf(req), { held: new Set(held.keys()) });
         const seeding = !settings.achievementsSeededAt;
 
         const due = ACHIEVEMENTS.filter((a) => !held.has(a.key) && values[a.measure] >= a.target);
@@ -247,12 +247,18 @@ router.post('/api/achievements/sync', authenticate, writeLimiter, async (req, re
             equipped: settings.equippedTitle && earned.has(settings.equippedTitle) && ACHIEVEMENT_KEYS.has(settings.equippedTitle)
                 ? settings.equippedTitle
                 : null,
-            achievements: ACHIEVEMENTS.map(({ key, name, kind, description, measure, target }) => ({
-                key, name, kind, description, target,
-                value: values[measure],
-                unlockedAt: earned.get(key)?.unlockedAt || null,
-                recognised: earned.get(key)?.recognised === true,
-            })),
+            // A hidden title is a secret until it is held: no name, no description, no progress.
+            achievements: ACHIEVEMENTS.map(({ key, name, kind, description, measure, target, hidden }) => (
+                hidden && !earned.has(key)
+                    ? { key, name: null, kind, description: null, target: null, value: null, unlockedAt: null, recognised: false, hidden: true }
+                    : {
+                        key, name, kind, description, target,
+                        value: values[measure],
+                        unlockedAt: earned.get(key)?.unlockedAt || null,
+                        recognised: earned.get(key)?.recognised === true,
+                        ...(hidden ? { hidden: true } : {}),
+                    }
+            )),
             fresh: seeding ? [] : fresh,
             recognised: seeding ? fresh.length : 0,
         });

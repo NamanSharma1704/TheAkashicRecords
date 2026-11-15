@@ -59,7 +59,7 @@ export const accentVars = (theme: Theme): Record<string, string> => ({
     '--hud-danger-soft': theme.isDark ? 'rgba(239, 68, 68, 0.14)' : 'rgba(220, 38, 38, 0.10)',
     '--hud-on-plate-line': 'rgba(255, 255, 255, 0.18)',
     '--hud-deep-glass': theme.isDark ? 'rgba(0, 0, 0, 0.72)' : 'rgba(255, 255, 255, 0.82)',
-    '--hud-ink-muted': theme.isDark ? '#9ca3af' : '#655a80',
+    '--hud-ink-muted': theme.isDark ? '#a3aab6' : '#453a5c',
     '--hud-sheet-glass': theme.isDark ? 'rgba(0, 0, 0, 0.32)' : 'rgba(255, 255, 255, 0.72)',
     '--hud-panel-solid': theme.isDark ? '#0a0a0c' : '#fbf9ff',
     '--hud-status-scrim': theme.isDark ? 'transparent' : 'rgba(16, 8, 26, 0.92)',

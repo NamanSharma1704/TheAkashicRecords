@@ -47,6 +47,7 @@ import React from 'react';
  *   NovaGlyph         a burst round a diamond core, the streak's supernova (streak titles)
  *   DepthGlyph        a plumb line sounding below the surface (the depth titles)
  *   RadarGlyph        rings, a sweep and a blip (Release Radar)
+ *   DawnGlyph         a sun half over the horizon, its first rays (Dawn Reader)
  *
  * Every glyph was checked enlarged and at the sizes it is used at (10-18px), in both themes.
  */
@@ -353,6 +354,15 @@ export const RadarGlyph: React.FC<GlyphProps> = (p) => (
         <path d="M12 3.5A8.5 8.5 0 0 1 20.5 12" />
         <path d="M12 12L18 6" />
         <path d={diamond(15.6, 15.2, 1.4)} fill="currentColor" fillOpacity={p.active ? 0.9 : 0.6} strokeWidth="1" />
+    </svg>
+);
+
+export const DawnGlyph: React.FC<GlyphProps> = (p) => (
+    <svg {...svgProps(p)}>
+        <path d="M6.5 16.5A5.5 5.5 0 0 1 17.5 16.5" fill="currentColor" fillOpacity={glass(p.active) * 1.6} />
+        <path d="M2.5 16.5H21.5" />
+        <path d="M12 6V8.6M5.3 9.2L7.1 11M18.7 9.2L16.9 11" strokeWidth="1" opacity="0.75" />
+        <path d="M6 19.8H18" strokeWidth="1" opacity="0.5" />
     </svg>
 );
 

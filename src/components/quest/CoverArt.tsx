@@ -59,7 +59,9 @@ const CoverArt: React.FC<CoverArtProps> = ({ url, title, alt = '', className = '
             >
                 {/* Faint scanlines, the HUD's texture for "no signal". */}
                 <div className="absolute inset-0 opacity-[0.07] bg-[repeating-linear-gradient(0deg,#fff_0px,#fff_1px,transparent_1px,transparent_4px)]" />
-                <span className={`relative font-orbitron font-black leading-none text-accent opacity-40 ${mono}`}>{glyph ?? monogramOf(title)}</span>
+                {/* A ghost of the title's letter, so the plate's ink: on light, the bare accent
+                    vanished into the near-black plate (2026-11-15). */}
+                <span className={`relative font-orbitron font-black leading-none text-accent-plate opacity-40 ${mono}`}>{glyph ?? monogramOf(title)}</span>
                 {size !== 'thumb' && (
                     <>
                         <span className="relative text-[9px] font-mono text-stone-300 uppercase tracking-widest">{label ?? 'Cover unavailable'}</span>

@@ -35,21 +35,21 @@ const SystemConsole: React.FC<SystemConsoleProps> = ({ theme, onShowShortcuts, l
 
     return (
         <div
-            // Desktop only (lg+): below lg the phone tab bar owns the bottom edge.
+            // Desktop only (lg+): below lg the phone tab bar owns the bottom edge. Transparent,
+            // with no backdrop blur: the dark gradient and the blur read as a translucent band
+            // across the foot of the page (the owner, 2026-11-14).
             className={`fixed bottom-0 left-0 w-full
   h-[calc(28px+env(safe-area-inset-bottom,0px))]
-  backdrop-blur-[2px]
   hidden lg:flex items-center px-4 font-mono text-[9px]
-  ${theme.isDark
-      ? 'bg-gradient-to-t from-black/60 via-black/20 to-transparent'
-      : 'bg-transparent'
-  }
+  bg-transparent
   z-[70] transition-colors duration-700
   pb-[env(safe-area-inset-bottom)]`}
         >
             <div className="flex items-center gap-3 w-full max-w-[1920px] mx-auto">
                 <PulseGlyph size={10} className={`${theme.highlightText} animate-pulse transition-colors duration-700`} />
-                <span className={`${theme.highlightText} font-bold opacity-100 transition-colors duration-700`}>OMNI_LOG //</span>
+                {/* The light page's corners deepen to violet, where the accent ink measured 3.5:1:
+                    there the labels take the page's heading ink. */}
+                <span className={`${theme.isDark ? theme.highlightText : theme.headingText} font-bold opacity-100 transition-colors duration-700`}>OMNI_LOG //</span>
                 <span className={`truncate ${theme.headingText} font-bold opacity-100 transition-colors duration-700`}>
                     <ScrambleText text={sysLog} maxMs={600} glyphClassName="text-accent-ink" />
                 </span>
@@ -65,7 +65,7 @@ const SystemConsole: React.FC<SystemConsoleProps> = ({ theme, onShowShortcuts, l
                         </button>
                     )}
                 </div>
-                <span className={`hidden sm:block ${theme.highlightText} font-bold opacity-100 tracking-widest`}>V.2.1 {theme.id === 'LIGHT' ? 'CELESTIAL.OS' : 'MONARCH.OS'}</span>
+                <span className={`hidden sm:block ${theme.isDark ? theme.highlightText : theme.headingText} font-bold opacity-100 tracking-widest`}>V.2.1 {theme.id === 'LIGHT' ? 'CELESTIAL.OS' : 'MONARCH.OS'}</span>
             </div>
         </div>
     );

@@ -1966,7 +1966,7 @@ const App: React.FC = () => {
                                 takes the same lift and its middle stays on the card's at every size.
                                 (A fixed -mt-[30px] here approximated that lift.) */}
                             <div className="hidden md:flex flex-col items-end justify-center self-stretch flex-1 basis-0 min-w-0 shrink">
-                                <div className="relative -top-5 lg:-top-[4.5dvh] flex flex-col items-end gap-6 xl:gap-8 w-full">
+                                <div data-tour="hero-rank" className="relative -top-5 lg:-top-[4.5dvh] flex flex-col items-end gap-6 xl:gap-8 w-full">
                                     <div className="flex flex-col items-end w-max max-w-none">
                                         <div className={`text-[10px] font-mono ${theme.mutedText} tracking-[0.3em] uppercase mb-2 flex items-center justify-end gap-1.5`}>
                                             <CrownGlyph size={10} style={{ color: theme.accentInk }} />
@@ -1991,6 +1991,7 @@ const App: React.FC = () => {
                             <div
                                 role="button"
                                 tabIndex={0}
+                                data-tour="hero-card"
                                 aria-label={activeQuest.id === DEFAULT_QUEST.id ? 'Create a new gate' : `Edit ${activeQuest.title}`}
                                 onDoubleClick={() => {
                                     if (activeQuest.id === DEFAULT_QUEST.id) return;
@@ -2267,7 +2268,7 @@ const App: React.FC = () => {
 
                             {/* Right Column: Sequence & System Log, centred on the card as the left is. */}
                             <div className="hidden md:flex flex-col items-start justify-center self-stretch flex-1 basis-0 min-w-0 shrink">
-                                <div className="flex flex-col items-start w-max max-w-none">
+                                <div data-tour="hero-sequence" className="flex flex-col items-start w-max max-w-none">
                                     <div className={`text-[10px] font-mono tracking-[0.3em] uppercase mb-2 ${theme.isDark ? theme.mutedText : `text-transparent bg-clip-text bg-gradient-to-r ${theme.labelGradient}`}`}>SEQUENCE DATA</div>
                                     {/* Tap (or Enter) to type a chapter: one save however far
                                         the jump, where the steppers would take a tap per chapter. */}
@@ -2294,7 +2295,7 @@ const App: React.FC = () => {
                                     )}
                                 </div>
 
-                                <div className="w-full max-w-[220px]">
+                                <div data-tour="event-log" className="w-full max-w-[220px]">
                                     <div className={`text-[10px] font-mono ${theme.mutedText} tracking-[0.3em] uppercase mb-2 flex items-center gap-1.5 border-b ${theme.borderSubtle} pb-2`}>
                                         <span className={`w-1 h-1 rounded-full animate-ping`} style={{ backgroundColor: theme.accentColor }} /> EVENT_LOG
                                     </div>
@@ -2339,7 +2340,7 @@ const App: React.FC = () => {
                             </div>
 
                             {/* Progress */}
-                            <div className="space-y-1.5 max-w-3xl w-full mx-auto">
+                            <div data-tour="completion" className="space-y-1.5 max-w-3xl w-full mx-auto">
                                 <div className={`flex justify-between items-center gap-2 text-[11px] sm:text-xs font-mono font-bold tracking-widest drop-shadow-md`}>
                                     <span className={`flex items-center gap-1.5 ${theme.headingText}`}><ManaGlyph size={14} style={{ color: theme.accentInk }} /> COMPLETION_RATE</span>
                                     <span className="flex items-center gap-2.5">
@@ -2467,6 +2468,7 @@ const App: React.FC = () => {
                     )}
                     <button
                         type="button"
+                        data-tour="sidebar-grip"
                         onClick={() => setSidebarCollapsed((v) => !v)}
                         aria-expanded={!sidebarCollapsed}
                         aria-controls="system-sidebar"
@@ -2543,7 +2545,7 @@ const App: React.FC = () => {
                     </div>
 
                     {/* QUEST METRICS (Replaces Stat Box Grid) */}
-                    <div className="w-full h-auto">
+                    <div data-tour="quest-metrics" className="w-full h-auto">
                         <SystemFrame variant="brackets" theme={theme}>
                             <div className="px-3 py-2 flex flex-col gap-1">
                                 <div className={`flex items-center gap-2 ${theme.highlightText} font-mono text-[9px] tracking-widest font-bold mb-1`}>

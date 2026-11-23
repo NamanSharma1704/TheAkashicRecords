@@ -45,7 +45,7 @@ const SystemConsole: React.FC<SystemConsoleProps> = ({ theme, onShowShortcuts, l
   z-[70] transition-colors duration-700
   pb-[env(safe-area-inset-bottom)]`}
         >
-            <div className="flex items-center gap-3 w-full max-w-[1920px] mx-auto">
+            <div data-tour="console" className="flex items-center gap-3 w-full max-w-[1920px] mx-auto">
                 <PulseGlyph size={10} className={`${theme.highlightText} animate-pulse transition-colors duration-700`} />
                 {/* The light page's corners deepen to violet, where the accent ink measured 3.5:1:
                     there the labels take the page's heading ink. */}

@@ -97,6 +97,7 @@ const HeroRings: React.FC<{
     return (
         <div
             ref={layerRef}
+            data-tour="mana-ring"
             aria-hidden="true"
             className="absolute inset-0 pointer-events-none z-0 overflow-hidden"
             style={{ visibility: anchor ? undefined : 'hidden' }}

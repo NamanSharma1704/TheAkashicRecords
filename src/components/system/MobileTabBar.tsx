@@ -98,7 +98,7 @@ const MobileTabBar: React.FC<MobileTabBarProps> = ({ theme, active, hidden, onHo
                     );
                 })}
                 <li className="flex flex-1">
-                    <button type="button" onClick={onNew} aria-label="Create gate" className={`${item} text-accent-plate`}>
+                    <button type="button" data-tour="create-gate" data-tour-prefer="" onClick={onNew} aria-label="Create gate" className={`${item} text-accent-plate`}>
                         <span aria-hidden="true" className="hud hud-cmd [--hud-c:7px] w-10 h-[30px] flex items-center justify-center">
                             <NewGateIcon size={19} />
                         </span>

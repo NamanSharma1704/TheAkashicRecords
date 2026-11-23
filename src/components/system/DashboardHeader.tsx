@@ -74,7 +74,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ theme, currentTheme, 
                 </div>
                 <div className="flex items-center gap-2 sm:gap-3 shrink-0">
                     {guestTimeLeft !== null && (
-                        <div className="flex flex-col items-end leading-none sm:mr-2">
+                        <div data-tour="link-stability" className="flex flex-col items-end leading-none sm:mr-2">
                             {/* The sandbox's time left, in the theme's ink while there is plenty
                                 of it, and in the warning ink for the last 10 minutes, when it is a
                                 warning. It was always the warning ink, from the cyan era, when a
@@ -93,6 +93,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ theme, currentTheme, 
                     )}
                     <button
                         type="button"
+                        data-tour="theme"
                         onClick={onToggleTheme}
                         aria-label={theme.isDark ? 'Switch to light theme' : 'Switch to dark theme'}
                         title={theme.isDark ? 'Switch to light theme' : 'Switch to dark theme'}
@@ -110,7 +111,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ theme, currentTheme, 
                         <DisconnectGlyph size={14} />
                     </button>
                     {/* Below lg, creating a gate is the tab bar's New (MobileTabBar). */}
-                    <button type="button" onClick={onCreateGate} title="New gate (N)" className={`hud hud-btn hud-accent hidden lg:flex px-4 py-1.5 ${theme.highlightText} font-mono text-[10px] tracking-widest items-center gap-2 cursor-pointer`}>
+                    <button type="button" data-tour="create-gate" onClick={onCreateGate} title="New gate (N)" className={`hud hud-btn hud-accent hidden lg:flex px-4 py-1.5 ${theme.highlightText} font-mono text-[10px] tracking-widest items-center gap-2 cursor-pointer`}>
                         <NewGateIcon size={12} /> CREATE_GATE
                     </button>
                 </div>

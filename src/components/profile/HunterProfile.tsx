@@ -468,7 +468,7 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                     {/* Compact Sys Admin Tools */}
                     {/* Export: the full backup or the spreadsheet. A menu rather than another
                         button, because a phone's toolbar has no room left. */}
-                    <div ref={exportMenuRef} className="relative">
+                    <div ref={exportMenuRef} data-tour="profile-export" className="relative">
                         <button type="button" onClick={() => setExportMenuOpen(o => !o)} aria-haspopup="menu" aria-expanded={exportMenuOpen} title="Export archive" aria-label="Export archive" className={`hud hud-tool w-9 h-9 flex items-center justify-center ${theme.mutedText} hover:${theme.headingText} cursor-pointer`}>
                             <ExportGlyph size={14} aria-hidden="true" />
                         </button>
@@ -495,7 +495,7 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                     </div>
                     {/* Import: a file exported from here, or a reading list from AniList or
                         MyAnimeList. A menu, like Export, for the same lack of toolbar room. */}
-                    <div ref={importMenuRef} className="relative">
+                    <div ref={importMenuRef} data-tour="profile-import" className="relative">
                         <button type="button" onClick={() => setImportMenuOpen(o => !o)} aria-haspopup="menu" aria-expanded={importMenuOpen} title="Import into the archive" aria-label="Import into the archive" className={`hud hud-tool w-9 h-9 flex items-center justify-center ${theme.mutedText} hover:${theme.headingText} cursor-pointer`}>
                             <ImportGlyph size={14} aria-hidden="true" />
                         </button>
@@ -535,10 +535,10 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                             else e.target.value = "";
                         }} />
                     </div>
-                    <button type="button" onClick={() => setShowTrash(true)} title="Trash (deleted records)" aria-label="Open the Trash" className={`hud hud-tool w-9 h-9 flex items-center justify-center ${theme.mutedText} hover:${theme.headingText} cursor-pointer`}>
+                    <button type="button" data-tour="profile-trash" onClick={() => setShowTrash(true)} title="Trash (deleted records)" aria-label="Open the Trash" className={`hud hud-tool w-9 h-9 flex items-center justify-center ${theme.mutedText} hover:${theme.headingText} cursor-pointer`}>
                         <PurgeGlyph size={14} aria-hidden="true" />
                     </button>
-                    <button type="button" onClick={findMissingCovers} disabled={coverBusy} aria-busy={coverBusy} title="Find missing covers" aria-label="Find missing covers" className={`hud hud-tool w-9 h-9 flex items-center justify-center ${theme.mutedText} hover:${theme.headingText} cursor-pointer disabled:cursor-wait`}>
+                    <button type="button" data-tour="profile-covers" onClick={findMissingCovers} disabled={coverBusy} aria-busy={coverBusy} title="Find missing covers" aria-label="Find missing covers" className={`hud hud-tool w-9 h-9 flex items-center justify-center ${theme.mutedText} hover:${theme.headingText} cursor-pointer disabled:cursor-wait`}>
                         <CoversGlyph size={14} aria-hidden="true" className={coverBusy ? 'animate-pulse' : ''} />
                     </button>
                     {/* System settings: the per-device switches, low-power effects and chapter
@@ -547,7 +547,7 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                         close button off. Centred under its button, so it stays on a phone's
                         screen from the middle of the toolbar. Each item is a checkbox (it says
                         ON or OFF), and the menu stays open to show the change. */}
-                    <div ref={settingsMenuRef} className="relative">
+                    <div ref={settingsMenuRef} data-tour="profile-settings" className="relative">
                         <button type="button" onClick={() => setSettingsMenuOpen(o => !o)} aria-haspopup="menu" aria-expanded={settingsMenuOpen} title="System settings" aria-label="System settings" className={`hud hud-tool w-9 h-9 flex items-center justify-center cursor-pointer ${lowPower || chapterSounds ? 'hud-accent text-accent-ink' : theme.mutedText} hover:${theme.headingText}`}>
                             <TuneGlyph size={14} aria-hidden="true" />
                         </button>
@@ -579,11 +579,11 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                             </div>
                         )}
                     </div>
-                    <button type="button" onClick={handleRecalibrate} title="System recalibration" className={`hud hud-btn hud-accent h-9 px-3 hidden sm:flex items-center justify-center gap-2 ${theme.highlightText} cursor-pointer group`}>
+                    <button type="button" data-tour="profile-recalibrate" onClick={handleRecalibrate} title="System recalibration" className={`hud hud-btn hud-accent h-9 px-3 hidden sm:flex items-center justify-center gap-2 ${theme.highlightText} cursor-pointer group`}>
                         <RecalibrateGlyph size={14} className="relative z-10" aria-hidden="true" />
                         <span className="font-mono text-[10px] tracking-widest uppercase relative z-10">Re-Calibrate</span>
                     </button>
-                    <button type="button" onClick={handleRecalibrate} title="System recalibration" aria-label="System recalibration" className={`hud hud-tool sm:hidden w-9 h-9 flex items-center justify-center ${theme.highlightText} cursor-pointer`}>
+                    <button type="button" data-tour="profile-recalibrate" onClick={handleRecalibrate} title="System recalibration" aria-label="System recalibration" className={`hud hud-tool sm:hidden w-9 h-9 flex items-center justify-center ${theme.highlightText} cursor-pointer`}>
                         <RecalibrateGlyph size={14} aria-hidden="true" />
                     </button>
 
@@ -619,7 +619,7 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                 </motion.div>
 
                 {/* COMBAT METRICS */}
-                <motion.div variants={itemVariants} className="w-full flex justify-center">
+                <motion.div data-tour="profile-metrics" variants={itemVariants} className="w-full flex justify-center">
                     <div className="w-full">
                         <div className={`flex items-center gap-2 mb-2 ${theme.highlightText}`}>
                             <CodexGlyph size={13} />
@@ -666,7 +666,7 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                 <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-2 gap-3 lg:gap-4">
 
                     {/* CLASS DISTRIBUTION */}
-                    <div className="flex flex-col">
+                    <div data-tour="profile-classes" className="flex flex-col">
                         <div className={`flex items-center gap-2 mb-2 ${theme.highlightText}`}>
                             <CodexGlyph size={13} />
                             <span className={`text-[10px] font-mono font-bold tracking-[0.3em] uppercase ${theme.isDark ? '' : `text-transparent bg-clip-text bg-gradient-to-r ${theme.labelGradient}`}`}>Class Distribution</span>
@@ -692,7 +692,7 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                     </div>
 
                     {/* TOP SERIES */}
-                    <div className="flex flex-col">
+                    <div data-tour="profile-top" className="flex flex-col">
                         <div className={`flex items-center gap-2 mb-2 ${theme.highlightText}`}>
                             <StackGlyph size={13} />
                             <span className={`text-[10px] font-mono font-bold tracking-[0.3em] uppercase ${theme.isDark ? '' : `text-transparent bg-clip-text bg-gradient-to-r ${theme.labelGradient}`}`}>Top Series</span>
@@ -725,7 +725,7 @@ const HunterProfile: React.FC<HunterProfileProps> = ({ isOpen, onClose, theme, i
                 </motion.div>
 
                 {/* BOTTOM FULL-WIDTH ROW: ACTIVE PROGRESS — horizontal cover cards */}
-                <motion.div variants={itemVariants} className="flex flex-col">
+                <motion.div data-tour="profile-progress" variants={itemVariants} className="flex flex-col">
                     <div className={`flex items-center gap-2 mb-2 ${theme.highlightText}`}>
                         <ReticleGlyph size={13} />
                         <span className={`text-[10px] font-mono font-bold tracking-[0.3em] uppercase ${theme.isDark ? '' : `text-transparent bg-clip-text bg-gradient-to-r ${theme.labelGradient}`}`}>Active Progress</span>

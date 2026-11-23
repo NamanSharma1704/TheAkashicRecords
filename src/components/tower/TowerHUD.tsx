@@ -141,7 +141,7 @@ const TowerHUD: React.FC<TowerHUDProps> = ({ items, theme, onActivate, isFocused
                             {/* FLOOR LEGEND — the key to what each tier of the Spire means, so the
                                 climb is legible at a glance (replaces the old rank/avatar card). */}
                             <SystemFrame variant="brackets" theme={theme} frosted={false} className="shadow-none w-full">
-                                <div className="p-3 lg:p-4">
+                                <div data-tour="tower-legend" className="p-3 lg:p-4">
                                     <div className="flex items-center gap-2 mb-3">
                                         <StackGlyph size={13} className={theme.highlightText} />
                                         <span className={`text-[clamp(9px,1vw,11px)] font-bold tracking-[0.2em] font-orbitron ${theme.isDark ? theme.headingText : `text-transparent bg-clip-text bg-gradient-to-r ${theme.labelGradient}`}`}>ASCENT_KEY</span>
@@ -171,7 +171,7 @@ const TowerHUD: React.FC<TowerHUDProps> = ({ items, theme, onActivate, isFocused
                 <aside className={`hidden lg:flex flex-col gap-3 xl:gap-8 items-end pointer-events-auto w-[26%] xl:w-[22%] min-w-[180px] lg:min-w-[200px] xl:min-w-[320px] max-w-[360px] xl:max-w-[440px] text-right transition-all duration-1000 ease-in-out ${isFocused ? 'translate-x-0' : 'translate-x-0 opacity-100'}`}>
 
                     {/* TOP MONOLITHS */}
-                    <div className="w-full">
+                    <div data-tour="tower-top" className="w-full">
                         <div className={`flex items-center gap-2 mb-3 ${theme.highlightText} w-full justify-end`}>
                             <span className={`text-[clamp(10px,1vw,12px)] font-bold tracking-[0.2em] font-orbitron uppercase ${theme.isDark ? '' : `text-transparent bg-clip-text bg-gradient-to-r ${theme.labelGradient}`}`}>TOP_REVELATIONS</span>
                             <StackGlyph size={14} />
@@ -190,7 +190,7 @@ const TowerHUD: React.FC<TowerHUDProps> = ({ items, theme, onActivate, isFocused
                     </div>
 
                     {/* CLASS DISTRIBUTION */}
-                    <div className="w-full">
+                    <div data-tour="tower-synergy" className="w-full">
                         <div className={`flex items-center gap-2 mb-3 mt-4 ${theme.highlightText} w-full justify-end`}>
                             <span className={`text-[clamp(10px,1vw,12px)] font-bold tracking-[0.2em] font-orbitron uppercase ${theme.isDark ? '' : `text-transparent bg-clip-text bg-gradient-to-r ${theme.labelGradient}`}`}>SYNERGY_INDEX</span>
                             <CodexGlyph size={14} />

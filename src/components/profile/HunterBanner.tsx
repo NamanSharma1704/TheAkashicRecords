@@ -129,7 +129,7 @@ const HunterBanner: React.FC<HunterBannerProps> = ({ theme, playerRank, overallP
 
     // The actions: the kit's octagon tools.
     const tools = (size: string, icon: number, column = false) => (
-        <div className={`flex ${column ? 'flex-col' : ''} items-center gap-1.5 shrink-0`}>
+        <div data-tour="profile-actions" className={`flex ${column ? 'flex-col' : ''} items-center gap-1.5 shrink-0`}>
             {[
                 { label: 'Edit Profile', icon: InscribeGlyph, onClick: onEdit },
                 { label: 'Hunter Card', icon: TransmitGlyph, onClick: onCard },
@@ -230,7 +230,7 @@ const HunterBanner: React.FC<HunterBannerProps> = ({ theme, playerRank, overallP
     );
 
     const actions = (
-        <div className="flex items-center gap-2">
+        <div data-tour="profile-actions" className="flex items-center gap-2">
             {[
                 { label: 'Edit Profile', icon: InscribeGlyph, onClick: onEdit },
                 { label: 'Hunter Card', icon: TransmitGlyph, onClick: onCard },
@@ -325,7 +325,7 @@ const HunterBanner: React.FC<HunterBannerProps> = ({ theme, playerRank, overallP
 
                 {/* UNDER THE BANNER: a ledger hanging from the frame's bottom rail, rimmed in the
                     frame's silver, with the EXP, the rank ladder and the actions. */}
-                <div className="hb-ledger">
+                <div data-tour="profile-ledger" className="hb-ledger">
                     <div className="hb-ledger-rim">
                         <div className="hb-ledger-plate">
                             {/* Equal sides, so the ladder's centre is the ledger's; the row is

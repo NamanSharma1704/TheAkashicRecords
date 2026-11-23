@@ -755,6 +755,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
 
                             {isEditingSynopsis ? (
                                 <textarea
+                                    data-tour="series-synopsis"
                                     value={draftSynopsis}
                                     onChange={(e) => setDraftSynopsis(e.target.value)}
                                     className={`w-full h-48 rounded-lg p-4 text-sm font-sans resize-y shadow-inner transition-colors focus:outline-none focus-visible:ring-2 ${theme.isDark ? 'bg-black/40 border border-white/10 text-white/90' : 'bg-white/80 border border-stone-400 text-stone-800'} focus-visible:ring-accent-line-strong`}
@@ -763,6 +764,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
                                 />
                             ) : (
                                 <div
+                                    data-tour="series-synopsis"
                                     className={`text-sm md:text-base leading-loose font-sans ${theme.isDark ? 'text-white/80' : 'text-stone-600'}`}
                                     // Synopsis text is third-party (AniList/MangaDex/MAL). cleanDescription
                                     // turns markdown and credit blocks into the small HTML subset, and
@@ -853,7 +855,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
 
                             {/* RECORD METRICS (AniList-derived: score, year, chapters, source) */}
                             {(isLoadingMedia || media) && (
-                                <div className="hud hud-sheet p-6 flex flex-col gap-5">
+                                <div data-tour="series-meta" className="hud hud-sheet p-6 flex flex-col gap-5">
                                     {/* Tiered by colour, not opacity-60: faded, the light label measured 2.7:1. */}
                                     <div className="flex items-center gap-2">
                                         <PulseGlyph size={16} aria-hidden="true" className={theme.isDark ? 'text-white/60' : 'text-stone-600'} />
@@ -944,7 +946,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
 
                     {/* CHARACTERS ROW (API DRIVEN) */}
                     {(isLoadingMedia || media) && (
-                        <motion.div variants={itemVariants} className="mt-8">
+                        <motion.div data-tour="series-entities" variants={itemVariants} className="mt-8">
                             <SectionHeader index="02" icon={<EntitiesGlyph size={16} className={iconText} />} label="ENTITIES_DETECTED" theme={theme}>
                                 {isLoadingMedia && (
                                     <div className="shrink-0 flex items-center gap-2">
@@ -996,7 +998,7 @@ const ManhwaDetail: React.FC<ManhwaDetailProps> = ({ isOpen, onClose, quest, the
 
                     {/* SIMILAR RECORDS (PURELY DATABASE DRIVEN) */}
                     {similarQuests.length > 0 && (
-                        <motion.div variants={itemVariants} className="mt-8">
+                        <motion.div data-tour="series-similar" variants={itemVariants} className="mt-8">
                                 <SectionHeader index="03" icon={<ResonanceGlyph size={16} className={iconText} />} label="SIMILAR_RECORDS" theme={theme}>
                                     <span className={`shrink-0 text-[9px] font-mono tracking-widest uppercase border px-2 py-0.5 rounded ${theme.isDark ? 'border-white/20 text-white' : 'border-stone-400 text-stone-800'}`}>
                                         DATABASE_SYNC: {quest.classType}

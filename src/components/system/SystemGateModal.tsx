@@ -608,7 +608,7 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
                         </div>
 
                         {/* ── APPRAISAL ── */}
-                        <div className="space-y-2">
+                        <div data-tour="gate-appraisal" className="space-y-2">
                             <FieldLabel theme={theme} system="Hunter_Appraisal" plain="Your rating (optional)" />
                             <AppraisalPips
                                 value={formData.rating}
@@ -618,7 +618,7 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
                         </div>
 
                         {/* ── SYNOPSIS ── */}
-                        <div className="space-y-1.5">
+                        <div data-tour="gate-synopsis" className="space-y-1.5">
                             <FieldLabel theme={theme} htmlFor="quest-synopsis" system="Memetic_Imprint" plain="Synopsis" />
                             <div className="relative group">
                                 <div className={`absolute top-0 right-0 w-3 h-3 border-t border-r ${theme.border} opacity-30`} />
@@ -637,7 +637,7 @@ const SystemGateModal: React.FC<SystemGateModalProps> = ({ onClose, onSave, onDe
                     </div>
 
                     {/* ── STICKY FOOTER ── */}
-                    <div className={`px-5 py-3.5 ${theme.isDark ? 'bg-black/70' : 'bg-white/80'} backdrop-blur-md border-t ${theme.borderSubtle} flex gap-3 shrink-0 relative overflow-hidden`}>
+                    <div data-tour="gate-footer" className={`px-5 py-3.5 ${theme.isDark ? 'bg-black/70' : 'bg-white/80'} backdrop-blur-md border-t ${theme.borderSubtle} flex gap-3 shrink-0 relative overflow-hidden`}>
                         <div className={`absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-accent-line to-transparent`} />
 
                         {initialData && (

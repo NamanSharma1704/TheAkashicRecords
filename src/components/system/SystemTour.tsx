@@ -3,18 +3,20 @@ import { Theme } from '../../core/types';
 import SystemFrame from './SystemFrame';
 import { useDialogFocus } from '../../utils/useDialogFocus';
 import { TourId } from '../../core/tours';
-import { TOUR_NAMES, tourSteps } from './tourSteps';
+import { TOUR_NAMES, TourStep, tourSteps } from './tourSteps';
 
 /** The element tagged for `key` that is laid out, preferring one on screen, and among those
  *  one marked `data-tour-prefer`. Desktop and phone render their own copy of some controls;
  *  usually one of the pair is hidden, but on a phone the sidebar's Spire and Profile buttons
  *  are laid out too (and can be scrolled into view by an earlier step), while the tab bar's,
  *  marked preferred, are the ones to point at. */
-const findTarget = (key: string): HTMLElement | null => {
-    const laidOut = [...document.querySelectorAll<HTMLElement>(`[data-tour="${key}"]`)].filter((el) => {
-        const r = el.getBoundingClientRect();
-        return r.width > 0 && r.height > 0 && getComputedStyle(el).visibility !== 'hidden';
-    });
+const laidOutOf = (key: string) => [...document.querySelectorAll<HTMLElement>(`[data-tour="${key}"]`)].filter((el) => {
+    const r = el.getBoundingClientRect();
+    return r.width > 0 && r.height > 0 && getComputedStyle(el).visibility !== 'hidden';
+});
+
+const findOne = (key: string): HTMLElement | null => {
+    const laidOut = laidOutOf(key);
     const onScreen = laidOut.filter((el) => {
         const r = el.getBoundingClientRect();
         return r.bottom > 0 && r.top < window.innerHeight;
@@ -22,10 +24,30 @@ const findTarget = (key: string): HTMLElement | null => {
     return onScreen.find((el) => el.hasAttribute('data-tour-prefer')) ?? onScreen[0] ?? laidOut[0] ?? null;
 };
 
+/** A step's target: the first of its keys that is laid out (a step may name a fallback, as the
+ *  rank ladder does: on a phone it is part of the banner). */
+const findTarget = (target: string | string[]): HTMLElement | null => {
+    for (const key of Array.isArray(target) ? target : [target]) {
+        const el = findOne(key);
+        if (el) return el;
+    }
+    return null;
+};
+
+/** Whether a step belongs in this tour on this screen: one marked `onlyIfShown` needs its target
+ *  (or the part it `requires`) laid out, so a phone, which folds some parts away, is not told
+ *  about what it cannot see; one marked `keyboard` needs a fine pointer. */
+const stepApplies = (s: TourStep): boolean => {
+    if (s.keyboard && typeof window.matchMedia === 'function' && !window.matchMedia('(pointer: fine)').matches) return false;
+    if (s.requires && laidOutOf(s.requires).length === 0) return false;
+    if (s.onlyIfShown && s.target && !findTarget(s.target)) return false;
+    return true;
+};
+
 const PAD = 6;
 
 /**
- * SYSTEM TUTORIAL: a short guided pass over one page (the steps live in core/tours.ts). A
+ * SYSTEM TUTORIAL: a guided pass over every part of one page (the steps live in tourSteps.ts). A
  * visitor arriving from the portfolio lands in a dense interface with no word on ranks,
  * floors or the portal; this names each part in turn. Each step rings its target where that
  * target is on screen; where it is not (the phone layout folds some away), the step still
@@ -38,7 +60,8 @@ const SystemTour: React.FC<{ theme: Theme; id: TourId; guest: boolean; onClose: 
     const [rect, setRect] = useState<DOMRect | null>(null);
     useDialogFocus(ref, true, onClose, nextRef);
 
-    const all = tourSteps(id, guest);
+    // The steps that apply on this screen, settled once as the tour opens.
+    const [all] = useState(() => tourSteps(id, guest).filter(stepApplies));
     const step = all[index];
     const last = index === all.length - 1;
 

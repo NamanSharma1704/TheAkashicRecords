@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect } from 'react';
 
 /**
- * SYSTEM TUTORIALS: one short guided pass per page. The steps live in
+ * SYSTEM TUTORIALS: one guided pass per page, over every part of it (2026-11-23). The steps live in
  * components/system/tourSteps.ts and load with SystemTour itself, so only this plumbing (the
  * page ids, the context and the hook every page uses) ships in the first bundle.
  *

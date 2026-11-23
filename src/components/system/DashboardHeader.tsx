@@ -84,7 +84,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ theme, currentTheme, 
                                 only: there is nothing on a pale page for an amber spill to brighten. */}
                             <span className="text-[7px] font-mono tracking-[0.2em] font-black uppercase" style={{ color: guestTimeLeft <= LINK_LOW_MS ? theme.warningInk : theme.accentInk }}>LINK_STABILITY</span>
                             <span
-                                className="text-[14px] font-mono font-black"
+                                className="text-[18px] font-numerals font-black tracking-wide"
                                 style={{ color: guestTimeLeft <= LINK_LOW_MS ? theme.warningInk : theme.accentInk, filter: theme.isDark ? 'drop-shadow(0 0 8px rgba(245,158,11,0.5))' : undefined }}
                             >
                                 {formatTime(guestTimeLeft)}

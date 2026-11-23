@@ -1,5 +1,33 @@
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400..900&family=Rajdhani:wght@400&display=swap');
 
+/* The Akashic Numerals (2026-11-23): the dashboard's own digits, tall stencil HUD figures drawn
+   for the app (source: .claude/scripts/numerals/build_numerals.py, local). Digits and the few
+   marks that sit between them only: any other character falls through to the next font in the
+   stack, so `font-numerals` changes the numbers and leaves the words. Every digit has the same
+   advance, so the figures are tabular. One drawn weight, declared across the whole range so a
+   bold or black readout is never given a synthesised bold. Preloaded in index.html; `block`, so
+   a readout never swaps width as it arrives. */
+@font-face {
+    font-family: 'Akashic Numerals';
+    src: url('/fonts/akashic-numerals.woff') format('woff');
+    font-weight: 100 900;
+    font-style: normal;
+    font-display: block;
+    unicode-range: U+0025, U+002C, U+002E, U+002F, U+0030-003A;
+}
+
+/* The same file's rank letters (S, A, B, C, D, E: a series' rank), under their own name so only
+   the rank readout takes them. Under 'Akashic Numerals' they would also reach words in a
+   numerals readout (the E of OPEN) and leave the rest of the word in the mono. */
+@font-face {
+    font-family: 'Akashic Rank';
+    src: url('/fonts/akashic-numerals.woff') format('woff');
+    font-weight: 100 900;
+    font-style: normal;
+    font-display: block;
+    unicode-range: U+0041-0045, U+0053;
+}
+
 /* PostCSS / Tailwind Directives - Validated by Build System */
 @tailwind base;
 @tailwind components;
@@ -256,6 +284,16 @@ html.theme-switching *::after {
 @layer utilities {
     .font-orbitron {
         font-family: 'Orbitron', sans-serif;
+    }
+
+    /* The dashboard's rank letter: the stencil S to E, Orbitron for anything else. */
+    .font-rank {
+        font-family: 'Akashic Rank', 'Orbitron', sans-serif;
+    }
+
+    /* The Akashic Numerals for the digits, the mono stack for everything else. */
+    .font-numerals {
+        font-family: 'Akashic Numerals', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
     }
 
     .font-rajdhani {

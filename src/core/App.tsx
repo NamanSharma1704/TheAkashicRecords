@@ -1958,15 +1958,21 @@ const App: React.FC = () => {
                         {/* CENTER: The 3-Column Display (Enhanced Gaps for Tablets) */}
                         <div className="flex-1 min-h-0 flex justify-center items-center gap-4 md:gap-14 lg:gap-6 xl:gap-12 w-full max-w-[1400px] mx-auto px-4">
 
-                            {/* Left Column: Rank & Class — justify-center+self-stretch centers against cover */}
+                            {/* Left Column: Rank & Class, centred on the card (the owner, 2026-11-23:
+                                the rank side at the card's centre). The column stretches to the row the
+                                card's wrapper is centred in, and justify-center puts the group's middle
+                                on the wrapper's; the visible card (card-plate) is lifted inside its
+                                wrapper to stand over the dais (-top-5, lg:-top-[4.5dvh]), so the group
+                                takes the same lift and its middle stays on the card's at every size.
+                                (A fixed -mt-[30px] here approximated that lift.) */}
                             <div className="hidden md:flex flex-col items-end justify-center self-stretch flex-1 basis-0 min-w-0 shrink">
-                                <div className="flex flex-col items-end gap-6 xl:gap-8 w-full -mt-[30px]">
+                                <div className="relative -top-5 lg:-top-[4.5dvh] flex flex-col items-end gap-6 xl:gap-8 w-full">
                                     <div className="flex flex-col items-end w-max max-w-none">
                                         <div className={`text-[10px] font-mono ${theme.mutedText} tracking-[0.3em] uppercase mb-2 flex items-center justify-end gap-1.5`}>
                                             <CrownGlyph size={10} style={{ color: theme.accentInk }} />
                                             <span style={{ marginRight: '-0.3em' }} className={theme.isDark ? '' : `text-transparent bg-clip-text bg-gradient-to-r ${theme.labelGradient}`}>RANK ASSESSMENT</span>
                                         </div>
-                                        <div className={`text-6xl xl:text-[80px] font-black font-orbitron leading-none transition-colors duration-700 text-right [filter:drop-shadow(0_0_25px_var(--accent-glow))] ${theme.isDark ? 'text-[var(--accent-ink)]' : `text-transparent bg-clip-text bg-gradient-to-b ${theme.inkGradient}`}`}>
+                                        <div className={`text-6xl xl:text-[96px] -mr-[0.023em] font-black font-rank leading-none transition-colors duration-700 text-right [filter:drop-shadow(0_0_25px_var(--accent-glow))] ${theme.isDark ? 'text-[var(--accent-ink)]' : `text-transparent bg-clip-text bg-gradient-to-b ${theme.inkGradient}`}`}>
                                             {calculateQuestRank(activeQuest)}
                                         </div>
                                     </div>
@@ -2259,10 +2265,10 @@ const App: React.FC = () => {
                                 </Card3D>
                             </div>{/* end outer glow wrapper */}
 
-                            {/* Right Column: Sequence & System Log — justify-center mirrors left */}
-                            <div className="hidden md:flex flex-col items-start justify-center gap-4 md:gap-6 xl:gap-10 self-stretch flex-1 basis-0 min-w-0 shrink">
+                            {/* Right Column: Sequence & System Log, centred on the card as the left is. */}
+                            <div className="hidden md:flex flex-col items-start justify-center self-stretch flex-1 basis-0 min-w-0 shrink">
                                 <div className="flex flex-col items-start w-max max-w-none">
-                                    <div className={`text-[10px] font-mono tracking-[0.3em] uppercase mb-1 ${theme.isDark ? theme.mutedText : `text-transparent bg-clip-text bg-gradient-to-r ${theme.labelGradient}`}`}>SEQUENCE DATA</div>
+                                    <div className={`text-[10px] font-mono tracking-[0.3em] uppercase mb-2 ${theme.isDark ? theme.mutedText : `text-transparent bg-clip-text bg-gradient-to-r ${theme.labelGradient}`}`}>SEQUENCE DATA</div>
                                     {/* Tap (or Enter) to type a chapter: one save however far
                                         the jump, where the steppers would take a tap per chapter. */}
                                     <ChapterField
@@ -2272,18 +2278,20 @@ const App: React.FC = () => {
                                         disabled={activeQuest.id === DEFAULT_QUEST.id}
                                         label={`Chapter ${activeQuest.currentChapter}${activeQuest.totalChapters > 0 ? ` of ${activeQuest.totalChapters}` : ''}. Set chapter`}
                                         onCommit={commitTypedChapter}
-                                        className="text-5xl xl:text-[70px] font-black font-mono tabular-nums leading-none text-left"
+                                        className="text-6xl xl:text-[96px] -ml-[0.027em] font-black font-numerals tabular-nums leading-none text-left"
                                         displayClassName={`transition-colors duration-700 ${theme.isDark ? 'text-[var(--accent-ink)]' : `text-transparent bg-clip-text bg-gradient-to-b ${theme.inkGradient}`}`}
                                         inkColor={theme.accentInk}
                                     />
-                                    <div className={`text-[11px] font-mono tracking-widest mt-2 ${theme.mutedText} flex items-center gap-2`}>
-                                        <span>OF <span className={`font-bold`} style={{ color: theme.accentInk }}>{activeQuest.totalChapters}</span> CHAPTERS</span>
-                                        {(activeQuest.newChapters ?? 0) > 0 && (
-                                            <span className="px-1 border font-bold leading-[16px]" style={{ color: theme.accentInk, borderColor: `${theme.accentColor}80` }}>
-                                                +{activeQuest.newChapters} NEW
-                                            </span>
-                                        )}
-                                    </div>
+                                </div>
+
+                                <div className="flex flex-col items-start gap-6 xl:gap-10 w-full">
+                                <div className={`text-[11px] font-mono tracking-widest mt-2 ${theme.mutedText} flex items-center gap-2 whitespace-nowrap`}>
+                                    <span>OF <span className={`font-bold`} style={{ color: theme.accentInk }}>{activeQuest.totalChapters}</span> CHAPTERS</span>
+                                    {(activeQuest.newChapters ?? 0) > 0 && (
+                                        <span className="px-1 border font-bold leading-[16px]" style={{ color: theme.accentInk, borderColor: `${theme.accentColor}80` }}>
+                                            +{activeQuest.newChapters} NEW
+                                        </span>
+                                    )}
                                 </div>
 
                                 <div className="w-full max-w-[220px]">
@@ -2296,6 +2304,7 @@ const App: React.FC = () => {
                                         timestamps are secondary, so they use the muted token rather than
                                         an alpha knocked out of the ink. */}
                                     <EventLog theme={theme} events={systemEvents} />
+                                </div>
                                 </div>
                             </div>
 
@@ -2346,15 +2355,15 @@ const App: React.FC = () => {
                                                     origin="center"
                                                     label={`Chapter ${activeQuest.currentChapter}${activeQuest.totalChapters > 0 ? ` of ${activeQuest.totalChapters}` : ''}. Set chapter`}
                                                     onCommit={commitTypedChapter}
-                                                    className="font-mono font-bold tabular-nums text-[11px] sm:text-xs tracking-widest inline-block min-w-[2.75rem] px-1 py-1.5 -my-1.5 text-center"
+                                                    className="font-numerals font-bold tabular-nums text-[15px] tracking-wider inline-block min-w-[2.75rem] px-1 py-1.5 -my-1.5 text-center"
                                                     displayClassName="text-[var(--accent-ink)]"
                                                     inkColor={theme.accentInk}
                                                     minChars={2}
                                                 />
-                                                <span>/ {activeQuest.totalChapters || '?'}</span>
+                                                <span className="font-numerals text-[15px] tracking-wider">/ {activeQuest.totalChapters || '?'}</span>
                                             </span>
                                         )}
-                                        <span style={{ color: theme.accentInk }}>{progressPercent}%</span>
+                                        <span className="font-numerals text-[15px] tracking-wider" style={{ color: theme.accentInk }}>{progressPercent}%</span>
                                     </span>
                                 </div>
                                 <div className={`h-1.5 ${theme.isDark ? 'bg-gray-900/40' : 'bg-gray-300/40'} w-full relative overflow-hidden backdrop-blur-md rounded-full shadow-inner`}>
@@ -2543,23 +2552,23 @@ const App: React.FC = () => {
                                 <div className="grid grid-cols-4 gap-2">
                                     <div className="flex flex-col gap-0.5">
                                         <div className={`text-[8px] ${theme.mutedText} font-mono uppercase tracking-widest`}>WISDOM</div>
-                                        <div className={`text-xl font-bold font-mono tabular-nums leading-tight ${theme.isDark ? theme.highlightText : `text-transparent bg-clip-text bg-gradient-to-b ${theme.inkGradient}`}`}>{activeQuest.currentChapter}</div>
+                                        <div className={`text-2xl font-bold font-numerals tabular-nums leading-tight ${theme.isDark ? theme.highlightText : `text-transparent bg-clip-text bg-gradient-to-b ${theme.inkGradient}`}`}>{activeQuest.currentChapter}</div>
                                         <div className={`text-[7px] ${theme.mutedText} font-mono uppercase`}>CH. READ</div>
                                     </div>
                                     <div className="flex flex-col gap-0.5">
                                         <div className={`text-[8px] ${theme.mutedText} font-mono uppercase tracking-widest`}>MIGHT</div>
-                                        <div className={`text-xl font-bold font-mono tabular-nums leading-tight ${theme.isDark ? theme.highlightText : `text-transparent bg-clip-text bg-gradient-to-b ${theme.inkGradient}`}`}>{Math.floor(activeQuest.totalChapters / 10)}</div>
+                                        <div className={`text-2xl font-bold font-numerals tabular-nums leading-tight ${theme.isDark ? theme.highlightText : `text-transparent bg-clip-text bg-gradient-to-b ${theme.inkGradient}`}`}>{Math.floor(activeQuest.totalChapters / 10)}</div>
                                         <div className={`text-[7px] ${theme.mutedText} font-mono uppercase`}>PWR INDEX</div>
                                     </div>
                                     <div className="flex flex-col gap-0.5">
                                         <div className={`text-[8px] ${theme.mutedText} font-mono uppercase tracking-widest`}>SYNC</div>
-                                        <div className={`text-xl font-bold font-mono tabular-nums leading-tight ${theme.isDark ? theme.highlightText : `text-transparent bg-clip-text bg-gradient-to-b ${theme.inkGradient}`}`}>{progressPercent}%</div>
+                                        <div className={`text-2xl font-bold font-numerals tabular-nums leading-tight ${theme.isDark ? theme.highlightText : `text-transparent bg-clip-text bg-gradient-to-b ${theme.inkGradient}`}`}>{progressPercent}%</div>
                                         <div className={`text-[7px] ${theme.mutedText} font-mono uppercase`}>COMPLETION</div>
                                     </div>
                                     <div className="flex flex-col gap-0.5">
                                         <div className={`text-[8px] ${theme.mutedText} font-mono uppercase tracking-widest`}>GATE</div>
                                         {/* OPEN while reading; otherwise the gate's state (CLOSED once conquered). */}
-                                        <div className={`text-xl font-bold font-mono tabular-nums leading-tight ${activeQuest.status !== 'ACTIVE' ? theme.mutedText : (theme.isDark ? theme.highlightText : `text-transparent bg-clip-text bg-gradient-to-b ${theme.inkGradient}`)}`}>{activeQuest.status === 'ACTIVE' ? 'OPEN' : activeQuest.status === 'CONQUERED' ? 'CLOSED' : statusLabel(activeQuest.status)}</div>
+                                        <div className={`text-2xl font-bold font-numerals tabular-nums leading-tight ${activeQuest.status !== 'ACTIVE' ? theme.mutedText : (theme.isDark ? theme.highlightText : `text-transparent bg-clip-text bg-gradient-to-b ${theme.inkGradient}`)}`}>{activeQuest.status === 'ACTIVE' ? 'OPEN' : activeQuest.status === 'CONQUERED' ? 'CLOSED' : statusLabel(activeQuest.status)}</div>
                                         <div className={`text-[7px] ${theme.mutedText} font-mono uppercase`}>STATUS</div>
                                     </div>
                                 </div>
